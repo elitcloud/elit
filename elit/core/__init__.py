@@ -13,6 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from nlp4p.core import *
+from elit.core import *
 
 __author__ = 'Jinho D. Choi'

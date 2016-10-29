@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from nlp4p.core.constituency import *
+from elit.core.constituency import *
 import unittest
 
 

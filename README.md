@@ -1,3 +1,3 @@
-# NLP4P
+# ELIT
 
-Natural language processing toolkit in Python.
+Emory Language and Information Toolkit (ELIT).
