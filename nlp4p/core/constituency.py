@@ -16,16 +16,14 @@
 import re
 __author__ = 'Jinho D. Choi'
 
-TOP = 'TOP'      # root
-NONE = '-NONE-'  # empty category
-
 
 # ==================================== ConstituencyNode ====================================
+
 class ConstituencyNode:
     _TAG_DELIM = re.compile('([-=])')
 
-    def __init__(self, tags=None, word_form=None):
-        self.word_form = word_form    # String
+    def __init__(self, tags, word_form=None):
+        self._word_form = None        # String
         self.constituency_tag = None  # String
         self.function_tagset = set()  # Set of Strings
         self.children_list = list()   # List of ConstituencyNode
@@ -40,9 +38,10 @@ class ConstituencyNode:
 
         # init constituency tag, function tags, co-index, gap-index
         self.tags = tags
+        self.word_form = word_form    # String
 
     def __str__(self):
-        return self.to_parse_tree(single_line=True)
+        return self.str_constituency_tree(single_line=True)
 
     # ==================================== ConstituencyNode: Basic ====================================
 
@@ -88,6 +87,20 @@ class ConstituencyNode:
                 self.function_tagset.add(v)
 
     @property
+    def word_form(self):
+        return self._word_form
+
+    @word_form.setter
+    def word_form(self, form):
+        self._word_form = form
+
+        # init co-index of an empty category if applicable
+        if self.is_empty_category() and form:
+            index = form[form.rfind('-') + 1:]
+            if index.isdigit():
+                self.co_index = int(index)
+
+    @property
     # returns True if this node has a co-index to an empty category.
     def has_co_index(self):
         return self.co_index >= 0
@@ -105,7 +118,7 @@ class ConstituencyNode:
     @property
     # returns the list of terminals under the subtree of this node : List of ConstituencyNode
     def terminal_list(self):
-        return self._traverse(self, lambda node: node.is_terminal, [])
+        return _traverse(self, lambda node: node.is_terminal, list())
 
     # returns the index'th child if exists; otherwise, None : ConstituencyNode
     def child(self, index):
@@ -120,8 +133,8 @@ class ConstituencyNode:
 
         node.parent = self
         self.children_list.insert(index, node)
-        self._set_siblings(self.child(index - 1), node)
-        self._set_siblings(node, self.child(index + 1))
+        _set_siblings(self.child(index - 1), node)
+        _set_siblings(node, self.child(index + 1))
 
     # ==================================== ConstituencyNode: Match ====================================
 
@@ -151,24 +164,24 @@ class ConstituencyNode:
     # returns the left nearest sibling matching **kwargs if exists; otherwise, None : ConstituencyNode
     # **kwags - see the descriptions in self.match()
     def left_nearest_sibling(self, **kwargs):
-        return self._node_iterator(lambda node: node.left_sibling, **kwargs)
+        return _node_iterator(self, lambda node: node.left_sibling, **kwargs)
 
     # returns the right nearest sibling matching **kwargs if exists; otherwise, None : ConstituencyNode
     # **kwags - see the descriptions in self.match()
     def right_nearest_sibling(self, **kwargs):
-        return self._node_iterator(lambda node: node.right_sibling, **kwargs)
+        return _node_iterator(self, lambda node: node.right_sibling, **kwargs)
 
     # returns the nearest ancestor matching **kwargs : ConstituencyNode
     # **kwags - see the descriptions in self.match()
     def nearest_ancestor(self, **kwargs):
-        return self._node_iterator(lambda node: node.parent, **kwargs)
+        return _node_iterator(self, lambda node: node.parent, **kwargs)
 
     # ==================================== ConstituencyNode: Empty Category ====================================
 
     # returns True if this node is an empty category : Boolean
     # recursive - check if this node contains only empty category recursively : Boolean
     def is_empty_category(self, recursive=False):
-        return self._is_empty_category(self) if recursive else self.constituency_tag == NONE
+        return self._is_empty_category(self) if recursive else self.constituency_tag == PTB.NONE
 
     def _is_empty_category(self, node):
         if node.is_terminal:
@@ -182,22 +195,22 @@ class ConstituencyNode:
     # regex(e.g., '\*ICH\*.*') : Pattern
     # returns the empty category matching the regular expression in the subtree of this node : ConstituencyNode
     def first_empty_category_in_subtree(self, regex):
-        return self._traverse(self, lambda node: node.is_empty_category(False) and regex.match(node.word_form))
+        return _traverse(self, lambda node: node.is_empty_category(False) and regex.match(node.word_form))
 
     # ==================================== ConstituencyNode: String ====================================
 
     # returns this node in the Penn Treebank word_format : String
-    def to_parse_tree(self, **kwargs):
+    def str_constituency_tree(self, pre_tags='', **kwargs):
         single_line = 'single_line' in kwargs and kwargs['single_line']
         numbered = 'numbered' in kwargs and kwargs['numbered']
 
         lst = list()
-        self._to_parse_tree(self, lst, '', single_line, numbered)
+        self._to_parse_tree(self, lst, pre_tags, single_line, numbered)
         return ' '.join(lst) if single_line else '\n'.join(lst)
 
     def _to_parse_tree(self, curr, lst, tags, single_line, numbered):
         if curr.is_terminal:
-            ls = []
+            ls = list()
             if not single_line and numbered:
                 ls.append('%4d: ' % (len(lst)))
 
@@ -220,361 +233,60 @@ class ConstituencyNode:
 
             lst[-1] += ')'
 
-# ==================================== ConstituencyNode: Helpers ====================================
-
-    @staticmethod
-    # left, right : ConstituencyNode
-    def _set_siblings(left, right):
-        if left:
-            left.right_sibling = right
-        if right:
-            right.left_sibling = left
-
-    # returns the collection containing results from traversing
-    # node : ConstituencyNode
-    # condition : def(ConstituencyNode) -> Boolean
-    # lst : List of results
-    def _traverse(self, node, condition, lst=None):
-        if condition(node):
-            if lst is None:
-                return node
-
-            lst.append(node)
-
-        for child in node.children_list:
-            f = self._traverse(child, condition, lst)
-            if lst is None and f:
-                return f
-
-        return lst
-
-    # returns the first node matching **kwargs if exists; otherwise, None : ConstituencyNode
-    # nodemap - takes a node and returns a specific node : def(ConstitudencyNode) -> ConstitudencyNode
-    # **kwags - see the descriptions in self.match()
-    def _node_iterator(self, nodemap, **kwargs):
-        node = nodemap(self)
-
-        while node:
-            if node.match(**kwargs):
-                return node
-            node = nodemap(node)
-
-        return None
-
-# ==================================== ConstituencyNode ====================================
-
-    # PRE: English
-    # returns the complementizer belongs to this node : ConstituencyNode
-    def getComplementizer(self):
-        if not self.constituency_tag.startswith('WH'):
-            return None
-
-        whNode = self
-        while True:
-            tmp = whNode.getFirstChild(pRex='WH.*')
-            if tmp:
-                whNode = tmp
-            else:
-                break
-
-        terminals = whNode.terminal_list()
-
-        for node in terminals:
-            if node.isComplementizer():
-                return node
-
-        for node in terminals:
-            if RE_COMP_FORM.match(node.word_form.lower()):
-                return node
-
-        return None
-
-    # PRE: English
-    # returns the lowest coindexed wh-node (including self) : ConstituencyNode
-    def getCoIndexedWHNode(self):
-        curr = self.parent
-
-        while curr:
-            if not curr.constituencyTag.startswith('WH'): break
-            if curr.co_index != -1: return curr
-
-            curr = curr.parent
-
-        return None
-
-    # PRE: English
-    # returns the subject of this node : ConstituencyNode
-    def getSubject(self):
-        pred = self
-        while pred.parent.constituencyTag == PTAG_VP:
-            pred = pred.parent
-
-        return pred.getPrevSibling(constituencyTag=PTAG_NP, fTag=FTAG_SBJ)
-
-    # PRE: English
-    # PRE: this node is a verb predicate (e.g., 'say')
-    # returns the nearest PRN node if this node is a True if this node is in PRN and has an external argument : Boolean
-    def getPredPRN(self):
-        s = self.getNearestAncestor(pRex='^S.*')
-
-        if s and s.parent.constituencyTag == PTAG_PRN:
-            next = self.getNextSibling(pRex='^(S|SBAR)$')
-            if next:
-                ec = next.__getEmptySentence()
-                if ec: return (s.parent, ec)
-
-        return None
-
-    # called by 'getPredPRN()'.
-    def __getEmptySentence(self):
-        if self.constituency_tag == PTAG_SBAR:
-            if len(self.children_list) == 2 and \
-                            self.children_list[0].constituencyTag == PTAG_NONE and self.children_list[0].word_form == '0' and \
-                    self.children_list[1].isEmptyCategory(recursive=True):
-                return self.children_list[1].getIncludedEmptyCategory('^\*(\?|T)\*')
-        elif self.constituency_tag == PTAG_S:
-            if self.isEmptyCategory(recursive=True):
-                return self.children_list[0].getIncludedEmptyCategory('^\*(\?|T)\*')
-
-        return None
-
-    # PRE: English
-    # returns the empty category of passive construction : ConstituencyNode
-    def getPassiveEmptyCategory(self):
-        if self.parent and self.parent.constituencyTag == PTAG_VP and \
-                        self.siblingId > 0 and self.parent.children[self.siblingId - 1].constituencyTag.startswith(
-            'VB') and \
-                        self.constituency_tag == PTAG_NP and not self.function_tagset and \
-                self.isEmptyCategory(recursive=True):
-            return self.getIncludedEmptyCategory('^(\*|\*-\\d)$')
-
-    def getLowestSingleChild(self):
-        child = self.getLowestSingleChildRec(self)
-
-        if child != self:
-            return child
-        else:
-            return None
-
-    def getLowestSingleChildRec(self, node):
-        if len(node.children) == 1:
-            child = node.children[0]
-            if child.children:
-                return self.getLowestSingleChildRec(child)
-            else:
-                return child.parent
-        else:
-            return node
-
-
-
-            # PRE: English
-        # returns True if this node is a complementizer : Boolean
-
-    def isComplementizer(self):
-        if not self.word_form: return False
-        return RE_COMP_POS.match(self.constituency_tag) or (
-        self.constituency_tag == PTAG_NONE and self.word_form == '0')
-
 
 # ==================================== ConstituencyTree ====================================
+
 class ConstituencyTree:
-    RE_NORM = re.compile('\\*(ICH|RNR|PPA)\\*')
-    DELIM_PLUS = re.compile('\+')
-
-    # root : ConstituencyNode
     def __init__(self, root):
-        self.nd_root = root
-        self.ls_terminal = list()
-        self.dc_token = dict()
+        self.root = root             # ConstituencyNode
+        self.terminal_list = list()  # List of ConstituencyNode
+        self.token_list = list()     # List of ConstituencyNode
 
-    ########################### TBTree:getters ###########################
+    # ==================================== ConstituencyTree: Basic ====================================
 
-    # beginId, endId - terminal IDs (both inclusive) : String
-    # returns the node whose span is 'beginId - endId' : ConstituencyNode
-    def getNodeBySpan(self, beginId, endId):
-        bNode = self.ls_terminal[beginId]
+    # id : Integer
+    # returns the id'th terminal : ConstituencyNode
+    def terminal(self, terminal_id):
+        return self.terminal_list[terminal_id]
 
-        while bNode:
-            sId = bNode.getSubTerminalIdSet()
-            m = max(sId)
-            if m == endId:
-                return bNode
-            elif m > endId:
-                break
+    # id : Integer
+    # returns the id'th token : ConstituencyNode
+    def token(self, token_id):
+        return self.token_list[token_id]
 
-            bNode = bNode.parent
-
-        return None
-
-    # EXPERIMENTAL
-    # word_forms : String
-    # returns the PropBank location covering 'word_forms' : String
-    def getPBLoc(self, terminalId, word_forms):
-        node = self.ls_terminal[terminalId]
-        size = len(word_forms)
-
-        while True:
-            s = node.toForms()
-            if s == word_forms: return node.getPBLoc()
-            if len(s) > size: break
-            if node.parent:
-                node = node.parent
-            else:
-                break
-
-        return None
-
-    # terminalId, height : Integer
+    # terminal_id, height : Integer
     # returns the node in 'terminalId:height' : ConstituencyNode
-    def getNode(self, terminalId, height=0):
-        node = self.ls_terminal[terminalId]
+    def node(self, terminal_id, height=0):
+        n = self.terminal(terminal_id)
+
         for i in range(height):
-            node = node.parent
+            n = n.parent
 
-        return node
+        return n
 
-    # tokenId : Integer
-    # returns the 'tokenId'th token : ConstituencyNode
-    def getToken(self, tokenId):
-        return self.dc_token[tokenId]
-
-    # coIndex : Integer
-    # returns the antecedent of 'coIndex' : ConstituencyNode
-    def getAntecedent(self, coIndex):
-        return self.__getAntecedent(coIndex, self.nd_root)
-
-    # called by 'getAntecendet'
-    def __getAntecedent(self, coIndex, curr):
-        if curr.co_index == coIndex:
-            return curr
-
-        for child in curr.children:
-            ante = self.__getAntecedent(coIndex, child)
-            if ante: return ante
-
-        return None
-
-    # returns a dictionary of co-index and list of corresponding nodes : Dictionary
-    def getCoIndexDict(self):
-        d = dict()
-        self.__getCoIndexDict(self.nd_root, d)
-
-        return d
-
-    # called by 'getCoIndexDict'
-    def __getCoIndexDict(self, curr, d):
-        if not curr.children: return
-        coIndex = curr.co_index
-
-        if coIndex != -1:
-            if coIndex in d:
-                l = d[coIndex]
-            else:
-                l = list()
-                d[coIndex] = l
-
-            l.append(curr)
-
-        for child in curr.children:
-            self.__getCoIndexDict(child, d)
-
-    # terminalId : Integer
-    # delim : String
-    # returns all previous token word_forms (including self) without space : String
-    def getPrevTokenForms(self, terminalId, delim=''):
-        node = self.getNode(terminalId)
-        l = list()
-
-        for i in range(node.tokenId + 1):
-            l.append(self.dc_token[i].word_form)
-
-        return delim.join(l)
-
-    # prevTokenForms - returned by getPrevTokenForms(delim) : String
-    # delim : String
-    # return the token of 'prevForms' : Token
-    def getTokenByPrevForms(self, prevTokenForms, delim=''):
-        l = list()
-
-        for i in range(len(self.dc_token)):
-            token = self.dc_token[i]
-            l.append(token.word_form)
-            s = delim.join(l)
-
-            if s == prevTokenForms:
-                return token
-            elif len(s) > len(prevTokenForms):
-                break
-
-        return None
-
-    def getPrevTerminalForms(self, terminalId, delim=''):
-        l = list()
-
-        for i in range(terminalId + 1):
-            node = self.ls_terminal[i]
-
-            if node.isEmptyCategory():
-                l.append('*NULL*')
-            else:
-                l.append(node.word_form)
-
-        return delim.join(l)
-
-    def getTerminalByPrevForms(self, prevTerminalForms, delim=''):
-        l = list()
-
-        for i in range(len(self.ls_terminal)):
-            node = self.ls_terminal[i]
-            if node.isEmptyCategory():
-                l.append('*NULL*')
-            else:
-                l.append(node.word_form)
-            s = delim.join(l)
-
-            if s == prevTerminalForms:
-                return self.ls_terminal[i]
-            elif len(s) > len(prevTerminalForms):
-                break
-
-        return None
-
-    def getTerminals(self):
-        return self.ls_terminal
-
-    ########################### TBTree:setters ###########################
+    # index : Integer
+    # returns the index'th antecedent : ConstituencyNode
+    def antecedent(self, index):
+        return _traverse(self.root, lambda node: node.co_index == index)
 
     # node : ConstituencyNode
-    def addTerminal(self, node):
-        self.ls_terminal.append(node)
+    def add_terminal(self, node):
+        node.terminal_id = len(self.terminal_list)
+        self.terminal_list.append(node)
 
-    # node : ConstituencyNode
-    def addToken(self, tokenId, node):
-        self.dc_token[tokenId] = node
+        if node.is_empty_category:
+            node.token_id = len(self.token_list)
+            self.token_list.append(node)
 
     # initializes antecedents of all empty categories.
-    def setAntecedents(self):
-        for node in self.ls_terminal:
-            if not node.isEmptyCategory(): continue
-            coIndex = node.word_form[node.word_form.rfind('-') + 1:]
-            if coIndex.isdigit():
-                node.antecedent = self.getAntecedent(int(coIndex))
+    def init_antecedents(self):
+        for node in filter(lambda n: n.is_empty_category(False) and n.has_co_index, self.terminal_list):
+            node.antecedent = self.antecedent(node.co_index)
 
-    # assigns PropBank locations to all nodes.
-    def setPBLocs(self):
-        for node in self.ls_terminal:
-            terminalId = node.terminalId
-            height = 0
-            node.setPBLoc(terminalId, height)
-
-            while node.parent and not node.parent.pbLoc:
-                node = node.parent
-                height += 1
-                node.setPBLoc(terminalId, height)
+    # ==================================== ConstituencyTree: Normalize ====================================
 
     # normalizes all co-indices and gap-indices
-    def normalizeIndices(self):
+    def normalize_indices(self):
         dIndex = self.getCoIndexDict()
         if not dIndex: return
 
@@ -590,7 +302,7 @@ class ConstituencyTree:
 
             for i, node in enumerate(l):
                 if node.isEmptyCategory(True):
-                    ec = self.ls_terminal[node.pbLoc[0]]
+                    ec = self.terminal_list[node.pbLoc[0]]
 
                     if i == 0 or isAnteFound or self.RE_NORM.match(ec.word_form):
                         node.co_index = -1
@@ -612,9 +324,33 @@ class ConstituencyTree:
 
         self.__remapGapIndices(dGap, coIndex)
 
+    # returns a dictionary of (co-index, list of corresponding nodes) : Dictionary
+    def getCoIndexDict(self):
+        d = dict()
+        self.__getCoIndexDict(self.root, d)
+
+        return d
+
+    # called by 'getCoIndexDict'
+    def __getCoIndexDict(self, curr, d):
+        if not curr.children: return
+        coIndex = curr.co_index
+
+        if coIndex != -1:
+            if coIndex in d:
+                l = d[coIndex]
+            else:
+                l = list()
+                d[coIndex] = l
+
+            l.append(curr)
+
+        for child in curr.children:
+            self.__getCoIndexDict(child, d)
+
     # called by 'normalizeIndices'
     def __remapGapIndices(self, dGap, lastIndex):
-        self.__remapGapIndicesAux(dGap, [lastIndex], self.nd_root)
+        self.__remapGapIndicesAux(dGap, [lastIndex], self.root)
 
     # called by '__remapGapIndices()'.
     def __remapGapIndicesAux(self, dGap, lastIndex, curr):
@@ -630,221 +366,17 @@ class ConstituencyTree:
         for child in curr.children:
             self.__remapGapIndicesAux(dGap, lastIndex, child)
 
-    # PRE: English
-    # initializes antecedents of all complementizers.
-    def setWHAntecedents(self):
-        self.__setWHAntecedents(self.nd_root)
+    # ==================================== ConstituencyTree: String ====================================
 
-    # called by 'setWHAntecedents()'.
-    def __setWHAntecedents(self, curr):
-        if RE_COMP_ANTE.match(curr.constituencyTag):
-            comp = curr.getComplementizer()
-            sbar = self.__getHighestSBAR(curr)
-
-            if comp and sbar:
-                p = sbar.parent
-                if not p: return
-
-                if p.constituencyTag == PTAG_NP:
-                    ante = sbar.getPrevSibling(constituencyTag=PTAG_NP)
-                    if ante: comp.antecedent = ante
-                elif p.constituencyTag == PTAG_WHNP:
-                    ante = sbar.getPrevSibling(constituencyTag=PTAG_WHNP)
-                    if ante: comp.antecedent = ante
-                elif p.constituencyTag == PTAG_VP:
-                    ante = p.first_child(fTag=FTAG_PRD)
-                    if ante and (ante.constituencyTag == PTAG_NP or (
-                            curr.constituencyTag == PTAG_WHPP and ante.constituencyTag == PTAG_PP)):
-                        comp.antecedent = ante
-            # elif FTAG_PRD in p.functionTags:
-            #       ante = p.getSubject()
-            #       if ante: comp.antecedent = ante
-
-            return
-
-        for child in curr.children:
-            self.__setWHAntecedents(child)
-
-    # called by '__setWHAntecedents()'.
-    def __getHighestSBAR(self, whNode):
-        sbar = whNode
-        while sbar.parent.constituencyTag == PTAG_SBAR:
-            sbar = sbar.parent
-
-        if sbar.constituencyTag == PTAG_SBAR:
-            if sbar.co_index != -1:
-                for i in range(whNode.pbLoc[0] - 1, -1, -1):
-                    node = self.ls_terminal[i]
-                    if node.isEmptyCategory():
-                        t = node.word_form.split('-')
-                        if len(t) > 1 and t[1].isdigit() and sbar.co_index == int(t[1]):
-                            return self.__getHighestSBAR(node)
-
-            return sbar
-
-        return None
-
-    # PRE: English
-    # initializes antecedent of all '*' for passive construction.
-    def setPassiveAntecedents(self):
-        self.__setPassiveAntecedents(self.nd_root)
-
-    # called by 'setPassiveAntecedents().'
-    def __setPassiveAntecedents(self, curr):
-        ec = curr.getPassiveEmptyCategory()
-
-        if ec and ec.word_form == '*':
-            vp = curr.parent
-            while vp.parent.constituencyTag == PTAG_VP: vp = vp.parent
-
-            if vp.parent.constituencyTag == PTAG_NP:
-                ante = vp.getPrevSibling(constituencyTag=PTAG_NP)
-                if ante: ec.antecedent = ante
-        else:
-            for child in curr.children:
-                self.__setPassiveAntecedents(child)
-
-    def transword_formSL(self):
-        size = len(self.ls_terminal)
-        i = 0
-
-        while i < size:
-            curr = self.ls_terminal[i]
-
-            if curr.constituencyTag == 'sL':
-                curr.constituencyTag = 'sl'
-                p = curr.parent
-                l = p.children
-                j = l.index(curr)
-
-                if j > 0:
-                    s = l[j:]
-                    (r, t) = self.includeSR(s)
-
-                    if not r:
-                        i = self.ls_terminal.index(s[-1].terminal_list()[-1])
-
-                        if i + 1 < size:
-                            next = self.ls_terminal[i + 1]
-                            del l[j:]
-
-                            p = next.parent
-                            l = p.children
-                            j = l.index(next)
-                            for node in reversed(s):
-                                node.parent = p
-                                l.insert(j, node)
-
-            i += 1
-
-    def mergePRN(self):
-        for node in self.ls_terminal:
-            if node.word_form == '-LRB-':
-                p = node.parent
-                l = p.children
-                j = l.index(node)
-                (r, t) = self.includeSR(l[j:])
-
-                gp = p.parent
-                gl = gp.children
-                gj = gl.index(p)
-
-                if gj > 0 and j == 0 and r and r[-1].word_form == '-RRB-':
-                    pr = gl[gj - 1]
-
-                    if p.constituencyTag == 'NP' and pr.constituencyTag == 'NP':
-                        for node in l:
-                            node.parent = pr
-                            pr.add_child(node)
-
-                        gl.remove(p)
-
-    def addPRN(self):
-        for node in self.ls_terminal:
-            if node.word_form == '-LRB-':
-                p = node.parent
-                l = p.children_list
-                j = l.index(node)
-
-                if j > 0:
-                    (r, t) = self.includeSR(l[j:])
-
-                    if r and r[-1].word_form == '-RRB-':
-                        prn = ConstituencyNode(p, 'NP-PRN')
-                        del l[j:j + len(r)]
-                        l.insert(j, prn)
-
-                        for node in r:
-                            node.parent = prn
-                            prn.add_child(node)
-
-    def markPRN(self):
-        self.markPRNAux(self.nd_root)
-
-    def markPRNAux(self, curr):
-        i = 0
-
-        if curr.constituencyTag != 'TOP' and 'PRN' not in curr.functionTags:
-            terms = curr.terminal_list()
-
-            if terms[0].word_form == '-LRB-':
-                if terms[-1].word_form == '-RRB-':
-                    curr.functionTags.add('PRN')
-                    i = 100000
-                elif len(terms) > 2 and self.isEJX(terms[-1]) and terms[-2].word_form == '-RRB-':
-                    curr.functionTags.add('PRN')
-                    p = curr.parent
-                    l = p.children
-                    i = 100000
-                    j = l.index(curr)
-
-                    ejx = terms[-1]
-                    ejx.parent.children.remove(ejx)
-                    ejx.parent = p
-                    p.children.insert(j + 1, ejx)
-
-        while i < len(curr.children):
-            self.markPRNAux(curr.children[i])
-            i += 1
-
-    def includeSR(self, s):
-        for i, node in enumerate(s):
-            if node.constituencyTag == 'sr':
-                return (s[:i + 1], s[i + 1:])
-
-        return (None, None)
-
-    def isEJX(self, node):
-        for constituencyTag in self.DELIM_PLUS.split(node.constituencyTag):
-            c = constituencyTag[0]
-            if c != 'e' and c != 'j' and c != 'x':
-                return False
-
-        return True
-
-    ########################### TBTree:helpers ###########################
-
-    # returns the number of terminals : Integer
-    def countTerminals(self):
-        return len(self.ls_terminal)
-
-    # returns the number of tokens : Integer
-    def countTokens(self):
-        return len(self.dc_token)
-
-    # returns all terminal word_forms : String
-    def toForms(self, includeEC=True):
-        ls = list()
-
-        for node in self.ls_terminal:
-            if includeEC or not node.isEmptyCategory():
-                ls.append(node.word_form)
-
-        return ' '.join(ls)
+    # returns all terminal word forms : String
+    def str_word_forms(self, delim=' ', empty_category=False):
+        l = self.terminal_list if empty_category else self.token_list
+        return delim.join([node.word_form for node in l])
 
     # returns this tree in the Penn Treebank word_format : String
-    def toParseTree(self, numbered=False):
-        return self.nd_root.toParseTree(numbered)
+    def str_constituency_tree(self, **kwargs):
+        return self.root.toParseTree(''.join(['(', PTB.TOP, ' ']), kwargs) + ')'
+
 
 
 ##########################################################################################
@@ -1023,14 +555,478 @@ class TBReader:
 ##########################################################################################
 
 
+class PTB:
+    # constituency tags
+    TOP = 'TOP'      # root
+    NONE = '-NONE-'  # empty category
+
+    RE_ICH_RNR_PPA = re.compile('\*(ICH|RNR|PPA)\*')
 
 
 
 
 
 
+    DELIM_PLUS = re.compile('\+')
+
+
+    # PRE: English
+    # returns the complementizer belongs to this node : ConstituencyNode
+    def getComplementizer(self):
+        if not self.constituency_tag.startswith('WH'):
+            return None
+
+        whNode = self
+        while True:
+            tmp = whNode.getFirstChild(pRex='WH.*')
+            if tmp:
+                whNode = tmp
+            else:
+                break
+
+        terminals = whNode.terminal_list()
+
+        for node in terminals:
+            if node.isComplementizer():
+                return node
+
+        for node in terminals:
+            if RE_COMP_FORM.match(node.word_form.lower()):
+                return node
+
+        return None
+
+    # PRE: English
+    # returns the lowest coindexed wh-node (including self) : ConstituencyNode
+    def getCoIndexedWHNode(self):
+        curr = self.parent
+
+        while curr:
+            if not curr.constituencyTag.startswith('WH'): break
+            if curr.co_index != -1: return curr
+
+            curr = curr.parent
+
+        return None
+
+    # PRE: English
+    # returns the subject of this node : ConstituencyNode
+    def getSubject(self):
+        pred = self
+        while pred.parent.constituencyTag == PTAG_VP:
+            pred = pred.parent
+
+        return pred.getPrevSibling(constituencyTag=PTAG_NP, fTag=FTAG_SBJ)
+
+    # PRE: English
+    # PRE: this node is a verb predicate (e.g., 'say')
+    # returns the nearest PRN node if this node is a True if this node is in PRN and has an external argument : Boolean
+    def getPredPRN(self):
+        s = self.getNearestAncestor(pRex='^S.*')
+
+        if s and s.parent.constituencyTag == PTAG_PRN:
+            next = self.getNextSibling(pRex='^(S|SBAR)$')
+            if next:
+                ec = next.__getEmptySentence()
+                if ec: return (s.parent, ec)
+
+        return None
+
+    # called by 'getPredPRN()'.
+    def __getEmptySentence(self):
+        if self.constituency_tag == PTAG_SBAR:
+            if len(self.children_list) == 2 and \
+                            self.children_list[0].constituencyTag == PTAG_NONE and self.children_list[0].word_form == '0' and \
+                    self.children_list[1].isEmptyCategory(recursive=True):
+                return self.children_list[1].getIncludedEmptyCategory('^\*(\?|T)\*')
+        elif self.constituency_tag == PTAG_S:
+            if self.isEmptyCategory(recursive=True):
+                return self.children_list[0].getIncludedEmptyCategory('^\*(\?|T)\*')
+
+        return None
+
+    # PRE: English
+    # returns the empty category of passive construction : ConstituencyNode
+    def getPassiveEmptyCategory(self):
+        if self.parent and self.parent.constituencyTag == PTAG_VP and \
+                        self.siblingId > 0 and self.parent.children[self.siblingId - 1].constituencyTag.startswith(
+            'VB') and \
+                        self.constituency_tag == PTAG_NP and not self.function_tagset and \
+                self.isEmptyCategory(recursive=True):
+            return self.getIncludedEmptyCategory('^(\*|\*-\\d)$')
+
+    def getLowestSingleChild(self):
+        child = self.getLowestSingleChildRec(self)
+
+        if child != self:
+            return child
+        else:
+            return None
+
+    def getLowestSingleChildRec(self, node):
+        if len(node.children) == 1:
+            child = node.children[0]
+            if child.children:
+                return self.getLowestSingleChildRec(child)
+            else:
+                return child.parent
+        else:
+            return node
+
+
+
+            # PRE: English
+        # returns True if this node is a complementizer : Boolean
+
+    def isComplementizer(self):
+        if not self.word_form: return False
+        return RE_COMP_POS.match(self.constituency_tag) or (
+        self.constituency_tag == PTAG_NONE and self.word_form == '0')
+
+
+    ########################### TBTree:getters ###########################
+
+    # beginId, endId - terminal IDs (both inclusive) : String
+    # returns the node whose span is 'beginId - endId' : ConstituencyNode
+    def getNodeBySpan(self, beginId, endId):
+        bNode = self.terminal_list[beginId]
+
+        while bNode:
+            sId = bNode.getSubTerminalIdSet()
+            m = max(sId)
+            if m == endId:
+                return bNode
+            elif m > endId:
+                break
+
+            bNode = bNode.parent
+
+        return None
+
+    # EXPERIMENTAL
+    # word_forms : String
+    # returns the PropBank location covering 'word_forms' : String
+    def getPBLoc(self, terminalId, word_forms):
+        node = self.terminal_list[terminalId]
+        size = len(word_forms)
+
+        while True:
+            s = node.toForms()
+            if s == word_forms: return node.getPBLoc()
+            if len(s) > size: break
+            if node.parent:
+                node = node.parent
+            else:
+                break
+
+        return None
+
+
+
+    # terminalId : Integer
+    # delim : String
+    # returns all previous token word_forms (including self) without space : String
+    def getPrevTokenForms(self, terminalId, delim=''):
+        node = self.getNode(terminalId)
+        l = list()
+
+        for i in range(node.tokenId + 1):
+            l.append(self.token_list[i].word_form)
+
+        return delim.join(l)
+
+    # prevTokenForms - returned by getPrevTokenForms(delim) : String
+    # delim : String
+    # return the token of 'prevForms' : Token
+    def getTokenByPrevForms(self, prevTokenForms, delim=''):
+        l = list()
+
+        for i in range(len(self.token_list)):
+            token = self.token_list[i]
+            l.append(token.word_form)
+            s = delim.join(l)
+
+            if s == prevTokenForms:
+                return token
+            elif len(s) > len(prevTokenForms):
+                break
+
+        return None
+
+    def getPrevTerminalForms(self, terminalId, delim=''):
+        l = list()
+
+        for i in range(terminalId + 1):
+            node = self.terminal_list[i]
+
+            if node.isEmptyCategory():
+                l.append('*NULL*')
+            else:
+                l.append(node.word_form)
+
+        return delim.join(l)
+
+    def getTerminalByPrevForms(self, prevTerminalForms, delim=''):
+        l = list()
+
+        for i in range(len(self.terminal_list)):
+            node = self.terminal_list[i]
+            if node.isEmptyCategory():
+                l.append('*NULL*')
+            else:
+                l.append(node.word_form)
+            s = delim.join(l)
+
+            if s == prevTerminalForms:
+                return self.terminal_list[i]
+            elif len(s) > len(prevTerminalForms):
+                break
+
+        return None
+
+
+
+    ########################### TBTree:setters ###########################
+
+
+
+    # PRE: English
+    # initializes antecedents of all complementizers.
+    def setWHAntecedents(self):
+        self.__setWHAntecedents(self.root)
+
+    # called by 'setWHAntecedents()'.
+    def __setWHAntecedents(self, curr):
+        if RE_COMP_ANTE.match(curr.constituencyTag):
+            comp = curr.getComplementizer()
+            sbar = self.__getHighestSBAR(curr)
+
+            if comp and sbar:
+                p = sbar.parent
+                if not p: return
+
+                if p.constituencyTag == PTAG_NP:
+                    ante = sbar.getPrevSibling(constituencyTag=PTAG_NP)
+                    if ante: comp.antecedent = ante
+                elif p.constituencyTag == PTAG_WHNP:
+                    ante = sbar.getPrevSibling(constituencyTag=PTAG_WHNP)
+                    if ante: comp.antecedent = ante
+                elif p.constituencyTag == PTAG_VP:
+                    ante = p.first_child(fTag=FTAG_PRD)
+                    if ante and (ante.constituencyTag == PTAG_NP or (
+                            curr.constituencyTag == PTAG_WHPP and ante.constituencyTag == PTAG_PP)):
+                        comp.antecedent = ante
+            # elif FTAG_PRD in p.functionTags:
+            #       ante = p.getSubject()
+            #       if ante: comp.antecedent = ante
+
+            return
+
+        for child in curr.children:
+            self.__setWHAntecedents(child)
+
+    # called by '__setWHAntecedents()'.
+    def __getHighestSBAR(self, whNode):
+        sbar = whNode
+        while sbar.parent.constituencyTag == PTAG_SBAR:
+            sbar = sbar.parent
+
+        if sbar.constituencyTag == PTAG_SBAR:
+            if sbar.co_index != -1:
+                for i in range(whNode.pbLoc[0] - 1, -1, -1):
+                    node = self.terminal_list[i]
+                    if node.isEmptyCategory():
+                        t = node.word_form.split('-')
+                        if len(t) > 1 and t[1].isdigit() and sbar.co_index == int(t[1]):
+                            return self.__getHighestSBAR(node)
+
+            return sbar
+
+        return None
+
+    # PRE: English
+    # initializes antecedent of all '*' for passive construction.
+    def setPassiveAntecedents(self):
+        self.__setPassiveAntecedents(self.root)
+
+    # called by 'setPassiveAntecedents().'
+    def __setPassiveAntecedents(self, curr):
+        ec = curr.getPassiveEmptyCategory()
+
+        if ec and ec.word_form == '*':
+            vp = curr.parent
+            while vp.parent.constituencyTag == PTAG_VP: vp = vp.parent
+
+            if vp.parent.constituencyTag == PTAG_NP:
+                ante = vp.getPrevSibling(constituencyTag=PTAG_NP)
+                if ante: ec.antecedent = ante
+        else:
+            for child in curr.children:
+                self.__setPassiveAntecedents(child)
+
+    def transword_formSL(self):
+        size = len(self.terminal_list)
+        i = 0
+
+        while i < size:
+            curr = self.terminal_list[i]
+
+            if curr.constituencyTag == 'sL':
+                curr.constituencyTag = 'sl'
+                p = curr.parent
+                l = p.children
+                j = l.index(curr)
+
+                if j > 0:
+                    s = l[j:]
+                    (r, t) = self.includeSR(s)
+
+                    if not r:
+                        i = self.terminal_list.index(s[-1].terminal_list()[-1])
+
+                        if i + 1 < size:
+                            next = self.terminal_list[i + 1]
+                            del l[j:]
+
+                            p = next.parent
+                            l = p.children
+                            j = l.index(next)
+                            for node in reversed(s):
+                                node.parent = p
+                                l.insert(j, node)
+
+            i += 1
+
+    def mergePRN(self):
+        for node in self.terminal_list:
+            if node.word_form == '-LRB-':
+                p = node.parent
+                l = p.children
+                j = l.index(node)
+                (r, t) = self.includeSR(l[j:])
+
+                gp = p.parent
+                gl = gp.children
+                gj = gl.index(p)
+
+                if gj > 0 and j == 0 and r and r[-1].word_form == '-RRB-':
+                    pr = gl[gj - 1]
+
+                    if p.constituencyTag == 'NP' and pr.constituencyTag == 'NP':
+                        for node in l:
+                            node.parent = pr
+                            pr.add_child(node)
+
+                        gl.remove(p)
+
+    def addPRN(self):
+        for node in self.terminal_list:
+            if node.word_form == '-LRB-':
+                p = node.parent
+                l = p.children_list
+                j = l.index(node)
+
+                if j > 0:
+                    (r, t) = self.includeSR(l[j:])
+
+                    if r and r[-1].word_form == '-RRB-':
+                        prn = ConstituencyNode(p, 'NP-PRN')
+                        del l[j:j + len(r)]
+                        l.insert(j, prn)
+
+                        for node in r:
+                            node.parent = prn
+                            prn.add_child(node)
+
+    def markPRN(self):
+        self.markPRNAux(self.root)
+
+    def markPRNAux(self, curr):
+        i = 0
+
+        if curr.constituencyTag != 'TOP' and 'PRN' not in curr.functionTags:
+            terms = curr.terminal_list()
+
+            if terms[0].word_form == '-LRB-':
+                if terms[-1].word_form == '-RRB-':
+                    curr.functionTags.add('PRN')
+                    i = 100000
+                elif len(terms) > 2 and self.isEJX(terms[-1]) and terms[-2].word_form == '-RRB-':
+                    curr.functionTags.add('PRN')
+                    p = curr.parent
+                    l = p.children
+                    i = 100000
+                    j = l.index(curr)
+
+                    ejx = terms[-1]
+                    ejx.parent.children.remove(ejx)
+                    ejx.parent = p
+                    p.children.insert(j + 1, ejx)
+
+        while i < len(curr.children):
+            self.markPRNAux(curr.children[i])
+            i += 1
+
+    def includeSR(self, s):
+        for i, node in enumerate(s):
+            if node.constituencyTag == 'sr':
+                return (s[:i + 1], s[i + 1:])
+
+        return (None, None)
+
+    def isEJX(self, node):
+        for constituencyTag in self.DELIM_PLUS.split(node.constituencyTag):
+            c = constituencyTag[0]
+            if c != 'e' and c != 'j' and c != 'x':
+                return False
+
+        return True
 
 # lTag - list of constituencyTags : List of String
 def constituencyTagsToRegex(lTag):
     return '^(' + '|'.join(lTag) + ')$'
 
+
+
+
+
+
+# returns the collection containing results from traversing
+# node : ConstituencyNode
+# condition : def(ConstituencyNode) -> Boolean
+# lst : List of results
+def _traverse(node, condition, lst=None):
+    if condition(node):
+        if lst is None:
+            return node
+
+        lst.append(node)
+
+    for child in node.children_list:
+        f = _traverse(child, condition, lst)
+        if lst is None and f:
+            return f
+
+    return lst
+
+
+# left, right : ConstituencyNode
+def _set_siblings(left, right):
+    if left:
+        left.right_sibling = right
+    if right:
+        right.left_sibling = left
+
+
+# returns the first node matching **kwargs if exists; otherwise, None : ConstituencyNode
+# nodemap - takes a node and returns a specific node : def(ConstitudencyNode) -> ConstitudencyNode
+# **kwags - see the descriptions in self.match()
+def _node_iterator(node, nodemap, **kwargs):
+    node = nodemap(node)
+
+    while node:
+        if node.match(**kwargs):
+            return node
+        node = nodemap(node)
+
+    return None

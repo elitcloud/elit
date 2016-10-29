@@ -81,18 +81,22 @@ class ConstituencyNodeTest(unittest.TestCase):
         self.assertEqual(s.terminal_list, nodes)
 
         # empty categories
-        ec = ConstituencyNode(NONE, '*')
+        ec = ConstituencyNode(PTB.NONE, '*T*-1')
         np.add_child(ec)
         np2 = ConstituencyNode('NP')
         np2.add_child(ec)
 
+        self.assertEqual(ec.co_index, 1)
         self.assertTrue(ec.is_empty_category())
         self.assertTrue(ec.is_empty_category(True))
         self.assertTrue(np2.is_empty_category(True))
         self.assertFalse(np2.is_empty_category(False))
         self.assertFalse(np.is_empty_category(True))
 
-        self.assertEqual(np2.first_empty_category_in_subtree(re.compile('\*')), ec)
+        self.assertEqual(np2.first_empty_category_in_subtree(re.compile('\*T\*')), ec)
+
+        s.add_child(np2)
+        print(s.str_constituency_tree(numbered=True))
 
 
 
