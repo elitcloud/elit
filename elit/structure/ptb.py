@@ -13,5 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit import *
+import re
 __author__ = 'Jinho D. Choi'
+
+
+class PTB:
+    # constituency tags
+    TOP = 'TOP'      # root
+    NONE = '-NONE-'  # empty category
+
+    RE_ICH_RNR_PPA = re.compile('\*(ICH|RNR|PPA)\*')
