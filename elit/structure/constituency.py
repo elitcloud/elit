@@ -13,34 +13,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.structure.language import *
-from elit.structure.ptb import *
 from typing import List
 from typing import Pattern
+
+from elit.utils.language import *
+from elit.structure.ptb import *
+
 __author__ = 'Jinho D. Choi'
 
 
 # ==================================== ConstituencyNode ====================================
 
 class ConstituencyNode:
-    _TAG_DELIM = re.compile('([-=])')
+    _DELIM_TAGS = re.compile('([-=])')
 
     def __init__(self, tags: str, word_form: str=None):
         # fields
-        self._word_form = None        # str
-        self.syntactic_tag = None     # str
-        self.function_tagset = set()  # Set[str]
-        self.token_id = -1            # int
-        self.terminal_id = -1         # int
-        self.co_index = -1            # int
-        self.gap_index = -1           # int
+        self._word_form = None         # str
+        self.syntactic_tag = None      # str
+        self.function_tagset = set()   # Set[str]
+        self.token_id = -1             # int
+        self.terminal_id = -1          # int
+        self.co_index = -1             # int
+        self.gap_index = -1            # int
 
         # structure
-        self.children_list = list()   # list[ConstituencyNode]
-        self.parent = None            # ConstituencyNode
-        self.left_sibling = None      # ConstituencyNode
-        self.right_sibling = None     # ConstituencyNode
-        self.antecedent = None        # ConstituencyNode
+        self.children_list = list()    # list[ConstituencyNode]
+        self.parent = None             # ConstituencyNode
+        self.left_sibling = None       # ConstituencyNode
+        self.right_sibling = None      # ConstituencyNode
+        self.antecedent = None         # ConstituencyNode
 
         # initialize constituency tag, function tags, co-index, gap-index
         self.tags = tags
@@ -81,7 +83,7 @@ class ConstituencyNode:
             self.syntactic_tag = tags
             return
 
-        ls = self._TAG_DELIM.split(tags)
+        ls = self._DELIM_TAGS.split(tags)
         self.syntactic_tag = ls[0]
 
         for i in range(2, len(ls), 2):
@@ -351,8 +353,8 @@ class ConstituencyReader:
          - filename: name of the file containing constituency trees : str
          - language: language (e.g., language.LANG_EN) : str
         """
+        self.language = Language(kwargs.get('language')) if 'language' in kwargs else Language.english
         self.fin = kwargs['inputstream'] if 'inputstream' in kwargs else None
-        self.language = kwargs.get('language', LANG_EN)
         self.tokens = None
 
     def __next__(self):
