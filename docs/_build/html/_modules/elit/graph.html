@@ -1,0 +1,190 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>elit.graph &mdash; ELIT 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="ELIT 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ELIT 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for elit.graph</h1><div class="highlight"><pre>
+<span></span><span class="c1"># ========================================================================</span>
+<span class="c1"># Copyright 2017 Emory University</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ========================================================================</span>
+<span class="kn">from</span> <span class="nn">igraph</span> <span class="k">import</span> <span class="o">*</span>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s1">&#39;Jinho D. Choi&#39;</span>
+
+
+<span class="n">ATTR_WORD</span> <span class="o">=</span> <span class="s1">&#39;w&#39;</span>
+<span class="n">ATTR_LEMMA</span> <span class="o">=</span> <span class="s1">&#39;l&#39;</span>
+<span class="n">ATTR_POS</span> <span class="o">=</span> <span class="s1">&#39;p&#39;</span>
+<span class="n">ATTR_NAME</span> <span class="o">=</span> <span class="s1">&#39;n&#39;</span>
+<span class="n">ATTR_FEATS</span> <span class="o">=</span> <span class="s1">&#39;f&#39;</span>
+
+<span class="n">FIELD_ROOT</span> <span class="o">=</span> <span class="s1">&#39;@#r$%&#39;</span>
+<span class="n">FIELD_BLANK</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span>
+<span class="n">DELIM_FEAT</span> <span class="o">=</span> <span class="s1">&#39;|&#39;</span>
+<span class="n">DELIM_FEAT_KV</span> <span class="o">=</span> <span class="s1">&#39;=&#39;</span>
+<span class="n">DELIM_ARC</span> <span class="o">=</span> <span class="s1">&#39;;&#39;</span>
+<span class="n">DELIM_ARC_NL</span> <span class="o">=</span> <span class="s1">&#39;:&#39;</span>
+
+
+<div class="viewcode-block" id="NLPGraph"><a class="viewcode-back" href="../../index.html#elit.graph.NLPGraph">[docs]</a><span class="k">class</span> <span class="nc">NLPGraph</span><span class="p">(</span><span class="n">Graph</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NLPGraph</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edges</span><span class="o">=</span><span class="n">edges</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="NLPGraph2"><a class="viewcode-back" href="../../index.html#elit.graph.NLPGraph2">[docs]</a><span class="k">class</span> <span class="nc">NLPGraph2</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param nodes: dependency nodes.</span>
+<span class="sd">    :type nodes: Tuple[NLPNode]</span>
+<span class="sd">    A root node is automatically added as the first element in the graph.</span>
+<span class="sd">    The iterator skips the root node and starts with the first &quot;real&quot; node.</span>
+<span class="sd">    The length of the graph is the number of &quot;real&quot; nodes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">(</span><span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">add_vertices</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">graph</span>
+
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">Fields</span><span class="p">(</span><span class="n">node_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">word</span><span class="o">=</span><span class="n">FIELD_ROOT</span><span class="p">,</span> <span class="n">lemma</span><span class="o">=</span><span class="n">FIELD_ROOT</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">FIELD_ROOT</span><span class="p">,</span> <span class="n">nament</span><span class="o">=</span><span class="n">FIELD_ROOT</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span>
+
+        <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">node</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+
+
+
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    def __str__(self):</span>
+<span class="sd">        def field(f):</span>
+<span class="sd">            return f if f else FIELD_BLANK</span>
+
+<span class="sd">        token_id = str(self.node_id)</span>
+<span class="sd">        word = field(self.word)</span>
+<span class="sd">        lemma = field(self.lemma)</span>
+<span class="sd">        pos = field(self.pos)</span>
+<span class="sd">        nament = field(self.nament)</span>
+<span class="sd">        feats = DELIM_FEAT.join(DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items()) if self.feats else FIELD_BLANK</span>
+<span class="sd">        head_id = str(self.head.node.node_id) if self.head and self.head.node else FIELD_BLANK</span>
+<span class="sd">        deprel = field(self.head.label) if self.head else FIELD_BLANK</span>
+<span class="sd">        snd_heads = DELIM_ARC.join(str(arc) for arc in self.snd_heads)</span>
+<span class="sd">        return &#39;\t&#39;.join((token_id, word, lemma, pos, feats, head_id, deprel, snd_heads, nament))</span>
+
+<span class="sd">    def __lt__(self, other):</span>
+<span class="sd">        return self.node_id &lt; other.token_id</span>
+<span class="sd">    &#39;&#39;&#39;</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ELIT 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2017, Jinho D. Choi.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

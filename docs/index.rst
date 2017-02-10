@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ELIT's documentation!
+Emory Language Information Toolkit (ELIT)
 ================================
 
 Contents:
@@ -11,7 +11,15 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   all-about-me
+.. automodule:: elit
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: elit.graph
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Indices and tables
 ==================
