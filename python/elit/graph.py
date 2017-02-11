@@ -13,89 +13,71 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from itertools import islice
 from igraph import *
 __author__ = 'Jinho D. Choi'
 
 
-ATTR_WORD = 'w'
-ATTR_LEMMA = 'l'
-ATTR_POS = 'p'
-ATTR_NAME = 'n'
-ATTR_FEATS = 'f'
+# attributes
+WORD   = 'w'
+LEMMA  = 'm'
+POS    = 'p'
+NAMENT = 'n'
+FEATS  = 'f'
+LABEL  = 'l'
+TYPE   = 't'
 
-FIELD_ROOT = '@#r$%'
-FIELD_BLANK = '_'
-DELIM_FEAT = '|'
+# edge types
+EDGE_TYPE_PRIMARY   = 0
+EDGE_TYPE_SECONDARY = 1
+
+# fields
+BLANK_FIELD = '_'
+ROOT_TAG = '@#r$%'
+
+# delimiters
+DELIM_FEAT    = '|'
 DELIM_FEAT_KV = '='
-DELIM_ARC = ';'
-DELIM_ARC_NL = ':'
+DELIM_ARC     = ';'
+DELIM_ARC_NL  = ':'
 
 
 class NLPGraph(Graph):
-    def __init__(self, edges=None):
-        super(NLPGraph, self).__init__(directed=True, edges=edges)
-
-
-
-class NLPGraph2:
-    """
-    :param nodes: dependency nodes.
-    :type nodes: Tuple[NLPNode]
-    A root node is automatically added as the first element in the graph.
-    The iterator skips the root node and starts with the first "real" node.
-    The length of the graph is the number of "real" nodes.
-    """
-    def __init__(self, nodes=None):
-        graph = Graph(directed=True)
-
-        if nodes:
-            graph.add_vertices(len(nodes)+1)
-
-
-        self.graph = graph
-
-
-
-        self.nodes = [Fields(node_id=0, word=FIELD_ROOT, lemma=FIELD_ROOT, pos=FIELD_ROOT, nament=FIELD_ROOT)]
-        self.nodes.extend(nodes)
+    def __init__(self):
+        super(NLPGraph, self).__init__(directed=True)
 
     def __next__(self):
-        if self._idx >= len(self.nodes):
+        try:
+            return next(self._iter)
+        except StopIteration:
             raise StopIteration
 
-        node = self.nodes[self._idx]
-        self._idx += 1
-        return node
-
     def __iter__(self):
-        self._idx = 1
+        self._iter = islice(self.vs, 1, len(self.vs))
         return self
 
     def __str__(self):
-        return '\n'.join(map(str, self))
+        return '\n'.join(self.vertex_to_tsv(v) for v in self)
 
-    def __len__(self):
-        return len(self.nodes) - 1
+    def get_primary_head(self, vertex):
+        head_id = next((self.es[i].source for i in self.incident(vertex, mode=IN) if
+                        self.es[i][TYPE] == EDGE_TYPE_PRIMARY), None)
+        return 
+
+        self.incident(vertex, mode=IN)
 
 
 
 
-    '''
-    def __str__(self):
-        def field(f):
-            return f if f else FIELD_BLANK
+def vertex_to_tsv(self, vertex):
+    token_id = str(vertex.index)
+    word     = vertex[WORD] or BLANK_FIELD
+    lemma    = vertex[LEMMA] or BLANK_FIELD
+    pos      = vertex[POS] or BLANK_FIELD
+    nament   = vertex[NAMENT] or BLANK_FIELD
+    feats    = DELIM_FEAT.join(
+               DELIM_FEAT_KV.join((k, v)) for k, v in vertex[FEATS].items()) if vertex[FEATS] else BLANK_FIELD
 
-        token_id = str(self.node_id)
-        word = field(self.word)
-        lemma = field(self.lemma)
-        pos = field(self.pos)
-        nament = field(self.nament)
-        feats = DELIM_FEAT.join(DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items()) if self.feats else FIELD_BLANK
-        head_id = str(self.head.node.node_id) if self.head and self.head.node else FIELD_BLANK
-        deprel = field(self.head.label) if self.head else FIELD_BLANK
-        snd_heads = DELIM_ARC.join(str(arc) for arc in self.snd_heads)
-        return '\t'.join((token_id, word, lemma, pos, feats, head_id, deprel, snd_heads, nament))
 
-    def __lt__(self, other):
-        return self.node_id < other.token_id
-    '''
+    return '\t'.join((token_id, word, lemma, pos, feats, nament))
+    #return '\t'.join((token_id, word, lemma, pos, feats, head_id, deprel, snd_heads, nament))

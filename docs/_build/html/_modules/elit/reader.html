@@ -1,0 +1,249 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>elit.reader &mdash; ELIT 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="ELIT 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ELIT 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for elit.reader</h1><div class="highlight"><pre>
+<span></span><span class="c1"># ========================================================================</span>
+<span class="c1"># Copyright 2017 Emory University</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ========================================================================</span>
+<span class="kn">from</span> <span class="nn">elit.graph</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s1">&#39;Jinho D. Choi&#39;</span>
+
+<span class="n">_TAB</span>      <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">_FEATS</span>    <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">|&#39;</span><span class="p">)</span>
+<span class="n">_FEATS_KV</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">DELIM_FEAT_KV</span><span class="p">)</span>
+<span class="n">_ARC</span>      <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">DELIM_ARC</span><span class="p">)</span>
+<span class="n">_ARC_NL</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">DELIM_ARC_NL</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TSVReader"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader">[docs]</a><span class="k">class</span> <span class="nc">TSVReader</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param filename: the name of a TSV file.</span>
+<span class="sd">    :type  filename: str</span>
+<span class="sd">    :param word_index: the column index of word forms.</span>
+<span class="sd">    :type  word_index: int</span>
+<span class="sd">    :param lemma_index: the column index of lemma.</span>
+<span class="sd">    :type  lemma_index: int</span>
+<span class="sd">    :param pos_index: the column index of part-of-speech tags.</span>
+<span class="sd">    :type  pos_index: int</span>
+<span class="sd">    :param feats_index: the column index of extra features.</span>
+<span class="sd">    :type  feats_index: int</span>
+<span class="sd">    :param head_id_index: the column index of primary head IDs.</span>
+<span class="sd">    :type  head_id_index: int</span>
+<span class="sd">    :param deprel_index: the column index of primary dependency labels.</span>
+<span class="sd">    :type  deprel_index: int</span>
+<span class="sd">    :param snd_heads_index: the column index of secondary dependency heads.</span>
+<span class="sd">    :type  snd_heads_index: int</span>
+<span class="sd">    :param nament_index: the column index of of named entity tags.</span>
+<span class="sd">    :type  nament_index: int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">word_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">lemma_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">pos_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">feats_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">head_id_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">deprel_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">snd_heads_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">nament_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">word_index</span>      <span class="o">=</span> <span class="n">word_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lemma_index</span>     <span class="o">=</span> <span class="n">lemma_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos_index</span>       <span class="o">=</span> <span class="n">pos_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feats_index</span>     <span class="o">=</span> <span class="n">feats_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">head_id_index</span>   <span class="o">=</span> <span class="n">head_id_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deprel_index</span>    <span class="o">=</span> <span class="n">deprel_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snd_heads_index</span> <span class="o">=</span> <span class="n">snd_heads_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nament_index</span>    <span class="o">=</span> <span class="n">nament_index</span>
+
+    <span class="k">def</span> <span class="nf">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">graph</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">graph</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="TSVReader.open"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader.open">[docs]</a>    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param filename: the name of a TSV file.</span>
+<span class="sd">        :type  filename: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">buffering</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fin</span></div>
+
+<div class="viewcode-block" id="TSVReader.close"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fin</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TSVReader.next"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">tsv</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fin</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">tsv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_TAB</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">tsv</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">tsv</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tsv_to_graph</span><span class="p">(</span><span class="n">tsv</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="TSVReader.next_all"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader.next_all">[docs]</a>    <span class="k">def</span> <span class="nf">next_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">graph</span> <span class="k">for</span> <span class="n">graph</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="TSVReader.tsv_to_graph"><a class="viewcode-back" href="../../index.html#elit.reader.TSVReader.tsv_to_graph">[docs]</a>    <span class="k">def</span> <span class="nf">tsv_to_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tsv</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param tsv: each row represents a token, each column represents a field.</span>
+<span class="sd">        :type  tsv: List[List[str]]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">get_field</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">ROOT_TAG</span> <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">row</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">get_feats</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feats_index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">feats_index</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">f</span> <span class="o">==</span> <span class="n">BLANK_FIELD</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+                <span class="k">return</span> <span class="p">{</span><span class="n">feat</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">feat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="n">_FEATS_KV</span><span class="o">.</span><span class="n">split</span><span class="p">,</span> <span class="n">_FEATS</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">f</span><span class="p">))}</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">set_fields</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">vertex</span><span class="p">[</span><span class="n">WORD</span><span class="p">]</span>   <span class="o">=</span> <span class="n">get_field</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">word_index</span><span class="p">)</span>
+            <span class="n">vertex</span><span class="p">[</span><span class="n">LEMMA</span><span class="p">]</span>  <span class="o">=</span> <span class="n">get_field</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lemma_index</span><span class="p">)</span>
+            <span class="n">vertex</span><span class="p">[</span><span class="n">POS</span><span class="p">]</span>    <span class="o">=</span> <span class="n">get_field</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_index</span><span class="p">)</span>
+            <span class="n">vertex</span><span class="p">[</span><span class="n">NAMENT</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_field</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nament_index</span><span class="p">)</span>
+            <span class="n">vertex</span><span class="p">[</span><span class="n">FEATS</span><span class="p">]</span>  <span class="o">=</span> <span class="n">get_feats</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">if</span> <span class="n">row</span> <span class="k">else</span> <span class="p">{}</span>
+
+        <span class="n">g</span> <span class="o">=</span> <span class="n">NLPGraph</span><span class="p">()</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">add_vertices</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tsv</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># initialize fields</span>
+        <span class="n">set_fields</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">vs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># root</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsv</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">set_fields</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">vs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">t</span><span class="p">)</span>
+
+        <span class="c1"># initialize primary dependency heads</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_id_index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">es</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">head_id_index</span><span class="p">]),</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsv</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">ls</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">deprel_index</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tsv</span><span class="p">]</span>
+            <span class="n">ts</span> <span class="o">=</span> <span class="p">[</span><span class="n">EDGE_TYPE_PRIMARY</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tsv</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">snd_heads_index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsv</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="n">arcs</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">snd_heads_index</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">arcs</span> <span class="o">!=</span> <span class="n">BLANK_FIELD</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">arc</span> <span class="ow">in</span> <span class="n">_ARC</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">arcs</span><span class="p">):</span>
+                            <span class="n">p</span> <span class="o">=</span> <span class="n">_ARC_NL</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">arc</span><span class="p">)</span>
+                            <span class="n">es</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">i</span><span class="p">))</span>
+                            <span class="n">ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                            <span class="n">ts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EDGE_TYPE_SECONDARY</span><span class="p">)</span>
+
+            <span class="n">g</span><span class="o">.</span><span class="n">add_edges</span><span class="p">(</span><span class="n">es</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">es</span><span class="p">[</span><span class="n">LABEL</span><span class="p">]</span> <span class="o">=</span> <span class="n">ls</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">es</span><span class="p">[</span><span class="n">TYPE</span><span class="p">]</span>  <span class="o">=</span> <span class="n">ts</span>
+
+        <span class="k">return</span> <span class="n">g</span></div></div>
+
+
+<span class="n">fn</span> <span class="o">=</span> <span class="s1">&#39;/Users/jdchoi/Documents/Data/english/ontonotes.ddg1&#39;</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">TSVReader</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">fn</span><span class="p">,</span> <span class="n">word_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lemma_index</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">pos_index</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">feats_index</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">head_id_index</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">deprel_index</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">snd_heads_index</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">nament_index</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39; &#39;</span><span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">es</span><span class="p">[</span><span class="n">e</span><span class="p">]</span><span class="o">.</span><span class="n">source</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">incident</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">IN</span><span class="p">)</span> <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">es</span><span class="p">[</span><span class="n">e</span><span class="p">][</span><span class="n">TYPE</span><span class="p">]</span> <span class="o">==</span> <span class="n">EDGE_TYPE_PRIMARY</span><span class="p">)))</span>
+    <span class="k">break</span>
+<span class="n">et</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">et</span><span class="o">-</span><span class="n">st</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ELIT 1.0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2017, Jinho D. Choi.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

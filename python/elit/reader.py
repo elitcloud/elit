@@ -15,27 +15,50 @@
 # ========================================================================
 from elit.graph import *
 import re
-import time
 __author__ = 'Jinho D. Choi'
 
-RE_TAB = re.compile('\t')
-RE_FEATS = re.compile('\\|')
-RE_FEATS_KV = re.compile(DELIM_FEAT_KV)
-RE_ARC = re.compile(DELIM_ARC)
-RE_ARC_NL = re.compile(DELIM_ARC_NL)
+_TAB      = re.compile('\t')
+_FEATS    = re.compile('\\|')
+_FEATS_KV = re.compile(DELIM_FEAT_KV)
+_ARC      = re.compile(DELIM_ARC)
+_ARC_NL   = re.compile(DELIM_ARC_NL)
 
 
 class TSVReader:
-    def __init__(self, fin=None, word_index=-1, lemma_index=-1, pos_index=-1, feats_index=-1, head_id_index=-1, deprel_index=-1, snd_heads_index=-1, nament_index=-1):
-        self.fin = fin
-        self.word_index = word_index
-        self.lemma_index = lemma_index
-        self.pos_index = pos_index
-        self.feats_index = feats_index
-        self.head_id_index = head_id_index
-        self.deprel_index = deprel_index
+    """
+    :param filename: the name of a TSV file.
+    :type  filename: str
+    :param word_index: the column index of word forms.
+    :type  word_index: int
+    :param lemma_index: the column index of lemma.
+    :type  lemma_index: int
+    :param pos_index: the column index of part-of-speech tags.
+    :type  pos_index: int
+    :param feats_index: the column index of extra features.
+    :type  feats_index: int
+    :param head_id_index: the column index of primary head IDs.
+    :type  head_id_index: int
+    :param deprel_index: the column index of primary dependency labels.
+    :type  deprel_index: int
+    :param snd_heads_index: the column index of secondary dependency heads.
+    :type  snd_heads_index: int
+    :param nament_index: the column index of of named entity tags.
+    :type  nament_index: int
+    """
+
+    def __init__(self, filename=None, word_index=-1, lemma_index=-1, pos_index=-1, feats_index=-1, head_id_index=-1,
+                 deprel_index=-1, snd_heads_index=-1, nament_index=-1):
+        if filename:
+            self.fin = self.open(filename)
+
+        self.word_index      = word_index
+        self.lemma_index     = lemma_index
+        self.pos_index       = pos_index
+        self.feats_index     = feats_index
+        self.head_id_index   = head_id_index
+        self.deprel_index    = deprel_index
         self.snd_heads_index = snd_heads_index
-        self.nament_index = nament_index
+        self.nament_index    = nament_index
 
     def __next__(self):
         graph = self.next()
@@ -47,25 +70,29 @@ class TSVReader:
     def __iter__(self):
         return self
 
-    # fin : file input-stream
-    def open(self, fin):
-        self.fin = fin
+    def open(self, filename):
+        """
+        :param filename: the name of a TSV file.
+        :type  filename: str
+        """
+        self.fin = open(filename, buffering=200)
+        return self.fin
 
     def close(self):
         self.fin.close()
 
     def next(self):
-        tokens = list()
+        tsv = []
 
         for line in self.fin:
             line = line.strip()
             if line:
-                tokens.append(RE_TAB.split(line))
-            elif tokens:
+                tsv.append(_TAB.split(line))
+            elif tsv:
                 break
 
-        if tokens:
-            return self.tsv_to_graph(tokens)
+        if tsv:
+            return self.tsv_to_graph(tsv)
         else:
             return None
 
@@ -73,162 +100,67 @@ class TSVReader:
         return [graph for graph in self]
 
     def tsv_to_graph(self, tsv):
-        def set_fields(t, v)
+        """
+        :param tsv: each row represents a token, each column represents a field.
+        :type  tsv: List[List[str]]
+        """
+        def get_field(row, index):
+            return ROOT_TAG if row is None else row[index] if index >= 0 else None
 
-        def to_field(t, index):
-            return t[index] if index >= 0 else None
+        def get_feats(row):
+            if self.feats_index >= 0:
+                f = row[self.feats_index]
+                if f == BLANK_FIELD:
+                    return None
+                return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
+            return None
 
-        def to_feats(t):
-            if self.feats_index < 0:
-                return None
+        def set_fields(vertex, row=None):
+            vertex[WORD]   = get_field(row, self.word_index)
+            vertex[LEMMA]  = get_field(row, self.lemma_index)
+            vertex[POS]    = get_field(row, self.pos_index)
+            vertex[NAMENT] = get_field(row, self.nament_index)
+            vertex[FEATS]  = get_feats(row) if row else {}
 
-            f = t[self.feats_index]
-            if f == FIELD_BLANK:
-                return None
+        g = NLPGraph()
+        g.add_vertices(len(tsv) + 1)
 
-            return {p[0]: p[1] for p in map(RE_FEATS_KV.split, RE_FEATS.split(f))}
+        # initialize fields
+        set_fields(g.vs[0])  # root
+        for i, t in enumerate(tsv, 1):
+            set_fields(g.vs[i], t)
 
+        # initialize primary dependency heads
         if self.head_id_index >= 0:
-            es = [(int(t[self.head_id_index]), i+1) for i,t in enumerate(tsv)]
-            g = NLPGraph(edges=es)
-        else:
-            g = NLPGraph()
-            g.add_vertices(len(tsv) + 1)
+            es = [(int(t[self.head_id_index]), i) for i, t in enumerate(tsv, 1)]
+            ls = [t[self.deprel_index] for t in tsv]
+            ts = [EDGE_TYPE_PRIMARY for _ in tsv]
 
+            if self.snd_heads_index >= 0:
+                for i, t in enumerate(tsv, 1):
+                    arcs = t[self.snd_heads_index]
+                    if arcs != BLANK_FIELD:
+                        for arc in _ARC.split(arcs):
+                            p = _ARC_NL.split(arc)
+                            es.append((int(p[0]), i))
+                            ls.append(p[1])
+                            ts.append(EDGE_TYPE_SECONDARY)
 
-
-        v = g.vs[0]
-        v['word'] = FIELD_ROOT
-        v['lemma'] = FIELD_ROOT
-        v['pos'] = FIELD_ROOT
-        v['nament'] = FIELD_ROOT
-        v['feats'] = {}
-
-
-        for i, t in enumerate(tsv):
-            v = g.vs[i+1]
-            v['word'] = to_field(t, self.word_index)
-            v['lemma'] = to_field(t, self.lemma_index)
-            v['pos'] = to_field(t, self.pos_index)
-            v['nament'] = to_field(t, self.nament_index)
-            v['feats'] = to_feats(t)
+            g.add_edges(es)
+            g.es[LABEL] = ls
+            g.es[TYPE]  = ts
 
         return g
 
 
-filename = '/Users/jdchoi/Documents/Data/experiments/general-en/trn/ontonotes_nw.trn'
-reader = TSVReader(fin=open(filename), word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_id_index=5, deprel_index=6, snd_heads_index=7, nament_index=8)
-
+fn = '/Users/jdchoi/Documents/Data/english/ontonotes.ddg1'
+reader = TSVReader(filename=fn, word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_id_index=5, deprel_index=6, snd_heads_index=7, nament_index=8)
+import time
 st = time.time()
+count = 0
 for g in reader:
-    for v in g.vs:
-
-        s = v['fields'].word
-        s = v['fields'].lemma
-        s = v['fields'].pos
-        s = v['fields'].nament
-        '''
-        s = v['word']
-        s = v['lemma']
-        s = v['pos']
-        s = v['nament']
-        '''
-
+    for i,v in enumerate(g,1):
+        print(str(i)+' '+ str(next(g.es[e].source for e in g.incident(v, mode=IN) if g.es[e][TYPE] == EDGE_TYPE_PRIMARY)))
+    break
 et = time.time()
 print(et-st)
-
-'''
-
-def tsv_to_ddg(tsv, node_id_index=0, word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_id_index=5, deprel_index=6, snd_heads_index=7, name_index=8):
-    """
-    :param tsv: list of fields from a TSV file.
-    :param word_index: column index of the word form in the TSV file.
-    :param lemma_index: column index of the lemma in the TSV file.
-    :param pos_index: column index of the part-of-speech tag in the TSV file.
-    :param feats_index: column index of the extra features in the TSV file.
-    :param head_id_index: column index of the primary head ID in the TSV file.
-    :param deprel_index: column index of the primary dependency label in the TSV file.
-    :param snd_heads_index: column index of the secondary heads in the TSV file.
-    :param name_index: column index of the named entity tag in the TSV file.
-    :return: the field if exists; otherwise, None.
-    """
-
-
-
-    def to_field(t, index):
-        return t[index] if 0 <= index < len(t) else None
-
-    def to_feats(t):
-        if 0 <= feats_index < len(t):
-            f = t[feats_index]
-            if f == FIELD_BLANK:
-                return None
-            l = RE_FEATS.split(f)
-            return {p[0]:p[1] for p in map(RE_FEATS_KV.split, RE_FEATS.split(f))}
-
-        return None
-
-    def to_arc(graph, head_id, label):
-        return NLPArc(graph.nodes[head_id], label)
-
-    def to_head(graph, node_index):
-        t = tsv[node_index]
-        if 0 <= head_id_index < len(t):
-            graph.nodes[node_index + 1].head = to_arc(graph, int(t[head_id_index]), to_field(t, deprel_index))
-
-    def to_snd_heads(graph, node_index):
-        t = tsv[node_index]
-        if 0 <= snd_heads_index < len(t):
-            f = t[snd_heads_index]
-            if f == FIELD_BLANK:
-                return None
-            return [to_arc(graph, int(p[0]), p[1]) for p in map(RE_ARC_NL.split, RE_ARC.split(f))]
-        return None
-
-    g = NLPGraph()
-    g.add_vertices(len(tsv)+1)
-
-    if is_range(node_id_index) and is_range(head_id_index):
-        edges = [(int(t[head_id_index]), int(t[node_id_index])) for t in tsv]
-        g = NLPGraph(edges=edges)
-
-
-
-
-        for i, t in enumerate(tsv):
-            node_id = i+1
-            head_id = int(t[head_id_index])
-
-
-
-
-
-    for i in range(1, len(g)):
-
-
-
-
-
-    g = NLPGraph([NLPNode(node_id=i + 1, word=to_field(t, word_index), lemma=to_field(t, lemma_index), pos=to_field(t, pos_index), feats=to_feats(t), nament=to_field(t, name_index)) for i, t in enumerate(tsv)])
-
-    for i in range(1, len(g)):
-        to_head(g, i)
-        to_snd_heads(g, i)
-
-
-    def is_range(index):
-        return 0 <= index < len(tsv[0])
-
-    if is_range(head_id_index):
-        edges = [(int(t[head_id_index]), i+1) for i,t in enumerate(tsv)]
-        g = NLPGraph(edges=edges)
-    else:
-        g = NLPGraph()
-        g.add_vertices(len(tsv)+1)
-
-    if is_range(word_index):
-        g.vs['word'] = [t[word_index] for t in tsv]
-
-    return g
-
-'''
