@@ -13,37 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from typing import List
-from typing import Dict
+import xml.etree.ElementTree
 __author__ = 'Jinho D. Choi'
 
+e = xml.etree.ElementTree.parse('thefile.xml').getroot()
 
-class LabelMap:
+class FeatureTemplate:
     def __init__(self):
-        self.index_map: Dict[str,int] = {}
-        self.labels: List[str] = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __str__(self):
-        return str(self.labels)
-
-    def index(self, label: str) -> int:
-        """
-        :return: the index of the label.
-        """
-        return self.index_map.get(label, -1)
-
-    def add(self, label: str) -> int:
-        """
-        :return: the index of the label.
-          Add a label to this map if not exist already.
-        """
-        idx = self.index(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
-
+        pass
