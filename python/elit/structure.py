@@ -14,10 +14,14 @@
 # limitations under the License.
 # ========================================================================
 import functools
+from typing import List
+from typing import Dict
+from typing import Union
+from itertools import islice
 __author__ = 'Jinho D. Choi'
 
 # fields
-BLANK_FIELD = '_'
+BLANK = '_'
 ROOT_TAG = '@#r$%'
 
 # delimiters
@@ -29,12 +33,10 @@ DELIM_ARC_KV  = ':'
 
 class NLPArc:
     """
-    :param node: a dependency node.
-    :type  node: NLPNode
-    :param label: a dependency label.
-    :type  label: str
+    :param node:
+    :param label:
     """
-    def __init__(self, node=None, label=None):
+    def __init__(self, node: NLPNode=None, label: str=None):
         self.node  = node
         self.label = label
 
@@ -46,32 +48,27 @@ class NLPArc:
 class NLPNode:
     """
     :param node_id: node id.
-    :type  node_id: int
     :param word: word form.
-    :type  word: str
     :param lemma: lemma.
-    :type  lemma: str
     :param pos: part-of-speech tag.
-    :type  pos: str
     :param nament: named entity tag.
-    :type  nament: str
     :param feats: extra features.
-    :type  feats: dict[str, str]
     """
-    def __init__(self, node_id=-1, word=None, lemma=None, pos=None, nament=None, feats=None):
+    def __init__(self, node_id: int=-1, word: str=None, lemma: str=None, pos: str=None, nament: str=None,
+                 feats: Dict[str, str]=None):
         # fields
-        self.node_id = node_id
-        self.word    = word
-        self.lemma   = lemma
-        self.pos     = pos
-        self.nament  = nament
-        self.feats   = feats or dict()
+        self.node_id: int = node_id
+        self.word: str = word
+        self.lemma: str = lemma
+        self.pos: str = pos
+        self.nament: str = nament
+        self.feats: Dict[str, str] = feats or {}
 
         # dependencies
-        self._parent  = None
-        self.children = list()
-        self.secondary_parents  = list()
-        self.secondary_children = list()
+        self._parent: NLPArc  = None
+        self.children: List[NLPArc] = []
+        self.secondary_parents: List[NLPArc] = []
+        self.secondary_children: List[NLPArc] = []
 
     def __hash__(self):
         return hash(id(self))
@@ -84,60 +81,53 @@ class NLPNode:
 
     def __str__(self):
         node_id = str(self.node_id)
-        word    = self.word if self.word else BLANK_FIELD
-        lemma   = self.lemma if self.lemma else BLANK_FIELD
-        pos     = self.pos if self.pos else BLANK_FIELD
-        nament  = self.nament if self.nament else BLANK_FIELD
-        feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK_FIELD
-        head_id = str(self._parent.node.node_id) if self._parent else BLANK_FIELD
-        deprel  = self._parent.label if self._parent and self._parent.label else BLANK_FIELD
-        sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.has_secondary_head else BLANK_FIELD
+        word    = self.word if self.word else BLANK
+        lemma   = self.lemma if self.lemma else BLANK
+        pos     = self.pos if self.pos else BLANK
+        nament  = self.nament if self.nament else BLANK
+        feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
+        head_id = str(self._parent.node.node_id) if self._parent else BLANK
+        deprel  = self._parent.label if self._parent and self._parent.label else BLANK
+        sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.has_secondary_head else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     @property
-    def parent(self):
+    def parent(self) -> Union[NLPArc, None]:
         """
-        :return: the arc indicating the primary head and the dependency label.
-        :rtype: NLPArc
+        :return: the arc indicating the primary head and the dependency label if exists; otherwise, None.
         """
         return self._parent
 
     @parent.setter
-    def parent(self, arc):
+    def parent(self, arc: Union[NLPArc, None]):
         """
-        :param arc: an arc of (node, label) to be set as the primary head.
-        :type  arc: NLPArc
-        :return: the previous arc to the primary head if exists; otherwise, None.
-        :rtype: NLPArc
+        :param arc: an arc of (node, label) to be set as the primary parent.
         """
         prev_head = self._parent
         self._parent = arc
         if prev_head: bisect_remove(prev_head.node.children, self)
         if arc: insort_right(arc.node.children, NLPArc(self, arc.label))
 
-    def parent_of(self, node):
+    def parent_of(self, node) -> bool:
         """
-        :param node: a node to be compared.
+        :param node:
         :type  node: NLPNode
-        :return: True if the specific node is the head of this node; otherwise, False.
-        :rtype: bool
+        :return: True if the node is the parent of this node; otherwise, False.
         """
         return self._parent and self._parent == node
 
-    def add_secondary_parent(self, arc):
+    def add_secondary_parent(self, arc: NLPArc):
         """
         :param arc: an arc of (node, label) to be added as a secondary head.
-        :type  arc: NLPArc
         """
         insort_right(self.secondary_parents, arc)
         insort_right(arc.node.secondary_children, NLPArc(self, arc.label))
 
-    def remove_secondary_parent(self, node):
+    def remove_secondary_parent(self, node) -> bool:
         """
         :param node: a node to be removed from the secondary head list.
         :type  node: NLPNode
         :return: True if the node is removed from the secondary head list; otherwise, False.
-        :rtype: bool
         """
         idx = bisect_index(self.secondary_parents, node)
         if idx >= 0:
@@ -146,41 +136,41 @@ class NLPNode:
         return False
 
     @property
-    def leftmost_child(self):
+    def leftmost_child(self) -> Union[NLPArc, None]:
         """
         :return: the leftmost primary dependent whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[0] if self.children and self.children[0] < self else None
+        return self.children[0] if self.children and self.children[0].node < self else None
 
     @property
-    def rightmost_child(self):
+    def rightmost_child(self) -> Union[NLPArc, None]:
         """
         :return: the rightmost primary dependent whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[-1] if self.children and self.children[-1] > self else None
+        return self.children[-1] if self.children and self.children[-1].node > self else None
 
     @property
-    def left_nearest_child(self):
+    def left_nearest_child(self) -> Union[NLPArc, None]:
         """
         :return: the left-nearest primary dependent whose token position is on the left-hand side of this node
                  if exists; otherwise, None.
         """
-        idx = self.children.index(self) - 1
+        idx = bisect_left(self.children, self) - 1
         return self.children[idx] if idx >= 0 else None
 
     @property
-    def right_nearest_child(self):
+    def right_nearest_child(self) -> Union[NLPArc, None]:
         """
         :return: the right-nearest primary dependent whose token position is on the right-hand side of this node
                  if exists; otherwise, None.
         """
-        idx = self.children.index(self) + 1
+        idx = bisect_right(self.children, self)
         return self.children[idx] if idx < len(self.children) else None
 
     @property
-    def leftmost_sibling(self):
+    def leftmost_sibling(self) -> Union[NLPArc, None]:
         """
         :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
@@ -188,7 +178,7 @@ class NLPNode:
         return self.head.dependents[0] if self.head and self.head.dependents[0] < self else None
 
     @property
-    def rightmost_sibling(self):
+    def rightmost_sibling(self) -> Union[NLPArc, None]:
         """
         :return: the rightmost primary sibling whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
@@ -196,7 +186,7 @@ class NLPNode:
         return self.head.dependents[-1] if self.head and self.head.dependents[-1] > self else None
 
     @property
-    def left_nearest_sibling(self):
+    def left_nearest_sibling(self) -> Union[NLPArc, None]:
         """
         :return: the left-nearest primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
@@ -207,7 +197,7 @@ class NLPNode:
         return None
 
     @property
-    def right_nearest_sibling(self):
+    def right_nearest_sibling(self) -> Union[NLPArc, None]:
         """
         :return: the right-nearest primary sibling whose token position is on the right-hand side of this node
                  if exists; otherwise, None.
@@ -224,7 +214,7 @@ class NLPGraph:
     :type  nodes: List[NLPNode]
       An artificial root is automatically added to the front of the node list.
     """
-    def __init__(self, nodes=None):
+    def __init__(self, nodes: List[NLPNode]=None):
         self.nodes = [NLPNode(node_id=0, word=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)]
         if nodes: self.nodes.extend(nodes)
 
@@ -243,18 +233,13 @@ class NLPGraph:
         return len(self.nodes) - 1
 
 
-def bisect_left(arcs, node, lo=0, hi=None):
+def bisect_left(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
     """
     :param arcs: a sorted list of arcs.
-    :type  arcs: list[NLPArc]
     :param node: the node to search for.
-    :type  node: NLPNode
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     :return: the index where to insert the node in the sorted list.
-    :rtype: int
     """
     if lo < 0:
         raise ValueError('lo must be non-negative')
@@ -267,18 +252,13 @@ def bisect_left(arcs, node, lo=0, hi=None):
     return lo
 
 
-def bisect_right(arcs, node, lo=0, hi=None):
+def bisect_right(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
     """
     :param arcs: a sorted list of arcs.
-    :type  arcs: list[NLPArc]
     :param node: the node to search for.
-    :type  node: NLPNode
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     :return: the index where to insert the node in the sorted list.
-    :rtype: int
     """
     if lo < 0:
         raise ValueError('lo must be non-negative')
@@ -291,67 +271,49 @@ def bisect_right(arcs, node, lo=0, hi=None):
     return lo
 
 
-def bisect_index(arcs, node, lo=0, hi=None):
+def bisect_index(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
     """
-    :param arcs: arcs sorted list of arcs.
-    :type  arcs: list[NLPArc]
+    :param arcs: a sorted list of arcs.
     :param node: the node to search for.
-    :type  node: NLPNode
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     :return: the index of the node in the sorted list of tuples if exists; otherwise, -1.
-    :rtype: int
     """
     idx = bisect_left(arcs, node, lo, hi)
     if idx != len(arcs) and arcs[idx].node == node: return idx
     return -1
 
 
-def bisect_remove(arcs, node, lo=0, hi=None):
+def bisect_remove(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
     """
-    :param arcs: arcs sorted list of arcs.
-    :type  arcs: list[NLPArc]
+    :param arcs: a sorted list of arcs.
     :param node: the node to search for.
-    :type  node: NLPNode
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     :return: the index of the removed item in the sorted list of tuples if exists; otherwise, -1.
-    :rtype: int
     """
     idx = bisect_index(arcs, node, lo, hi)
     if idx >= 0: del arcs[idx]
     return idx
 
 
-def insort_left(arcs, arc, lo=0, hi=None):
+def insort_left(arcs: List[NLPArc], arc: NLPArc, lo: int=0, hi: int=None):
     """
     :param arcs: arcs sorted list of arcs.
-    :type  arcs: list[NLPArc]
     :param arc: the node to be inserted.
-    :type  arc: NLPArc
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     """
     idx = bisect_left(arcs, arc.node, lo, hi)
     arcs.insert(idx, arc)
 
 
-def insort_right(arcs, arc, lo=0, hi=None):
+def insort_right(arcs: List[NLPArc], arc: NLPArc, lo: int=0, hi: int=None):
     """
     :param arcs: arcs sorted list of arcs.
-    :type  arcs: list[NLPArc]
     :param arc: the node to be inserted.
-    :type  arc: NLPArc
     :param lo: the lower-bound for search (inclusive).
-    :type  lo: int
     :param hi: the upper-bound for search (exclusive).
-    :type  hi: int
     """
     idx = bisect_right(arcs, arc.node, lo, hi)
     arcs.insert(idx, arc)

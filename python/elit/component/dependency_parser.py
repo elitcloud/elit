@@ -29,6 +29,10 @@ class DEPState(NLPState):
 
     # ============================== TRANSITION ==============================
 
+    def next(self, transition):
+        w_i =
+
+    def get_stack(self):
 
 
     def shift(self):
@@ -46,6 +50,9 @@ class DEPState(NLPState):
     def is_terminate(self):
         return self.input >= len(self.graph)
 
+    # ============================== Node ==============================
+
+    def get_node(self, ):
 
 
 

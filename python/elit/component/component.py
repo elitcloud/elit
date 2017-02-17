@@ -15,13 +15,42 @@
 # ========================================================================
 from abc import ABCMeta
 from abc import abstractmethod
+from enum import Enum
 from elit.structure import *
 __author__ = 'Jinho D. Choi'
+
+
+class Relation(Enum):
+    parent              = 'p'
+    leftmost_child      = 'lmc'
+    rightmost_child     = 'rmc'
+    left_nearest_child  = 'lnc'
+    right_nearest_child = 'rnc'
+
+
+
+
+
+
 
 
 class NLPState(metaclass=ABCMeta):
     def __init__(self, graph: NLPGraph):
         self.graph = graph
+
+    def get_node(self, index: int, window: int, root: bool=False) -> NLPNode:
+        """
+        :param index:
+        :param window:
+        :param root: if True, the root (nodes[0]) is returned when index+window == 0; otherwise, None.
+        :return: the index+window'th node in the graph if exists; otherwise, None.
+        """
+        index += window
+        begin = 0 if root else 1
+        return self.graph.nodes[index] if begin <= index < len(self.graph) else None
+
+
+
 
     @abstractmethod
     def save_oracle(self) -> bool:
@@ -56,3 +85,5 @@ class NLPComponent(metaclass=ABCMeta):
         :param graph: the input graph.
         """
         return
+
+

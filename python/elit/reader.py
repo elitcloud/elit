@@ -103,7 +103,7 @@ class TSVReader:
         def get_feats(row):
             if self.feats_index >= 0:
                 f = row[self.feats_index]
-                if f == BLANK_FIELD:
+                if f == BLANK:
                     return None
                 return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
             return None
@@ -126,7 +126,7 @@ class TSVReader:
                 t = tsv[i]
                 n.parent = NLPArc(g.nodes[int(t[self.head_id_index])], t[self.deprel_index])
 
-                if self.snd_heads_index >= 0 and t[self.snd_heads_index] != BLANK_FIELD:
+                if self.snd_heads_index >= 0 and t[self.snd_heads_index] != BLANK:
                     for arc in map(_ARC_KV.split, _ARC.split(t[self.snd_heads_index])):
                         n.add_secondary_parent(NLPArc(g.nodes[int(arc[0])], arc[1]))
 
