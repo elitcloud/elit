@@ -14,10 +14,11 @@
 # limitations under the License.
 # ========================================================================
 import functools
-from typing import List
-from typing import Dict
-from typing import Union
 from itertools import islice
+from typing import Dict
+from typing import List
+from typing import Union
+
 __author__ = 'Jinho D. Choi'
 
 # fields
@@ -36,7 +37,12 @@ class NLPArc:
     :param node:
     :param label:
     """
-    def __init__(self, node: NLPNode=None, label: str=None):
+    def __init__(self, node=None, label: str=None):
+        """
+        :param node:
+        :type  node: NLPNode
+        :param label:
+        """
         self.node  = node
         self.label = label
 
@@ -88,7 +94,7 @@ class NLPNode:
         feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
         head_id = str(self._parent.node.node_id) if self._parent else BLANK
         deprel  = self._parent.label if self._parent and self._parent.label else BLANK
-        sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.has_secondary_head else BLANK
+        sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.secondary_parents else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     @property

@@ -1,7 +1,15 @@
-TSV Reader
-==========
+TSVReader
+=========
 
+TSVReader reads graphs::
 
-# TSVReader
+    filename = '../../resources/sample.tsv'
+    reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
 
-This shows how to read TSV files.
+    # read the next graph
+    graph = reader.next()
+    print(str(graph)+'\n')
+
+    # read the rest
+    for graph in reader:
+        print(str(graph)+'\n')

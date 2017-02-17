@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.structure import *
 import re
+from elit.structure import *
+
 __author__ = 'Jinho D. Choi'
 
 _TAB      = re.compile('\t')
@@ -27,38 +28,30 @@ _ARC_KV   = re.compile(DELIM_ARC_KV)
 class TSVReader:
     """
     :param filename: the nament of a TSV file.
-    :type  filename: str
     :param word_index: the column index of word forms.
-    :type  word_index: int
     :param lemma_index: the column index of lemma.
-    :type  lemma_index: int
     :param pos_index: the column index of part-of-speech tags.
-    :type  pos_index: int
     :param feats_index: the column index of extra features.
-    :type  feats_index: int
     :param head_id_index: the column index of primary head IDs.
-    :type  head_id_index: int
     :param deprel_index: the column index of primary dependency labels.
-    :type  deprel_index: int
     :param snd_heads_index: the column index of secondary dependency heads.
-    :type  snd_heads_index: int
     :param nament_index: the column index of of named entity tags.
-    :type  nament_index: int
     """
 
-    def __init__(self, filename=None, word_index=-1, lemma_index=-1, pos_index=-1, feats_index=-1, head_id_index=-1,
-                 deprel_index=-1, snd_heads_index=-1, nament_index=-1):
+    def __init__(self, filename: str=None, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1,
+                 feats_index: int=-1, head_id_index: int=-1, deprel_index: int=-1, snd_heads_index: int=-1,
+                 nament_index: int=-1):
         if filename:
             self.fin = self.open(filename)
 
-        self.word_index      = word_index
-        self.lemma_index     = lemma_index
-        self.pos_index       = pos_index
-        self.feats_index     = feats_index
-        self.head_id_index   = head_id_index
-        self.deprel_index    = deprel_index
-        self.snd_heads_index = snd_heads_index
-        self.nament_index    = nament_index
+        self.word_index: int      = word_index
+        self.lemma_index: int     = lemma_index
+        self.pos_index: int       = pos_index
+        self.feats_index: int     = feats_index
+        self.head_id_index: int   = head_id_index
+        self.deprel_index: int    = deprel_index
+        self.snd_heads_index: int = snd_heads_index
+        self.nament_index: int    = nament_index
 
     def __next__(self):
         graph = self.next()
@@ -92,10 +85,9 @@ class TSVReader:
     def next_all(self):
         return [graph for graph in self]
 
-    def tsv_to_graph(self, tsv):
+    def tsv_to_graph(self, tsv: List[List[str]]):
         """
         :param tsv: each row represents a token, each column represents a field.
-        :type  tsv: List[List[str]]
         """
         def get_field(row, index):
             return ROOT_TAG if row is None else row[index] if index >= 0 else None
