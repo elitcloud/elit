@@ -16,38 +16,62 @@
 from abc import ABCMeta
 from abc import abstractmethod
 from enum import Enum
+from typing import Union
 from elit.structure import *
 __author__ = 'Jinho D. Choi'
 
 
 class Relation(Enum):
-    parent              = 'p'
-    leftmost_child      = 'lmc'
-    rightmost_child     = 'rmc'
-    left_nearest_child  = 'lnc'
-    right_nearest_child = 'rnc'
+    parent                 = 'p'
+    leftmost_child         = 'lmc'
+    rightmost_child        = 'rmc'
+    left_nearest_child     = 'lnc'
+    right_nearest_child    = 'rnc'
+    left_nearest_sibling   = 'lns'
+    right_nearest_sibling  = 'rns'
 
-
-
-
-
-
+    parent2                = 'p2'
+    leftmost_child2        = 'lmc2'
+    rightmost_child2       = 'rmc2'
+    left_nearest_child2    = 'lnc2'
+    right_nearest_child2   = 'rnc2'
+    left_nearest_sibling2  = 'lns2'
+    right_nearest_sibling2 = 'rns2'
 
 
 class NLPState(metaclass=ABCMeta):
     def __init__(self, graph: NLPGraph):
         self.graph = graph
 
-    def get_node(self, index: int, window: int, root: bool=False) -> NLPNode:
+    def get_node(self, index: int, window: int=0, root: bool=False, relation: Relation=None) -> Union[NLPNode, None]:
         """
         :param index:
         :param window:
         :param root: if True, the root (nodes[0]) is returned when index+window == 0; otherwise, None.
+        :param relation: the relation of the node to be retrieved.
         :return: the index+window'th node in the graph if exists; otherwise, None.
         """
         index += window
         begin = 0 if root else 1
-        return self.graph.nodes[index] if begin <= index < len(self.graph) else None
+        node: NLPNode = self.graph.nodes[index] if begin <= index < len(self.graph) else None
+
+        if node and relation:
+            if relation == Relation.parent:
+                node = node.parent
+            elif relation == Relation.leftmost_child:
+                node = node.leftmost_child
+            elif relation == Relation.rightmost_child:
+                node = node.rightmost_child
+            elif relation == Relation.left_nearest_child:
+                node = node.left_nearest_child
+            elif relation == Relation.right_nearest_child:
+                node = node.right_nearest_child
+            elif relation == Relation.left_nearest_sibling:
+                node = node.left_nearest_sibling
+            elif relation == Relation.right_nearest_sibling:
+                node = node.right_nearest_sibling
+
+
 
 
 

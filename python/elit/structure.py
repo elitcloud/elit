@@ -124,14 +124,14 @@ class NLPNode:
 
     def add_secondary_parent(self, arc: NLPArc):
         """
-        :param arc: an arc of (node, label) to be added as a secondary head.
+        :param arc: an arc of (node, label) to be added as a secondary parent.
         """
         insort_right(self.secondary_parents, arc)
         insort_right(arc.node.secondary_children, NLPArc(self, arc.label))
 
     def remove_secondary_parent(self, node) -> bool:
         """
-        :param node: a node to be removed from the secondary head list.
+        :param node: a node to be removed from the secondary parent list.
         :type  node: NLPNode
         :return: True if the node is removed from the secondary head list; otherwise, False.
         """
@@ -142,75 +142,85 @@ class NLPNode:
         return False
 
     @property
-    def leftmost_child(self) -> Union[NLPArc, None]:
+    def leftmost_child(self, order: int=0) -> Union[NLPArc, None]:
         """
-        :return: the leftmost primary dependent whose token position is on the left-hand side of this node if exists;
+        :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
+        :return: the leftmost primary child whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[0] if self.children and self.children[0].node < self else None
+        return self.children[order] if 0 <= order < len(self.children) and self.children[order].node < self else None
 
     @property
-    def rightmost_child(self) -> Union[NLPArc, None]:
+    def rightmost_child(self, order: int=0) -> Union[NLPArc, None]:
         """
-        :return: the rightmost primary dependent whose token position is on the right-hand side of this node if exists;
+        :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
+        :return: the rightmost primary child whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[-1] if self.children and self.children[-1].node > self else None
+        idx = len(self.children) - 1 - order
+        return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx].node > self else None
 
     @property
-    def left_nearest_child(self) -> Union[NLPArc, None]:
+    def left_nearest_child(self, order: int=0) -> Union[NLPArc, None]:
         """
-        :return: the left-nearest primary dependent whose token position is on the left-hand side of this node
+        :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
+        :return: the left-nearest primary child whose token position is on the left-hand side of this node
                  if exists; otherwise, None.
         """
-        idx = bisect_left(self.children, self) - 1
+        idx = bisect_left(self.children, self) - 1 - order
         return self.children[idx] if idx >= 0 else None
 
     @property
-    def right_nearest_child(self) -> Union[NLPArc, None]:
+    def right_nearest_child(self, order: int=0) -> Union[NLPArc, None]:
         """
-        :return: the right-nearest primary dependent whose token position is on the right-hand side of this node
+        :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
+        :return: the right-nearest primary child whose token position is on the right-hand side of this node
                  if exists; otherwise, None.
         """
-        idx = bisect_right(self.children, self)
+        idx = bisect_right(self.children, self) + order
         return self.children[idx] if idx < len(self.children) else None
 
     @property
-    def leftmost_sibling(self) -> Union[NLPArc, None]:
+    def leftmost_sibling(self, order: int=0) -> Union[NLPArc, None]:
         """
+        :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
         :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.head.dependents[0] if self.head and self.head.dependents[0] < self else None
+        return self.parent.node.children[order] if self.parent and self.parent.node.children[order] < self else None
 
     @property
-    def rightmost_sibling(self) -> Union[NLPArc, None]:
+    def rightmost_sibling(self, order: int=0) -> Union[NLPArc, None]:
         """
+        :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
         :return: the rightmost primary sibling whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.head.dependents[-1] if self.head and self.head.dependents[-1] > self else None
+        idx = len(self.children) - 1 - order
+        return self.parent.node.children[idx] if self.parent and self.parent.node.children[idx] > self else None
 
     @property
-    def left_nearest_sibling(self) -> Union[NLPArc, None]:
+    def left_nearest_sibling(self, order: int=0) -> Union[NLPArc, None]:
         """
+        :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
         :return: the left-nearest primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        if self.head:
-            idx = self.head.dependents.bisect(self) - 1
-            return self.head.dependents[idx] if idx >= 0 else None
+        if self.parent:
+            idx = bisect_left(self.parent.node.children, self) - 1 - order
+            return self.parent.node.children[idx] if idx >= 0 else None
         return None
 
     @property
-    def right_nearest_sibling(self) -> Union[NLPArc, None]:
+    def right_nearest_sibling(self, order: int=0) -> Union[NLPArc, None]:
         """
+        :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
         :return: the right-nearest primary sibling whose token position is on the right-hand side of this node
                  if exists; otherwise, None.
         """
-        if self.head:
-            idx = self.head.dependents.bisect(self) + 1
-            return self.head.dependents[idx] if idx < len(self.head.dependents) else None
+        if self.parent:
+            idx = bisect_right(self.parent.node.children, self) + 1 + order
+            return self.parent.node.children[idx] if idx < len(self.head.dependents) else None
         return None
 
 
