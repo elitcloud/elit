@@ -20,4 +20,5 @@ e = xml.etree.ElementTree.parse('thefile.xml').getroot()
 
 class FeatureTemplate:
     def __init__(self):
+        a = 1
         pass
