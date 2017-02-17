@@ -46,4 +46,3 @@ class LabelMap:
             self.index_map[label] = idx
             self.labels.append(label)
         return idx
-
