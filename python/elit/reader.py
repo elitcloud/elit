@@ -119,11 +119,11 @@ class TSVReader:
         if self.head_id_index >= 0:
             for i, n in enumerate(g):
                 t = tsv[i]
-                n.parent = NLPArc(g.nodes[int(t[self.head_id_index])], t[self.deprel_index])
+                n.set_parent(g.nodes[int(t[self.head_id_index])], t[self.deprel_index])
 
                 if self.snd_heads_index >= 0 and t[self.snd_heads_index] != BLANK:
                     for arc in map(_ARC_KV.split, _ARC.split(t[self.snd_heads_index])):
-                        n.add_secondary_parent(NLPArc(g.nodes[int(arc[0])], arc[1]))
+                        n.add_secondary_parent(g.nodes[int(arc[0])], arc[1])
 
         return g
 

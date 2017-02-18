@@ -37,15 +37,6 @@ DELIM_ARC     = ';'
 DELIM_ARC_KV  = ':'
 
 
-class NLPArc:
-    def __init__(self, node: NLPNode=None, label: str=None):
-        self.node  = node
-        self.label = label
-
-    def __str__(self):
-        return DELIM_ARC_KV.join((str(self.node.node_id), self.label))
-
-
 @functools.total_ordering
 class NLPNode:
     """
@@ -89,9 +80,10 @@ class NLPNode:
         pos     = self.pos if self.pos else BLANK
         nament  = self.nament if self.nament else BLANK
         feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
-        head_id = str(self.parent.node.node_id) if self.parent else BLANK
-        deprel  = self.parent.label if self.parent and self.parent.label else BLANK
-        sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.secondary_parents else BLANK
+        head_id = str(self.parent.node_id) if self.parent else BLANK
+        deprel  = self.get_dependency_label(self.parent) or BLANK
+        sheads  = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.node_id), self.get_dependency_label(parent)))
+                                 for parent in self.secondary_parents) if self.secondary_parents else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     @property
