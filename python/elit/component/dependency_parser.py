@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from typing import TypeVar
 from typing import List
-from elit.component.component import *
 
 __author__ = 'Jinho D. Choi'
 
 
+'''
 class DEPState(NLPState):
     def __init__(self, graph: NLPGraph):
         super().__init__(graph)
@@ -52,24 +51,4 @@ class DEPState(NLPState):
 
     # ============================== Node ==============================
 
-    def get_node(self, ):
-
-
-
-
-class TreeParser():
-    TRANS_LEFT = 'l'
-    TRANS_RIGHT = 'r'
-    TRANS_NO = 'n'
-    TRANS_SHIFT = 's'
-    TRANS_REDUCE = 'r'
-    TRANS_PASS = 'p'
-
-    def parse(self, graph: NLPGraph):
-        """
-        :param graph: a dependency tree to be parsed.
-        """
-
-        while input < len(graph):
-            i = stack[-1]
-            j = input
+'''

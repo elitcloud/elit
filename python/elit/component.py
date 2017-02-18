@@ -43,12 +43,12 @@ class NLPState(metaclass=ABCMeta):
     def __init__(self, graph: NLPGraph):
         self.graph = graph
 
-    def get_node(self, index: int, window: int=0, root: bool=False, relation: Relation=None) -> Union[NLPNode, None]:
+    def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:
         """
         :param index:
         :param window:
-        :param root: if True, the root (nodes[0]) is returned when index+window == 0; otherwise, None.
         :param relation: the relation of the node to be retrieved.
+        :param root: if True, the root (nodes[0]) is returned when index+window == 0; otherwise, None.
         :return: the index+window'th node in the graph if exists; otherwise, None.
         """
         index += window
