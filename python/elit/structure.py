@@ -18,6 +18,11 @@ from itertools import islice
 from typing import Dict
 from typing import List
 from typing import Union
+from elit.util import bisect_left
+from elit.util import bisect_right
+from elit.util import bisect_index
+from elit.util import bisect_remove
+from elit.util import insort_right
 
 __author__ = 'Jinho D. Choi'
 
@@ -33,16 +38,7 @@ DELIM_ARC_KV  = ':'
 
 
 class NLPArc:
-    """
-    :param node:
-    :param label:
-    """
-    def __init__(self, node=None, label: str=None):
-        """
-        :param node:
-        :type  node: NLPNode
-        :param label:
-        """
+    def __init__(self, node: NLPNode=None, label: str=None):
         self.node  = node
         self.label = label
 
@@ -71,10 +67,11 @@ class NLPNode:
         self.feats: Dict[str, str] = feats or {}
 
         # dependencies
-        self._parent: NLPArc  = None
-        self.children: List[NLPArc] = []
-        self.secondary_parents: List[NLPArc] = []
-        self.secondary_children: List[NLPArc] = []
+        self.parent: NLPNode = None
+        self.children: List[NLPNode] = []
+        self.secondary_parents: List[NLPNode] = []
+        self.secondary_children: List[NLPNode] = []
+        self.deprels: Dict[NLPNode, str] = {}
 
     def __hash__(self):
         return hash(id(self))
@@ -92,86 +89,112 @@ class NLPNode:
         pos     = self.pos if self.pos else BLANK
         nament  = self.nament if self.nament else BLANK
         feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
-        head_id = str(self._parent.node.node_id) if self._parent else BLANK
-        deprel  = self._parent.label if self._parent and self._parent.label else BLANK
+        head_id = str(self.parent.node.node_id) if self.parent else BLANK
+        deprel  = self.parent.label if self.parent and self.parent.label else BLANK
         sheads  = DELIM_ARC.join(str(arc) for arc in self.secondary_parents) if self.secondary_parents else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     @property
-    def parent(self) -> Union[NLPArc, None]:
+    def grandparent(self) -> 'NLPNode':
         """
-        :return: the arc indicating the primary head and the dependency label if exists; otherwise, None.
+        :return: the grandparent of this node if exists; otherwise, None.
         """
-        return self._parent
+        return self.parent.parent if self.parent else None
 
-    @parent.setter
-    def parent(self, arc: Union[NLPArc, None]):
+    def get_dependency_label(self, node: 'NLPNode') -> str:
         """
-        :param arc: an arc of (node, label) to be set as the primary parent.
+        :param node: the parent of this node.
+        :return: the dependency label between this node and the parent node if exists; otherwise, None.
         """
-        prev_head = self._parent
-        self._parent = arc
-        if prev_head: bisect_remove(prev_head.node.children, self)
-        if arc: insort_right(arc.node.children, NLPArc(self, arc.label))
+        return self.deprels.get(node, None) if node else None
 
-    def parent_of(self, node) -> bool:
+    def set_dependency_label(self, node: 'NLPNode', label: str):
         """
-        :param node:
-        :type  node: NLPNode
+        :param node: the parent of this node.
+        :param label: the dependency relation to the parent.
+        """
+        if label: self.deprels[node] = label
+
+    def set_parent(self, node: 'NLPNode', label: str=None) -> 'NLPNode':
+        """
+        :param node: the node to be set as the parent of this node.
+        :param label: the dependency relation between this node and the parent.
+        :return the previous parent if exists; otherwise, None.
+        """
+        # handle the previous parent
+        prev_parent = self.parent
+
+        if prev_parent:
+            bisect_remove(prev_parent.children, self)
+            del self.deprels[prev_parent]
+
+        # set the current parent
+        self.parent = node
+
+        if node:
+            insort_right(node.children, self)
+            self.set_dependency_label(node, label)
+
+        return prev_parent
+
+    def parent_of(self, node: 'NLPNode') -> bool:
+        """
+        :param node: the node to be compared.
         :return: True if the node is the parent of this node; otherwise, False.
         """
-        return self._parent and self._parent == node
+        return self.parent and self.parent == node
 
-    def add_secondary_parent(self, arc: NLPArc):
+    def add_secondary_parent(self, node: 'NLPNode', label: str=None):
         """
-        :param arc: an arc of (node, label) to be added as a secondary parent.
+        :param node: the node to be added as a secondary parent.
+        :param label: the dependency relation to the parent.
         """
-        insort_right(self.secondary_parents, arc)
-        insort_right(arc.node.secondary_children, NLPArc(self, arc.label))
+        insort_right(self.secondary_parents, node)
+        insort_right(node.secondary_children, self)
+        self.set_dependency_label(node, label)
 
-    def remove_secondary_parent(self, node) -> bool:
+    def remove_secondary_parent(self, node: 'NLPNode') -> bool:
         """
-        :param node: a node to be removed from the secondary parent list.
-        :type  node: NLPNode
-        :return: True if the node is removed from the secondary head list; otherwise, False.
+        :param node: the node to be removed from the secondary parent list.
+        :return: True if the node is removed successfully; otherwise, False.
         """
         idx = bisect_index(self.secondary_parents, node)
         if idx >= 0:
             del self.secondary_parents[idx]
+            self.deprels.pop(node, None)
             return True
         return False
 
-    @property
-    def leftmost_child(self, order: int=0) -> Union[NLPArc, None]:
+    def get_leftmost_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
-        :return: the leftmost primary child whose token position is on the left-hand side of this node if exists;
+        :return: the leftmost child whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[order] if 0 <= order < len(self.children) and self.children[order].node < self else None
+        return self.children[order] if 0 <= order < len(self.children) and self.children[order] < self else None
 
     @property
-    def rightmost_child(self, order: int=0) -> Union[NLPArc, None]:
+    def get_rightmost_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
-        :return: the rightmost primary child whose token position is on the right-hand side of this node if exists;
+        :return: the rightmost child whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
         """
         idx = len(self.children) - 1 - order
-        return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx].node > self else None
+        return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] > self else None
 
     @property
-    def left_nearest_child(self, order: int=0) -> Union[NLPArc, None]:
+    def get_left_nearest_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
-        :return: the left-nearest primary child whose token position is on the left-hand side of this node
-                 if exists; otherwise, None.
+        :return: the left-nearest child whose token position is on the left-hand side of this node if exists;
+                 otherwise, None.
         """
         idx = bisect_left(self.children, self) - 1 - order
         return self.children[idx] if idx >= 0 else None
 
     @property
-    def right_nearest_child(self, order: int=0) -> Union[NLPArc, None]:
+    def get_right_nearest_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
         :return: the right-nearest primary child whose token position is on the right-hand side of this node
@@ -181,46 +204,46 @@ class NLPNode:
         return self.children[idx] if idx < len(self.children) else None
 
     @property
-    def leftmost_sibling(self, order: int=0) -> Union[NLPArc, None]:
+    def get_leftmost_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
         :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.parent.node.children[order] if self.parent and self.parent.node.children[order] < self else None
+        return self.parent.children[order] if self.parent and self.parent.children[order] < self else None
 
     @property
-    def rightmost_sibling(self, order: int=0) -> Union[NLPArc, None]:
+    def get_rightmost_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
         :return: the rightmost primary sibling whose token position is on the right-hand side of this node if exists;
                  otherwise, None.
         """
         idx = len(self.children) - 1 - order
-        return self.parent.node.children[idx] if self.parent and self.parent.node.children[idx] > self else None
+        return self.parent.children[idx] if self.parent and self.parent.children[idx] > self else None
 
     @property
-    def left_nearest_sibling(self, order: int=0) -> Union[NLPArc, None]:
+    def get_left_nearest_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
         :return: the left-nearest primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
         if self.parent:
-            idx = bisect_left(self.parent.node.children, self) - 1 - order
-            return self.parent.node.children[idx] if idx >= 0 else None
+            idx = bisect_left(self.parent.children, self) - 1 - order
+            return self.parent.children[idx] if idx >= 0 else None
         return None
 
     @property
-    def right_nearest_sibling(self, order: int=0) -> Union[NLPArc, None]:
+    def get_right_nearest_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
         :return: the right-nearest primary sibling whose token position is on the right-hand side of this node
                  if exists; otherwise, None.
         """
         if self.parent:
-            idx = bisect_right(self.parent.node.children, self) + 1 + order
-            return self.parent.node.children[idx] if idx < len(self.head.dependents) else None
+            idx = bisect_right(self.parent.children, self) + 1 + order
+            return self.parent.children[idx] if idx < len(self.head.dependents) else None
         return None
 
 
@@ -247,89 +270,3 @@ class NLPGraph:
 
     def __len__(self):
         return len(self.nodes) - 1
-
-
-def bisect_left(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
-    """
-    :param arcs: a sorted list of arcs.
-    :param node: the node to search for.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    :return: the index where to insert the node in the sorted list.
-    """
-    if lo < 0:
-        raise ValueError('lo must be non-negative')
-    if hi is None:
-        hi = len(arcs)
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if arcs[mid].node < node: lo = mid + 1
-        else: hi = mid
-    return lo
-
-
-def bisect_right(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
-    """
-    :param arcs: a sorted list of arcs.
-    :param node: the node to search for.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    :return: the index where to insert the node in the sorted list.
-    """
-    if lo < 0:
-        raise ValueError('lo must be non-negative')
-    if hi is None:
-        hi = len(arcs)
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if node < arcs[mid].node: hi = mid
-        else: lo = mid + 1
-    return lo
-
-
-def bisect_index(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
-    """
-    :param arcs: a sorted list of arcs.
-    :param node: the node to search for.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    :return: the index of the node in the sorted list of tuples if exists; otherwise, -1.
-    """
-    idx = bisect_left(arcs, node, lo, hi)
-    if idx != len(arcs) and arcs[idx].node == node: return idx
-    return -1
-
-
-def bisect_remove(arcs: List[NLPArc], node: NLPNode, lo: int=0, hi: int=None) -> int:
-    """
-    :param arcs: a sorted list of arcs.
-    :param node: the node to search for.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    :return: the index of the removed item in the sorted list of tuples if exists; otherwise, -1.
-    """
-    idx = bisect_index(arcs, node, lo, hi)
-    if idx >= 0: del arcs[idx]
-    return idx
-
-
-def insort_left(arcs: List[NLPArc], arc: NLPArc, lo: int=0, hi: int=None):
-    """
-    :param arcs: arcs sorted list of arcs.
-    :param arc: the node to be inserted.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    """
-    idx = bisect_left(arcs, arc.node, lo, hi)
-    arcs.insert(idx, arc)
-
-
-def insort_right(arcs: List[NLPArc], arc: NLPArc, lo: int=0, hi: int=None):
-    """
-    :param arcs: arcs sorted list of arcs.
-    :param arc: the node to be inserted.
-    :param lo: the lower-bound for search (inclusive).
-    :param hi: the upper-bound for search (exclusive).
-    """
-    idx = bisect_right(arcs, arc.node, lo, hi)
-    arcs.insert(idx, arc)

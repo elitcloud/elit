@@ -56,7 +56,21 @@ class NLPState(metaclass=ABCMeta):
         node: NLPNode = self.graph.nodes[index] if begin <= index < len(self.graph) else None
 
         if node and relation:
-            if relation == Relation.parent:
+            if relation == Relation.parent:                     # 1st order
+                node = node.parent
+            elif relation == Relation.leftmost_child:
+                node = node.leftmost_child
+            elif relation == Relation.rightmost_child:
+                node = node.rightmost_child
+            elif relation == Relation.left_nearest_child:
+                node = node.left_nearest_child
+            elif relation == Relation.right_nearest_child:
+                node = node.right_nearest_child
+            elif relation == Relation.left_nearest_sibling:
+                node = node.left_nearest_sibling
+            elif relation == Relation.right_nearest_sibling:
+                node = node.right_nearest_sibling
+            elif relation == Relation.parent:                   # snd order
                 node = node.parent
             elif relation == Relation.leftmost_child:
                 node = node.leftmost_child
