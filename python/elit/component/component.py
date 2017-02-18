@@ -22,21 +22,25 @@ __author__ = 'Jinho D. Choi'
 
 
 class Relation(Enum):
-    parent                 = 'p'
-    leftmost_child         = 'lmc'
-    rightmost_child        = 'rmc'
-    left_nearest_child     = 'lnc'
-    right_nearest_child    = 'rnc'
-    left_nearest_sibling   = 'lns'
-    right_nearest_sibling  = 'rns'
+    parent                  = 'p'
+    leftmost_child          = 'lmc'
+    rightmost_child         = 'rmc'
+    left_nearest_child      = 'lnc'
+    right_nearest_child     = 'rnc'
+    leftmost_sibling        = 'lms'
+    rightmost_sibling       = 'rms'
+    left_nearest_sibling    = 'lns'
+    right_nearest_sibling   = 'rns'
 
-    parent2                = 'p2'
-    leftmost_child2        = 'lmc2'
-    rightmost_child2       = 'rmc2'
-    left_nearest_child2    = 'lnc2'
-    right_nearest_child2   = 'rnc2'
-    left_nearest_sibling2  = 'lns2'
-    right_nearest_sibling2 = 'rns2'
+    grandparent               = 'gp'
+    snd_leftmost_child        = 'lmc2'
+    snd_rightmost_child       = 'rmc2'
+    snd_left_nearest_child    = 'lnc2'
+    snd_right_nearest_child   = 'rnc2'
+    snd_leftmost_sibling      = 'lms2'
+    snd_rightmost_sibling     = 'rms2'
+    snd_left_nearest_sibling  = 'lns2'
+    snd_right_nearest_sibling = 'rns2'
 
 
 class NLPState(metaclass=ABCMeta):
@@ -57,33 +61,23 @@ class NLPState(metaclass=ABCMeta):
 
         if node and relation:
             if relation == Relation.parent:                     # 1st order
-                node = node.parent
-            elif relation == Relation.leftmost_child:
-                node = node.leftmost_child
-            elif relation == Relation.rightmost_child:
-                node = node.rightmost_child
-            elif relation == Relation.left_nearest_child:
-                node = node.left_nearest_child
-            elif relation == Relation.right_nearest_child:
-                node = node.right_nearest_child
-            elif relation == Relation.left_nearest_sibling:
-                node = node.left_nearest_sibling
-            elif relation == Relation.right_nearest_sibling:
-                node = node.right_nearest_sibling
-            elif relation == Relation.parent:                   # snd order
-                node = node.parent
-            elif relation == Relation.leftmost_child:
-                node = node.leftmost_child
-            elif relation == Relation.rightmost_child:
-                node = node.rightmost_child
-            elif relation == Relation.left_nearest_child:
-                node = node.left_nearest_child
-            elif relation == Relation.right_nearest_child:
-                node = node.right_nearest_child
-            elif relation == Relation.left_nearest_sibling:
-                node = node.left_nearest_sibling
-            elif relation == Relation.right_nearest_sibling:
-                node = node.right_nearest_sibling
+                return node.parent
+            if relation == Relation.leftmost_child:
+                return node.get_leftmost_child()
+            if relation == Relation.rightmost_child:
+                return node.get_rightmost_child()
+            if relation == Relation.left_nearest_child:
+              return node.get_left_nearest_child()
+            if relation == Relation.right_nearest_child:
+                return node.get_right_nearest_child()
+            if relation == Relation.leftmost_sibling:
+                return node.get_leftmost_sibling()
+            if relation == Relation.rightmost_sibling:
+                return node.get_rightmost_sibling()
+            if relation == Relation.left_nearest_sibling:
+                return node.get_left_nearest_sibling()
+            if relation == Relation.right_nearest_sibling:
+                return node.get_right_nearest_sibling()
 
 
 

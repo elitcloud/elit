@@ -165,7 +165,6 @@ class NLPNode:
         """
         return self.children[order] if 0 <= order < len(self.children) and self.children[order] < self else None
 
-    @property
     def get_rightmost_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
@@ -175,7 +174,6 @@ class NLPNode:
         idx = len(self.children) - 1 - order
         return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] > self else None
 
-    @property
     def get_left_nearest_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
@@ -185,7 +183,6 @@ class NLPNode:
         idx = bisect_left(self.children, self) - 1 - order
         return self.children[idx] if idx >= 0 else None
 
-    @property
     def get_right_nearest_child(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
@@ -195,7 +192,6 @@ class NLPNode:
         idx = bisect_right(self.children, self) + order
         return self.children[idx] if idx < len(self.children) else None
 
-    @property
     def get_leftmost_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
@@ -204,7 +200,6 @@ class NLPNode:
         """
         return self.parent.children[order] if self.parent and self.parent.children[order] < self else None
 
-    @property
     def get_rightmost_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
@@ -214,7 +209,6 @@ class NLPNode:
         idx = len(self.children) - 1 - order
         return self.parent.children[idx] if self.parent and self.parent.children[idx] > self else None
 
-    @property
     def get_left_nearest_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
@@ -226,7 +220,6 @@ class NLPNode:
             return self.parent.children[idx] if idx >= 0 else None
         return None
 
-    @property
     def get_right_nearest_sibling(self, order: int=0) -> 'NLPNode':
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
