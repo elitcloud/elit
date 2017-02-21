@@ -13,76 +13,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import mxnet as mx
+import numpy as np
+from typing import Tuple
 from abc import ABCMeta
 from abc import abstractmethod
 from enum import Enum
-from typing import Union
 from elit.structure import *
+
 __author__ = 'Jinho D. Choi'
-
-
-class Relation(Enum):
-    parent                  = 'p'
-    leftmost_child          = 'lmc'
-    rightmost_child         = 'rmc'
-    left_nearest_child      = 'lnc'
-    right_nearest_child     = 'rnc'
-    leftmost_sibling        = 'lms'
-    rightmost_sibling       = 'rms'
-    left_nearest_sibling    = 'lns'
-    right_nearest_sibling   = 'rns'
-
-    grandparent               = 'gp'
-    snd_leftmost_child        = 'lmc2'
-    snd_rightmost_child       = 'rmc2'
-    snd_left_nearest_child    = 'lnc2'
-    snd_right_nearest_child   = 'rnc2'
-    snd_leftmost_sibling      = 'lms2'
-    snd_rightmost_sibling     = 'rms2'
-    snd_left_nearest_sibling  = 'lns2'
-    snd_right_nearest_sibling = 'rns2'
 
 
 class NLPState(metaclass=ABCMeta):
     def __init__(self, graph: NLPGraph):
         self.graph = graph
 
-    def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:
+    def __next__(self):
+        if self.terminate: raise StopIteration
+        xy: Tuple[np.array, int] = self.xy
+
+
+    def __iter__(self):
+        return self
+
+    @abstractmethod
+    def xy(self) -> Tuple[np.array, int]:
         """
-        :param index:
-        :param window:
-        :param relation: the relation of the node to be retrieved.
-        :param root: if True, the root (nodes[0]) is returned when index+window == 0; otherwise, None.
-        :return: the index+window'th node in the graph if exists; otherwise, None.
+        :return: the tuple of (feature vector, label).
         """
-        index += window
-        begin = 0 if root else 1
-        node: NLPNode = self.graph.nodes[index] if begin <= index < len(self.graph) else None
 
-        if node and relation:
-            if relation == Relation.parent:                     # 1st order
-                return node.parent
-            if relation == Relation.leftmost_child:
-                return node.get_leftmost_child()
-            if relation == Relation.rightmost_child:
-                return node.get_rightmost_child()
-            if relation == Relation.left_nearest_child:
-              return node.get_left_nearest_child()
-            if relation == Relation.right_nearest_child:
-                return node.get_right_nearest_child()
-            if relation == Relation.leftmost_sibling:
-                return node.get_leftmost_sibling()
-            if relation == Relation.rightmost_sibling:
-                return node.get_rightmost_sibling()
-            if relation == Relation.left_nearest_sibling:
-                return node.get_left_nearest_sibling()
-            if relation == Relation.right_nearest_sibling:
-                return node.get_right_nearest_sibling()
+    @abstractmethod
+    def terminate(self) -> bool:
+        """
+        :return: True if no more state can be processed; otherwise, False.
+        """
 
+    # ============================== Oracle ==============================
 
-
-
-
+    @property
+    @abstractmethod
+    def feature_vector(self) -> np.array:
+        """
+        :return: the feature vector representing the current state.
+        """
 
     @abstractmethod
     def save_oracle(self) -> bool:
@@ -90,32 +63,175 @@ class NLPState(metaclass=ABCMeta):
         :return: True if gold labels are saved; otherwise, False.
         Save and remove gold labels from the input graph.
         """
-        return
 
+    @property
     @abstractmethod
-    def get_oracle(self) -> str:
+    def oracle(self) -> str:
         """
         :return: the gold label for the current state if exists; otherwise, None.
         """
-        return
 
     @abstractmethod
     def reset_oracle(self):
-        """Put the gold labels back to the input graph."""
-        pass
+        """ Put the gold labels back to the input graph. """
 
+    # ============================== Node ==============================
 
+    def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:
+        """
+        :param index: the index of the anchor node.
+        :param window: the context window to the anchor node.
+        :param relation: the relation to the (index+window)'th node.
+        :param root: if True, the root (nodes[0]) is returned when the condition is met; otherwise, None.
+        :return: the relation(index+window)'th node in the graph if exists; otherwise, None.
+        """
+        index += window
+        begin = 0 if root else 1
+        node: NLPNode = self.graph.nodes[index] if begin <= index < len(self.graph) else None
 
+        if node and relation:
+            # 1st order
+            if relation == Relation.PARENT:
+                return node.parent
+            if relation == Relation.LEFTMOST_CHILD:
+                return node.get_leftmost_child()
+            if relation == Relation.RIGHTMOST_CHILD:
+                return node.get_rightmost_child()
+            if relation == Relation.LEFT_NEAREST_CHILD:
+              return node.get_left_nearest_child()
+            if relation == Relation.RIGHT_NEAREST_CHILD:
+                return node.get_right_nearest_child()
+            if relation == Relation.LEFTMOST_SIBLING:
+                return node.get_leftmost_sibling()
+            if relation == Relation.RIGHTMOST_SIBLING:
+                return node.get_rightmost_sibling()
+            if relation == Relation.LEFT_NEAREST_SIBLING:
+                return node.get_left_nearest_sibling()
+            if relation == Relation.RIGHT_NEAREST_SIBLING:
+                return node.get_right_nearest_sibling()
 
+            # 2nd order
+            if relation == Relation.GRANDPARENT:
+                return node.grandparent
+            if relation == Relation.SND_LEFTMOST_CHILD:
+                return node.get_leftmost_child(1)
+            if relation == Relation.SND_RIGHTMOST_CHILD:
+                return node.get_rightmost_child(1)
+            if relation == Relation.SND_LEFT_NEAREST_CHILD:
+              return node.get_left_nearest_child(1)
+            if relation == Relation.SND_RIGHT_NEAREST_CHILD:
+                return node.get_right_nearest_child(1)
+            if relation == Relation.SND_LEFTMOST_SIBLING:
+                return node.get_leftmost_sibling(1)
+            if relation == Relation.SND_RIGHTMOST_SIBLING:
+                return node.get_rightmost_sibling(1)
+            if relation == Relation.SND_LEFT_NEAREST_SIBLING:
+                return node.get_left_nearest_sibling(1)
+            if relation == Relation.SND_RIGHT_NEAREST_SIBLING:
+                return node.get_right_nearest_sibling(1)
 
+        return node
+
+    def is_first(self, node: NLPNode) -> bool:
+        """
+        :param node: the node to be compared
+        :return: True if the node is the first node in the graph; otherwise, False
+        """
+        return len(self.graph) > 1 and self.graph.nodes[1] == node
+
+    def is_last(self, node: NLPNode) -> bool:
+        """
+        :param node: the node to be compared
+        :return: True if the node is the last node in the graph; otherwise, False
+        """
+        return self.graph.nodes[-1] == node
 
 
 class NLPComponent(metaclass=ABCMeta):
+    def __init__(self, flag: NLPFlag=NLPFlag.DECODE):
+        self.flag: NLPFlag = flag
+        self.X: List[np.array] = []   # feature vectors
+        self.Y: List[int] = []        # gold labels
+
     @abstractmethod
-    def process(self, graph: NLPGraph):
+    def init_state(self, graph: NLPGraph) -> NLPState:
+        """
+        :return: the initial processing state of this component.
+        """
+
+    def clear_train_instances(self):
+        """ Removes currently stored training instances. """
+        del self.X[:]
+        del self.Y[:]
+
+    def process(self, graph: NLPGraph) -> NLPState:
         """
         :param graph: the input graph.
         """
-        return
+        state: NLPState = self.init_state(graph)
+        if not self.flag_decode and not state.save_oracle(): return state
 
 
+
+        while not state.terminate:
+            x = state.feature_vector
+
+            if self.flag_train:
+                label = state.oracle
+
+
+
+
+
+
+
+
+    # ============================== Flag ==============================
+
+    @property
+    def flag_train(self): return self.flag == NLPFlag.TRAIN
+
+    @property
+    def flag_decode(self): return self.flag == NLPFlag.DECODE
+
+    @property
+    def flag_evaluate(self): return self.flag == NLPFlag.EVALUATE
+
+    @property
+    def flag_bootstrap(self): return self.flag == NLPFlag.BOOTSTRAP
+
+
+
+
+
+
+#mxnet.module.module.Module
+
+
+class NLPFlag(Enum):
+    TRAIN     = 0
+    DECODE    = 1
+    EVALUATE  = 2
+    BOOTSTRAP = 3
+
+
+class Relation(Enum):
+    PARENT                    = 'p'
+    LEFTMOST_CHILD            = 'lmc'
+    RIGHTMOST_CHILD           = 'rmc'
+    LEFT_NEAREST_CHILD        = 'lnc'
+    RIGHT_NEAREST_CHILD       = 'rnc'
+    LEFTMOST_SIBLING          = 'lms'
+    RIGHTMOST_SIBLING         = 'rms'
+    LEFT_NEAREST_SIBLING      = 'lns'
+    RIGHT_NEAREST_SIBLING     = 'rns'
+
+    GRANDPARENT               = 'gp'
+    SND_LEFTMOST_CHILD        = 'lmc2'
+    SND_RIGHTMOST_CHILD       = 'rmc2'
+    SND_LEFT_NEAREST_CHILD    = 'lnc2'
+    SND_RIGHT_NEAREST_CHILD   = 'rnc2'
+    SND_LEFTMOST_SIBLING      = 'lms2'
+    SND_RIGHTMOST_SIBLING     = 'rms2'
+    SND_LEFT_NEAREST_SIBLING  = 'lns2'
+    SND_RIGHT_NEAREST_SIBLING = 'rns2'

@@ -89,38 +89,38 @@ class NLPNode:
     @property
     def grandparent(self) -> 'NLPNode':
         """
-        :return: the grandparent of this node if exists; otherwise, None.
+        :return: the GRANDPARENT of this node if exists; otherwise, None.
         """
         return self.parent.parent if self.parent else None
 
     def get_dependency_label(self, node: 'NLPNode') -> str:
         """
-        :param node: the parent of this node.
-        :return: the dependency label between this node and the parent node if exists; otherwise, None.
+        :param node: the PARENT of this node.
+        :return: the dependency label between this node and the PARENT node if exists; otherwise, None.
         """
         return self.deprels.get(node, None) if node else None
 
     def set_dependency_label(self, node: 'NLPNode', label: str):
         """
-        :param node: the parent of this node.
-        :param label: the dependency relation to the parent.
+        :param node: the PARENT of this node.
+        :param label: the dependency relation to the PARENT.
         """
         if label: self.deprels[node] = label
 
     def set_parent(self, node: 'NLPNode', label: str=None) -> 'NLPNode':
         """
-        :param node: the node to be set as the parent of this node.
-        :param label: the dependency relation between this node and the parent.
-        :return the previous parent if exists; otherwise, None.
+        :param node: the node to be set as the PARENT of this node.
+        :param label: the dependency relation between this node and the PARENT.
+        :return the previous PARENT if exists; otherwise, None.
         """
-        # handle the previous parent
+        # handle the previous PARENT
         prev_parent = self.parent
 
         if prev_parent:
             bisect_remove(prev_parent.children, self)
             del self.deprels[prev_parent]
 
-        # set the current parent
+        # set the current PARENT
         self.parent = node
 
         if node:
@@ -132,14 +132,14 @@ class NLPNode:
     def parent_of(self, node: 'NLPNode') -> bool:
         """
         :param node: the node to be compared.
-        :return: True if the node is the parent of this node; otherwise, False.
+        :return: True if the node is the PARENT of this node; otherwise, False.
         """
         return self.parent and self.parent == node
 
     def add_secondary_parent(self, node: 'NLPNode', label: str=None):
         """
-        :param node: the node to be added as a secondary parent.
-        :param label: the dependency relation to the parent.
+        :param node: the node to be added as a secondary PARENT.
+        :param label: the dependency relation to the PARENT.
         """
         insort_right(self.secondary_parents, node)
         insort_right(node.secondary_children, self)
@@ -147,7 +147,7 @@ class NLPNode:
 
     def remove_secondary_parent(self, node: 'NLPNode') -> bool:
         """
-        :param node: the node to be removed from the secondary parent list.
+        :param node: the node to be removed from the secondary PARENT list.
         :return: True if the node is removed successfully; otherwise, False.
         """
         idx = bisect_index(self.secondary_parents, node)

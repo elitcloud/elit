@@ -12,6 +12,12 @@ The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.
 * mxnet-0.9.3a1
 * numpy-1.12.0
 
+## MXNet Installation
+
+```
+virtualenv -p python3 mxnet
+source mxnet/bin/activate
+```
 
 ## Notes
 

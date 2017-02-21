@@ -13,12 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from typing import List
+from enum import Enum
+from elit.component.component import *
 
 __author__ = 'Jinho D. Choi'
 
+# transitions
+LEFT_ARC  = 'L'
+RIGHT_ARC = 'R'
+NO_ARC    = 'N'
+SHIFT     = 'S'
+REDUCE    = 'R'
+PASS      = 'P'
 
-'''
+
 class DEPState(NLPState):
     def __init__(self, graph: NLPGraph):
         super().__init__(graph)
@@ -26,13 +34,47 @@ class DEPState(NLPState):
         self.inter: List[int] = []
         self.input: int = 1
 
-    # ============================== TRANSITION ==============================
+    # ============================== Node ==============================
 
-    def next(self, transition):
-        w_i =
+    def get_stack(self, window: int=0, relation: Relation=None) -> NLPNode:
+        """
+        :param window: the context window to the top of the stack.
+        :param relation: the relation to the (top+window)'th node.
+        :return: relation(top+window)'th node if exists; otherwise, None.
+        """
+        return self.get_node(index=self.stack[-1], window=window, relation=relation, root=True)
 
-    def get_stack(self):
+    def get_input(self, window: int=0, relation: Relation=None) -> NLPNode:
+        """
+        :param window: the context window to the front of the input.
+        :param relation: the relation to the (input+window)'th node.
+        :return: relation(input+window)'th node if exists; otherwise, None.
+        """
+        return self.get_node(index=self.input, window=window, relation=relation, root=True)
 
+    # ============================== Transition ==============================
+
+    def next(self, label: str):
+        """
+        :param label: arc + transition + label
+        """
+        s = self.get_stack()
+        i = self.get_input()
+        a = label[0]  # arc
+        t = label[1]  # transition
+
+        if a == LEFT_ARC:
+            s.set_parent(i, label[2:])
+            if t == REDUCE: self.reduce()
+            else: self.passes()
+        elif a == RIGHT_ARC:
+            i.set_parent(s, label[2:])
+            if t == SHIFT: self.shift()
+            else: self.passes()
+        else:
+            if t == SHIFT: self.shift()
+            elif t == REDUCE: self.reduce()
+            else: self.passes()
 
     def shift(self):
         self.stack.extend(reversed(self.inter))
@@ -43,12 +85,17 @@ class DEPState(NLPState):
     def reduce(self):
         self.stack.pop()
 
-    def skip(self):
+    def passes(self):
         self.inter.append(self.stack.pop())
 
-    def is_terminate(self):
+    def terminate(self):
         return self.input >= len(self.graph)
 
     # ============================== Node ==============================
 
-'''
+
+class DEPParser(NLPComponent):
+    def init_state(self, graph: NLPGraph) -> NLPState:
+        return DEPState(graph)
+
+
