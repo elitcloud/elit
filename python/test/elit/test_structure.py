@@ -21,14 +21,63 @@ __author__ = 'T Lee'
 
 
 class StructureTest(unittest.TestCase):
-    def test_nlpnode(self):
-        filename = '../resources/sample.tsv'
+    def test_nlpnode_ancestor(self):
+        filename = '../../../resources/sample.tsv'
         reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
         graph = reader.next()
-        for node in graph:
+        nodes = []
+        for node in graph.nodes:
+            nodes.append(node)
 
-            print (node.parent,'\t',node.grandparent)
+        self.assertEqual(nodes[0].parent, None)
+        self.assertEqual(nodes[0].grandparent, None)
+        self.assertEqual(nodes[3].parent, nodes[0])
+        self.assertEqual(nodes[8].parent, nodes[10])
+        self.assertEqual(nodes[8].grandparent, nodes[3])
+        self.assertTrue(nodes[3].parent_of(nodes[0]))
+        self.assertTrue(nodes[8].parent_of(nodes[10]))
 
+    def test_dependencyLabel(self):
+        filename = '../../../resources/sample.tsv'
+        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
+        graph = reader.next()
+        nodes = []
+        for node in graph.nodes:
+            nodes.append(node)
+
+        self.assertEqual(nodes[5].get_dependency_label(nodes[3]), 'advcl')
+        self.assertEqual(nodes[3].get_dependency_label(nodes[5]), None)
+        self.assertEqual(nodes[14].get_dependency_label(nodes[10]), 'ppmod')
+
+    def test_getChild(self):
+        filename = '../../../resources/sample.tsv'
+        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
+        graph = reader.next()
+        nodes = []
+        for node in graph.nodes:
+            nodes.append(node)
+
+        self.assertEqual(nodes[14].get_leftmost_child(), nodes[11])
+        self.assertEqual(nodes[19].get_leftmost_child(), nodes[16])
+        self.assertEqual(nodes[3].get_leftmost_child(), nodes[1])
+        self.assertEqual(nodes[3].get_rightmost_child(),nodes[20])
+        #self.assertEqual(nodes[19].get_rightmost_child(), nodes[18])
+        #self.assertEqual(nodes[0].get_leftmost_child(), nodes[3])
+
+    def test_nlpnode_set(self):
+        filename = '../../../resources/sample.tsv'
+        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
+        graph = reader.next()
+        container = []
+        for node in graph.nodes:
+            container.append(node)
+
+        tempnode1 = NLPNode("TEMP_1")
+        tempnode2 = NLPNode("TEMP_2")
+        container[0].set_parent(tempnode1, 'dep_1')
+        self.assertEqual(container[0].parent, tempnode1)
+        #container[0].set_parent(tempnode2, 'dep_2')
+        #self.assertNotEquals(container[0].parent, tempnode1)
 
 
 if __name__ == '__main__':

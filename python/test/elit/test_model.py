@@ -14,9 +14,9 @@
 # limitations under the License.
 # ========================================================================
 import unittest
-from model import LabelMap
+from elit.model import LabelMap
 
-__author__ = 'Jinho D. Choi'
+__author__ = 'T Lee'
 
 
 class LabelMapTest(unittest.TestCase):
