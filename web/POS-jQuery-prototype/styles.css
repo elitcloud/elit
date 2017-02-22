@@ -4,7 +4,7 @@ body {
     left: 25%;
 }
 
-h2 {
+h2, h1 {
     font-family: avenir;
     font-weight: 300;
     display: inline-block;
