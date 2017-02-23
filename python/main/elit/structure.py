@@ -17,7 +17,6 @@ import functools
 from itertools import islice
 from typing import Dict
 from typing import List
-from typing import Union
 from elit.util import bisect_left
 from elit.util import bisect_right
 from elit.util import bisect_index
@@ -129,10 +128,10 @@ class NLPNode:
 
         return prev_parent
 
-    def parent_of(self, node: 'NLPNode') -> bool:
+    def child_of(self, node: 'NLPNode') -> bool:
         """
         :param node: the node to be compared.
-        :return: True if the node is the PARENT of this node; otherwise, False.
+        :return: True if this node is a child of the specific node; otherwise, False.
         """
         return self.parent and self.parent == node
 

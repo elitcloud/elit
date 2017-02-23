@@ -26,6 +26,7 @@ def bisect_index(a, x, lo=0, hi=None) -> int:
     :param hi: the upper-bound for search (exclusive).
     :return: the index of the node in the sorted list of tuples if exists; otherwise, -1.
     """
+    if hi is None: hi = len(a)
     idx = bisect_left(a, x, lo, hi)
     return idx if idx != len(a) and a[idx] == x else -1
 
