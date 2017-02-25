@@ -2,7 +2,7 @@
 
 [TSVReader](../python/elit/reader.py) reads dependency graphs from a file in the TSV (Tab Separated Values) format.
 The `tsv` format expects columns delimited by `\t` and graphs separated by `\n`.
-The following shows two dependency graphs from [sample.tsv](../../master/resources/sample/sample.tsv):
+The following shows two dependency graphs from [sample.tsv](../resources/sample/sample.tsv):
 
 
 ```tsv
@@ -27,10 +27,6 @@ The following shows two dependency graphs from [sample.tsv](../../master/resourc
 11  year        year        NN   sem=TMP  7   advnp  3:advnp;5:advnp  _
 ```
 
-```tsv
-a	b	c
-```
-
 * `0`: node ID.
 * `1`: word form.
 * `2`: lemma.
@@ -41,7 +37,7 @@ a	b	c
 * `7`: secondary heads; heads are delimited by `;`, and head IDs and labels are delimited by `:`.
 * `8`: named entity tags in the BILOU notaiton.
 
-The following code sequentially reads dependency graphs from [sample.tsv](../../master/resources/sample/sample.tsv):
+The following code sequentially reads dependency graphs from [sample.tsv](../resources/sample/sample.tsv):
 
 ```python
 from elit.reader import TSVReader 
