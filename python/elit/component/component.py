@@ -16,30 +16,53 @@
 import mxnet as mx
 import numpy as np
 from typing import Tuple
+from typing import Callable
 from abc import ABCMeta
 from abc import abstractmethod
 from enum import Enum
 from elit.structure import *
+from elit.model import NLPModel
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPState(metaclass=ABCMeta):
-    def __init__(self, graph: NLPGraph):
-        self.graph = graph
+    def __init__(self, graph: NLPGraph, model: NLPModel, flag: NLPFlag=NLPFlag.DECODE):
+        self.graph: NLPGraph = graph
+        self.model: NLPModel = model
+        self.flag: int = flag
 
     def __next__(self):
         if self.terminate: raise StopIteration
-        xy: Tuple[np.array, int] = self.xy
-
+        return self.next()
 
     def __iter__(self):
         return self
 
-    @abstractmethod
-    def xy(self) -> Tuple[np.array, int]:
+    def next(self) -> Union[Tuple[int, np.array], None]:
         """
-        :return: the tuple of (feature vector, label).
+        :return: None if decoding; otherwise, the tuple of (label, feature vector).
+        """
+        x = self.feature_vector
+
+        if self.flag == NLPFlag.TRAIN:
+            label = self.gold_label
+            self.perform(label)
+            return self.model.get_label_index(label), x
+        elif self.flag == NLPFlag.DAGGER:
+            label = self.gold_label
+            y = self.model.predict
+            self.perform(self.model.labels[y])
+            return self.model.get_label_index(label), x
+        else:  # evaluate or decode
+            y = self.model.predict
+            self.perform(self.model.labels[y])
+            return None
+
+    @abstractmethod
+    def perform(self, label: str):
+        """
+        :param label: the gold or predicted label for the current state.
         """
 
     @abstractmethod
@@ -66,7 +89,7 @@ class NLPState(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def oracle(self) -> str:
+    def gold_label(self) -> str:
         """
         :return: the gold label for the current state if exists; otherwise, None.
         """
@@ -150,8 +173,8 @@ class NLPState(metaclass=ABCMeta):
 class NLPComponent(metaclass=ABCMeta):
     def __init__(self, flag: NLPFlag=NLPFlag.DECODE):
         self.flag: NLPFlag = flag
-        self.X: List[np.array] = []   # feature vectors
-        self.Y: List[int] = []        # gold labels
+        if self.flag_train_or_dagger:
+            self.YX: List[Tuple[int, np.array]] = []   # feature vectors
 
     @abstractmethod
     def init_state(self, graph: NLPGraph) -> NLPState:
@@ -171,13 +194,10 @@ class NLPComponent(metaclass=ABCMeta):
         state: NLPState = self.init_state(graph)
         if not self.flag_decode and not state.save_oracle(): return state
 
-
-
-        while not state.terminate:
-            x = state.feature_vector
-
-            if self.flag_train:
-                label = state.oracle
+        if self.flag_train_or_dagger:
+            self.YX.extend([(y, x) for y, x in state])
+        elif self.flag == NLPFlag.EVALUATE:
+            self.evaluate()
 
 
 
@@ -189,18 +209,14 @@ class NLPComponent(metaclass=ABCMeta):
     # ============================== Flag ==============================
 
     @property
-    def flag_train(self): return self.flag == NLPFlag.TRAIN
+    def flag_train_or_dagger(self):
+        return self.flag == NLPFlag.TRAIN or self.flag == NLPFlag.DAGGER
 
-    @property
-    def flag_decode(self): return self.flag == NLPFlag.DECODE
-
-    @property
-    def flag_evaluate(self): return self.flag == NLPFlag.EVALUATE
-
-    @property
-    def flag_bootstrap(self): return self.flag == NLPFlag.BOOTSTRAP
-
-
+    @abstractmethod
+    def evaluate(self):
+        """
+        Evaluate
+        """
 
 
 
@@ -209,10 +225,10 @@ class NLPComponent(metaclass=ABCMeta):
 
 
 class NLPFlag(Enum):
-    TRAIN     = 0
-    DECODE    = 1
-    EVALUATE  = 2
-    BOOTSTRAP = 3
+    TRAIN    = 0
+    DECODE   = 1
+    EVALUATE = 2
+    DAGGER   = 3
 
 
 class Relation(Enum):

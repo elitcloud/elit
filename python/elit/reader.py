@@ -14,9 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import re
-import numpy as np
-from struct import unpack
-from itertools import takewhile
+from typing import Union
 from elit.structure import *
 
 __author__ = 'Jinho D. Choi'
@@ -30,36 +28,35 @@ _ARC_KV   = re.compile(DELIM_ARC_KV)
 
 class TSVReader:
     """
-    :param filename: the nament of a TSV file.
     :param word_index: the column index of word forms.
     :param lemma_index: the column index of lemma.
     :param pos_index: the column index of part-of-speech tags.
     :param feats_index: the column index of extra features.
-    :param head_id_index: the column index of primary head IDs.
+    :param head_index: the column index of primary head IDs.
     :param deprel_index: the column index of primary dependency labels.
-    :param snd_heads_index: the column index of secondary dependency heads.
+    :param sheads_index: the column index of secondary dependency heads.
     :param nament_index: the column index of of named entity tags.
+    :param filename: the nament of a TSV file.
     """
+    def __init__(self, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1, feats_index: int=-1,
+                 head_index: int=-1, deprel_index: int=-1, sheads_index: int=-1, nament_index: int=-1,
+                 filename: str=None):
+        self.word_index: int   = word_index
+        self.lemma_index: int  = lemma_index
+        self.pos_index: int    = pos_index
+        self.feats_index: int  = feats_index
+        self.head_index: int   = head_index
+        self.deprel_index: int = deprel_index
+        self.sheads_index: int = sheads_index
+        self.nament_index: int = nament_index
 
-    def __init__(self, filename: str=None, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1,
-                 feats_index: int=-1, head_id_index: int=-1, deprel_index: int=-1, snd_heads_index: int=-1,
-                 nament_index: int=-1):
         if filename:
             self.fin = self.open(filename)
-
-        self.word_index: int      = word_index
-        self.lemma_index: int     = lemma_index
-        self.pos_index: int       = pos_index
-        self.feats_index: int     = feats_index
-        self.head_id_index: int   = head_id_index
-        self.deprel_index: int    = deprel_index
-        self.snd_heads_index: int = snd_heads_index
-        self.nament_index: int    = nament_index
 
     def __next__(self):
         graph = self.next()
         if graph: return graph
-        else:     raise StopIteration
+        else: raise StopIteration
 
     def __iter__(self):
         return self
@@ -69,7 +66,7 @@ class TSVReader:
         :param filename: the nament of a TSV file.
         :type  filename: str
         """
-        self.fin = open(filename, buffering=200)
+        self.fin = open(filename)
         return self.fin
 
     def close(self):
@@ -92,10 +89,10 @@ class TSVReader:
         """
         :param tsv: each row represents a token, each column represents a field.
         """
-        def get_field(row, index):
+        def get_field(row: List[str], index: int) -> str:
             return ROOT_TAG if row is None else row[index] if index >= 0 else None
 
-        def get_feats(row):
+        def get_feats(row: List[str]) -> Union[Dict[str, str], None]:
             if self.feats_index >= 0:
                 f = row[self.feats_index]
                 if f == BLANK:
@@ -103,9 +100,9 @@ class TSVReader:
                 return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
             return None
 
-        def init_node(i):
+        def init_node(i: int) -> NLPNode:
             row = tsv[i]
-            node = NLPNode()
+            node: NLPNode = NLPNode()
             node.node_id = i + 1
             node.word    = get_field(row, self.word_index)
             node.lemma   = get_field(row, self.lemma_index)
@@ -116,32 +113,19 @@ class TSVReader:
 
         g = NLPGraph([init_node(i) for i in range(len(tsv))])
 
-        if self.head_id_index >= 0:
+        if self.head_index >= 0:
             for i, n in enumerate(g):
                 t = tsv[i]
-                n.set_parent(g.nodes[int(t[self.head_id_index])], t[self.deprel_index])
+                n.set_parent(g.nodes[int(t[self.head_index])], t[self.deprel_index])
 
-                if self.snd_heads_index >= 0 and t[self.snd_heads_index] != BLANK:
-                    for arc in map(_ARC_KV.split, _ARC.split(t[self.snd_heads_index])):
+                if self.sheads_index >= 0 and t[self.sheads_index] != BLANK:
+                    for arc in map(_ARC_KV.split, _ARC.split(t[self.sheads_index])):
                         n.add_secondary_parent(g.nodes[int(arc[0])], arc[1])
 
         return g
 
+reader = TSVReader(word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_index=5, deprel_index=6, sheads_index=7, nament_index=8)
+reader.open('/Users/jdchoi/Documents/Software/elit/resources/sample/sample.tsv')
 
-def read_word2vec_bin(filename: str) -> Dict[str, np.array]:
-    """
-    :param filename: the name of the bin file generated by word2vec
-    :return: a dictionary where keys are word types and values are their vectors.
-    """
-    d = dict()
-
-    with open(filename, "rb") as fin:
-        vocab_size, vector_dim = map(lambda x: int(x), fin.readline().split())
-
-        for idx in range(vocab_size):
-            word = ''.join([c for c in iter(lambda: unpack('c', fin.read(1))[0], ' ')])
-            vector = np.array(unpack('<' + 'f' * vector_dim, fin.read(4 * vector_dim)))
-            unpack('c', fin.read(1))    # read off '\n'
-            d[word] = (vector / np.linalg.norm(vector)).astype('float32')
-
-    return d
+for graph in reader:
+    print(str(graph))

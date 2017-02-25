@@ -17,6 +17,7 @@ import functools
 from itertools import islice
 from typing import Dict
 from typing import List
+from typing import Union
 from elit.util import bisect_left
 from elit.util import bisect_right
 from elit.util import bisect_index
@@ -156,7 +157,7 @@ class NLPNode:
             return True
         return False
 
-    def get_leftmost_child(self, order: int=0) -> 'NLPNode':
+    def get_leftmost_child(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
         :return: the leftmost child whose token position is on the left-hand side of this node if exists;
@@ -164,7 +165,7 @@ class NLPNode:
         """
         return self.children[order] if 0 <= order < len(self.children) and self.children[order] < self else None
 
-    def get_rightmost_child(self, order: int=0) -> 'NLPNode':
+    def get_rightmost_child(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
         :return: the rightmost child whose token position is on the right-hand side of this node if exists;
@@ -173,7 +174,7 @@ class NLPNode:
         idx = len(self.children) - 1 - order
         return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] > self else None
 
-    def get_left_nearest_child(self, order: int=0) -> 'NLPNode':
+    def get_left_nearest_child(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
         :return: the left-nearest child whose token position is on the left-hand side of this node if exists;
@@ -182,7 +183,7 @@ class NLPNode:
         idx = bisect_left(self.children, self) - 1 - order
         return self.children[idx] if idx >= 0 else None
 
-    def get_right_nearest_child(self, order: int=0) -> 'NLPNode':
+    def get_right_nearest_child(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
         :return: the right-nearest primary child whose token position is on the right-hand side of this node
@@ -191,7 +192,7 @@ class NLPNode:
         idx = bisect_right(self.children, self) + order
         return self.children[idx] if idx < len(self.children) else None
 
-    def get_leftmost_sibling(self, order: int=0) -> 'NLPNode':
+    def get_leftmost_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
         :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
@@ -199,7 +200,7 @@ class NLPNode:
         """
         return self.parent.children[order] if self.parent and self.parent.children[order] < self else None
 
-    def get_rightmost_sibling(self, order: int=0) -> 'NLPNode':
+    def get_rightmost_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
         :return: the rightmost primary sibling whose token position is on the right-hand side of this node if exists;
@@ -208,7 +209,7 @@ class NLPNode:
         idx = len(self.children) - 1 - order
         return self.parent.children[idx] if self.parent and self.parent.children[idx] > self else None
 
-    def get_left_nearest_sibling(self, order: int=0) -> 'NLPNode':
+    def get_left_nearest_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
         :return: the left-nearest primary sibling whose token position is on the left-hand side of this node if exists;
@@ -219,7 +220,7 @@ class NLPNode:
             return self.parent.children[idx] if idx >= 0 else None
         return None
 
-    def get_right_nearest_sibling(self, order: int=0) -> 'NLPNode':
+    def get_right_nearest_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
         :return: the right-nearest primary sibling whose token position is on the right-hand side of this node

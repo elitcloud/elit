@@ -1,8 +1,6 @@
 import mxnet as mx
-from elit.data_iter import SyntheticData
-from abc import ABCMeta
-from abc import abstractmethod
 
+from elit.test.data_iter import SyntheticData
 
 # mlp
 net = mx.sym.Variable('data')
@@ -15,6 +13,7 @@ mod = mx.mod.Module(symbol=net,
                     context=mx.cpu(),
                     data_names=['data'],
                     label_names=['softmax_label'])
+type(mod)
 import logging
 logging.basicConfig(level=logging.INFO)
 

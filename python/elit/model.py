@@ -13,14 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from abc import ABCMeta
+from abc import abstractmethod
 from typing import List
 from typing import Dict
+import numpy as np
 __author__ = 'Jinho D. Choi'
 
 
 class LabelMap:
     def __init__(self):
-        self.index_map: Dict[str,int] = {}
+        self.index_map: Dict[str, int] = {}
         self.labels: List[str] = []
 
     def __len__(self):
@@ -47,3 +50,44 @@ class LabelMap:
             self.labels.append(label)
         return idx
 
+
+class NLPModel(metaclass=ABCMeta):
+    def __init__(self):
+        self.index_map: Dict[str, int] = {}
+        self.labels: List[str] = []
+
+    # ============================== Label ==============================
+
+    def get_label_index(self, label: str) -> int:
+        """
+        :return: the index of the label.
+        """
+        return self.index_map.get(label, -1)
+
+    def get_label(self, index: int) -> str:
+        """
+        :param index: the index of the label to be returned.
+        :return: the index'th label.
+        """
+        return self.labels[index]
+
+    def add_label(self, label: str) -> int:
+        """
+        :return: the index of the label.
+          Add a label to this map if not exist already.
+        """
+        idx = self.index(label)
+        if idx < 0:
+            idx = len(self.labels)
+            self.index_map[label] = idx
+            self.labels.append(label)
+        return idx
+
+    # ============================== Predict ==============================
+
+    @abstractmethod
+    def predict(self, x: np.array) -> int:
+        """
+        :param x: the feature vector.
+        :return: the ID of the best predicted label.
+        """
