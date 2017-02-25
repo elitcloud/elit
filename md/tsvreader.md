@@ -27,6 +27,10 @@ The following shows two dependency graphs from [sample.tsv](../../master/resourc
 11  year        year        NN   sem=TMP  7   advnp  3:advnp;5:advnp  _
 ```
 
+```tsv
+a	b	c
+```
+
 * `0`: node ID.
 * `1`: word form.
 * `2`: lemma.
