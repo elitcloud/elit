@@ -1,4 +1,5 @@
 # Tutorials
 
-* [TSVReader](TSVReader).
+* [Reader](reader.md).
+* [Structure](structure.md).
 

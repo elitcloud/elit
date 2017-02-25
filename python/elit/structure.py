@@ -93,11 +93,12 @@ class NLPNode:
         """
         return self.parent.parent if self.parent else None
 
-    def get_dependency_label(self, node: 'NLPNode') -> str:
+    def get_dependency_label(self, node: 'NLPNode'=None) -> str:
         """
-        :param node: the PARENT of this node.
+        :param node: the parent of this node.
         :return: the dependency label between this node and the PARENT node if exists; otherwise, None.
         """
+        if node is None: node = self.parent
         return self.deprels.get(node, None) if node else None
 
     def set_dependency_label(self, node: 'NLPNode', label: str):
@@ -163,7 +164,8 @@ class NLPNode:
         :return: the leftmost child whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.children[order] if 0 <= order < len(self.children) and self.children[order] < self else None
+        idx = order
+        return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] < self else None
 
     def get_rightmost_child(self, order: int=0) -> Union['NLPNode', None]:
         """
@@ -181,7 +183,7 @@ class NLPNode:
                  otherwise, None.
         """
         idx = bisect_left(self.children, self) - 1 - order
-        return self.children[idx] if idx >= 0 else None
+        return self.children[idx] if 0 <= idx < len(self.children) else None
 
     def get_right_nearest_child(self, order: int=0) -> Union['NLPNode', None]:
         """
@@ -190,7 +192,7 @@ class NLPNode:
                  if exists; otherwise, None.
         """
         idx = bisect_right(self.children, self) + order
-        return self.children[idx] if idx < len(self.children) else None
+        return self.children[idx] if 0 <= idx < len(self.children) else None
 
     def get_leftmost_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
@@ -198,7 +200,9 @@ class NLPNode:
         :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
                  otherwise, None.
         """
-        return self.parent.children[order] if self.parent and self.parent.children[order] < self else None
+        idx = order
+        return self.parent.children[idx] \
+            if self.parent and 0 <= idx < len(self.parent.children) and self.parent.children[idx] < self else None
 
     def get_rightmost_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
@@ -207,7 +211,8 @@ class NLPNode:
                  otherwise, None.
         """
         idx = len(self.children) - 1 - order
-        return self.parent.children[idx] if self.parent and self.parent.children[idx] > self else None
+        return self.parent.children[idx] \
+            if self.parent and 0 <= idx < len(self.parent.children) and self.parent.children[idx] > self else None
 
     def get_left_nearest_sibling(self, order: int=0) -> Union['NLPNode', None]:
         """
@@ -217,7 +222,7 @@ class NLPNode:
         """
         if self.parent:
             idx = bisect_left(self.parent.children, self) - 1 - order
-            return self.parent.children[idx] if idx >= 0 else None
+            return self.parent.children[idx] if 0 <= idx < len(self.parent.children) else None
         return None
 
     def get_right_nearest_sibling(self, order: int=0) -> Union['NLPNode', None]:
@@ -228,13 +233,13 @@ class NLPNode:
         """
         if self.parent:
             idx = bisect_right(self.parent.children, self) + 1 + order
-            return self.parent.children[idx] if idx < len(self.head.dependents) else None
+            return self.parent.children[idx] if 0 <= idx < len(self.parent.children) else None
         return None
 
 
 class NLPGraph:
     """
-    :param nodes: a list of NLP nodes whose heads are not initialized.
+    :param nodes: a list of NLP nodes whose parents are not initialized.
     :type  nodes: List[NLPNode]
       An artificial root is automatically added to the front of the node list.
     """

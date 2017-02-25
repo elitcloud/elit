@@ -95,21 +95,19 @@ class TSVReader:
         def get_feats(row: List[str]) -> Union[Dict[str, str], None]:
             if self.feats_index >= 0:
                 f = row[self.feats_index]
-                if f == BLANK:
-                    return None
+                if f == BLANK: return None
                 return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
             return None
 
         def init_node(i: int) -> NLPNode:
             row = tsv[i]
-            node: NLPNode = NLPNode()
-            node.node_id = i + 1
-            node.word    = get_field(row, self.word_index)
-            node.lemma   = get_field(row, self.lemma_index)
-            node.pos     = get_field(row, self.pos_index)
-            node.nament  = get_field(row, self.nament_index)
-            node.feats   = get_feats(row) if row else {}
-            return node
+            node_id = i + 1
+            word = get_field(row, self.word_index)
+            lemma = get_field(row, self.lemma_index)
+            pos = get_field(row, self.pos_index)
+            nament = get_field(row, self.nament_index)
+            feats = get_feats(row) if row else None
+            return NLPNode(node_id=node_id, word=word, lemma=lemma, pos=pos, nament=nament, feats=feats)
 
         g = NLPGraph([init_node(i) for i in range(len(tsv))])
 
@@ -127,5 +125,37 @@ class TSVReader:
 reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
 reader.open('/Users/jdchoi/Documents/Software/elit/resources/sample/sample.tsv')
 
-for graph in reader:
-    print(str(graph))
+graph = reader.next()
+node = graph.nodes[4]
+
+print(str(graph)+'\n')
+
+# primary parent
+parent = node.parent
+print(parent.word+' -'+node.get_dependency_label()+'-> '+node.word)
+
+# secondary parents
+for parent in node.secondary_parents:
+    print(parent.word + ' -' + node.get_dependency_label() + '-> ' + node.word)
+
+# primary children
+for child in node.children:
+    print(node.word+' -'+child.get_dependency_label()+'-> '+child.word)
+
+# secondary children
+for child in node.secondary_children:
+    print(node.word+' -'+child.get_dependency_label()+'-> '+child.word)
+
+# various
+print(node.grandparent)
+
+print(node.get_leftmost_child())
+print(node.get_rightmost_child())
+print(node.get_left_nearest_child())
+print(node.get_right_nearest_child())
+
+print(node.get_leftmost_sibling())
+print(node.get_rightmost_sibling())
+print(node.get_left_nearest_sibling())
+print(node.get_right_nearest_sibling())
+
