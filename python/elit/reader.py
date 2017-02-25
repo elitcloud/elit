@@ -124,7 +124,7 @@ class TSVReader:
 
         return g
 
-reader = TSVReader(word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_index=5, deprel_index=6, sheads_index=7, nament_index=8)
+reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
 reader.open('/Users/jdchoi/Documents/Software/elit/resources/sample/sample.tsv')
 
 for graph in reader:

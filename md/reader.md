@@ -1,6 +1,12 @@
-# TSVReader
+# Reader
 
-[TSVReader](../python/elit/reader.py) reads dependency graphs from a file in the TSV (Tab Separated Values) format.
+## Table of Contents
+
+* [TSVReader](#tsvreader).
+
+## TSVReader
+
+`TSVReader` reads dependency graphs from a file in the TSV (Tab Separated Values) format.
 The `tsv` format expects columns delimited by `\t` and graphs separated by `\n`.
 The following shows two dependency graphs from [sample.tsv](../resources/sample/sample.tsv):
 
@@ -40,7 +46,7 @@ The following shows two dependency graphs from [sample.tsv](../resources/sample/
 The following code sequentially reads dependency graphs from [sample.tsv](../resources/sample/sample.tsv):
 
 ```python
-from elit.reader import TSVReader 
+from elit.reader import TSVReader
 
 reader = TSVReader(word_index=1, lemma_index=2, pos_index=3, feats_index=4, head_index=5, deprel_index=6, sheads_index=7, nament_index=8)
 reader.open('sample.tsv')
