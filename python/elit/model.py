@@ -15,40 +15,12 @@
 # ========================================================================
 from abc import ABCMeta
 from abc import abstractmethod
-from typing import List
 from typing import Dict
+from typing import List
 import numpy as np
+from elit.component import NLPState
+
 __author__ = 'Jinho D. Choi'
-
-
-class LabelMap:
-    def __init__(self):
-        self.index_map: Dict[str, int] = {}
-        self.labels: List[str] = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __str__(self):
-        return str(self.labels)
-
-    def index(self, label: str) -> int:
-        """
-        :return: the index of the label.
-        """
-        return self.index_map.get(label, -1)
-
-    def add(self, label: str) -> int:
-        """
-        :return: the index of the label.
-          Add a label to this map if not exist already.
-        """
-        idx = self.index(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
 
 
 class NLPModel(metaclass=ABCMeta):
@@ -76,7 +48,7 @@ class NLPModel(metaclass=ABCMeta):
         :return: the index of the label.
           Add a label to this map if not exist already.
         """
-        idx = self.index(label)
+        idx = self.get_label_index(label)
         if idx < 0:
             idx = len(self.labels)
             self.index_map[label] = idx
@@ -86,8 +58,27 @@ class NLPModel(metaclass=ABCMeta):
     # ============================== Predict ==============================
 
     @abstractmethod
+    def create_feature_vector(self, state: NLPState) -> np.array:
+        """
+        :param state: the current processing state.
+        :return: the feature vector representing the current state.
+        """
+
+    @abstractmethod
     def predict(self, x: np.array) -> int:
         """
         :param x: the feature vector.
         :return: the ID of the best predicted label.
         """
+
+    def predict_label(self, x: np.array) -> str:
+        """
+        :param x: the feature vector.
+        :return: the best predicted label.
+        """
+        return self.labels[self.predict(x)]
+
+
+
+#mxnet.module.module.Module
+

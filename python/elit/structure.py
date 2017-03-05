@@ -14,15 +14,16 @@
 # limitations under the License.
 # ========================================================================
 import functools
-from itertools import islice
+from enum import Enum
 from typing import Dict
 from typing import List
 from typing import Union
-from elit.util import bisect_left
-from elit.util import bisect_right
-from elit.util import bisect_index
-from elit.util import bisect_remove
-from elit.util import insort_right
+from itertools import islice
+from elit.util.bisect import bisect_left
+from elit.util.bisect import bisect_right
+from elit.util.bisect import bisect_index
+from elit.util.bisect import bisect_remove
+from elit.util.bisect import insort_right
 
 __author__ = 'Jinho D. Choi'
 
@@ -260,3 +261,25 @@ class NLPGraph:
 
     def __len__(self):
         return len(self.nodes) - 1
+
+
+class Relation(Enum):
+    PARENT                    = 'p'
+    LEFTMOST_CHILD            = 'lmc'
+    RIGHTMOST_CHILD           = 'rmc'
+    LEFT_NEAREST_CHILD        = 'lnc'
+    RIGHT_NEAREST_CHILD       = 'rnc'
+    LEFTMOST_SIBLING          = 'lms'
+    RIGHTMOST_SIBLING         = 'rms'
+    LEFT_NEAREST_SIBLING      = 'lns'
+    RIGHT_NEAREST_SIBLING     = 'rns'
+
+    GRANDPARENT               = 'gp'
+    SND_LEFTMOST_CHILD        = 'lmc2'
+    SND_RIGHTMOST_CHILD       = 'rmc2'
+    SND_LEFT_NEAREST_CHILD    = 'lnc2'
+    SND_RIGHT_NEAREST_CHILD   = 'rnc2'
+    SND_LEFTMOST_SIBLING      = 'lms2'
+    SND_RIGHTMOST_SIBLING     = 'rms2'
+    SND_LEFT_NEAREST_SIBLING  = 'lns2'
+    SND_RIGHT_NEAREST_SIBLING = 'rns2'

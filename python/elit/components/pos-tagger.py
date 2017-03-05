@@ -1,9 +1,8 @@
-import sys
 import random
+import sys
 from functools import partial
-from itertools import islice
+
 from elit.reader import *
-from elit.model import *
 
 
 # filename : str

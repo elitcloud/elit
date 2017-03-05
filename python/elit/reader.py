@@ -14,7 +14,6 @@
 # limitations under the License.
 # ========================================================================
 import re
-from typing import Union
 from elit.structure import *
 
 __author__ = 'Jinho D. Choi'
@@ -121,41 +120,3 @@ class TSVReader:
                         n.add_secondary_parent(g.nodes[int(arc[0])], arc[1])
 
         return g
-
-reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
-reader.open('/Users/jdchoi/Documents/Software/elit/resources/sample/sample.tsv')
-
-graph = reader.next()
-node = graph.nodes[4]
-
-print(str(graph)+'\n')
-
-# primary parent
-parent = node.parent
-print(parent.word+' -'+node.get_dependency_label()+'-> '+node.word)
-
-# secondary parents
-for parent in node.secondary_parents:
-    print(parent.word + ' -' + node.get_dependency_label() + '-> ' + node.word)
-
-# primary children
-for child in node.children:
-    print(node.word+' -'+child.get_dependency_label()+'-> '+child.word)
-
-# secondary children
-for child in node.secondary_children:
-    print(node.word+' -'+child.get_dependency_label()+'-> '+child.word)
-
-# various
-print(node.grandparent)
-
-print(node.get_leftmost_child())
-print(node.get_rightmost_child())
-print(node.get_left_nearest_child())
-print(node.get_right_nearest_child())
-
-print(node.get_leftmost_sibling())
-print(node.get_rightmost_sibling())
-print(node.get_left_nearest_sibling())
-print(node.get_right_nearest_sibling())
-

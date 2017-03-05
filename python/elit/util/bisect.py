@@ -42,3 +42,4 @@ def bisect_remove(a, x, lo=0, hi=None) -> int:
     idx = bisect_index(a, x, lo, hi)
     if idx >= 0: del a[idx]
     return idx
+

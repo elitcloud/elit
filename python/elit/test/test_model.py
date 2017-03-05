@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import unittest
+
 from elit.model import LabelMap
 
 __author__ = 'T Lee'
