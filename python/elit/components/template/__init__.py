@@ -13,13 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from elit.components.template import *
 __author__ = 'Jinho D. Choi'
-
-
-class SimpleBatch:
-    def __init__(self, data, label, pad=None):
-        self.data  = data
-        self.label = label
-        self.pad   = pad
-
-

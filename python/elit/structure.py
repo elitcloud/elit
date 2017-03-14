@@ -87,6 +87,18 @@ class NLPNode:
                                  for parent in self.secondary_parents) if self.secondary_parents else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
+    def set_pos(self, pos: str) -> str:
+        """
+        :param pos: the part-of-speech tag to be assigned to this node.
+        :return: the previous part-of-speech tag if exists; otherwise, None.
+        """
+        self.pos, prev = pos, self.pos
+        return prev
+
+    @classmethod
+    def root(cls):
+        return cls(node_id=0, word=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)
+
     @property
     def grandparent(self) -> 'NLPNode':
         """
@@ -245,7 +257,7 @@ class NLPGraph:
       An artificial root is automatically added to the front of the node list.
     """
     def __init__(self, nodes: List[NLPNode]=None):
-        self.nodes = [NLPNode(node_id=0, word=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)]
+        self.nodes = [NLPNode.root()]
         if nodes: self.nodes.extend(nodes)
 
     def __next__(self):

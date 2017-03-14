@@ -15,7 +15,7 @@
 # ========================================================================
 import unittest
 
-from elit.model import LabelMap
+from elit.components.template.model import LabelMap
 
 __author__ = 'T Lee'
 
