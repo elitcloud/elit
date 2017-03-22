@@ -14,7 +14,6 @@
 # limitations under the License.
 # ========================================================================
 from abc import ABCMeta, abstractmethod
-from typing import Union
 
 import numpy as np
 from gensim.models.keyedvectors import KeyedVectors

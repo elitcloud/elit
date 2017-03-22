@@ -39,7 +39,7 @@ def read_graphs(reader: TSVReader, filename: str) -> List[NLPGraph]:
 
 # ============================== Arguments ==============================
 
-def argparse_data(parser: argparse.ArgumentParser, tsv: Tuple[Callable[[Tuple[int]], TSVReader], str]=None):
+def argparse_data(parser: argparse.ArgumentParser, tsv: Callable[[Tuple[int]], TSVReader]=None):
     """
     :param parser: the parent parser.
     :param tsv: (indices -> TSVReader, comment).
@@ -52,9 +52,9 @@ def argparse_data(parser: argparse.ArgumentParser, tsv: Tuple[Callable[[Tuple[in
     if tsv:
         def reader(s: str):
             t = tuple(map(int, s.split(',')))
-            return tsv[0](t)
+            return tsv(t)
 
-        data.add_argument('--tsv', type=reader, metavar='int(,int)*', help=tsv[1])
+        data.add_argument('--tsv', type=reader, metavar='int(,int)*', help='indices for the TSV reader')
 
     return data
 

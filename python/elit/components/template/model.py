@@ -13,26 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import logging
+import time
 from abc import ABCMeta, abstractmethod
+from random import shuffle
 from typing import Dict, List, Tuple, Union
 
 import mxnet as mx
 import numpy as np
 
+from elit.components.template.lexicon import NLPLexicon
 from elit.components.template.state import NLPState
+from elit.structure import NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPModel(metaclass=ABCMeta):
-    def __init__(self, batch_size: int=128):
+    def __init__(self, lexicon: NLPLexicon):
+        self.lexicon: NLPLexicon = lexicon
+        self.mxmod: mx.module.Module = None
+
         # label
         self.index_map: Dict[str, int] = {}
         self.labels: List[str] = []
-
-        # module
-        self.batch_size = batch_size
-        self.mxmod: mx.module.Module = None
 
     # ============================== Label ==============================
 
@@ -61,19 +65,39 @@ class NLPModel(metaclass=ABCMeta):
             self.labels.append(label)
         return idx
 
+    # ============================== State ==============================
+
+    @abstractmethod
+    def create_state(self, graph: NLPGraph, save_gold: bool = False) -> NLPState:
+        """
+        :param graph: the input graph.
+        :param save_gold: if True, save gold tags from the input graph.
+        :return: the wrapper state for the input graph.
+        """
+
+    # ============================== Feature ==============================
+
+    @abstractmethod
+    def x(self, state: NLPState) -> np.array:
+        """ :return: the feature vector for the current state. """
+
+    def feature_vectors(self, states: List[NLPState]) -> np.array:
+        xs = [self.x(state) for state in states]
+        return np.vstack(xs)
+
+    def train_instances(self, states: List[NLPState]) -> Tuple[np.array, np.array]:
+        xs, ys = zip(*[(self.x(state), state.gold_label) for state in states])
+        return np.vstack(xs), np.array([self.add_label(y) for y in ys])
+
     # ============================== Module ==============================
 
-    def data_iter(self, xs: np.array, ys: np.array=None) -> mx.io.DataIter:
-        batch_size = len(xs) if len(xs) < self.batch_size else self.batch_size
-        return mx.io.NDArrayIter(data={'data': xs}, label={'softmax_label': ys}, batch_size=batch_size)
-
-    def bind(self, xs: np.array, ys: np.array=None, for_training: bool=True) -> mx.io.DataIter:
-        dat: mx.io.NDArrayIter = self.data_iter(xs, ys)
+    def bind(self, xs: np.array, ys: np.array=None, for_training: bool=True, batch_size=128) -> mx.io.DataIter:
+        dat: mx.io.NDArrayIter = self.data_iter(xs, ys, batch_size)
         self.mxmod.bind(data_shapes=dat.provide_data, label_shapes=dat.provide_label, for_training=for_training,
                         force_rebind=True)
         return dat
 
-    def train(self, dat: mx.io.NDArrayIter, num_epoch: int=1):
+    def fit(self, dat: mx.io.NDArrayIter, num_epoch: int=1):
         for epoch in range(num_epoch):
             for i, batch in enumerate(dat):
                 self.mxmod.forward_backward(batch)
@@ -86,21 +110,63 @@ class NLPModel(metaclass=ABCMeta):
             # end of 1 epoch, reset the data-iter for another epoch
             dat.reset()
 
-    def predict(self, dat: mx.io.DataIter) -> np.array:
         return self.mxmod.predict(dat)
 
-    # def predict(self, xs: np.array) -> np.array:
-    #     batch_size = self.module.data_shapes[0][1][0]
-    #     pad = batch_size - len(xs)
-    #     if pad > 0: xs = np.vstack((xs, np.zeros((pad, len(xs[0])))))
-    #     ys = self.module.predict(mx.io.NDArrayIter(xs, batch_size=batch_size))
-    #     return ys[:len[xs]] if pad > 0 else ys
+    def train(self, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph], num_steps=20000, batch_size=128,
+              initializer: mx.initializer.Initializer = mx.initializer.Uniform(0.01),
+              arg_params=None, aux_params=None,
+              allow_missing: bool=False, force_init: bool=False,
+              kvstore: Union[str, mx.kvstore.KVStore] = 'local',
+              optimizer: Union[str, mx.optimizer.Optimizer] = 'sgd',
+              optimizer_params=(('learning_rate', 0.01),)):
+        trn_states: List[NLPState] = [self.create_state(graph, save_gold=True) for graph in trn_graphs]
+        dev_states: List[NLPState] = [self.create_state(graph, save_gold=True) for graph in dev_graphs]
+        complete: int = 0
+
+        for step in range(1, num_steps+1):
+            st = time.time()
+            shuffle(trn_states)
+            xs, ys = self.train_instances(trn_states)
+            dat: mx.io.NDArrayIter = self.bind(xs, ys, batch_size=batch_size)
+
+            if step == 1:
+                self.mxmod.init_params(
+                    initializer=initializer, arg_params=arg_params, aux_params=aux_params,
+                    allow_missing=allow_missing, force_init=force_init)
+                self.mxmod.init_optimizer(
+                    kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
+
+            ys = self.fit(dat)
+            # print([np.argmax(ys[i]) for i in range(10)])
+
+            for i, state in enumerate(trn_states):
+                label = self.get_label(np.argmax(ys[i]))
+                state.process(label, ys[i])
+                if state.terminate:
+                    state.reset()
+                    complete += 1
+
+            et = time.time()
+            logging.info('%4d: labels = %6d, complete = %d, time = %d' % (step, len(self.labels), complete, et-st))
+
+            # if count > len(trn_graphs) / 2:
+            #     n = self.evaluate(dev_states)
+            #     s = 100.0 * n[1] / n[0]
+            #     count = 0
+            #     print(s)
+
+    def evaluate(self, states: List[NLPState]):
+        while states:
+            xs, ys = self.train_instances(states)
+            dat: mx.io.NDArrayIter = self.bind(xs)
+            yhats = self.mxmod.predict(dat)
+
+            for i, state in enumerate(states):
+                state.process(self.get_label(np.argmax(ys[i])), ys[i])
+
+            states = [state for state in states if not state.terminate]
 
     # ============================== Neural Networks ==============================
-
-    @abstractmethod
-    def x(self, state: NLPState) -> np.array:
-        """ :return: the feature vector for the current state. """
 
     @classmethod
     def create_ffnn(cls, hidden: List[Tuple[int, str, float]], input_dropout: float=0, output_size: int=2,
@@ -118,4 +184,9 @@ class NLPModel(metaclass=ABCMeta):
 
         return mx.mod.Module(symbol=net, context=context)
 
+    # ============================== Helpers ==============================
 
+    @classmethod
+    def data_iter(cls, xs: np.array, ys: np.array=None, batch_size=128) -> mx.io.DataIter:
+        batch_size = len(xs) if len(xs) < batch_size else batch_size
+        return mx.io.NDArrayIter(data={'data': xs}, label={'softmax_label': ys}, batch_size=batch_size)

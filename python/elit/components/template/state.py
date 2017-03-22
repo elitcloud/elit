@@ -15,7 +15,7 @@
 # ========================================================================
 from abc import ABCMeta
 from abc import abstractmethod
-from typing import Union, Tuple, List
+from typing import Union, List
 
 import numpy as np
 

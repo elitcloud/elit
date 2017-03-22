@@ -21,7 +21,6 @@ import mxnet as mx
 import numpy as np
 from gensim.models import KeyedVectors
 
-from elit.components.template.component import NLPComponent
 from elit.components.template.lexicon import NLPLexicon
 from elit.components.template.model import NLPModel
 from elit.components.template.state import NLPState
@@ -34,12 +33,6 @@ __author__ = 'Jinho D. Choi'
 
 class POSLexicon(NLPLexicon):
     def __init__(self, word_embeddings: KeyedVectors, ambiguity_classes: KeyedVectors):
-        """
-        :param word_embeddings:
-        :param ambiguity_classes:
-        :param left_window: the leftmost contextual node to extract features from (inclusive).
-        :param right_window: the rightmost contextual node to extract features from (inclusive).
-        """
         super().__init__(word_embeddings)
         self.ambiguity_classes: KeyedVectors = self._init_vectors(ambiguity_classes)
 
@@ -105,14 +98,21 @@ class POSState(NLPState):
 
 
 class POSModel(NLPModel):
-    def __init__(self, batch_size=128,
+    def __init__(self, lexicon: POSLexicon,
                  context: mx.context.Context = mx.cpu(),
                  hidden: List[Tuple[int, str, float]]=None, input_dropout: float=0, output_size: int=50,
                  feature_left_window=-3, feature_right_window=3):
-        super().__init__(batch_size)
+        super().__init__(lexicon)
         if hidden is None: hidden = []
         self.mxmod = self.create_ffnn(hidden, input_dropout, output_size, context)
         self.feature_windows = range(feature_left_window, feature_right_window+1)
+
+    # ============================== State ==============================
+
+    def create_state(self, graph: NLPGraph, save_gold: bool=False) -> POSState:
+        return POSState(self.lexicon, graph, save_gold)
+
+    # ============================== Feature ==============================
 
     def x(self, state: POSState) -> np.array:
         vectors = [feature for window in self.feature_windows
@@ -120,40 +120,11 @@ class POSModel(NLPModel):
         return np.concatenate(vectors, axis=0)
 
 
-class POSTagger(NLPComponent):
-    def __init__(self, lexicon: POSLexicon, model: POSModel=None):
-        super().__init__(lexicon, model)
-
-    def create_state(self, graph: NLPGraph, save_gold: bool=False):
-        return POSState(self.lexicon, graph, save_gold)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def parse_args():
     parser = argparse.ArgumentParser('Train a part-of-speech tagger')
 
     # data
-    data = argparse_data(parser, tsv=(lambda t: TSVReader(word_index=t[0], pos_index=t[1]), 'word index, pos index'))
+    data = argparse_data(parser, tsv=lambda t: TSVReader(word_index=t[0], pos_index=t[1]))
     data.add_argument('--word_embeddings', type=str, metavar='path', help='path to the word embedding bin file')
     data.add_argument('--ambiguity_classes', type=str, metavar='path', help='path to the ambiguity class bin file')
 
@@ -181,21 +152,12 @@ def main():
     lexicon = POSLexicon(word_embeddings=word_embeddings, ambiguity_classes=ambiguity_classes)
 
     # model
-    model = POSModel(batch_size=args.batch_size, context=args.context,
+    model = POSModel(lexicon, context=args.context,
                      hidden=args.hidden, input_dropout=args.input_dropout, output_size=args.output_size,
                      feature_left_window=args.feature_left_window, feature_right_window=args.feature_right_window)
 
-    # component
-    component = POSTagger(lexicon, model)
-
-    # train
-    component.train(trn_graphs=trn_graphs, dev_graphs=dev_graphs, num_steps=50)
-
+    model.train(trn_graphs=trn_graphs, dev_graphs=dev_graphs, num_steps=50, batch_size=args.batch_size)
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
