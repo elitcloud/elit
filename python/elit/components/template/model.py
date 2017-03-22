@@ -13,20 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.components.template.state import NLPState
-from typing import Dict, List, Tuple, Union
 from abc import ABCMeta, abstractmethod
-import numpy as np
+from typing import Dict, List, Tuple, Union
+
 import mxnet as mx
+import numpy as np
+
+from elit.components.template.state import NLPState
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPModel(metaclass=ABCMeta):
-    def __init__(self):
+    def __init__(self, batch_size: int=128):
+        # label
         self.index_map: Dict[str, int] = {}
         self.labels: List[str] = []
-        self.mxmod: mx.module.BaseModule = None
+
+        # module
+        self.batch_size = batch_size
+        self.mxmod: mx.module.Module = None
 
     # ============================== Label ==============================
 
@@ -57,11 +63,20 @@ class NLPModel(metaclass=ABCMeta):
 
     # ============================== Module ==============================
 
-    @abstractmethod
-    def train(self, train_data: mx.io.NDArrayIter, num_epoch: int = 1):
+    def data_iter(self, xs: np.array, ys: np.array=None) -> mx.io.DataIter:
+        batch_size = len(xs) if len(xs) < self.batch_size else self.batch_size
+        return mx.io.NDArrayIter(data={'data': xs}, label={'softmax_label': ys}, batch_size=batch_size)
+
+    def bind(self, xs: np.array, ys: np.array=None, for_training: bool=True) -> mx.io.DataIter:
+        dat: mx.io.NDArrayIter = self.data_iter(xs, ys)
+        self.mxmod.bind(data_shapes=dat.provide_data, label_shapes=dat.provide_label, for_training=for_training,
+                        force_rebind=True)
+        return dat
+
+    def train(self, dat: mx.io.NDArrayIter, num_epoch: int=1):
         for epoch in range(num_epoch):
-            for data_batch in train_data:
-                self.mxmod.forward_backward(data_batch)
+            for i, batch in enumerate(dat):
+                self.mxmod.forward_backward(batch)
                 self.mxmod.update()
 
             # sync aux params across devices
@@ -69,90 +84,38 @@ class NLPModel(metaclass=ABCMeta):
             self.mxmod.set_params(arg_params, aux_params)
 
             # end of 1 epoch, reset the data-iter for another epoch
-            train_data.reset()
+            dat.reset()
+
+    def predict(self, dat: mx.io.DataIter) -> np.array:
+        return self.mxmod.predict(dat)
+
+    # def predict(self, xs: np.array) -> np.array:
+    #     batch_size = self.module.data_shapes[0][1][0]
+    #     pad = batch_size - len(xs)
+    #     if pad > 0: xs = np.vstack((xs, np.zeros((pad, len(xs[0])))))
+    #     ys = self.module.predict(mx.io.NDArrayIter(xs, batch_size=batch_size))
+    #     return ys[:len[xs]] if pad > 0 else ys
+
+    # ============================== Neural Networks ==============================
 
     @abstractmethod
-    def predict(self, xs: np.array) -> np.array:
-        batch_size = self.module.data_shapes[0][1][0]
-        pad = batch_size - len(xs)
-        if pad > 0: xs = np.vstack((xs, np.zeros((pad, len(xs[0])))))
-        ys = self.module.predict(mx.io.NDArrayIter(xs, batch_size=batch_size))
-        return ys[:len[xs]] if pad > 0 else ys
+    def x(self, state: NLPState) -> np.array:
+        """ :return: the feature vector for the current state. """
 
-    def init_train(self, train_data: mx.io.NDArrayIter,
-                    kvstore: Union[str, mx.kvstore.KVStore] = 'local',
-                    optimizer: Union[str, mx.optimizer.Optimizer] = 'sgd',
-                    optimizer_params=(('learning_rate', 0.01),),
-                    initializer: mx.initializer.Initializer = mx.initializer.Uniform(0.01),
-                    arg_params=None, aux_params=None,
-                    allow_missing: bool = False, force_rebind: bool = False, force_init: bool = False):
-        self.mxmod.bind(data_shapes=train_data.provide_data, label_shapes=train_data.provide_label, for_training=True,
-                        force_rebind=force_rebind)
-        self.mxmod.init_params(initializer=initializer, arg_params=arg_params, aux_params=aux_params,
-                               allow_missing=allow_missing, force_init=force_init)
-        self.mxmod.init_optimizer(kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
+    @classmethod
+    def create_ffnn(cls, hidden: List[Tuple[int, str, float]], input_dropout: float=0, output_size: int=2,
+                    context: mx.context.Context = mx.cpu()) -> mx.mod.Module:
+        net = mx.sym.Variable('data')
+        if input_dropout > 0: net = mx.sym.Dropout(net, p=input_dropout)
 
-    def fit(self, module: mx.module.BaseModule, train_data: mx.io.NDArrayIter, eval_data: mx.io.NDArrayIter=None,
-            kvstore: Union[str, mx.kvstore.KVStore] ='local',
-            optimizer: Union[str, mx.optimizer.Optimizer]='sgd',
-            optimizer_params=(('learning_rate', 0.01),),
-            initializer: mx.initializer.Initializer=mx.initializer.Uniform(0.01),
-            arg_params=None, aux_params=None,
-            allow_missing: bool=False, force_rebind: bool=False, force_init: bool=False, num_epoch: int=1):
-        module.bind(data_shapes=train_data.provide_data, label_shapes=train_data.provide_label, for_training=True,
-                    force_rebind=force_rebind)
-        module.init_params(initializer=initializer, arg_params=arg_params, aux_params=aux_params,
-                           allow_missing=allow_missing, force_init=force_init)
-        module.init_optimizer(kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
+        for i, (num_hidden, act_type, dropout) in enumerate(hidden, 1):
+            net = mx.sym.FullyConnected(net, num_hidden=num_hidden, name='fc' + str(i))
+            if act_type: net = mx.sym.Activation(net, act_type=act_type, name=act_type + str(i))
+            if dropout > 0: net = mx.sym.Dropout(net, p=dropout)
 
-        ################################################################################
-        # training loop
-        ################################################################################
-        for epoch in range(num_epoch):
-            for data_batch in train_data:
-                module.forward_backward(data_batch)
-                module.update()
+        net = mx.sym.FullyConnected(net, num_hidden=output_size, name='fc' + str(len(hidden) + 1))
+        net = mx.sym.SoftmaxOutput(net, name='softmax')
 
-            # sync aux params across devices
-            arg_params, aux_params = module.get_params()
-            module.set_params(arg_params, aux_params)
-
-            # end of 1 epoch, reset the data-iter for another epoch
-            train_data.reset()
-
-    # ============================== Predict ==============================
-
-    @abstractmethod
-    def create_feature_vector(self, state: NLPState) -> np.array:
-        """
-        :param state: the current processing state.
-        :return: the feature vector representing the current state.
-        """
-
-    @abstractmethod
-    def predict(self, x: np.array) -> int:
-        """
-        :param x: the feature vector.
-        :return: the ID of the best predicted label.
-        """
-
-    def predict_label(self, x: np.array) -> str:
-        """
-        :param x: the feature vector.
-        :return: the best predicted label.
-        """
-        return self.labels[self.predict(x)]
+        return mx.mod.Module(symbol=net, context=context)
 
 
-def FeedForwardNeuralNetwork(hidden_layers: List[Tuple[int, str]], output_layer: Tuple[int, str],
-                             context: mx.context.Context) -> mx.mod.Module:
-    net = mx.sym.Variable('data')
-
-    for i, num_hidden, act_type in enumerate(hidden_layers, 1):
-        net = mx.sym.FullyConnected(net, name='fc'+str(i), num_hidden=num_hidden)
-        net = mx.sym.Activation(net, name=act_type+str(i), act_type=act_type)
-
-    net = mx.sym.FullyConnected(net, name='fc'+str(len(hidden_layers)+1), num_hidden=output_layer[0])
-    net = mx.sym.SoftmaxOutput(net, name='softmax')
-
-    return mx.mod.Module(symbol=net, context=context)

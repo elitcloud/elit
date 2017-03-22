@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import re
+import io
 from elit.structure import *
 
 __author__ = 'Jinho D. Choi'
@@ -35,52 +36,60 @@ class TSVReader:
     :param deprel_index: the column index of primary dependency labels.
     :param sheads_index: the column index of secondary dependency heads.
     :param nament_index: the column index of of named entity tags.
-    :param filename: the nament of a TSV file.
     """
     def __init__(self, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1, feats_index: int=-1,
-                 head_index: int=-1, deprel_index: int=-1, sheads_index: int=-1, nament_index: int=-1,
-                 filename: str=None):
-        self.word_index: int   = word_index
-        self.lemma_index: int  = lemma_index
-        self.pos_index: int    = pos_index
-        self.feats_index: int  = feats_index
-        self.head_index: int   = head_index
+                 head_index: int=-1, deprel_index: int=-1, sheads_index: int=-1, nament_index: int=-1):
+        self.word_index: int = word_index
+        self.lemma_index: int = lemma_index
+        self.pos_index: int = pos_index
+        self.feats_index: int = feats_index
+        self.head_index: int = head_index
         self.deprel_index: int = deprel_index
         self.sheads_index: int = sheads_index
         self.nament_index: int = nament_index
-
-        if filename:
-            self.fin = self.open(filename)
+        self.ins: io.TextIOWrapper = None
 
     def __next__(self):
-        graph = self.next()
+        graph = self.next
         if graph: return graph
         else: raise StopIteration
 
     def __iter__(self):
         return self
 
-    def open(self, filename):
+    @classmethod
+    def create_reader(cls, reader: 'TSVReader') -> 'TSVReader':
         """
-        :param filename: the nament of a TSV file.
-        :type  filename: str
+        :return: a reader adapting the configuration (not the input stream) from the other reader.
         """
-        self.fin = open(filename)
-        return self.fin
+        return TSVReader(word_index=reader.word_index,
+                         lemma_index=reader.lemma_index,
+                         pos_index=reader.pos_index,
+                         feats_index=reader.feats_index,
+                         head_index=reader.head_index,
+                         deprel_index=reader.deprel_index,
+                         sheads_index=reader.sheads_index,
+                         nament_index=reader.nament_index)
+
+    def open(self, filename: str):
+        self.ins = open(filename)
+        return self.ins
 
     def close(self):
-        self.fin.close()
+        self.ins.close()
 
+    @property
     def next(self):
         tsv = []
 
-        for line in self.fin:
+        for line in self.ins:
             line = line.strip()
             if line:  tsv.append(_TAB.split(line))
             elif tsv: break
 
         return self.tsv_to_graph(tsv) if tsv else None
 
+    @property
     def next_all(self):
         return [graph for graph in self]
 

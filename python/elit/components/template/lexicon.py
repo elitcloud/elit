@@ -13,32 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from gensim.models.keyedvectors import KeyedVectors
 from abc import ABCMeta, abstractmethod
-from elit.structure import NLPGraph
 from typing import Union
+
 import numpy as np
+from gensim.models.keyedvectors import KeyedVectors
+
+from elit.structure import NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPLexicon(metaclass=ABCMeta):
-    def __init__(self, word_embeddings: KeyedVectors=None):
+    def __init__(self, word_embeddings: KeyedVectors):
         """
         :param word_embeddings: KeyedVectors.load_word2vec_format('word_vectors.bin').
         """
         self.word_embeddings: KeyedVectors = self._init_vectors(word_embeddings)
 
     @classmethod
-    def _init_vectors(cls, vectors: KeyedVectors, root_lower: float = -.25, root_upper: float = .25)\
-            -> Union[KeyedVectors, None]:
+    def _init_vectors(cls, vectors: KeyedVectors, root_lower: float = -.25, root_upper: float = .25) -> KeyedVectors:
         """
         :param vectors: the original vectors.
         :param root_lower: the lower-bound for the root value to be randomly generated.
         :param root_upper: the upper-bound for the root value to be randomly generated.
         :return: the original vectors appended by the root vector and the default vector.
         """
-        if vectors is None: return None
         vector_size = vectors.syn0.shape[1]
 
         # root vector
@@ -50,22 +50,6 @@ class NLPLexicon(metaclass=ABCMeta):
         default_vector = np.zeros((1, vector_size)).astype('float32')
         vectors.syn0 = np.concatenate((vectors.syn0, root_vector, default_vector), axis=0)
         return vectors
-
-    @classmethod
-    def _get_vector(cls, vectors: KeyedVectors, key: str) -> np.array:
-        """
-        :return: the vector corresponding to the key if exists; otherwise, the default vector.
-        """
-        vocab = vectors.vocab.get(key, None)
-        return vectors.syn0[vocab.index] if vocab else cls._get_default_vector(vectors)
-
-    @classmethod
-    def _get_default_vector(cls, vectors: KeyedVectors):
-        return vectors.syn0[-1] if vectors else None
-
-    @classmethod
-    def _get_root_vector(cls, vectors: KeyedVectors):
-        return vectors.syn0[-2]
 
     # ============================== Initialization ==============================
 
@@ -86,3 +70,21 @@ class NLPLexicon(metaclass=ABCMeta):
             for node in graph:
                 f = getattr(node, source_field)
                 setattr(node, target_field, cls._get_vector(vectors, f))
+
+    # ============================== Helpers ==============================
+
+    @classmethod
+    def get_default_vector(cls, vectors: KeyedVectors):
+        return vectors.syn0[-1] if vectors else None
+
+    @classmethod
+    def _get_vector(cls, vectors: KeyedVectors, key: str) -> np.array:
+        """
+        :return: the vector corresponding to the key if exists; otherwise, the default vector.
+        """
+        vocab = vectors.vocab.get(key, None)
+        return vectors.syn0[vocab.index] if vocab else cls.get_default_vector(vectors)
+
+    @classmethod
+    def _get_root_vector(cls, vectors: KeyedVectors):
+        return vectors.syn0[-2]

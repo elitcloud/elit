@@ -50,18 +50,13 @@ def fit(module: mx.module.Module, train_data, dev_data,
         initializer=mx.initializer.Uniform(0.01),
         arg_params=None, aux_params=None, allow_missing=False,
         force_rebind=False, force_init=False, num_epoch=1):
-    module.bind(data_shapes=train_data.provide_data, label_shapes=train_data.provide_label, for_training=True,
-              force_rebind=force_rebind)
-    module.init_params(initializer=initializer, arg_params=arg_params, aux_params=aux_params,
-                     allow_missing=allow_missing, force_init=force_init)
-    module.init_optimizer(kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
 
     ################################################################################
     # training loop
     ################################################################################
     for epoch in range(num_epoch):
         for data_batch in train_data:
-            print(module.data_shapes[0][1])
+            print(data_batch)
             module.forward_backward(data_batch)
             module.update()
 
@@ -84,6 +79,7 @@ batch_size = 200
 
 net = mx.sym.Variable('data')
 net = mx.sym.FullyConnected(net, name='fc1', num_hidden=64)
+net = mx.sym.Dropout(net, name='do1', p=0.5)
 net = mx.sym.Activation(net, name='relu1', act_type="relu")
 net = mx.sym.FullyConnected(net, name='fc2', num_hidden=num_classes)
 net = mx.sym.SoftmaxOutput(net, name='softmax')
@@ -92,9 +88,26 @@ mod = mx.mod.Module(symbol=net,
                     data_names=['data'],
                     label_names=['softmax_label'])
 
+
+# trn=mx.io.NDArrayIter(np.zeros(batch_size), batch_size=batch_size)
+# mod.bind(data_shapes=trn.provide_data, for_training=True)
+
+
 trn=mx.io.NDArrayIter(np.zeros((trn_size, num_features)),label=np.zeros((trn_size,)),batch_size=batch_size)
 dev=mx.io.NDArrayIter(np.zeros((dev_size, num_features)),batch_size=batch_size)
-fit(mod, trn, dev, num_epoch=1)
+mod.bind(data_shapes=trn.provide_data, for_training=True, force_rebind=True)
+mod.init_params(initializer=mx.initializer.Uniform(0.01), arg_params=None, aux_params=None,
+                allow_missing=False, force_init=False)
+mod.init_optimizer(kvstore='local', optimizer='sgd', optimizer_params=(('learning_rate', 0.01),))
+fit(mod, trn, dev, num_epoch=1, force_rebind=True)
+
+
+batch_size += 100
+dev_size = 300
+trn=mx.io.NDArrayIter(np.zeros((trn_size, num_features)),label=np.zeros((trn_size,)),batch_size=batch_size)
+dev=mx.io.NDArrayIter(np.zeros((dev_size, num_features)),batch_size=batch_size)
+mod.bind(data_shapes=trn.provide_data, for_training=True, force_rebind=True)
+fit(mod, trn, dev, num_epoch=1, force_rebind=True)
 
 
 '''

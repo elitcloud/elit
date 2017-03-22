@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import numpy as np
 from abc import ABCMeta
 from abc import abstractmethod
-from typing import Union, Tuple
-from elit.structure import NLPGraph, NLPNode, Relation
-from elit.components.template.model import NLPModel
+from typing import Union, Tuple, List
+
+import numpy as np
+
 from elit.components.template.lexicon import NLPLexicon
+from elit.structure import NLPGraph, NLPNode, Relation
 
 __author__ = 'Jinho D. Choi'
 
@@ -32,7 +33,7 @@ class NLPState(metaclass=ABCMeta):
 
     @abstractmethod
     def reset(self):
-        """ Reset to the initial state and remove all tags. """
+        """ Reset to the initial state and remove all tags for training. """
 
     # ============================== Oracle ==============================
 
@@ -42,27 +43,30 @@ class NLPState(metaclass=ABCMeta):
         """ :return: the gold label for the current state if exists; otherwise, None. """
 
     @abstractmethod
-    def eval_counts(self) -> Union[np.array, None]:
-        """ :return: [total, count1, count2, ...] if gold_tags exist; otherwise, None. """
+    def eval_counts(self) -> np.array:
+        """ :return: [total, count1, count2, ...] if golds exist; otherwise, []. """
 
     # ============================== Transition ==============================
 
     @abstractmethod
-    def process(self, label: Union[str, Tuple[np.array, NLPModel]]):
+    def process(self, label: str, scores: np.array=None):
         """
-        :param label: the next transition.x
-          Perform the next transition given the label.
+        :param label: the label for the current state.
+        :param scores: prediction scores.
+         Perform the next transition given the label.
         """
 
     @abstractmethod
     def terminate(self) -> bool:
         """ :return: True if no more state can be processed; otherwise, False. """
 
-    @abstractmethod
-    def x(self) -> np.array:
-        """ :return: the feature vector for the current state. """
+    # ============================== Feature ==============================
 
-    # ============================== Node ==============================
+    @abstractmethod
+    def features(self, node: NLPNode) -> List[np.array]:
+        """
+        :return: features extracted from lexicons.
+        """
 
     def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:
         """
