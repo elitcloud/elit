@@ -26,6 +26,24 @@ from elit.structure import NLPGraph
 __author__ = 'Jinho D. Choi'
 
 
+# ============================== Neural Networks ==============================
+
+def create_ffnn(hidden: List[Tuple[int, str, float]], input_dropout: float=0, output_size: int=2,
+                context: mx.context.Context=mx.cpu()) -> mx.mod.Module:
+    net = mx.sym.Variable('data')
+    if input_dropout > 0: net = mx.sym.Dropout(net, p=input_dropout)
+
+    for i, (num_hidden, act_type, dropout) in enumerate(hidden, 1):
+        net = mx.sym.FullyConnected(net, num_hidden=num_hidden, name='fc'+str(i))
+        if act_type: net = mx.sym.Activation(net, act_type=act_type, name=act_type+str(i))
+        if dropout > 0: net = mx.sym.Dropout(net, p=dropout)
+
+    net = mx.sym.FullyConnected(net, num_hidden=output_size, name='fc' + str(len(hidden) + 1))
+    net = mx.sym.SoftmaxOutput(net, name='softmax')
+
+    return mx.mod.Module(symbol=net, context=context)
+
+
 # ============================== Reader ==============================
 
 def read_graphs(reader: TSVReader, filename: str) -> List[NLPGraph]:
@@ -33,11 +51,11 @@ def read_graphs(reader: TSVReader, filename: str) -> List[NLPGraph]:
     reader.open(filename)
     graphs = reader.next_all
     reader.close()
-    logging.info('%s graphs' % len(graphs))
+    logging.info('- %s graphs' % len(graphs))
     return graphs
 
 
-# ============================== Arguments ==============================
+# ============================== Argument ==============================
 
 def argparse_data(parser: argparse.ArgumentParser, tsv: Callable[[Tuple[int]], TSVReader]=None):
     """
@@ -78,7 +96,7 @@ def argparse_model(parser: argparse.ArgumentParser):
 
     model.add_argument('--batch_size', type=int, metavar='int', default=128,
                        help='size of the mini batch')
-    model.add_argument('--threads', type=int, metavar='int', default=4,
+    model.add_argument('--num_thread', type=int, metavar='int', default=4,
                        help='number of threads used for feature extraction')
     model.add_argument('--context', type=context, metavar='g|c:int(,int)*|int-int', default=mx.cpu(),
                        help='context used for fitting the model')
@@ -113,35 +131,35 @@ def argparse_ffnn(parser: argparse.ArgumentParser):
 #                        help='cpu|gpu ')
 #     train.add_argument('--gpus', type=str,
 #                        help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu')
-#     train.add_argument('--kv-store', type=str, default='device',
+#     train.add_argument('--kv-store', type=str, zero='device',
 #                        help='key-value store type')
-#     train.add_argument('--num-epochs', type=int, default=100,
+#     train.add_argument('--num-epochs', type=int, zero=100,
 #                        help='max num of epochs')
-#     train.add_argument('--lr', type=float, default=0.1,
+#     train.add_argument('--lr', type=float, zero=0.1,
 #                        help='initial learning rate')
-#     train.add_argument('--lr-factor', type=float, default=0.1,
+#     train.add_argument('--lr-factor', type=float, zero=0.1,
 #                        help='the ratio to reduce lr on each step')
 #     train.add_argument('--lr-step-epochs', type=str,
 #                        help='the epochs to reduce the lr, e.g. 30,60')
-#     train.add_argument('--optimizer', type=str, default='sgd',
+#     train.add_argument('--optimizer', type=str, zero='sgd',
 #                        help='the optimizer type')
-#     train.add_argument('--mom', type=float, default=0.9,
+#     train.add_argument('--mom', type=float, zero=0.9,
 #                        help='momentum for sgd')
-#     train.add_argument('--wd', type=float, default=0.0001,
+#     train.add_argument('--wd', type=float, zero=0.0001,
 #                        help='weight decay for sgd')
-#     train.add_argument('--batch-size', type=int, default=128,
+#     train.add_argument('--batch-size', type=int, zero=128,
 #                        help='the batch size')
-#     train.add_argument('--disp-batches', type=int, default=20,
+#     train.add_argument('--disp-batches', type=int, zero=20,
 #                        help='show progress for every n batches')
 #     train.add_argument('--model-prefix', type=str,
 #                        help='model prefix')
-#     parser.add_argument('--monitor', dest='monitor', type=int, default=0,
+#     parser.add_argument('--monitor', dest='monitor', type=int, zero=0,
 #                         help='log network parameters every N iters if larger than 0')
 #     train.add_argument('--load-epoch', type=int,
 #                        help='load the model on an epoch using the model-load-prefix')
-#     train.add_argument('--top-k', type=int, default=0,
+#     train.add_argument('--top-k', type=int, zero=0,
 #                        help='report the top-k accuracy. 0 means no report.')
-#     train.add_argument('--test-io', type=int, default=0,
+#     train.add_argument('--test-io', type=int, zero=0,
 #                        help='1 means test reading speed without training')
 #     return train
 

@@ -19,12 +19,13 @@ from typing import Tuple, List
 
 import mxnet as mx
 import numpy as np
+from fasttext.model import WordVectorModel
 from gensim.models import KeyedVectors
 
-from elit.components.template.lexicon import NLPLexicon
+from elit.components.template.lexicon import NLPLexicon, NLPEmbedding
 from elit.components.template.model import NLPModel
 from elit.components.template.state import NLPState
-from elit.components.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs
+from elit.components.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn
 from elit.reader import TSVReader
 from elit.structure import NLPGraph, NLPNode
 
@@ -32,56 +33,58 @@ __author__ = 'Jinho D. Choi'
 
 
 class POSLexicon(NLPLexicon):
-    def __init__(self, word_embeddings: KeyedVectors, ambiguity_classes: KeyedVectors):
-        super().__init__(word_embeddings)
-        self.ambiguity_classes: KeyedVectors = self._init_vectors(ambiguity_classes)
-
-    # ============================== Initialization ==============================
-
-    def init(self, graph: NLPGraph):
-        self._init(graph, self.word_embeddings,   'word', 'word_embedding')
-        self._init(graph, self.ambiguity_classes, 'word', 'ambiguity_class')
-        self.init_pos_embeddings(graph)
-
-    def init_pos_embeddings(self, graph: NLPGraph):
-        default = self.get_default_vector(self.ambiguity_classes)
-        for node in graph: node.pos_embedding = default
+    def __init__(self, word2vec: KeyedVectors=None, fasttext: WordVectorModel=None, ambiguity: KeyedVectors=None,
+                 output_size: int=50):
+        """
+        :param word2vec: word embeddings.
+        :param fasttext: word embedding with character-based model.
+        :param ambiguity: ambiguity classes.
+        :param output_size: the number of part-of-speech tags to predict.
+        """
+        super().__init__(word2vec, fasttext)
+        self.ambiguity: NLPEmbedding = NLPEmbedding(ambiguity, 'word', 'ambiguity') if ambiguity else None
+        self.pos_zeros = np.zeros((output_size,)).astype('float32')
 
 
 class POSState(NLPState):
-    def __init__(self, lexicon: POSLexicon, graph: NLPGraph, save_gold=False):
-        super().__init__(lexicon, graph)
+    def __init__(self, graph: NLPGraph, lexicon: POSLexicon, save_gold=False):
+        super().__init__(graph)
+        self.lex: POSLexicon = lexicon
+
+        # reset
         self.golds = [node.set_pos(None) for node in self.graph] if save_gold else None
+        for node in self.graph: node.pos_scores = lexicon.pos_zeros
         self.idx_curr: int = 1
 
     def reset(self):
-        self.lexicon.init_pos_embeddings(self.graph)
-        for node in self.graph: node.pos = None
+        for node in self.graph:
+            node.pos = None
+            node.pos_scores = self.lex.pos_zeros
+
         self.idx_curr = 1
 
     # ============================== Oracle ==============================
 
     @property
-    def gold_label(self) -> str:
+    def gold(self) -> str:
         return self.golds[self.idx_curr - 1] if self.golds else None
 
-    def eval_counts(self) -> np.array:
-        if self.golds is None: return np.array([])
+    def eval(self, stats: np.array) -> float:
+        if self.golds is None: return 0
 
-        correct = 0
+        stats[0] += len(self.graph)
         for i, node in enumerate(self.graph):
             if node.pos == self.golds[i]:
-                correct += 1
+                stats[1] += 1
 
-        return np.array([len(self.graph), correct])
+        return stats[1] / stats[0]
 
     # ============================== Transition ==============================
 
-    def process(self, label: str, scores: np.array = None):
-        curr: NLPNode = self.graph.nodes[self.idx_curr]
-        if scores: curr.pos_embedding = scores
-
-        curr.pos = label
+    def process(self, label: str, scores: np.array=None):
+        node: NLPNode = self.graph.nodes[self.idx_curr]
+        if scores is not None: node.pos_scores = scores
+        node.pos = label
         self.idx_curr += 1
 
     @property
@@ -91,26 +94,18 @@ class POSState(NLPState):
     # ============================== Feature ==============================
 
     def features(self, node: NLPNode) -> List[np.array]:
-        word_emb = node.word_embedding if node else self.lexicon.get_default_vector(self.lexicon.word_embeddings)
-        ambi_cls = node.ambiguity_class if node else self.lexicon.get_default_vector(self.lexicon.ambiguity_classes)
-        # pos_emb = node.pos_embedding if node else self._get_default_vector(self.ambiguity_classes)
-        return [word_emb, ambi_cls]
+        fs = [node.pos_scores if node else self.lex.pos_zeros]
+        if self.lex.word2vec:  fs.append(self.lex.word2vec.get(node))
+        if self.lex.fasttext:  fs.append(self.lex.fasttext.get(node))
+        if self.lex.ambiguity: fs.append(self.lex.ambiguity.get(node))
+        return fs
 
 
 class POSModel(NLPModel):
-    def __init__(self, lexicon: POSLexicon,
-                 context: mx.context.Context = mx.cpu(),
-                 hidden: List[Tuple[int, str, float]]=None, input_dropout: float=0, output_size: int=50,
-                 feature_left_window=-3, feature_right_window=3):
-        super().__init__(lexicon)
-        if hidden is None: hidden = []
-        self.mxmod = self.create_ffnn(hidden, input_dropout, output_size, context)
-        self.feature_windows = range(feature_left_window, feature_right_window+1)
-
-    # ============================== State ==============================
-
-    def create_state(self, graph: NLPGraph, save_gold: bool=False) -> POSState:
-        return POSState(self.lexicon, graph, save_gold)
+    def __init__(self, mxmod: mx.module.Module, feature_windows: Tuple[int]=None):
+        super().__init__(mxmod, POSState)
+        if feature_windows is None: feature_windows = list(range(-3, 4))
+        self.feature_windows: Tuple[int] = feature_windows
 
     # ============================== Feature ==============================
 
@@ -125,13 +120,16 @@ def parse_args():
 
     # data
     data = argparse_data(parser, tsv=lambda t: TSVReader(word_index=t[0], pos_index=t[1]))
-    data.add_argument('--word_embeddings', type=str, metavar='path', help='path to the word embedding bin file')
-    data.add_argument('--ambiguity_classes', type=str, metavar='path', help='path to the ambiguity class bin file')
+    data.add_argument('--word2vec', type=str, metavar='path', help='path to the word embedding bin file')
+    data.add_argument('--ambiguity', type=str, metavar='path', help='path to the ambiguity class bin file')
 
     # model
+    def feature_windows(s: str):
+        return tuple(map(int, s.split(',')))
+
     model = argparse_model(parser)
-    model.add_argument('--feature_left_window', type=int, metavar='int', default=-3, help='window of left context')
-    model.add_argument('--feature_right_window', type=int, metavar='int', default=3, help='window of right context')
+    model.add_argument('--feature_windows', type=feature_windows, metavar='int,int*', default=[-3,-2,-1,0,1,2,3],
+                       help='window of left context')
     argparse_ffnn(parser)
 
     return parser.parse_args()
@@ -139,24 +137,22 @@ def parse_args():
 
 def main():
     # arguments
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.basicConfig(filename='log.pos', format='%(message)s', level=logging.INFO)
     args = parse_args()
 
     # data
     trn_graphs = read_graphs(args.tsv, args.trn_data)
     dev_graphs = read_graphs(args.tsv, args.dev_data)
 
-    # lexicon
-    word_embeddings = KeyedVectors.load_word2vec_format(args.word_embeddings, binary=True)
-    ambiguity_classes = KeyedVectors.load_word2vec_format(args.ambiguity_classes, binary=True)
-    lexicon = POSLexicon(word_embeddings=word_embeddings, ambiguity_classes=ambiguity_classes)
+    # lex
+    word2vec = KeyedVectors.load_word2vec_format(args.word2vec, binary=True)
+    ambiguity = KeyedVectors.load_word2vec_format(args.ambiguity, binary=True)
+    lexicon = POSLexicon(word2vec=word2vec, ambiguity=ambiguity, output_size=args.output_size)
 
     # model
-    model = POSModel(lexicon, context=args.context,
-                     hidden=args.hidden, input_dropout=args.input_dropout, output_size=args.output_size,
-                     feature_left_window=args.feature_left_window, feature_right_window=args.feature_right_window)
-
-    model.train(trn_graphs=trn_graphs, dev_graphs=dev_graphs, num_steps=50, batch_size=args.batch_size)
+    mxmod = create_ffnn(args.hidden, args.input_dropout, args.output_size, args.context)
+    model = POSModel(mxmod, feature_windows=args.feature_windows)
+    model.train(lexicon, trn_graphs, dev_graphs, num_steps=3000, batch_size=args.batch_size)
 
 
 if __name__ == '__main__':

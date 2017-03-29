@@ -19,53 +19,57 @@ from typing import Union, List
 
 import numpy as np
 
-from elit.components.template.lexicon import NLPLexicon
 from elit.structure import NLPGraph, NLPNode, Relation
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPState(metaclass=ABCMeta):
-    def __init__(self, lexicon: NLPLexicon, graph: NLPGraph):
-        self.lexicon: NLPLexicon = lexicon
+    def __init__(self, graph: NLPGraph):
         self.graph: NLPGraph = graph
-        lexicon.init(graph)
 
     @abstractmethod
     def reset(self):
-        """ Reset to the initial state and remove all tags for training. """
+        """ Reset to the initial state and remove all tags. """
 
     # ============================== Oracle ==============================
 
     @property
     @abstractmethod
-    def gold_label(self) -> str:
-        """ :return: the gold label for the current state if exists; otherwise, None. """
+    def gold(self) -> str:
+        """
+        :return: the gold label for the current state if exists; otherwise, None.
+        """
 
     @abstractmethod
-    def eval_counts(self) -> np.array:
-        """ :return: [total, count1, count2, ...] if golds exist; otherwise, []. """
+    def eval(self, stats: np.array) -> float:
+        """
+        :param stats: accumulated statistics for evaluation.
+        :return: the overall accuracy based on the statistics.
+        """
 
     # ============================== Transition ==============================
 
     @abstractmethod
     def process(self, label: str, scores: np.array=None):
         """
-        :param label: the label for the current state.
+        :param label: the label given the current state.
         :param scores: prediction scores.
-         Perform the next transition given the label.
+          Apply the label to the current state and move onto the next state.
         """
 
     @abstractmethod
     def terminate(self) -> bool:
-        """ :return: True if no more state can be processed; otherwise, False. """
+        """
+        :return: True if no more state can be processed; otherwise, False.
+        """
 
     # ============================== Feature ==============================
 
     @abstractmethod
     def features(self, node: NLPNode) -> List[np.array]:
         """
-        :return: features extracted from lexicons.
+        :return: features given the current state.
         """
 
     def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:

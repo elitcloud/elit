@@ -9,9 +9,11 @@ The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.
 
 ## Requirements
 
-* mxnet-0.9.4.
-* argparse-1.4.0.
-* gensim-1.0.1.
+* mxnet-0.9.4
+* argparse-1.4.0
+* gensim-1.0.1
+* Cython-0.25.2
+* fasttext-0.8.3
 
 ## Tutorials
 

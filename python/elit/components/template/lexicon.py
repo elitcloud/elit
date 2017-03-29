@@ -13,77 +13,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from abc import ABCMeta, abstractmethod
+from typing import Union
 
 import numpy as np
+from fasttext.model import WordVectorModel
 from gensim.models.keyedvectors import KeyedVectors
 
-from elit.structure import NLPGraph
+from elit import structure
+from elit.structure import NLPNode
 
 __author__ = 'Jinho D. Choi'
 
 
-class NLPLexicon(metaclass=ABCMeta):
-    def __init__(self, word_embeddings: KeyedVectors):
+class NLPEmbedding:
+    def __init__(self, vsm: Union[KeyedVectors, WordVectorModel], key_field: str, emb_field: str):
         """
-        :param word_embeddings: KeyedVectors.load_word2vec_format('word_vectors.bin').
+        :param vsm: the vector space model in either the form of Word2Vec or FastText.
+        :param key_field: the field in NLPNode (e.g., word, pos) used as the key to retrieve the embedding from vsm.
+        :param emb_field: where the embedding with respect to the key is saved in NLPNode.
         """
-        self.word_embeddings: KeyedVectors = self._init_vectors(word_embeddings)
+        self.vsm = vsm
+        self.key_field = key_field
+        self.emb_field = emb_field
 
-    @classmethod
-    def _init_vectors(cls, vectors: KeyedVectors, root_lower: float = -.25, root_upper: float = .25) -> KeyedVectors:
+        if isinstance(vsm, KeyedVectors):
+            vector_size = vsm.syn0.shape[1]
+
+            # root
+            np.random.seed(9)
+            self.root = np.random.uniform(-.25, .25, (vector_size,)).astype('float32')
+            np.random.seed()
+
+            # zero
+            self.zero = np.zeros((vector_size,)).astype('float32')
+        elif isinstance(vsm, WordVectorModel):
+            self.root = np.array(vsm[structure.ROOT_TAG]).astype('float32')
+            self.zero = np.array(vsm['']).astype('float32')
+
+    def get(self, node: NLPNode) -> np.array:
         """
-        :param vectors: the original vectors.
-        :param root_lower: the lower-bound for the root value to be randomly generated.
-        :param root_upper: the upper-bound for the root value to be randomly generated.
-        :return: the original vectors appended by the root vector and the default vector.
+        :return: the embedding of the specific node with respect to the key_field.
         """
-        vector_size = vectors.syn0.shape[1]
+        if node is None: return self.zero
+        if node.node_id == 0: return self.root
+        if hasattr(node, self.emb_field): return getattr(node, self.emb_field)
 
-        # root vector
-        np.random.seed(9)
-        root_vector = np.random.uniform(root_lower, root_upper, (1, vector_size)).astype('float32')
-        np.random.seed()
+        f = getattr(node, self.key_field)
+        emb = None
 
-        # default vector
-        default_vector = np.zeros((1, vector_size)).astype('float32')
-        vectors.syn0 = np.concatenate((vectors.syn0, root_vector, default_vector), axis=0)
-        return vectors
+        if isinstance(self.vsm, KeyedVectors):
+            vocab = self.vsm.vocab.get(f, None)
+            emb = self.zero if vocab is None else self.vsm.syn0[vocab.index]
+        elif isinstance(self.vsm, WordVectorModel):
+            emb = np.array(self.vsm[f]).astype('float32')
 
-    # ============================== Initialization ==============================
+        setattr(node, self.emb_field, emb)
+        return emb
 
-    @abstractmethod
-    def init(self, graph: NLPGraph):
+
+class NLPLexicon:
+    def __init__(self, word2vec: KeyedVectors=None, fasttext: WordVectorModel=None):
         """
-        :param graph: the input graph
-          Initialize each node in the graph with lexicons.
+        :param word2vec: KeyedVectors.load_word2vec_format('*.bin').
+        :param fasttext: fasttext.load_model('*.bin').
         """
-
-    @classmethod
-    def _init(cls, graph: NLPGraph, vectors: KeyedVectors, source_field: str, target_field: str):
-        root = graph.nodes[0]
-
-        if vectors and not hasattr(root, target_field):
-            setattr(root, target_field, cls._get_root_vector(vectors))
-
-            for node in graph:
-                f = getattr(node, source_field)
-                setattr(node, target_field, cls._get_vector(vectors, f))
-
-    # ============================== Helpers ==============================
-
-    @classmethod
-    def get_default_vector(cls, vectors: KeyedVectors):
-        return vectors.syn0[-1] if vectors else None
-
-    @classmethod
-    def _get_vector(cls, vectors: KeyedVectors, key: str) -> np.array:
-        """
-        :return: the vector corresponding to the key if exists; otherwise, the default vector.
-        """
-        vocab = vectors.vocab.get(key, None)
-        return vectors.syn0[vocab.index] if vocab else cls.get_default_vector(vectors)
-
-    @classmethod
-    def _get_root_vector(cls, vectors: KeyedVectors):
-        return vectors.syn0[-2]
+        self.word2vec: NLPEmbedding = NLPEmbedding(word2vec, 'word', 'word2vec') if word2vec else None
+        self.fasttext: NLPEmbedding = NLPEmbedding(fasttext, 'word', 'fasttext') if fasttext else None
