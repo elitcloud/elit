@@ -27,6 +27,7 @@ __author__ = 'Jinho D. Choi'
 class NLPState(metaclass=ABCMeta):
     def __init__(self, graph: NLPGraph):
         self.graph: NLPGraph = graph
+        self.reset_count = 0
 
     @abstractmethod
     def reset(self):

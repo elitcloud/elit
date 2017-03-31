@@ -62,19 +62,28 @@ def argparse_data(parser: argparse.ArgumentParser, tsv: Callable[[Tuple[int]], T
     :param parser: the parent parser.
     :param tsv: (indices -> TSVReader, comment).
     """
-    data = parser.add_argument_group('Data')
+    args = parser.add_argument_group('Data')
 
-    data.add_argument('--trn_data', type=str, metavar='path', help='path to the training file')
-    data.add_argument('--dev_data', type=str, metavar='path', help='path to the development file')
+    args.add_argument('--trn_data', type=str, metavar='filepath', help='path to the training data')
+    args.add_argument('--dev_data', type=str, metavar='filepath', help='path to the development data')
 
     if tsv:
         def reader(s: str):
             t = tuple(map(int, s.split(',')))
             return tsv(t)
 
-        data.add_argument('--tsv', type=reader, metavar='int(,int)*', help='indices for the TSV reader')
+        args.add_argument('--tsv', type=reader, metavar='int(,int)*', help='indices for the TSV reader')
 
-    return data
+    return args
+
+
+def argparse_lexicon(parser: argparse.ArgumentParser):
+    args = parser.add_argument_group('Lexicon')
+
+    args.add_argument('--w2v', type=str, metavar='filepath', help='path to the word2vec bin file')
+    args.add_argument('--f2v', type=str, metavar='filepath', help='path to the fasttext bin file')
+
+    return args
 
 
 def argparse_model(parser: argparse.ArgumentParser):
@@ -94,12 +103,16 @@ def argparse_model(parser: argparse.ArgumentParser):
 
     model = parser.add_argument_group('Model')
 
+    model.add_argument('--num_steps', type=int, metavar='int', default=1000,
+                       help='number of steps for training')
     model.add_argument('--batch_size', type=int, metavar='int', default=128,
                        help='size of the mini batch')
-    model.add_argument('--num_thread', type=int, metavar='int', default=4,
-                       help='number of threads used for feature extraction')
+    model.add_argument('--bagging_ratio', type=float, metavar='float', default=0.63,
+                       help='ratio for the bootstrap aggregating')
     model.add_argument('--context', type=context, metavar='g|c:int(,int)*|int-int', default=mx.cpu(),
-                       help='context used for fitting the model')
+                       help='context used for the module')
+    model.add_argument('--optimizer', type=str, metavar='sgd|adagrad|adam', default='sgd',
+                       help='optimizer for training')
 
     return model
 

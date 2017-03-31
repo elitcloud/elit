@@ -16,11 +16,15 @@
 import logging
 import time
 from abc import ABCMeta, abstractmethod
+from concurrent.futures import Future
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 from random import shuffle
 from typing import Dict, List, Tuple, Union, Callable
 
 import mxnet as mx
 import numpy as np
+from itertools import islice
 
 from elit.components.template.lexicon import NLPLexicon
 from elit.components.template.state import NLPState
@@ -80,14 +84,31 @@ class NLPModel(metaclass=ABCMeta):
         xs = [self.x(state) for state in states]
         return np.vstack(xs)
 
-    def train_instances(self, states: List[NLPState]) -> Tuple[np.array, np.array]:
-        xs, ys = zip(*[(self.x(state), state.gold) for state in states])
-        return np.vstack(xs), np.array([self.add_label(y) for y in ys])
+    def train_instances(self, states: List[NLPState], num_threads: int=1) -> Tuple[np.array, np.array]:
+        def instances(thread_id=0, batch_size=len(states)):
+            bidx = thread_id * batch_size
+            eidx = min((thread_id + 1) * batch_size, len(states))
+            return zip(*[(self.x(state), state.gold) for state in islice(states, bidx, eidx)])
+
+        def xys(future: Future):
+            xs, ys = future.result()
+            return xs, np.array([self.add_label(y) for y in ys])
+
+        if num_threads == 1:
+            xs, ys = instances()
+            return np.vstack(xs), np.array([self.add_label(y) for y in ys])
+        else:
+            pool = ThreadPoolExecutor(num_threads)
+            size = np.math.ceil(len(states) / num_threads)
+            futures = [pool.submit(instances, i, size) for i in range(num_threads)]
+            while wait(futures)[1]: pass
+            xxs, yys = zip(*[xys(future) for future in futures])
+            return np.vstack(xxs), np.hstack(yys)
 
     # ============================== Module ==============================
 
-    def bind(self, data: np.array, label: np.array=None, batch_size=32,
-             for_training: bool=True, force_rebind=True) -> mx.io.DataIter:
+    def bind(self, data: np.array, label: np.array=None, batch_size=32, for_training: bool=True, force_rebind=True) \
+            -> mx.io.DataIter:
         batches: mx.io.NDArrayIter = self.data_iter(data, label, batch_size)
         label_shapes = None if label is None else batches.provide_label
         self.mxmod.bind(data_shapes=batches.provide_data, label_shapes=label_shapes, for_training=for_training,
@@ -113,8 +134,8 @@ class NLPModel(metaclass=ABCMeta):
         return self.mxmod.predict(batches).asnumpy()
         #return ys[:, range(self.label_size)] if ys.shape[1] > self.label_size else ys
 
-    def train(self, lexicon: NLPLexicon, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph],
-              num_steps=20000, batch_size=32,
+    def train(self, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph], lexicon: NLPLexicon,
+              num_steps=1000, batch_size=32, bagging_ratio=0.63,
               initializer: mx.initializer.Initializer = mx.initializer.Normal(0.01),
               arg_params=None, aux_params=None,
               allow_missing: bool=False, force_init: bool=False,
@@ -123,12 +144,16 @@ class NLPModel(metaclass=ABCMeta):
               optimizer_params=(('learning_rate', 0.01),)):
         trn_states: List[NLPState] = [self.create_state(graph, lexicon, save_gold=True) for graph in trn_graphs]
         dev_states: List[NLPState] = [self.create_state(graph, lexicon, save_gold=True) for graph in dev_graphs]
-        complete: int = 0
+        bag_size = int(len(trn_states) * bagging_ratio)
+
+
+        best_eval = 0
 
         for step in range(1, num_steps+1):
             st = time.time()
             shuffle(trn_states)
-            xs, ys = self.train_instances(trn_states)
+            trn_states.sort(key=lambda x: x.reset_count)
+            xs, ys = self.train_instances(trn_states[:bag_size])
             batches = self.bind(xs, ys, batch_size=batch_size)
 
             if step == 1:
@@ -145,19 +170,15 @@ class NLPModel(metaclass=ABCMeta):
                 yh = np.argmax(yhats if len(yhats) == self.label_size else yhats[:self.label_size])
                 state.process(self.get_label(yh), yhats)
                 if y == yh: correct += 1
-                if state.terminate:
-                    state.reset()
-                    complete += 1
+                if state.terminate: state.reset()
 
-            if complete > len(trn_graphs) / 5:
-                dev_eval = '%6.4f' % self.evaluate(dev_states, batch_size=batch_size)
-                complete = 0
-            else:
-                dev_eval = 'N/A'
-
-            tt = time.time() - st
             trn_acc = correct / len(ys)
-            logging.info('%6d: trn-acc = %6.4f, dev-eval = %6s, time = %d' % (step, trn_acc, dev_eval, tt))
+            dev_eval = self.evaluate(dev_states, batch_size=batch_size)
+            tt = time.time() - st
+            logging.info('%6d: trn-acc = %6.4f, dev-eval = %6.4f, time = %d' % (step, trn_acc, dev_eval, tt))
+            best_eval = max(dev_eval, best_eval)
+
+        logging.info('best: %6.4f' % best_eval)
 
     def evaluate(self, states: List[NLPState], batch_size=128):
         for state in states: state.reset()

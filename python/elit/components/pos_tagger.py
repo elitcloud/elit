@@ -19,13 +19,16 @@ from typing import Tuple, List
 
 import mxnet as mx
 import numpy as np
+import fasttext
+import sys
 from fasttext.model import WordVectorModel
 from gensim.models import KeyedVectors
 
 from elit.components.template.lexicon import NLPLexicon, NLPEmbedding
 from elit.components.template.model import NLPModel
 from elit.components.template.state import NLPState
-from elit.components.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn
+from elit.components.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn, \
+    argparse_lexicon
 from elit.reader import TSVReader
 from elit.structure import NLPGraph, NLPNode
 
@@ -33,16 +36,16 @@ __author__ = 'Jinho D. Choi'
 
 
 class POSLexicon(NLPLexicon):
-    def __init__(self, word2vec: KeyedVectors=None, fasttext: WordVectorModel=None, ambiguity: KeyedVectors=None,
+    def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None, a2v: KeyedVectors=None,
                  output_size: int=50):
         """
-        :param word2vec: word embeddings.
-        :param fasttext: word embedding with character-based model.
-        :param ambiguity: ambiguity classes.
+        :param w2v: word embeddings from word2vec.
+        :param f2v: word embeddings from fasttext.
+        :param a2v: a2v classes.
         :param output_size: the number of part-of-speech tags to predict.
         """
-        super().__init__(word2vec, fasttext)
-        self.ambiguity: NLPEmbedding = NLPEmbedding(ambiguity, 'word', 'ambiguity') if ambiguity else None
+        super().__init__(w2v, f2v)
+        self.a2v: NLPEmbedding = NLPEmbedding(a2v, 'word', 'a2v') if a2v else None
         self.pos_zeros = np.zeros((output_size,)).astype('float32')
 
 
@@ -62,6 +65,7 @@ class POSState(NLPState):
             node.pos_scores = self.lex.pos_zeros
 
         self.idx_curr = 1
+        self.reset_count += 1
 
     # ============================== Oracle ==============================
 
@@ -95,22 +99,22 @@ class POSState(NLPState):
 
     def features(self, node: NLPNode) -> List[np.array]:
         fs = [node.pos_scores if node else self.lex.pos_zeros]
-        if self.lex.word2vec:  fs.append(self.lex.word2vec.get(node))
-        if self.lex.fasttext:  fs.append(self.lex.fasttext.get(node))
-        if self.lex.ambiguity: fs.append(self.lex.ambiguity.get(node))
+        if self.lex.w2v: fs.append(self.lex.w2v.get(node))
+        if self.lex.f2v: fs.append(self.lex.f2v.get(node))
+        if self.lex.a2v: fs.append(self.lex.a2v.get(node))
         return fs
 
 
 class POSModel(NLPModel):
-    def __init__(self, mxmod: mx.module.Module, feature_windows: Tuple[int]=None):
+    def __init__(self, mxmod: mx.module.Module, feature_context: Tuple[int]=None):
         super().__init__(mxmod, POSState)
-        if feature_windows is None: feature_windows = list(range(-3, 4))
-        self.feature_windows: Tuple[int] = feature_windows
+        if feature_context is None: feature_context = list(range(-2, 3))
+        self.feature_context: Tuple[int] = feature_context
 
     # ============================== Feature ==============================
 
     def x(self, state: POSState) -> np.array:
-        vectors = [feature for window in self.feature_windows
+        vectors = [feature for window in self.feature_context
                    for feature in state.features(state.get_node(state.idx_curr, window))]
         return np.concatenate(vectors, axis=0)
 
@@ -119,40 +123,46 @@ def parse_args():
     parser = argparse.ArgumentParser('Train a part-of-speech tagger')
 
     # data
-    data = argparse_data(parser, tsv=lambda t: TSVReader(word_index=t[0], pos_index=t[1]))
-    data.add_argument('--word2vec', type=str, metavar='path', help='path to the word embedding bin file')
-    data.add_argument('--ambiguity', type=str, metavar='path', help='path to the ambiguity class bin file')
+    args= argparse_data(parser, tsv=lambda t: TSVReader(word_index=t[0], pos_index=t[1]))
+    args.add_argument('--log', type=str, metavar='filepath', help='path to the logging file')
+
+    # lexicon
+    args = argparse_lexicon(parser)
+    args.add_argument('--a2v', type=str, metavar='filepath', help='path to the ambiguity class bin file')
 
     # model
-    def feature_windows(s: str):
+    def feature_context(s: str):
         return tuple(map(int, s.split(',')))
 
-    model = argparse_model(parser)
-    model.add_argument('--feature_windows', type=feature_windows, metavar='int,int*', default=[-3,-2,-1,0,1,2,3],
-                       help='window of left context')
     argparse_ffnn(parser)
+    args = argparse_model(parser)
+    args.add_argument('--feature_context', type=feature_context, metavar='int,int*', default=[-2, -1, 0, 1, 2],
+                       help='context window for feature extraction')
 
     return parser.parse_args()
 
 
 def main():
     # arguments
-    logging.basicConfig(filename='log.pos', format='%(message)s', level=logging.INFO)
     args = parse_args()
+    if args.log: logging.basicConfig(filename=args.log, format='%(message)s', level=logging.INFO)
+    else: logging.basicConfig(format='%(message)s', level=logging.INFO)
 
     # data
     trn_graphs = read_graphs(args.tsv, args.trn_data)
     dev_graphs = read_graphs(args.tsv, args.dev_data)
 
-    # lex
-    word2vec = KeyedVectors.load_word2vec_format(args.word2vec, binary=True)
-    ambiguity = KeyedVectors.load_word2vec_format(args.ambiguity, binary=True)
-    lexicon = POSLexicon(word2vec=word2vec, ambiguity=ambiguity, output_size=args.output_size)
+    # lexicon
+    w2v = KeyedVectors.load_word2vec_format(args.w2v, binary=True) if args.w2v else None
+    f2v = fasttext.load_model(args.f2v) if args.f2v else None
+    a2v = KeyedVectors.load_word2vec_format(args.a2v, binary=True) if args.a2v else None
+    lexicon = POSLexicon(w2v=w2v, f2v=f2v, a2v=a2v, output_size=args.output_size)
 
     # model
     mxmod = create_ffnn(args.hidden, args.input_dropout, args.output_size, args.context)
-    model = POSModel(mxmod, feature_windows=args.feature_windows)
-    model.train(lexicon, trn_graphs, dev_graphs, num_steps=3000, batch_size=args.batch_size)
+    model = POSModel(mxmod, feature_context=args.feature_context)
+    model.train(trn_graphs, dev_graphs, lexicon, num_steps=args.num_steps, batch_size=args.batch_size,
+                bagging_ratio=args.bagging_ratio, optimizer=args.optimizer)
 
 
 if __name__ == '__main__':

@@ -1,15 +1,19 @@
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+from concurrent.futures import wait
+
 import fasttext
 import logging
 
 '''
-path = '/home/ubuntu/gdrive/public/word-embeddings/corpus.friends+nyt+wiki+amazon.fasttext.skip.d200.bin'
+path = '/home/ubuntu/gdrive/public/word-embeddings/corpus.friends+nyt+wiki+amazon.f2v.skip.d200.bin'
 print(path)
-v = fasttext.load_model(path)
+v = f2v.load_model(path)
 
 print(type(v))
 print(v[''])
 print(v['@#r$%'])
-'''
+
 import mxnet as mx
 import numpy as np
 import logging
@@ -32,3 +36,18 @@ dat = mx.io.NDArrayIter(xxs, None, batch_size=8)
 mod.bind(dat.provide_data, None, for_training=False, force_rebind=True)
 ys = mod.predict(dat).asnumpy()
 print(ys[0].shape)
+'''
+
+
+def add(i):
+    return i
+
+pool = ThreadPoolExecutor(4)
+futures = [pool.submit(add, i) for i in range(4)]
+
+# for a in as_completed(futures): print(a.result())
+
+print(wait(futures)[1])
+for future in futures:
+    print(type(future))
+    print(future.result())

@@ -72,10 +72,10 @@ class NLPEmbedding:
 
 
 class NLPLexicon:
-    def __init__(self, word2vec: KeyedVectors=None, fasttext: WordVectorModel=None):
+    def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None):
         """
-        :param word2vec: KeyedVectors.load_word2vec_format('*.bin').
-        :param fasttext: fasttext.load_model('*.bin').
+        :param w2v: KeyedVectors.load_word2vec_format('*.bin').
+        :param f2v: f2v.load_model('*.bin').
         """
-        self.word2vec: NLPEmbedding = NLPEmbedding(word2vec, 'word', 'word2vec') if word2vec else None
-        self.fasttext: NLPEmbedding = NLPEmbedding(fasttext, 'word', 'fasttext') if fasttext else None
+        self.w2v: NLPEmbedding = NLPEmbedding(w2v, 'word', 'w2v') if w2v else None
+        self.f2v: NLPEmbedding = NLPEmbedding(f2v, 'word', 'f2v') if f2v else None
