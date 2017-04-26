@@ -33,7 +33,7 @@ class TSVReader:
     :param pos_index: the column index of part-of-speech tags.
     :param feats_index: the column index of extra features.
     :param head_index: the column index of primary head IDs.
-    :param deprel_index: the column index of primary dependency labels.
+    :param deprel_index: the column index of primary dependency sys_labels.
     :param sheads_index: the column index of secondary dependency heads.
     :param nament_index: the column index of of named entity tags.
     """

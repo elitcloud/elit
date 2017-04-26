@@ -71,7 +71,7 @@ class NLPEmbedding:
         return emb
 
 
-class NLPLexicon:
+class NLPLexiconMapper:
     def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None):
         """
         :param w2v: KeyedVectors.load_word2vec_format('*.bin').

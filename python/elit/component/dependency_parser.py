@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from fasttext.model import WordVectorModel
+from gensim.models import KeyedVectors
+
+from elit.component.template.lexicon import NLPLexiconMapper
+from elit.component.template.state import NLPState
+from elit.structure import NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
@@ -25,9 +31,17 @@ REDUCE    = 'R'
 PASS      = 'P'
 
 
+class DEPLexicon(NLPLexiconMapper):
+    def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None):
+        super().__init__(w2v, f2v)
+
+
 class DEPState(NLPState):
-    def __init__(self, graph: NLPGraph):
+    def __init__(self, graph: NLPGraph, lexicon: DEPLexicon, save_gold=False):
         super().__init__(graph)
+        self.lex: DEPLexicon = lexicon
+
+        # reset
         self.stack: List[int] = [0]
         self.inter: List[int] = []
         self.input: int = 1

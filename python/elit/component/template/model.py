@@ -26,22 +26,23 @@ import mxnet as mx
 import numpy as np
 from itertools import islice
 
-from elit.components.template.lexicon import NLPLexicon
-from elit.components.template.state import NLPState
+from elit.component.template.lexicon import NLPLexiconMapper
+from elit.component.template.state import NLPState
 from elit.structure import NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPModel(metaclass=ABCMeta):
-    def __init__(self, mxmod: mx.module.Module, create_state: Callable[[NLPGraph, NLPLexicon, bool], NLPState]):
-        # module
-        self.mxmod: mx.module.Module = mxmod
-        self.create_state = create_state
-
+    def __init__(self, state: Callable[[NLPGraph, NLPLexiconMapper, bool], NLPState], batch_size: int):
         # label
         self.index_map: Dict[str, int] = {}
         self.labels: List[str] = []
+
+        # init
+        self.mxmod = None
+        self.state = state
+        self.batch_size: int = batch_size
 
     # ============================== Label ==============================
 
@@ -71,7 +72,7 @@ class NLPModel(metaclass=ABCMeta):
         return idx
 
     @property
-    def label_size(self):
+    def num_label(self):
         return len(self.labels)
 
     # ============================== Feature ==============================
@@ -130,20 +131,21 @@ class NLPModel(metaclass=ABCMeta):
 
         return self.predict(batches)
 
+
     def predict(self, batches: mx.io.DataIter) -> np.array:
         return self.mxmod.predict(batches).asnumpy()
         #return ys[:, range(self.label_size)] if ys.shape[1] > self.label_size else ys
 
-    def train(self, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph], lexicon: NLPLexicon,
-              num_steps=1000, batch_size=32, bagging_ratio=0.63,
+    def train(self, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph], lexicon: NLPLexiconMapper,
+              num_steps=1000, bagging_ratio=0.63,
               initializer: mx.initializer.Initializer = mx.initializer.Normal(0.01),
               arg_params=None, aux_params=None,
               allow_missing: bool=False, force_init: bool=False,
               kvstore: Union[str, mx.kvstore.KVStore] = 'local',
               optimizer: Union[str, mx.optimizer.Optimizer] = 'sgd',
               optimizer_params=(('learning_rate', 0.01),)):
-        trn_states: List[NLPState] = [self.create_state(graph, lexicon, save_gold=True) for graph in trn_graphs]
-        dev_states: List[NLPState] = [self.create_state(graph, lexicon, save_gold=True) for graph in dev_graphs]
+        trn_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in trn_graphs]
+        dev_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in dev_graphs]
         bag_size = int(len(trn_states) * bagging_ratio)
 
 
@@ -154,7 +156,7 @@ class NLPModel(metaclass=ABCMeta):
             shuffle(trn_states)
             trn_states.sort(key=lambda x: x.reset_count)
             xs, ys = self.train_instances(trn_states[:bag_size])
-            batches = self.bind(xs, ys, batch_size=batch_size)
+            batches = self.bind(xs, ys, batch_size=self.batch_size)
 
             if step == 1:
                 self.mxmod.init_params(
@@ -167,13 +169,13 @@ class NLPModel(metaclass=ABCMeta):
             correct = 0
 
             for state, y, yhats in zip(trn_states, ys, predictions):
-                yh = np.argmax(yhats if len(yhats) == self.label_size else yhats[:self.label_size])
+                yh = np.argmax(yhats if len(yhats) == self.num_label else yhats[:self.num_label])
                 state.process(self.get_label(yh), yhats)
                 if y == yh: correct += 1
                 if state.terminate: state.reset()
 
             trn_acc = correct / len(ys)
-            dev_eval = self.evaluate(dev_states, batch_size=batch_size)
+            dev_eval = self.evaluate(dev_states, batch_size=self.batch_size)
             tt = time.time() - st
             logging.info('%6d: trn-acc = %6.4f, dev-eval = %6.4f, time = %d' % (step, trn_acc, dev_eval, tt))
             best_eval = max(dev_eval, best_eval)
@@ -190,7 +192,7 @@ class NLPModel(metaclass=ABCMeta):
             predictions = self.predict(batches)
 
             for state, yhats in zip(states, predictions):
-                yh = np.argmax(yhats if len(yhats) == self.label_size else yhats[:self.label_size])
+                yh = np.argmax(yhats if len(yhats) == self.num_label else yhats[:self.num_label])
                 state.process(self.get_label(yh), yhats)
 
             states = [state for state in states if not state.terminate]

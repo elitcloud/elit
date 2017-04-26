@@ -44,6 +44,13 @@ def create_ffnn(hidden: List[Tuple[int, str, float]], input_dropout: float=0, ou
     return mx.mod.Module(symbol=net, context=context)
 
 
+def conv_pool(net: mx.sym.Variable, conv_kernel: Tuple[int, int], num_filter: int, act_type: str,
+              pool_kernel: Tuple[int, int], pool_type='max', pool_stride: Tuple[int, int]=(1, 1)) -> mx.sym.Variable:
+    net = mx.sym.Convolution(data=net, kernel=conv_kernel, num_filter=num_filter)
+    net = mx.sym.Activation(data=net, act_type=act_type)
+    net = mx.sym.Pooling(data=net, pool_type=pool_type, kernel=pool_kernel, stride=pool_stride)
+    return net
+
 # ============================== Reader ==============================
 
 def read_graphs(reader: TSVReader, filename: str) -> List[NLPGraph]:

@@ -20,22 +20,21 @@ from typing import Tuple, List
 import mxnet as mx
 import numpy as np
 import fasttext
-import sys
 from fasttext.model import WordVectorModel
 from gensim.models import KeyedVectors
 
-from elit.components.template.lexicon import NLPLexicon, NLPEmbedding
-from elit.components.template.model import NLPModel
-from elit.components.template.state import NLPState
-from elit.components.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn, \
-    argparse_lexicon
+from elit.component.template.lexicon import NLPLexiconMapper, NLPEmbedding
+from elit.component.template.model import NLPModel
+from elit.component.template.state import NLPState
+from elit.component.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn, \
+    argparse_lexicon, conv_pool
 from elit.reader import TSVReader
 from elit.structure import NLPGraph, NLPNode
 
 __author__ = 'Jinho D. Choi'
 
 
-class POSLexicon(NLPLexicon):
+class POSLexicon(NLPLexiconMapper):
     def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None, a2v: KeyedVectors=None,
                  output_size: int=50):
         """
@@ -106,9 +105,17 @@ class POSState(NLPState):
 
 
 class POSModel(NLPModel):
-    def __init__(self, mxmod: mx.module.Module, feature_context: Tuple[int]=None):
-        super().__init__(mxmod, POSState)
-        if feature_context is None: feature_context = list(range(-2, 3))
+    def __init__(self, batch_size=32, num_label: int=50, feature_context: Tuple = (-2, -1, 0, 1, 2),
+                 context: mx.context.Context=mx.cpu(), w2v_dim=200,
+                 ngram_filter_list=(1, 2, 3), ngram_filter: int=64):
+        super().__init__(POSState, batch_size)
+        self.mxmod: mx.module.Module = self.init_mxmod(batch_size=batch_size,
+                                                       num_label=num_label,
+                                                       num_feature=len(feature_context),
+                                                       context=context,
+                                                       w2v_dim=w2v_dim,
+                                                       ngram_filter_list=ngram_filter_list,
+                                                       ngram_filter=ngram_filter)
         self.feature_context: Tuple[int] = feature_context
 
     # ============================== Feature ==============================
@@ -117,6 +124,29 @@ class POSModel(NLPModel):
         vectors = [feature for window in self.feature_context
                    for feature in state.features(state.get_node(state.idx_curr, window))]
         return np.concatenate(vectors, axis=0)
+
+    # ============================== Module ==============================
+
+    def init_mxmod(self, batch_size: int, num_label: int, num_feature: int, context: mx.context.Context, w2v_dim: int,
+                   ngram_filter_list: Tuple, ngram_filter: int) -> mx.module.Module:
+        # n-gram convolution
+        input  = mx.sym.Variable('data')
+        pooled = [conv_pool(input, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
+                            pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
+                  for filter in ngram_filter_list]
+        concat = mx.sym.Concat(*pooled, dim=1)
+        h_pool = mx.sym.Reshape(data=concat, shape=(batch_size, ngram_filter * len(ngram_filter_list)))
+      # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
+
+        # fully connected
+        fc_weight = mx.sym.Variable('fc_weight')
+        fc_bias = mx.sym.Variable('fc_bias')
+        fc = mx.sym.FullyConnected(data=h_pool, weight=fc_weight, bias=fc_bias, num_hidden=num_label)
+
+        output = mx.sym.Variable('softmax_label')
+        sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
+
+        return mx.mod.Module(symbol=sm, context=context)
 
 
 def parse_args():
@@ -137,7 +167,7 @@ def parse_args():
     argparse_ffnn(parser)
     args = argparse_model(parser)
     args.add_argument('--feature_context', type=feature_context, metavar='int,int*', default=[-2, -1, 0, 1, 2],
-                       help='context window for feature extraction')
+                      help='context window for feature extraction')
 
     return parser.parse_args()
 
@@ -159,9 +189,8 @@ def main():
     lexicon = POSLexicon(w2v=w2v, f2v=f2v, a2v=a2v, output_size=args.output_size)
 
     # model
-    mxmod = create_ffnn(args.hidden, args.input_dropout, args.output_size, args.context)
-    model = POSModel(mxmod, feature_context=args.feature_context)
-    model.train(trn_graphs, dev_graphs, lexicon, num_steps=args.num_steps, batch_size=args.batch_size,
+    model = POSModel(feature_context=args.feature_context)
+    model.train(trn_graphs, dev_graphs, lexicon, num_steps=args.num_steps
                 bagging_ratio=args.bagging_ratio, optimizer=args.optimizer)
 
 
