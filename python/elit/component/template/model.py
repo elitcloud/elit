@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import sys
 import logging
 import time
 from abc import ABCMeta, abstractmethod
@@ -82,8 +83,13 @@ class NLPModel(metaclass=ABCMeta):
         """ :return: the feature vector for the current state. """
 
     def feature_vectors(self, states: List[NLPState]) -> np.array:
-        xs = [self.x(state) for state in states]
-        return np.vstack(xs)
+        xs_0 = [[self.x(state)[0]] for state in states]
+        xs_1 = [[self.x(state)[1]] for state in states]
+        out_0 = np.stack(xs_0, axis = 0)
+        out_1 = np.stack(xs_1, axis = 0)
+        out_0 = np.squeeze(out_0, axis=1)
+        out_1 = np.squeeze(out_1, axis=1)
+        return [out_0, out_1]
 
     def train_instances(self, states: List[NLPState], num_threads: int=1) -> Tuple[np.array, np.array]:
         def instances(thread_id=0, batch_size=len(states)):
@@ -97,7 +103,12 @@ class NLPModel(metaclass=ABCMeta):
 
         if num_threads == 1:
             xs, ys = instances()
-            return np.vstack(xs), np.array([self.add_label(y) for y in ys])
+            xs_1, xs_2 = zip(*xs)
+            x1 = np.stack(xs_1, axis=0)
+            x2 = np.stack(xs_2, axis=0)
+            data = [x1, x2]
+            label = np.array([self.add_label(y) for y in ys])
+            return data, label
         else:
             pool = ThreadPoolExecutor(num_threads)
             size = np.math.ceil(len(states) / num_threads)
@@ -142,8 +153,9 @@ class NLPModel(metaclass=ABCMeta):
               arg_params=None, aux_params=None,
               allow_missing: bool=False, force_init: bool=False,
               kvstore: Union[str, mx.kvstore.KVStore] = 'local',
-              optimizer: Union[str, mx.optimizer.Optimizer] = 'sgd',
+              optimizer: Union[str, mx.optimizer.Optimizer] = 'Adam',
               optimizer_params=(('learning_rate', 0.01),)):
+
         trn_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in trn_graphs]
         dev_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in dev_graphs]
         bag_size = int(len(trn_states) * bagging_ratio)
@@ -182,7 +194,7 @@ class NLPModel(metaclass=ABCMeta):
 
         logging.info('best: %6.4f' % best_eval)
 
-    def evaluate(self, states: List[NLPState], batch_size=128):
+    def evaluate(self, states: List[NLPState], batch_size=32):
         for state in states: state.reset()
         backup = states
 
@@ -209,5 +221,5 @@ class NLPModel(metaclass=ABCMeta):
 
     @classmethod
     def data_iter(cls, data: np.array, label: np.array=None, batch_size=32) -> mx.io.DataIter:
-        batch_size = len(data) if len(data) < batch_size else batch_size
-        return mx.io.NDArrayIter(data=data, label=label, batch_size=batch_size, shuffle=False)
+        batch_size = len(data[0]) if len(data[0]) < batch_size else batch_size
+        return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1]}, label=label, batch_size=batch_size, shuffle=False)

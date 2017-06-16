@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+
+import sys
+sys.path.append("/Users/tlee/Desktop/elit/python")
+sys.path.append("/home/timothy/elit/python")
+
 import argparse
 import logging
 from typing import Tuple, List
@@ -105,9 +110,9 @@ class POSState(NLPState):
 
 
 class POSModel(NLPModel):
-    def __init__(self, batch_size=32, num_label: int=50, feature_context: Tuple = (-2, -1, 0, 1, 2),
-                 context: mx.context.Context=mx.cpu(), w2v_dim=200,
-                 ngram_filter_list=(1, 2, 3), ngram_filter: int=64):
+    def __init__(self, batch_size=64, num_label: int=50, feature_context: Tuple = (-2, -1, 0, 1, 2),
+                 context: mx.context.Context=mx.cpu(), w2v_dim=100,
+                 ngram_filter_list=(1, 2, 3), ngram_filter: int=100):
         super().__init__(POSState, batch_size)
         self.mxmod: mx.module.Module = self.init_mxmod(batch_size=batch_size,
                                                        num_label=num_label,
@@ -121,21 +126,39 @@ class POSModel(NLPModel):
     # ============================== Feature ==============================
 
     def x(self, state: POSState) -> np.array:
-        vectors = [feature for window in self.feature_context
-                   for feature in state.features(state.get_node(state.idx_curr, window))]
-        return np.concatenate(vectors, axis=0)
+        vectors_pos_score = [state.features(state.get_node(state.idx_curr, window))[0] for window in self.feature_context]
+        vectors_f2v = [state.features(state.get_node(state.idx_curr, window))[1] for window in self.feature_context]
+        vectors_a2v = [state.features(state.get_node(state.idx_curr, window))[2] for window in self.feature_context]
+
+        out_f2v = np.asarray(vectors_f2v)
+        out_a2v = np.asarray(vectors_a2v)
+        out = (out_f2v, out_a2v)
+        return out
 
     # ============================== Module ==============================
 
     def init_mxmod(self, batch_size: int, num_label: int, num_feature: int, context: mx.context.Context, w2v_dim: int,
                    ngram_filter_list: Tuple, ngram_filter: int) -> mx.module.Module:
-        # n-gram convolution
-        input  = mx.sym.Variable('data')
-        pooled = [conv_pool(input, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
+        batch_size = -1
+        # n-gram convolution for f2v and a2v
+        input_f2v = mx.sym.Variable('data_f2v')
+        input_a2v = mx.sym.Variable('data_a2v')
+
+        conv_input_f2v = mx.sym.Reshape(data=input_f2v, shape=(batch_size, 1, num_feature, w2v_dim))
+        conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, 50))
+
+
+        pooled_1 = [conv_pool(conv_input_f2v, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
+
+        pooled_2 = [conv_pool(conv_input_a2v, conv_kernel=(filter, 50), num_filter=ngram_filter, act_type='relu',
+                            pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
+                  for filter in ngram_filter_list]
+
+        pooled = pooled_1 + pooled_2
         concat = mx.sym.Concat(*pooled, dim=1)
-        h_pool = mx.sym.Reshape(data=concat, shape=(batch_size, ngram_filter * len(ngram_filter_list)))
+        h_pool = mx.sym.Reshape(data=concat, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
       # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
 
         # fully connected
@@ -146,7 +169,7 @@ class POSModel(NLPModel):
         output = mx.sym.Variable('softmax_label')
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
 
-        return mx.mod.Module(symbol=sm, context=context)
+        return mx.mod.Module(symbol=sm, data_names=('data_f2v', 'data_a2v'), context=context)
 
 
 def parse_args():
@@ -186,12 +209,13 @@ def main():
     w2v = KeyedVectors.load_word2vec_format(args.w2v, binary=True) if args.w2v else None
     f2v = fasttext.load_model(args.f2v) if args.f2v else None
     a2v = KeyedVectors.load_word2vec_format(args.a2v, binary=True) if args.a2v else None
+
     lexicon = POSLexicon(w2v=w2v, f2v=f2v, a2v=a2v, output_size=args.output_size)
 
     # model
-    model = POSModel(feature_context=args.feature_context)
-    model.train(trn_graphs, dev_graphs, lexicon, num_steps=args.num_steps
-                bagging_ratio=args.bagging_ratio, optimizer=args.optimizer)
+    model = POSModel(feature_context=args.feature_context, batch_size=64, w2v_dim=100)
+    model.train(trn_graphs, dev_graphs, lexicon, num_steps=args.num_steps,
+                bagging_ratio=args.bagging_ratio, optimizer=args.optimizer, force_init=True)
 
 
 if __name__ == '__main__':
