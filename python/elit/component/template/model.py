@@ -31,6 +31,8 @@ from elit.component.template.lexicon import NLPLexiconMapper
 from elit.component.template.state import NLPState
 from elit.structure import NLPGraph
 
+import graphviz
+
 __author__ = 'Jinho D. Choi'
 
 
@@ -128,10 +130,21 @@ class NLPModel(metaclass=ABCMeta):
         return batches
 
     def fit(self, batches: mx.io.DataIter, num_epoch: int=1) -> np.array:
+        print ("THE NUM EPOCH IS: ", num_epoch)
         for epoch in range(num_epoch):
+            cnn_fea = []
             for batch in batches:
-                self.mxmod.forward_backward(batch)
+                self.mxmod.forward(batch)
+
+                # extract pooled layer feature vector. first index output is softmax layer output
+                temp_symbol_1 = self.mxmod.get_outputs()[1]
+                fea = temp_symbol_1.asnumpy()
+                # print(fea)
+
+                self.mxmod.backward()
                 self.mxmod.update()
+
+            # sys.exit()    
 
             # sync aux params across devices
             arg_params, aux_params = self.mxmod.get_params()
@@ -144,11 +157,12 @@ class NLPModel(metaclass=ABCMeta):
 
 
     def predict(self, batches: mx.io.DataIter) -> np.array:
-        return self.mxmod.predict(batches).asnumpy()
+        # print (self.mxmod.predict(batches))
+        return self.mxmod.predict(batches)[0].asnumpy()
         #return ys[:, range(self.label_size)] if ys.shape[1] > self.label_size else ys
 
     def train(self, trn_graphs: List[NLPGraph], dev_graphs: List[NLPGraph], lexicon: NLPLexiconMapper,
-              num_steps=1000, bagging_ratio=0.63,
+              num_steps=2000, bagging_ratio=0.63,
               initializer: mx.initializer.Initializer = mx.initializer.Normal(0.01),
               arg_params=None, aux_params=None,
               allow_missing: bool=False, force_init: bool=False,
@@ -158,11 +172,11 @@ class NLPModel(metaclass=ABCMeta):
 
         trn_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in trn_graphs]
         dev_states: List[NLPState] = [self.state(graph, lexicon, save_gold=True) for graph in dev_graphs]
+
         bag_size = int(len(trn_states) * bagging_ratio)
 
-
         best_eval = 0
-
+        previous_label = []
         for step in range(1, num_steps+1):
             st = time.time()
             shuffle(trn_states)

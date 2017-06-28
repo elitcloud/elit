@@ -36,6 +36,8 @@ from elit.component.template.util import argparse_ffnn, argparse_model, argparse
 from elit.reader import TSVReader
 from elit.structure import NLPGraph, NLPNode
 
+import graphviz
+
 __author__ = 'Jinho D. Choi'
 
 
@@ -111,8 +113,8 @@ class POSState(NLPState):
 
 class POSModel(NLPModel):
     def __init__(self, batch_size=64, num_label: int=50, feature_context: Tuple = (-2, -1, 0, 1, 2),
-                 context: mx.context.Context=mx.cpu(), w2v_dim=100,
-                 ngram_filter_list=(1, 2, 3), ngram_filter: int=100):
+                 context: mx.context.Context=mx.cpu(0), w2v_dim=100,
+                 ngram_filter_list=(1, 2, 3), ngram_filter: int=32):
         super().__init__(POSState, batch_size)
         self.mxmod: mx.module.Module = self.init_mxmod(batch_size=batch_size,
                                                        num_label=num_label,
@@ -156,10 +158,16 @@ class POSModel(NLPModel):
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
+
+        # concatenate pooled features from f2v and a2v
         pooled = pooled_1 + pooled_2
         concat = mx.sym.Concat(*pooled, dim=1)
-        h_pool = mx.sym.Reshape(data=concat, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
+
+        h_pool = mx.sym.Reshape(name="concat_pooling", data=concat, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
       # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
+
+        # block gradient
+        h_pool = mx.sym.BlockGrad(h_pool, name="concat_pooling")
 
         # fully connected
         fc_weight = mx.sym.Variable('fc_weight')
@@ -168,8 +176,10 @@ class POSModel(NLPModel):
 
         output = mx.sym.Variable('softmax_label')
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
-
-        return mx.mod.Module(symbol=sm, data_names=('data_f2v', 'data_a2v'), context=context)
+        
+        # mx module now contains softmax and pool output
+        final = mx.sym.Group([sm, h_pool])
+        return mx.mod.Module(symbol=final, data_names=('data_f2v', 'data_a2v'), context=context)
 
 
 def parse_args():
