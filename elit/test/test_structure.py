@@ -22,7 +22,7 @@ __author__ = 'T Lee'
 
 class StructureTest(unittest.TestCase):
     def test_nlpnode_ancestor(self):
-        filename = '../../../resources/sample.tsv'
+        filename = 'resources/sample/sample.tsv'
         reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
         graph = reader.next()
         nodes = []
@@ -65,7 +65,7 @@ class StructureTest(unittest.TestCase):
         #self.assertEqual(nodes[0].get_leftmost_child(), nodes[3])
 
     def test_nlpnode_set(self):
-        filename = '../../../resources/sample.tsv'
+        filename = 'resources/sample/sample.tsv'
         reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
         graph = reader.next()
         container = []
