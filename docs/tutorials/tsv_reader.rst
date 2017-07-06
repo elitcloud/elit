@@ -4,7 +4,7 @@ TSVReader
 TSVReader reads graphs::
 
     filename = '../../resources/sample.tsv'
-    reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
+    reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
 
     # read the next graph
     graph = reader.next()
