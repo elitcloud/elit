@@ -1,8 +1,8 @@
-import elit
+from elit.reader import TSVReader
 
-tsv_file_path = '../resources/sample/sample.tsv'
+tsv_file_path = 'resources/sample/sample.tsv'
 
-reader = elit.TSVReader(1,2,3,4,5,6,7,8)
+reader = TSVReader(1,2,3,4,5,6,7,8)
 
 if __name__ == '__main__':
     reader.open(tsv_file_path)

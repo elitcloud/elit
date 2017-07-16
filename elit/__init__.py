@@ -14,6 +14,5 @@
 # limitations under the License.
 # ========================================================================
 from elit import *
-from .reader import *
-from .structure import *
+
 __author__ = 'Jinho D. Choi'
