@@ -151,3 +151,4 @@ ENV/
 
 .idea/
 .vscode/
+.pypirc
