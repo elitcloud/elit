@@ -23,8 +23,9 @@ __author__ = 'T Lee'
 class StructureTest(unittest.TestCase):
     def test_nlpnode_ancestor(self):
         filename = 'resources/sample/sample.tsv'
-        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
-        graph = reader.next()
+        reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
+        reader.open(filename)
+        graph = reader.next
         nodes = []
         for node in graph.nodes:
             nodes.append(node)
@@ -38,9 +39,10 @@ class StructureTest(unittest.TestCase):
         self.assertTrue(nodes[8].parent_of(nodes[10]))
 
     def test_dependencyLabel(self):
-        filename = '../../../resources/sample.tsv'
-        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
-        graph = reader.next()
+        filename = 'resources/sample/sample.tsv'
+        reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
+        reader.open(filename)
+        graph = reader.next
         nodes = []
         for node in graph.nodes:
             nodes.append(node)
@@ -50,9 +52,10 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(nodes[14].get_dependency_label(nodes[10]), 'ppmod')
 
     def test_getChild(self):
-        filename = '../../../resources/sample.tsv'
-        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
-        graph = reader.next()
+        filename = 'resources/sample/sample.tsv'
+        reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
+        reader.open(filename)
+        graph = reader.next
         nodes = []
         for node in graph.nodes:
             nodes.append(node)
@@ -66,8 +69,9 @@ class StructureTest(unittest.TestCase):
 
     def test_nlpnode_set(self):
         filename = 'resources/sample/sample.tsv'
-        reader = TSVReader(filename, 1, 2, 3, 4, 5, 6, 7, 8)
-        graph = reader.next()
+        reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
+        reader.open(filename)
+        graph = reader.next
         container = []
         for node in graph.nodes:
             container.append(node)
