@@ -1,4 +1,4 @@
-# Emory Language Information Toolkit (ELIT)
+# Emory Language Information Toolkit (ELIT) [![Build Status](https://travis-ci.org/emorynlp/elit.svg?branch=master)](https://travis-ci.org/emorynlp/elit)
 
 The **E**mory **L**anguage **I**nformation **T**oolkit (ELIT) project provides:
 
