@@ -17,7 +17,7 @@ from elit.component.template.lexicon import *
 
 __author__ = 'Jinho D. Choi'
 
-word_embeddings = KeyedVectors.load_word2vec_format('elit/test/sample.w2v.bin', binary=True)
+word_embeddings = KeyedVectors.load_word2vec_format('resources/sample/sample.w2v.bin', binary=True)
 lexicon = NLPLexiconMapper(word_embeddings)
 
 print(get_default_vector(word_embeddings))
