@@ -12,7 +12,7 @@ config = {
     'author':'Jinho D. Choi',
     'author_email':'choi@mathcs.emory.edu',
     'url':'https://github.com/emorynlp/elit',
-    'download_url':'git@github.com:emorynlp/elit.git',
+    'download_url':'https://github.com/emorynlp/elit/tree/master',
     'version':'0.1.0',
     'install_requires':[
         'nose',
