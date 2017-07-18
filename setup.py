@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
     from distutils.core import setup
+    from distutils.extension import Extension
 
 config = {
     'name':'elit',
@@ -11,9 +14,6 @@ config = {
     'url':'https://github.com/emorynlp/elit',
     'download_url':'git@github.com:emorynlp/elit.git',
     'version':'0.1.0',
-    'setup_requires':[
-        'Cython>=0.25',
-    ],
     'install_requires':[
         'nose',
         'Cython>=0.25',
@@ -42,8 +42,6 @@ config = {
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
