@@ -11,6 +11,9 @@ config = {
     'url':'https://github.com/emorynlp/elit',
     'download_url':'git@github.com:emorynlp/elit.git',
     'version':'0.1.0',
+    'setup_requires':[
+        'Cython>=0.25',
+    ],
     'install_requires':[
         'nose',
         'Cython>=0.25',
