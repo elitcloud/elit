@@ -150,3 +150,4 @@ ENV/
 .mypy_cache/
 
 .idea/
+.vscode/
