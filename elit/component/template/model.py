@@ -46,6 +46,7 @@ class NLPModel(metaclass=ABCMeta):
         self.mxmod = None
         self.state = state
         self.batch_size: int = batch_size
+        self.pool_feature_vector = None
 
     # ============================== Label ==============================
 
@@ -121,7 +122,7 @@ class NLPModel(metaclass=ABCMeta):
 
     # ============================== Module ==============================
 
-    def bind(self, data: np.array, label: np.array=None, batch_size=32, for_training: bool=True, force_rebind=True) \
+    def bind(self, data: np.array, label: np.array=None, batch_size: int=32, for_training: bool=True, force_rebind: bool=True) \
             -> mx.io.DataIter:
         batches: mx.io.NDArrayIter = self.data_iter(data, label, batch_size)
         label_shapes = None if label is None else batches.provide_label
@@ -130,20 +131,22 @@ class NLPModel(metaclass=ABCMeta):
         return batches
 
     def fit(self, batches: mx.io.DataIter, num_epoch: int=1) -> np.array:
-        print ("THE NUM EPOCH IS: ", num_epoch)
         for epoch in range(num_epoch):
-            cnn_fea = []
             for batch in batches:
                 self.mxmod.forward(batch)
 
-                # extract pooled layer feature vector. first index output is softmax layer output
+                # extract pooled layer feature vector. 
+                # [0] index output is softmax layer output
                 temp_symbol_1 = self.mxmod.get_outputs()[1]
                 fea = temp_symbol_1.asnumpy()
-                # print(fea)
+
+                # create combied feature vector
+                self.pool_feature_vector = fea if self.pool_feature_vector is None else np.concatenate((self.pool_feature_vector, fea), axis=0)
 
                 self.mxmod.backward()
                 self.mxmod.update()
 
+            # print (self.pool_feature_vector.shape)
             # sys.exit()    
 
             # sync aux params across devices

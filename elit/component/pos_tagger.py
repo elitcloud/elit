@@ -15,8 +15,7 @@
 # ========================================================================
 
 import sys
-sys.path.append("/Users/tlee/Desktop/elit/python")
-sys.path.append("/home/timothy/elit/python")
+sys.path.append("/Users/tlee/Desktop/elit")
 
 import argparse
 import logging
@@ -145,9 +144,12 @@ class POSModel(NLPModel):
         # n-gram convolution for f2v and a2v
         input_f2v = mx.sym.Variable('data_f2v')
         input_a2v = mx.sym.Variable('data_a2v')
+        input_pool2v = mx.sym.Variable('data_pool2v')
 
+        print ("NUMBER FEATURE: ", num_feature)
         conv_input_f2v = mx.sym.Reshape(data=input_f2v, shape=(batch_size, 1, num_feature, w2v_dim))
         conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, 50))
+        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, 1, 1, 192))
 
 
         pooled_1 = [conv_pool(conv_input_f2v, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',

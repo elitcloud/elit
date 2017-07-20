@@ -151,3 +151,8 @@ ENV/
 
 .idea/
 .vscode/
+
+corpus.friends+nyt+wiki+amazon.fasttext.skip.d100.bin
+nyt-wiki.min10.pos-amb.bin
+wsj-pos.dev.gold.tsv
+wsj-pos.trn.gold.tsv
