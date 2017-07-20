@@ -88,11 +88,17 @@ class NLPModel(metaclass=ABCMeta):
     def feature_vectors(self, states: List[NLPState]) -> np.array:
         xs_0 = [[self.x(state)[0]] for state in states]
         xs_1 = [[self.x(state)[1]] for state in states]
+        xs_2 = [[self.x(state)[2]] for state in states]
+
         out_0 = np.stack(xs_0, axis = 0)
         out_1 = np.stack(xs_1, axis = 0)
+        out_2 = np.stack(xs_2, axis = 0)
+
         out_0 = np.squeeze(out_0, axis=1)
         out_1 = np.squeeze(out_1, axis=1)
-        return [out_0, out_1]
+        out_2 = np.squeeze(out_2, axis=1)
+
+        return [out_0, out_1, out_2]
 
     def train_instances(self, states: List[NLPState], num_threads: int=1) -> Tuple[np.array, np.array]:
         def instances(thread_id=0, batch_size=len(states)):
@@ -106,10 +112,17 @@ class NLPModel(metaclass=ABCMeta):
 
         if num_threads == 1:
             xs, ys = instances()
-            xs_1, xs_2 = zip(*xs)
+            xs_1, xs_2, xs_3 = zip(*xs)
             x1 = np.stack(xs_1, axis=0)
             x2 = np.stack(xs_2, axis=0)
-            data = [x1, x2]
+            x3 = np.stack(xs_3, axis=0)
+
+            print ("DATA SHAPE:")
+            print (x1.shape)
+            print (x2.shape)
+            print (x3.shape)
+
+            data = [x1, x2, x3]
             label = np.array([self.add_label(y) for y in ys])
             return data, label
         else:
@@ -145,9 +158,6 @@ class NLPModel(metaclass=ABCMeta):
 
                 self.mxmod.backward()
                 self.mxmod.update()
-
-            # print (self.pool_feature_vector.shape)
-            # sys.exit()    
 
             # sync aux params across devices
             arg_params, aux_params = self.mxmod.get_params()
@@ -195,11 +205,15 @@ class NLPModel(metaclass=ABCMeta):
                     kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
 
             predictions = self.fit(batches)
+            print (self.pool_feature_vector.shape)
             correct = 0
 
+            pool_feat_counter = 0
             for state, y, yhats in zip(trn_states, ys, predictions):
                 yh = np.argmax(yhats if len(yhats) == self.num_label else yhats[:self.num_label])
-                state.process(self.get_label(yh), yhats)
+                # state.process(self.get_label(yh), yhats)
+                state.process(label=self.get_label(yh), scores=self.pool_feature_vector[pool_feat_counter])
+                pool_feat_counter += 1
                 if y == yh: correct += 1
                 if state.terminate: state.reset()
 
@@ -239,4 +253,4 @@ class NLPModel(metaclass=ABCMeta):
     @classmethod
     def data_iter(cls, data: np.array, label: np.array=None, batch_size=32) -> mx.io.DataIter:
         batch_size = len(data[0]) if len(data[0]) < batch_size else batch_size
-        return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1]}, label=label, batch_size=batch_size, shuffle=False)
+        return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1], 'data_pool2v': data[2]}, label=label, batch_size=batch_size, shuffle=False)
