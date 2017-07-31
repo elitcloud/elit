@@ -178,7 +178,7 @@ class POSModel(NLPModel):
 
         output = mx.sym.Variable('softmax_label')
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
-        
+
         # mx module now contains softmax and pool output
         final = mx.sym.Group([sm, h_pool])
         return mx.mod.Module(symbol=final, data_names=('data_f2v', 'data_a2v'), context=context)

@@ -1,31 +1,29 @@
 #!/usr/bin/env python
 
-try:
-    from setuptools import setup, Extension
-except ImportError:
-    from distutils.core import setup
-    from distutils.extension import Extension
+from setuptools import setup, find_packages
 
-config = {
-    'name':'elit',
-    'description':'The Emory Language Information Toolkit (ELIT).',
-    'author':'Jinho D. Choi',
-    'author_email':'choi@mathcs.emory.edu',
-    'url':'https://github.com/emorynlp/elit',
-    'download_url':'https://github.com/emorynlp/elit/tree/master',
-    'version':'0.1.0',
-    'install_requires':[
+EXCLUDE_FROM_PACKAGES = ['']
+
+setup(
+    name='elit',
+    version='0.1.0',
+    url='https://github.com/emorynlp/elit',
+    download_url='https://github.com/emorynlp/elit/tree/master',
+    author='Jinho D. Choi',
+    author_email='choi@mathcs.emory.edu',
+    description='The Emory Language Information Toolkit (ELIT).',
+    license='ALv2',
+    packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
+    include_package_data=True,
+    install_requires=[
         'nose',
-        'Cython>=0.25',
-        'mxnet>=0.9.4',
-        'argparse>=1.4',
-        'gensim>=1',
-        'fasttext>=0.8'
+        'Cython',
+        'mxnet',
+        'argparse',
+        'gensim',
+        'fasttext'
     ],
-    'packages':['elit'],
-    'scripts':[],
-    'license':'ALv2',
-    'classifiers':[
+    classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
         #   4 - Beta
@@ -47,6 +45,4 @@ config = {
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3 :: Only',
     ]
-}
-
-setup(**config)
+)
