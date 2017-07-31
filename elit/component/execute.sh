@@ -1,0 +1,3 @@
+#python pos_tagger.py --trn_data "/home/timothy/elit/benchmarks/part-of-speech-tagging/wsj-pos.trn.gold.tsv" --dev_data "/home/timothy/elit/benchmarks/part-of-speech-tagging/wsj-pos.dev.gold.tsv" --tsv "0,1" --f2v "/home/timothy/elit/corpus.friends+nyt+wiki+amazon.fasttext.skip.d100.bin" --a2v "/home/timothy/elit/nyt-wiki.min10.pos-amb.bin"
+
+python3.6 pos_tagger.py --trn_data "/Users/tlee/Desktop/elit/wsj-pos.trn.gold.tsv" --dev_data "/Users/tlee/Desktop/elit/wsj-pos.dev.gold.tsv" --tsv "0,1" --f2v "/Users/tlee/Desktop/elit/corpus.friends+nyt+wiki+amazon.fasttext.skip.d100.bin" --a2v "/Users/tlee/Desktop/elit/nyt-wiki.min10.pos-amb.bin" --output_size 50

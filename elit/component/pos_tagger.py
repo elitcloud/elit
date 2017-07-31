@@ -145,40 +145,51 @@ class POSModel(NLPModel):
 
     def init_mxmod(self, batch_size: int, num_label: int, num_feature: int, context: mx.context.Context, w2v_dim: int,
                    ngram_filter_list: Tuple, ngram_filter: int) -> mx.module.Module:
+        
+        # dimension list
         batch_size = -1
+        pool2v_dim = 192
+        a2v_dim = 50
+        conv_channel_num = 3
+
         # n-gram convolution for f2v and a2v
         input_f2v = mx.sym.Variable('data_f2v')
         input_a2v = mx.sym.Variable('data_a2v')
         input_pool2v = mx.sym.Variable('data_pool2v')
 
         conv_input_f2v = mx.sym.Reshape(data=input_f2v, shape=(batch_size, 1, num_feature, w2v_dim))
-        conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, 50))
-        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, 1, num_feature, 192))
+        conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, a2v_dim))
+        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, 1, num_feature, pool2v_dim))
 
 
         pooled_1 = [conv_pool(conv_input_f2v, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
-        pooled_2 = [conv_pool(conv_input_a2v, conv_kernel=(filter, 50), num_filter=ngram_filter, act_type='relu',
+        pooled_2 = [conv_pool(conv_input_a2v, conv_kernel=(filter, a2v_dim), num_filter=ngram_filter, act_type='relu',
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
-        pooled_3 = [conv_pool(conv_input_pool2v, conv_kernel=(filter, 192), num_filter=ngram_filter, act_type='relu',
+        pooled_3 = [conv_pool(conv_input_pool2v, conv_kernel=(filter, pool2v_dim), num_filter=ngram_filter, act_type='relu',
                     pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
           for filter in ngram_filter_list]
 
-
         # concatenate pooled features from f2v and a2v and pool2v
-        pooled = pooled_1 + pooled_2 + pooled_3
-        concat = mx.sym.Concat(*pooled, dim=1)
+        pooled_a = pooled_1 + pooled_2
+        pooled_b = pooled_a + pooled_3
 
-        h_pool = mx.sym.Reshape(name="concat_pooling", data=concat, shape=(batch_size, 3*ngram_filter * len(ngram_filter_list)))
+        concat_1 = mx.sym.Concat(*pooled_a, dim=1)
+        h_pool_1 = mx.sym.Reshape(name="concat_pooling_1", data=concat_1, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
+
+        concat_2 = mx.sym.Concat(*pooled_b, dim=1)
+        h_pool_2 = mx.sym.Reshape(name="concat_pooling_2", data=concat_2, shape=(batch_size, 3 * ngram_filter * len(ngram_filter_list)))
 
       # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
 
         # block gradient
-        h_pool = mx.sym.BlockGrad(h_pool, name="concat_pooling")
+        h_pool_feat = mx.sym.BlockGrad(h_pool_1, name="concat_pooling_temp")
+        h_pool = mx.sym.BlockGrad(h_pool_2, name="concat_pooling")
+
 
         # fully connected
         fc_weight = mx.sym.Variable('fc_weight')
@@ -189,7 +200,10 @@ class POSModel(NLPModel):
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
         
         # mx module now contains softmax and pool output
-        final = mx.sym.Group([sm, h_pool])
+        final = mx.sym.Group([sm, h_pool_feat])
+
+        # print (final.debug_str())
+
         return mx.mod.Module(symbol=final, data_names=('data_f2v', 'data_a2v', 'data_pool2v'), context=context)
 
 

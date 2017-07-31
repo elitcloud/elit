@@ -117,10 +117,10 @@ class NLPModel(metaclass=ABCMeta):
             x2 = np.stack(xs_2, axis=0)
             x3 = np.stack(xs_3, axis=0)
 
-            print ("DATA SHAPE:")
-            print (x1.shape)
-            print (x2.shape)
-            print (x3.shape)
+            # print ("DATA SHAPE:")
+            # print (x1.shape)
+            # print (x2.shape)
+            # print (x3.shape)
 
             data = [x1, x2, x3]
             label = np.array([self.add_label(y) for y in ys])
@@ -205,7 +205,7 @@ class NLPModel(metaclass=ABCMeta):
                     kvstore=kvstore, optimizer=optimizer, optimizer_params=optimizer_params)
 
             predictions = self.fit(batches)
-            print (self.pool_feature_vector.shape)
+            # print (self.pool_feature_vector.shape)
             correct = 0
 
             pool_feat_counter = 0
@@ -219,13 +219,14 @@ class NLPModel(metaclass=ABCMeta):
 
             trn_acc = correct / len(ys)
             dev_eval = self.evaluate(dev_states, batch_size=self.batch_size)
+            # dev_eval = 0
             tt = time.time() - st
             logging.info('%6d: trn-acc = %6.4f, dev-eval = %6.4f, time = %d' % (step, trn_acc, dev_eval, tt))
             best_eval = max(dev_eval, best_eval)
 
         logging.info('best: %6.4f' % best_eval)
 
-    def evaluate(self, states: List[NLPState], batch_size=32):
+    def evaluate(self, states: List[NLPState], batch_size: int=32):
         for state in states: state.reset()
         backup = states
 
@@ -234,9 +235,13 @@ class NLPModel(metaclass=ABCMeta):
             batches: mx.io.NDArrayIter = self.bind(xs, batch_size=batch_size, for_training=False)
             predictions = self.predict(batches)
 
+            pool_feat_counter = 0
             for state, yhats in zip(states, predictions):
                 yh = np.argmax(yhats if len(yhats) == self.num_label else yhats[:self.num_label])
-                state.process(self.get_label(yh), yhats)
+                state.process(label=self.get_label(yh), scores=self.pool_feature_vector[pool_feat_counter])
+                pool_feat_counter += 1
+
+                # state.process(self.get_label(yh), yhats)
 
             states = [state for state in states if not state.terminate]
 
@@ -251,6 +256,7 @@ class NLPModel(metaclass=ABCMeta):
     # ============================== Helper ==============================
 
     @classmethod
-    def data_iter(cls, data: np.array, label: np.array=None, batch_size=32) -> mx.io.DataIter:
+    def data_iter(cls, data: np.array, label: np.array=None, batch_size: int=64) -> mx.io.DataIter:
         batch_size = len(data[0]) if len(data[0]) < batch_size else batch_size
         return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1], 'data_pool2v': data[2]}, label=label, batch_size=batch_size, shuffle=False)
+        # return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1], 'data_pool2v': data[2]}, label=label, batch_size=batch_size, shuffle=False)
