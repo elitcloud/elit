@@ -15,15 +15,16 @@
 # ========================================================================
 import functools
 from enum import Enum
+from itertools import islice
 from typing import Dict
 from typing import List
 from typing import Union
-from itertools import islice
-from elit.bisect import bisect_left
-from elit.bisect import bisect_right
-from elit.bisect import bisect_index
-from elit.bisect import bisect_remove
-from elit.bisect import insort_right
+
+from elit.util.bisect import bisect_index
+from elit.util.bisect import bisect_left
+from elit.util.bisect import bisect_remove
+from elit.util.bisect import bisect_right
+from elit.util.bisect import insort_right
 
 __author__ = 'Jinho D. Choi'
 
