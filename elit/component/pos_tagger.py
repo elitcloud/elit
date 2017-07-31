@@ -188,8 +188,6 @@ class POSModel(NLPModel):
 
         # block gradient
         h_pool_feat = mx.sym.BlockGrad(h_pool_1, name="concat_pooling_temp")
-        h_pool = mx.sym.BlockGrad(h_pool_2, name="concat_pooling")
-
 
         # fully connected
         fc_weight = mx.sym.Variable('fc_weight')
