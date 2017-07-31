@@ -192,7 +192,7 @@ class POSModel(NLPModel):
         # fully connected
         fc_weight = mx.sym.Variable('fc_weight')
         fc_bias = mx.sym.Variable('fc_bias')
-        fc = mx.sym.FullyConnected(data=h_pool, weight=fc_weight, bias=fc_bias, num_hidden=num_label)
+        fc = mx.sym.FullyConnected(data=h_pool_2, weight=fc_weight, bias=fc_bias, num_hidden=num_label)
 
         output = mx.sym.Variable('softmax_label')
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
