@@ -21,7 +21,8 @@ setup(
         'mxnet',
         'argparse',
         'gensim',
-        'fasttext'
+        'fasttext',
+        'numpy'
     ],
     classifiers=[
         # How mature is this project? Common values are
