@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component.template.lexicon import *
 
-__author__ = 'Jinho D. Choi'
 
-word_embeddings = KeyedVectors.load_word2vec_format('resources/sample/sample.w2v.bin', binary=True)
-lexicon = NLPLexiconMapper(word_embeddings)
-
-print(get_default_vector(word_embeddings))
-print(get_root_vector(word_embeddings))
-print(get_vector(word_embeddings, 'Jinho'))
-print(get_vector(word_embeddings, ''))
+# from elit.component.template.lexicon import *
+#
+# __author__ = 'Jinho D. Choi'
+#
+# word_embeddings = KeyedVectors.load_word2vec_format('resources/sample/sample.w2v.bin', binary=True)
+# lexicon = NLPLexiconMapper(word_embeddings)
+#
+# print(get_default_vector(word_embeddings))
+# print(get_root_vector(word_embeddings))
+# print(get_vector(word_embeddings, 'Jinho'))
+# print(get_vector(word_embeddings, ''))
