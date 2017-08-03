@@ -168,6 +168,8 @@ class NLPModel(metaclass=ABCMeta):
 
         return self.predict(batches)
 
+    def reset_pool_feature_vector(self):
+        self.pool_feature_vector = None
 
     def predict(self, batches: mx.io.DataIter) -> np.array:
         # print (self.mxmod.predict(batches))
@@ -192,6 +194,7 @@ class NLPModel(metaclass=ABCMeta):
         previous_label = []
         for step in range(1, num_steps+1):
             st = time.time()
+            self.reset_pool_feature_vector()
             shuffle(trn_states)
             trn_states.sort(key=lambda x: x.reset_count)
             xs, ys = self.train_instances(trn_states[:bag_size])
