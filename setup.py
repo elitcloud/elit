@@ -1,8 +1,41 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+from setuptools.command.install import install
+from subprocess import call
+import os
 
 EXCLUDE_FROM_PACKAGES = ['']
+
+BASEPATH = os.path.dirname(os.path.abspath(__file__))
+TOKENIZER_BUILD_PATH = os.path.join(BASEPATH, 'elit/tokenizer/src')
+
+
+class TokenizerInstall(install):
+    """
+    Class for build the C library of tokenizer
+    """
+
+    def run(self):
+        """
+        Build and install the shared library of hostapd
+        """
+
+        def compile_tokenizer():
+            """
+            Compile the shared library of hostapd
+            """
+            call(['make'], cwd=TOKENIZER_BUILD_PATH)
+
+        # Before installing, we compile the tokenizer library first
+        self.execute(compile_tokenizer, [],
+                     'Compiling tokenizer library')
+
+        install.run(self)
+
+
+extension_mod = Extension("_tokenizer",
+                          ["./elit/tokenizer/src/_tokenizer_module.cc", "./elit/tokenizer/src/tokenizer.cc"])
 
 setup(
     name='elit',
@@ -45,5 +78,9 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3 :: Only',
-    ]
+    ],
+    ext_modules=[extension_mod],
+    cmdclass={
+        'install': TokenizerInstall,
+    }
 )
