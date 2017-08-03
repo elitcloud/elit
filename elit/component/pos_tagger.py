@@ -15,6 +15,7 @@
 # ========================================================================
 
 import sys
+# sys.path.append("/home/szahir2/elit")
 sys.path.append("/Users/tlee/Desktop/elit")
 
 import argparse
@@ -131,7 +132,8 @@ class POSModel(NLPModel):
     # ============================== Feature ==============================
 
     def x(self, state: POSState) -> np.array:
-        vectors_pos_score = [state.features(state.get_node(state.idx_curr, window))[0] for window in self.feature_context]
+        # vectors_pos_score = [state.features(state.get_node(state.idx_curr, window))[0] for window in self.feature_context]
+        vectors_pos_score = [state.features(state.get_node(state.idx_curr, 0))[0]]
         vectors_f2v = [state.features(state.get_node(state.idx_curr, window))[1] for window in self.feature_context]
         vectors_a2v = [state.features(state.get_node(state.idx_curr, window))[2] for window in self.feature_context]
 
@@ -148,7 +150,7 @@ class POSModel(NLPModel):
         
         # dimension list
         batch_size = -1
-        pool2v_dim = 192
+        pool2v_dim = 2 * ngram_filter * len(ngram_filter_list)
         a2v_dim = 50
         conv_channel_num = 3
 
@@ -159,7 +161,7 @@ class POSModel(NLPModel):
 
         conv_input_f2v = mx.sym.Reshape(data=input_f2v, shape=(batch_size, 1, num_feature, w2v_dim))
         conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, a2v_dim))
-        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, 1, num_feature, pool2v_dim))
+        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, pool2v_dim))
 
 
         pooled_1 = [conv_pool(conv_input_f2v, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
@@ -170,20 +172,24 @@ class POSModel(NLPModel):
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
-        pooled_3 = [conv_pool(conv_input_pool2v, conv_kernel=(filter, pool2v_dim), num_filter=ngram_filter, act_type='relu',
-                    pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
-          for filter in ngram_filter_list]
+        pooled_3 = conv_input_pool2v
+
+        # [conv_pool(conv_input_pool2v, conv_kernel=(filter, pool2v_dim), num_filter=ngram_filter, act_type='relu',
+        #             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
+        #   for filter in ngram_filter_list]
 
         # concatenate pooled features from f2v and a2v and pool2v
         pooled_a = pooled_1 + pooled_2
-        pooled_b = pooled_a + pooled_3
+        
 
         concat_1 = mx.sym.Concat(*pooled_a, dim=1)
         h_pool_1 = mx.sym.Reshape(name="concat_pooling_1", data=concat_1, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
 
-        concat_2 = mx.sym.Concat(*pooled_b, dim=1)
-        h_pool_2 = mx.sym.Reshape(name="concat_pooling_2", data=concat_2, shape=(batch_size, 3 * ngram_filter * len(ngram_filter_list)))
-
+        
+        concat_2 = mx.sym.Concat(h_pool_1,pooled_3,dim=1) #mx.sym.Concat(*pooled_b, dim=1)
+        # h_pool_2 = mx.sym.Reshape(name="concat_pooling_2", data=concat_2, shape=(batch_size, (num_feature+2) * ngram_filter * len(ngram_filter_list)))
+        h_pool_2 = concat_2
+        
       # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
 
         # block gradient
