@@ -16,9 +16,6 @@
 import functools
 from enum import Enum
 from itertools import islice
-from typing import Dict
-from typing import List
-from typing import Union
 
 from elit.util.bisect import bisect_index
 from elit.util.bisect import bisect_left
