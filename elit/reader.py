@@ -14,53 +14,68 @@
 # limitations under the License.
 # ========================================================================
 import re
-import io
-from elit.structure import *
+from elit.structure import DELIM_ARC, DELIM_ARC_KV, DELIM_FEAT_KV, BLANK, ROOT_TAG, \
+    NLPNode, NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
-_TAB      = re.compile('\t')
-_FEATS    = re.compile('\\|')
+_TAB = re.compile('\t')
+_FEATS = re.compile('\\|')
 _FEATS_KV = re.compile(DELIM_FEAT_KV)
-_ARC      = re.compile(DELIM_ARC)
-_ARC_KV   = re.compile(DELIM_ARC_KV)
+_ARC = re.compile(DELIM_ARC)
+_ARC_KV = re.compile(DELIM_ARC_KV)
 
 
 class TSVReader:
-    """
-    :param word_index: the column index of word forms.
-    :param lemma_index: the column index of lemma.
-    :param pos_index: the column index of part-of-speech tags.
-    :param feats_index: the column index of extra features.
-    :param head_index: the column index of primary head IDs.
-    :param deprel_index: the column index of primary dependency sys_labels.
-    :param sheads_index: the column index of secondary dependency heads.
-    :param nament_index: the column index of of named entity tags.
-    """
-    def __init__(self, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1, feats_index: int=-1,
-                 head_index: int=-1, deprel_index: int=-1, sheads_index: int=-1, nament_index: int=-1):
-        self.word_index: int = word_index
-        self.lemma_index: int = lemma_index
-        self.pos_index: int = pos_index
-        self.feats_index: int = feats_index
-        self.head_index: int = head_index
-        self.deprel_index: int = deprel_index
-        self.sheads_index: int = sheads_index
-        self.nament_index: int = nament_index
-        self.ins: io.TextIOWrapper = None
+    def __init__(self, word_index=-1, lemma_index=-1, pos_index=-1,
+                 feats_index=-1, head_index=-1, deprel_index=-1,
+                 sheads_index=-1, nament_index=-1):
+        """
+
+        :param word_index: the column index of word forms.1
+        :type word_index: int
+        :param lemma_index: the column index of lemma.
+        :type lemma_index: int
+        :param pos_index: the column index of part-of-speech tags.
+        :type pos_index: int
+        :param feats_index: the column index of extra features.
+        :type feats_index: int
+        :param head_index: the column index of primary head IDs.
+        :type head_index: int
+        :param deprel_index: the column index of primary dependency sys_labels.
+        :type deprel_index: int
+        :param sheads_index: the column index of secondary dependency heads.
+        :type sheads_index: int
+        :param nament_index: the column index of of named entity tags.
+        :type nament_index: int
+        """
+        self.word_index = word_index
+        self.lemma_index = lemma_index
+        self.pos_index = pos_index
+        self.feats_index = feats_index
+        self.head_index = head_index
+        self.deprel_index = deprel_index
+        self.sheads_index = sheads_index
+        self.nament_index = nament_index
+        self.ins = None
 
     def __next__(self):
         graph = self.next
-        if graph: return graph
-        else: raise StopIteration
+        if graph:
+            return graph
+        else:
+            raise StopIteration
 
     def __iter__(self):
         return self
 
     @classmethod
-    def create_reader(cls, reader: 'TSVReader') -> 'TSVReader':
+    def create_reader(cls, reader):
         """
+
+        :type reader: TSVReader
         :return: a reader adapting the configuration (not the input stream) from the other reader.
+        :rtype: TSVReader
         """
         return TSVReader(word_index=reader.word_index,
                          lemma_index=reader.lemma_index,
@@ -72,42 +87,91 @@ class TSVReader:
                          nament_index=reader.nament_index)
 
     def open(self, filename: str):
+        """
+
+        :param filename: file
+        :type filename: str
+        :return: file
+        :rtype: TextIOWrapper[str]
+        """
         self.ins = open(filename)
         return self.ins
 
     def close(self):
+        """
+        Close file
+        """
         self.ins.close()
 
     @property
     def next(self):
+        """
+
+        :return: get next graph
+        :rtype: NLPGraph
+        """
         tsv = []
 
         for line in self.ins:
             line = line.strip()
-            if line:  tsv.append(_TAB.split(line))
-            elif tsv: break
+            if line:
+                tsv.append(_TAB.split(line))
+            elif tsv:
+                break
 
         return self.tsv_to_graph(tsv) if tsv else None
 
     @property
     def next_all(self):
+        """
+
+        :return: List of NLPGraph
+        :rtype: List[NLPGraph]
+        """
         return [graph for graph in self]
 
-    def tsv_to_graph(self, tsv: List[List[str]]):
+    def tsv_to_graph(self, tsv):
         """
+
         :param tsv: each row represents a token, each column represents a field.
+        :type tsv: List[List[str]]
         """
-        def get_field(row: List[str], index: int) -> str:
+
+        def get_field(row, index):
+            """
+
+            :param row:
+            :type row: List[str]
+            :param index:
+            :type index: int
+            :return: ROOT_TAG
+            :rtype: str
+            """
             return ROOT_TAG if row is None else row[index] if index >= 0 else None
 
-        def get_feats(row: List[str]) -> Union[Dict[str, str], None]:
+        def get_feats(row):
+            """
+
+            :param row:
+            :type row: List[str]
+            :return: feats
+            :rtype: Union[Dict[str, str], None]
+            """
             if self.feats_index >= 0:
-                f = row[self.feats_index]
-                if f == BLANK: return None
-                return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
+                feats = row[self.feats_index]
+                if feats == BLANK:
+                    return None
+                return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(feats))}
             return None
 
-        def init_node(i: int) -> NLPNode:
+        def init_node(i):
+            """
+
+            :param i:
+            :type i: int
+            :return: NLPNode
+            :rtype: NLPNode
+            """
             row = tsv[i]
             node_id = i + 1
             word = get_field(row, self.word_index)
@@ -115,17 +179,22 @@ class TSVReader:
             pos = get_field(row, self.pos_index)
             nament = get_field(row, self.nament_index)
             feats = get_feats(row) if row else None
-            return NLPNode(node_id=node_id, word=word, lemma=lemma, pos=pos, nament=nament, feats=feats)
+            return NLPNode(node_id=node_id,
+                           word=word,
+                           lemma=lemma,
+                           pos=pos,
+                           nament=nament,
+                           feats=feats)
 
-        g = NLPGraph([init_node(i) for i in range(len(tsv))])
+        graph = NLPGraph([init_node(i) for i in range(len(tsv))])
 
         if self.head_index >= 0:
-            for i, n in enumerate(g):
-                t = tsv[i]
-                n.set_parent(g.nodes[int(t[self.head_index])], t[self.deprel_index])
+            for i, node in enumerate(graph):
+                _tsv = tsv[i]
+                node.set_parent(graph.nodes[int(_tsv[self.head_index])], _tsv[self.deprel_index])
 
-                if self.sheads_index >= 0 and t[self.sheads_index] != BLANK:
-                    for arc in map(_ARC_KV.split, _ARC.split(t[self.sheads_index])):
-                        n.add_secondary_parent(g.nodes[int(arc[0])], arc[1])
+                if self.sheads_index >= 0 and _tsv[self.sheads_index] != BLANK:
+                    for arc in map(_ARC_KV.split, _ARC.split(_tsv[self.sheads_index])):
+                        node.add_secondary_parent(graph.nodes[int(arc[0])], arc[1])
 
-        return g
+        return graph
