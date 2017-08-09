@@ -37,17 +37,18 @@ class TSVReader:
     :param sheads_index: the column index of secondary dependency heads.
     :param nament_index: the column index of of named entity tags.
     """
-    def __init__(self, word_index: int=-1, lemma_index: int=-1, pos_index: int=-1, feats_index: int=-1,
-                 head_index: int=-1, deprel_index: int=-1, sheads_index: int=-1, nament_index: int=-1):
-        self.word_index: int = word_index
-        self.lemma_index: int = lemma_index
-        self.pos_index: int = pos_index
-        self.feats_index: int = feats_index
-        self.head_index: int = head_index
-        self.deprel_index: int = deprel_index
-        self.sheads_index: int = sheads_index
-        self.nament_index: int = nament_index
-        self.ins: io.TextIOWrapper = None
+    def __init__(self, word_index=-1, lemma_index=-1, pos_index=-1,
+                 feats_index=-1, head_index=-1, deprel_index=-1,
+                 sheads_index=-1, nament_index=-1):
+        self.word_index = word_index
+        self.lemma_index = lemma_index
+        self.pos_index = pos_index
+        self.feats_index = feats_index
+        self.head_index = head_index
+        self.deprel_index = deprel_index
+        self.sheads_index = sheads_index
+        self.nament_index = nament_index
+        self.ins = None
 
     def __next__(self):
         graph = self.next
@@ -58,7 +59,7 @@ class TSVReader:
         return self
 
     @classmethod
-    def create_reader(cls, reader: 'TSVReader') -> 'TSVReader':
+    def create_reader(cls, reader):
         """
         :return: a reader adapting the configuration (not the input stream) from the other reader.
         """
@@ -93,21 +94,22 @@ class TSVReader:
     def next_all(self):
         return [graph for graph in self]
 
-    def tsv_to_graph(self, tsv: List[List[str]]):
+    def tsv_to_graph(self, tsv):
         """
         :param tsv: each row represents a token, each column represents a field.
         """
-        def get_field(row: List[str], index: int) -> str:
+
+        def get_field(row, index):
             return ROOT_TAG if row is None else row[index] if index >= 0 else None
 
-        def get_feats(row: List[str]) -> Union[Dict[str, str], None]:
+        def get_feats(row):
             if self.feats_index >= 0:
                 f = row[self.feats_index]
                 if f == BLANK: return None
                 return {feat[0]: feat[1] for feat in map(_FEATS_KV.split, _FEATS.split(f))}
             return None
 
-        def init_node(i: int) -> NLPNode:
+        def init_node(i):
             row = tsv[i]
             node_id = i + 1
             word = get_field(row, self.word_index)
