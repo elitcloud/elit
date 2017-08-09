@@ -58,19 +58,19 @@ class NLPNode:
         :type feats: Dict[str, str]
         """
         # fields
-        self.node_id: int = node_id
-        self.word: str = word
-        self.lemma: str = lemma
-        self.pos: str = pos
-        self.nament: str = nament
-        self.feats: Dict[str, str] = feats or {}
+        self.node_id = node_id
+        self.word = word
+        self.lemma = lemma
+        self.pos = pos
+        self.nament = nament
+        self.feats = feats or {}
 
         # dependencies
-        self.parent: NLPNode = None
-        self.children: List[NLPNode] = []
-        self.secondary_parents: List[NLPNode] = []
-        self.secondary_children: List[NLPNode] = []
-        self.deprels: Dict[NLPNode, str] = {}
+        self.parent = None
+        self.children = []
+        self.secondary_parents = []
+        self.secondary_children = []
+        self.deprels = {}
 
     def __hash__(self):
         return hash(id(self))
