@@ -33,26 +33,30 @@ BLANK = '_'
 ROOT_TAG = '@#r$%'
 
 # delimiters
-DELIM_FEAT    = '|'
+DELIM_FEAT = '|'
 DELIM_FEAT_KV = '='
-DELIM_ARC     = ';'
-DELIM_ARC_KV  = ':'
+DELIM_ARC = ';'
+DELIM_ARC_KV = ':'
 
 
 @functools.total_ordering
 class NLPNode:
-    """
-    :param node_id: node id.
-    :param word: word form.
-    :param lemma: lemma.
-    :param pos: part-of-speech tag.
-    :param nament: named entity tag.
-    :param feats: extra features.
-    """
-    def __init__(self, node_id: int=-1, word: str=None, lemma: str=None, pos: str=None, nament: str=None,
-                 feats: Dict[str, str]=None):
     def __init__(self, node_id=-1, word=None, lemma=None, pos=None, nament=None,
                  feats=None):
+        """
+        :param node_id: node id.
+        :type node_id: int
+        :param word: word form.
+        :type word: str
+        :param lemma: lemma.
+        :type lemma: str
+        :param pos: part-of-speech tag.
+        :type pos: str
+        :param nament: named entity tag.
+        :type nament: str
+        :param feats: extra features.
+        :type feats: Dict[str, str]
+        """
         # fields
         self.node_id: int = node_id
         self.word: str = word
@@ -79,56 +83,76 @@ class NLPNode:
 
     def __str__(self):
         node_id = str(self.node_id)
-        word    = self.word if self.word else BLANK
-        lemma   = self.lemma if self.lemma else BLANK
-        pos     = self.pos if self.pos else BLANK
-        nament  = self.nament if self.nament else BLANK
-        feats   = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
+        word = self.word if self.word else BLANK
+        lemma = self.lemma if self.lemma else BLANK
+        pos = self.pos if self.pos else BLANK
+        nament = self.nament if self.nament else BLANK
+        feats = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
         head_id = str(self.parent.node_id) if self.parent else BLANK
-        deprel  = self.get_dependency_label(self.parent) or BLANK
-        sheads  = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.node_id), self.get_dependency_label(parent)))
-                                 for parent in self.secondary_parents) if self.secondary_parents else BLANK
+        deprel = self.get_dependency_label(self.parent) or BLANK
+        sheads = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.node_id), self.get_dependency_label(parent)))
+                                for parent in self.secondary_parents) if self.secondary_parents else BLANK
         return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     def set_pos(self, pos):
         """
+
         :param pos: the part-of-speech tag to be assigned to this node.
+        :type pos: str
         :return: the previous part-of-speech tag if exists; otherwise, None.
+        :rtype: str
         """
         self.pos, prev = pos, self.pos
         return prev
 
     @classmethod
     def root(cls):
+        """
+
+        :return: cls
+        :rtype: cls
+        """
         return cls(node_id=0, word=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)
 
     @property
     def grandparent(self):
         """
+
         :return: the GRANDPARENT of this node if exists; otherwise, None.
+        :rtype: NLPNode
         """
         return self.parent.parent if self.parent else None
 
     def get_dependency_label(self, node=None):
         """
         :param node: the parent of this node.
-        :return: the dependency label between this node and the PARENT node if exists; otherwise, None.
+        :type node: NLPNode
+        :return: the dependency label between this node and the PARENT node
+                if exists; otherwise, None.
+        :rtype: str
         """
-        if node is None: node = self.parent
+        if node is None:
+            node = self.parent
         return self.deprels.get(node, None) if node else None
 
     def set_dependency_label(self, node, label):
         """
         :param node: the PARENT of this node.
+        :type node: NLPNode
         :param label: the dependency relation to the PARENT.
+        :type label: str
         """
-        if label: self.deprels[node] = label
+        if label:
+            self.deprels[node] = label
 
     def set_parent(self, node, label=None):
         """
         :param node: the node to be set as the PARENT of this node.
+        :type node: NLPNode
         :param label: the dependency relation between this node and the PARENT.
+        :type label: str
         :return the previous PARENT if exists; otherwise, None.
+        :rtype: NLPNode
         """
         # handle the previous PARENT
         prev_parent = self.parent
@@ -149,14 +173,18 @@ class NLPNode:
     def child_of(self, node):
         """
         :param node: the node to be compared.
+        :type node: NLPNode
         :return: True if this node is a child of the specific node; otherwise, False.
+        :rtype: bool
         """
         return self.parent and self.parent == node
 
     def add_secondary_parent(self, node, label=None):
         """
         :param node: the node to be added as a secondary PARENT.
+        :type node: NLPNode
         :param label: the dependency relation to the PARENT.
+        :type label: str
         """
         insort_right(self.secondary_parents, node)
         insort_right(node.secondary_children, self)
@@ -165,7 +193,9 @@ class NLPNode:
     def remove_secondary_parent(self, node):
         """
         :param node: the node to be removed from the secondary PARENT list.
+        :type node: NLPNode
         :return: True if the node is removed successfully; otherwise, False.
+        :rtype: bool
         """
         idx = bisect_index(self.secondary_parents, node)
         if idx >= 0:
@@ -177,8 +207,10 @@ class NLPNode:
     def get_leftmost_child(self, order=0):
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
-        :return: the leftmost child whose token position is on the left-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the leftmost child whose token position is on the left-hand side of this node
+                if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = order
         return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] < self else None
@@ -186,8 +218,10 @@ class NLPNode:
     def get_rightmost_child(self, order=0):
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
-        :return: the rightmost child whose token position is on the right-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the rightmost child whose token position is on the right-hand side of this node
+                if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = len(self.children) - 1 - order
         return self.children[idx] if 0 <= idx < len(self.children) and self.children[idx] > self else None
@@ -195,8 +229,10 @@ class NLPNode:
     def get_left_nearest_child(self, order=0):
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
-        :return: the left-nearest child whose token position is on the left-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the left-nearest child whose token position is on the left-hand side of this node
+                if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = bisect_left(self.children, self) - 1 - order
         return self.children[idx] if 0 <= idx < len(self.children) else None
@@ -204,8 +240,10 @@ class NLPNode:
     def get_right_nearest_child(self, order=0):
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
-        :return: the right-nearest primary child whose token position is on the right-hand side of this node
-                 if exists; otherwise, None.
+        :type order: int
+        :return: the right-nearest primary child whose token position is on the right-hand side of
+                this node if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = bisect_right(self.children, self) + order
         return self.children[idx] if 0 <= idx < len(self.children) else None
@@ -213,8 +251,10 @@ class NLPNode:
     def get_leftmost_sibling(self, order=0):
         """
         :param order: order displacement (0: leftmost, 1: 2nd leftmost, etc.).
-        :return: the leftmost primary sibling whose token position is on the left-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the leftmost primary sibling whose token position is on the left-hand side of
+                this node if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = order
         return self.parent.children[idx] \
@@ -223,8 +263,10 @@ class NLPNode:
     def get_rightmost_sibling(self, order=0):
         """
         :param order: order displacement (0: rightmost, 1: 2nd rightmost, etc.).
-        :return: the rightmost primary sibling whose token position is on the right-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the rightmost primary sibling whose token position is on the right-hand side of
+                this node if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         idx = len(self.children) - 1 - order
         return self.parent.children[idx] \
@@ -233,8 +275,10 @@ class NLPNode:
     def get_left_nearest_sibling(self, order=0):
         """
         :param order: order displacement (0: left-nearest, 1: 2nd left-nearest, etc.).
-        :return: the left-nearest primary sibling whose token position is on the left-hand side of this node if exists;
-                 otherwise, None.
+        :type order: int
+        :return: the left-nearest primary sibling whose token position is on the left-hand side of
+                this node if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         if self.parent:
             idx = bisect_left(self.parent.children, self) - 1 - order
@@ -244,8 +288,10 @@ class NLPNode:
     def get_right_nearest_sibling(self, order=0):
         """
         :param order: order displacement (0: right-nearest, 1: 2nd right-nearest, etc.).
-        :return: the right-nearest primary sibling whose token position is on the right-hand side of this node
-                 if exists; otherwise, None.
+        :type order: int
+        :return: the right-nearest primary sibling whose token position is on the right-hand side of
+                this node if exists; otherwise, None.
+        :rtype: Union['NLPNode', None]
         """
         if self.parent:
             idx = bisect_right(self.parent.children, self) + 1 + order
@@ -254,19 +300,22 @@ class NLPNode:
 
 
 class NLPGraph:
-    """
-    :param nodes: a list of NLP nodes whose parents are not initialized.
-    :type  nodes: List[NLPNode]
-      An artificial root is automatically added to the front of the node list.
-    """
 
     def __init__(self, nodes=None):
+        """
+        :param nodes: a list of NLP nodes whose parents are not initialized.
+        :type  nodes: List[NLPNode]
+          An artificial root is automatically added to the front of the node list.
+        """
         self.nodes = [NLPNode.root()]
-        if nodes: self.nodes.extend(nodes)
+        if nodes:
+            self.nodes.extend(nodes)
 
     def __next__(self):
-        try: return next(self._iter)
-        except StopIteration: raise StopIteration
+        try:
+            return next(self._iter)
+        except StopIteration:
+            raise StopIteration
 
     def __iter__(self):
         self._iter = islice(self.nodes, 1, len(self.nodes))
@@ -280,22 +329,23 @@ class NLPGraph:
 
 
 class Relation(Enum):
-    PARENT                    = 'p'
-    LEFTMOST_CHILD            = 'lmc'
-    RIGHTMOST_CHILD           = 'rmc'
-    LEFT_NEAREST_CHILD        = 'lnc'
-    RIGHT_NEAREST_CHILD       = 'rnc'
-    LEFTMOST_SIBLING          = 'lms'
-    RIGHTMOST_SIBLING         = 'rms'
-    LEFT_NEAREST_SIBLING      = 'lns'
-    RIGHT_NEAREST_SIBLING     = 'rns'
 
-    GRANDPARENT               = 'gp'
-    SND_LEFTMOST_CHILD        = 'lmc2'
-    SND_RIGHTMOST_CHILD       = 'rmc2'
-    SND_LEFT_NEAREST_CHILD    = 'lnc2'
-    SND_RIGHT_NEAREST_CHILD   = 'rnc2'
-    SND_LEFTMOST_SIBLING      = 'lms2'
-    SND_RIGHTMOST_SIBLING     = 'rms2'
-    SND_LEFT_NEAREST_SIBLING  = 'lns2'
+    PARENT = 'p'
+    LEFTMOST_CHILD = 'lmc'
+    RIGHTMOST_CHILD = 'rmc'
+    LEFT_NEAREST_CHILD = 'lnc'
+    RIGHT_NEAREST_CHILD = 'rnc'
+    LEFTMOST_SIBLING = 'lms'
+    RIGHTMOST_SIBLING = 'rms'
+    LEFT_NEAREST_SIBLING = 'lns'
+    RIGHT_NEAREST_SIBLING = 'rns'
+
+    GRANDPARENT = 'gp'
+    SND_LEFTMOST_CHILD = 'lmc2'
+    SND_RIGHTMOST_CHILD = 'rmc2'
+    SND_LEFT_NEAREST_CHILD = 'lnc2'
+    SND_RIGHT_NEAREST_CHILD = 'rnc2'
+    SND_LEFTMOST_SIBLING = 'lms2'
+    SND_RIGHTMOST_SIBLING = 'rms2'
+    SND_LEFT_NEAREST_SIBLING = 'lns2'
     SND_RIGHT_NEAREST_SIBLING = 'rns2'
