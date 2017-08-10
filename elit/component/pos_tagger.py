@@ -15,6 +15,7 @@
 # ========================================================================
 
 import sys
+# sys.path.append("/home/szahir2/elit")
 sys.path.append("/Users/tlee/Desktop/elit")
 
 import argparse
@@ -52,6 +53,10 @@ class POSLexicon(NLPLexiconMapper):
         super().__init__(w2v, f2v)
         self.a2v: NLPEmbedding = NLPEmbedding(a2v, 'word', 'a2v') if a2v else None
         self.pos_zeros = np.zeros((output_size,)).astype('float32')
+
+    def enable_pool_conv(self, pool_size: int=50):
+        self.pos_zeros = np.zeros((pool_size,)).astype('float32')
+
 
 
 class POSState(NLPState):
@@ -127,61 +132,83 @@ class POSModel(NLPModel):
     # ============================== Feature ==============================
 
     def x(self, state: POSState) -> np.array:
-        vectors_pos_score = [state.features(state.get_node(state.idx_curr, window))[0] for window in self.feature_context]
+        # vectors_pos_score = [state.features(state.get_node(state.idx_curr, window))[0] for window in self.feature_context]
+        vectors_pos_score = [state.features(state.get_node(state.idx_curr, 0))[0]]
         vectors_f2v = [state.features(state.get_node(state.idx_curr, window))[1] for window in self.feature_context]
         vectors_a2v = [state.features(state.get_node(state.idx_curr, window))[2] for window in self.feature_context]
 
+        out_pos = np.asarray(vectors_pos_score)
         out_f2v = np.asarray(vectors_f2v)
         out_a2v = np.asarray(vectors_a2v)
-        out = (out_f2v, out_a2v)
+        out = (out_f2v, out_a2v, out_pos)
         return out
 
     # ============================== Module ==============================
 
     def init_mxmod(self, batch_size: int, num_label: int, num_feature: int, context: mx.context.Context, w2v_dim: int,
                    ngram_filter_list: Tuple, ngram_filter: int) -> mx.module.Module:
+        
+        # dimension list
         batch_size = -1
+        pool2v_dim = 2 * ngram_filter * len(ngram_filter_list)
+        a2v_dim = 50
+        conv_channel_num = 3
+
         # n-gram convolution for f2v and a2v
         input_f2v = mx.sym.Variable('data_f2v')
         input_a2v = mx.sym.Variable('data_a2v')
         input_pool2v = mx.sym.Variable('data_pool2v')
 
-        print ("NUMBER FEATURE: ", num_feature)
         conv_input_f2v = mx.sym.Reshape(data=input_f2v, shape=(batch_size, 1, num_feature, w2v_dim))
-        conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, 50))
-        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, 1, 1, 192))
+        conv_input_a2v = mx.sym.Reshape(data=input_a2v, shape=(batch_size, 1, num_feature, a2v_dim))
+        conv_input_pool2v = mx.sym.Reshape(data=input_pool2v, shape=(batch_size, pool2v_dim))
 
 
         pooled_1 = [conv_pool(conv_input_f2v, conv_kernel=(filter, w2v_dim), num_filter=ngram_filter, act_type='relu',
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
-        pooled_2 = [conv_pool(conv_input_a2v, conv_kernel=(filter, 50), num_filter=ngram_filter, act_type='relu',
+        pooled_2 = [conv_pool(conv_input_a2v, conv_kernel=(filter, a2v_dim), num_filter=ngram_filter, act_type='relu',
                             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
                   for filter in ngram_filter_list]
 
+        pooled_3 = conv_input_pool2v
 
-        # concatenate pooled features from f2v and a2v
-        pooled = pooled_1 + pooled_2
-        concat = mx.sym.Concat(*pooled, dim=1)
+        # [conv_pool(conv_input_pool2v, conv_kernel=(filter, pool2v_dim), num_filter=ngram_filter, act_type='relu',
+        #             pool_kernel=(num_feature - filter + 1, 1), pool_stride=(1, 1))
+        #   for filter in ngram_filter_list]
 
-        h_pool = mx.sym.Reshape(name="concat_pooling", data=concat, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
+        # concatenate pooled features from f2v and a2v and pool2v
+        pooled_a = pooled_1 + pooled_2
+        
+
+        concat_1 = mx.sym.Concat(*pooled_a, dim=1)
+        h_pool_1 = mx.sym.Reshape(name="concat_pooling_1", data=concat_1, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
+
+        
+        concat_2 = mx.sym.Concat(h_pool_1,pooled_3,dim=1) #mx.sym.Concat(*pooled_b, dim=1)
+        # h_pool_2 = mx.sym.Reshape(name="concat_pooling_2", data=concat_2, shape=(batch_size, (num_feature+2) * ngram_filter * len(ngram_filter_list)))
+        h_pool_2 = concat_2
+        
       # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
 
         # block gradient
-        h_pool = mx.sym.BlockGrad(h_pool, name="concat_pooling")
+        h_pool_feat = mx.sym.BlockGrad(h_pool_1, name="concat_pooling_temp")
 
         # fully connected
         fc_weight = mx.sym.Variable('fc_weight')
         fc_bias = mx.sym.Variable('fc_bias')
-        fc = mx.sym.FullyConnected(data=h_pool, weight=fc_weight, bias=fc_bias, num_hidden=num_label)
+        fc = mx.sym.FullyConnected(data=h_pool_2, weight=fc_weight, bias=fc_bias, num_hidden=num_label)
 
         output = mx.sym.Variable('softmax_label')
         sm = mx.sym.SoftmaxOutput(data=fc, label=output, name='softmax')
 
         # mx module now contains softmax and pool output
-        final = mx.sym.Group([sm, h_pool])
-        return mx.mod.Module(symbol=final, data_names=('data_f2v', 'data_a2v'), context=context)
+        final = mx.sym.Group([sm, h_pool_feat])
+
+        # print (final.debug_str())
+
+        return mx.mod.Module(symbol=final, data_names=('data_f2v', 'data_a2v', 'data_pool2v'), context=context)
 
 
 def parse_args():
@@ -223,6 +250,7 @@ def main():
     a2v = KeyedVectors.load_word2vec_format(args.a2v, binary=True) if args.a2v else None
 
     lexicon = POSLexicon(w2v=w2v, f2v=f2v, a2v=a2v, output_size=args.output_size)
+    lexicon.enable_pool_conv(pool_size=192)
 
     # model
     model = POSModel(feature_context=args.feature_context, batch_size=64, w2v_dim=100)
