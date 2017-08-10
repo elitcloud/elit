@@ -16,7 +16,6 @@
 import logging
 import time
 from abc import ABCMeta, abstractmethod
-from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import wait
 from itertools import islice
@@ -24,10 +23,6 @@ from random import shuffle
 
 import mxnet as mx
 import numpy as np
-
-from elit.component.template.lexicon import NLPLexiconMapper
-from elit.component.template.state import NLPState
-from elit.structure import NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
@@ -122,8 +117,8 @@ class NLPModel(metaclass=ABCMeta):
         """
         xs_0 = [[self.x(state)[0]] for state in states]
         xs_1 = [[self.x(state)[1]] for state in states]
-        out_0 = np.stack(xs_0, axis = 0)
-        out_1 = np.stack(xs_1, axis = 0)
+        out_0 = np.stack(xs_0, axis=0)
+        out_1 = np.stack(xs_1, axis=0)
         out_0 = np.squeeze(out_0, axis=1)
         out_1 = np.squeeze(out_1, axis=1)
         return [out_0, out_1]
@@ -162,13 +157,13 @@ class NLPModel(metaclass=ABCMeta):
             data = [x1, x2]
             label = np.array([self.add_label(y) for y in ys])
             return data, label
-        else:
-            pool = ThreadPoolExecutor(num_threads)
-            size = np.math.ceil(len(states) / num_threads)
-            futures = [pool.submit(instances, i, size) for i in range(num_threads)]
-            while wait(futures)[1]: pass
-            xxs, yys = zip(*[xys(future) for future in futures])
-            return np.vstack(xxs), np.hstack(yys)
+        pool = ThreadPoolExecutor(num_threads)
+        size = np.math.ceil(len(states) / num_threads)
+        futures = [pool.submit(instances, i, size) for i in range(num_threads)]
+        while wait(futures)[1]:
+            pass
+        xxs, yys = zip(*[xys(future) for future in futures])
+        return np.vstack(xxs), np.hstack(yys)
 
     # ============================== Module ==============================
 
@@ -191,7 +186,9 @@ class NLPModel(metaclass=ABCMeta):
         batches = self.data_iter(data, label, batch_size)
         # mx.io.NDArrayIter
         label_shapes = None if label is None else batches.provide_label
-        self.mxmod.bind(data_shapes=batches.provide_data, label_shapes=label_shapes, for_training=for_training,
+        self.mxmod.bind(data_shapes=batches.provide_data,
+                        label_shapes=label_shapes,
+                        for_training=for_training,
                         force_rebind=force_rebind)
         return batches
 
@@ -205,22 +202,24 @@ class NLPModel(metaclass=ABCMeta):
         :return:
         :rtype: np.array
         """
+        for _ in range(num_epoch):
             for batch in batches:
                 self.mxmod.forward(batch)
 
-                # extract pooled layer feature vector. 
+                # extract pooled layer feature vector.
                 # [0] index output is softmax layer output
                 temp_symbol_1 = self.mxmod.get_outputs()[1]
                 fea = temp_symbol_1.asnumpy()
 
-                # create combied feature vector
-                self.pool_feature_vector = fea if self.pool_feature_vector is None else np.concatenate((self.pool_feature_vector, fea), axis=0)
+                # create combined feature vector
+                if self.pool_feature_vector is None:
+                    self.pool_feature_vector = fea
+                else:
+                    self.pool_feature_vector = np.concatenate((self.pool_feature_vector, fea),
+                                                              axis=0)
 
                 self.mxmod.backward()
                 self.mxmod.update()
-
-            # print (self.pool_feature_vector.shape)
-            # sys.exit()    
 
             # sync aux params across devices
             arg_params, aux_params = self.mxmod.get_params()
@@ -240,8 +239,6 @@ class NLPModel(metaclass=ABCMeta):
         :rtype: np.array
         """
         return self.mxmod.predict(batches)[0].asnumpy()
-        #return ys[:, range(self.label_size)] if ys.shape[1] > self.label_size else ys
-
 
     def train(self, trn_graphs, dev_graphs, lexicon, num_steps=2000, bagging_ratio=0.63,
               initializer=mx.initializer.Normal(0.01), arg_params=None, aux_params=None,
@@ -285,8 +282,7 @@ class NLPModel(metaclass=ABCMeta):
         bag_size = int(len(trn_states) * bagging_ratio)
 
         best_eval = 0
-        previous_label = []
-        for step in range(1, num_steps+1):
+        for step in range(1, num_steps + 1):
             st = time.time()
             shuffle(trn_states)
             trn_states.sort(key=lambda x: x.reset_count)
@@ -306,16 +302,19 @@ class NLPModel(metaclass=ABCMeta):
             for state, y, yhats in zip(trn_states, ys, predictions):
                 yh = np.argmax(yhats if len(yhats) == self.num_label else yhats[:self.num_label])
                 state.process(self.get_label(yh), yhats)
-                if y == yh: correct += 1
-                if state.terminate: state.reset()
+                if y == yh:
+                    correct += 1
+                if state.terminate:
+                    state.reset()
 
             trn_acc = correct / len(ys)
             dev_eval = self.evaluate(dev_states, batch_size=self.batch_size)
             tt = time.time() - st
-            logging.info('%6d: trn-acc = %6.4f, dev-eval = %6.4f, time = %d' % (step, trn_acc, dev_eval, tt))
+            logging.info('%6d: trn-acc = %6.4f, dev-eval = %6.4f, time = %d',
+                         step, trn_acc, dev_eval, tt)
             best_eval = max(dev_eval, best_eval)
 
-        logging.info('best: %6.4f' % best_eval)
+        logging.info('best: %6.4f', best_eval)
 
     def evaluate(self, states, batch_size=32):
         """
@@ -326,6 +325,8 @@ class NLPModel(metaclass=ABCMeta):
         :type batch_size: int
         :return:
         """
+        for state in states:
+            state.reset()
         backup = states
 
         while states:
@@ -364,4 +365,5 @@ class NLPModel(metaclass=ABCMeta):
         :rtype: mx.io.DataIter
         """
         batch_size = len(data[0]) if len(data[0]) < batch_size else batch_size
-        return mx.io.NDArrayIter(data={'data_f2v' : data[0], 'data_a2v': data[1]}, label=label, batch_size=batch_size, shuffle=False)
+        return mx.io.NDArrayIter(data={'data_f2v': data[0], 'data_a2v': data[1]}, label=label,
+                                 batch_size=batch_size, shuffle=False)
