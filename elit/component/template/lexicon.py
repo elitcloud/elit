@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from typing import Union
 
 import numpy as np
 from fasttext.model import WordVectorModel
@@ -26,11 +25,15 @@ __author__ = 'Jinho D. Choi'
 
 
 class NLPEmbedding:
-    def __init__(self, vsm: Union[KeyedVectors, WordVectorModel], key_field: str, emb_field: str):
+    def __init__(self, vsm, key_field, emb_field):
         """
         :param vsm: the vector space model in either the form of Word2Vec or FastText.
-        :param key_field: the field in NLPNode (e.g., word, pos) used as the key to retrieve the embedding from vsm.
+        :type vsm: Union[KeyedVectors, WordVectorModel]
+        :param key_field: the field in NLPNode (e.g., word, pos) used as the key to retrieve
+                the embedding from vsm.
+        :type key_field: str
         :param emb_field: where the embedding with respect to the key is saved in NLPNode.
+        :type emb_field: str
         """
         self.vsm = vsm
         self.key_field = key_field
@@ -38,25 +41,29 @@ class NLPEmbedding:
 
         if isinstance(vsm, KeyedVectors):
             vector_size = vsm.syn0.shape[1]
-
             # root
             np.random.seed(9)
             self.root = np.random.uniform(-.25, .25, (vector_size,)).astype('float32')
             np.random.seed()
-
             # zero
             self.zero = np.zeros((vector_size,)).astype('float32')
         elif isinstance(vsm, WordVectorModel):
             self.root = np.array(vsm[structure.ROOT_TAG]).astype('float32')
             self.zero = np.array(vsm['']).astype('float32')
 
-    def get(self, node: NLPNode) -> np.array:
+    def get(self, node):
         """
+        :param node:
+        :type node: NLPNode
         :return: the embedding of the specific node with respect to the key_field.
+        :rtype: np.array
         """
-        if node is None: return self.zero
-        if node.node_id == 0: return self.root
-        if hasattr(node, self.emb_field): return getattr(node, self.emb_field)
+        if node is None:
+            return self.zero
+        if node.node_id == 0:
+            return self.root
+        if hasattr(node, self.emb_field):
+            return getattr(node, self.emb_field)
 
         f = getattr(node, self.key_field)
         emb = None
@@ -72,10 +79,12 @@ class NLPEmbedding:
 
 
 class NLPLexiconMapper:
-    def __init__(self, w2v: KeyedVectors=None, f2v: WordVectorModel=None):
+    def __init__(self, w2v=None, f2v=None):
         """
         :param w2v: KeyedVectors.load_word2vec_format('*.bin').
+        :type KeyedVectors
         :param f2v: f2v.load_model('*.bin').
+        :type WordVectorModel
         """
-        self.w2v: NLPEmbedding = NLPEmbedding(w2v, 'word', 'w2v') if w2v else None
-        self.f2v: NLPEmbedding = NLPEmbedding(f2v, 'word', 'f2v') if f2v else None
+        self.w2v = NLPEmbedding(w2v, 'word', 'w2v') if w2v else None
+        self.f2v = NLPEmbedding(f2v, 'word', 'f2v') if f2v else None
