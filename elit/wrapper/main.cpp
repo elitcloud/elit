@@ -17,60 +17,8 @@
  */
 
 #include <iostream>
-#include "tokenizer.h"
-#include "util/string_util.hpp"
-
+#include "tokenizer.hpp"
 using namespace std;
-
-// ======================================== Tokenization ========================================
-
-vector<string> tokenize(string s)
-{
-    int begin_index = 0, end_index = 1;
-    vector<string> v;
-    char c;
-
-    s = trim(s);
-    
-    for (; end_index<s.size(); end_index++)
-    {
-        c = s[end_index];
-        
-        if (isspace(c))
-        {
-            append(v, s, begin_index, end_index);
-            begin_index = end_index + 1;
-        }
-    }
-    
-    append(v, s, begin_index, end_index);
-    return v;
-}
-
-/**
- * Peforms v.append(s[begin_index:end_index]);
- * Returns true if s[begin_index:end_index] is valid; otherwise, false.
- */
-bool append(vector<string> &v, string s, int begin_index, int end_index)
-{
-    if (begin_index >= 0 && end_index <= s.size() && begin_index < end_index)
-    {
-        s = s.substr(begin_index, end_index - begin_index);
-        v.push_back(s);
-        return true;
-    }
-    
-    return false;
-}
-
-void tokenize_hyperlink(string s, int begin_index, int end_index)
-{
-    for (int i=begin_index; i<end_index; i++)
-    {
-        
-    }
-    
-}
 
 
 // ======================================== Utilities ========================================
@@ -94,33 +42,17 @@ void tokenize_hyperlink(string s, int begin_index, int end_index)
 
 
 
-void print_v(vector<string> v)
+void print_v(string s)
 {
-    cout << v.size() << ":";
-    for (string s : v) cout << s << ",";
-    cout << "\n";
+    vector<string> v = tokenize(s);
+    cout << "[" << s << "] -> [";
+    for (string t : v) cout << t << ",";
+    cout << "]\n";
 }
-
-void test_string_util()
-{
-    tokenize("");
-    tokenize("  ");
-    tokenize("AB CD EF");
-    tokenize("  AB CD EF");
-    tokenize("AB CD EF  ");
-    tokenize("  AB CD EF  ");
-    tokenize("AB  CD  EF");
-}
-
 
 int main(int argc, const char * argv[])
 {
-    //    string s = "my name is Jinho D. Choi.";
-    //    vector<string> v = tokenize(s);
-    //    for (string s : v)
-    //        cout << s << "\n";
-    
-    test_string_util();
-    
+    string t[] = {"", "  ", "AB CD EF", "  AB CD EF", "AB CD EF  ", "  AB CD EF  ", "AB  CD  EF"};
+    for (string s : t) print_v(s);
     return 0;
 }

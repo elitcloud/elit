@@ -15,20 +15,29 @@
  *
  * Author: Jinho D. Choi
  */
-#include <vector>
+#include <set>
 #include <string>
+#include <vector>
+#include <algorithm>
+
+const std::string PROTOCOLS[] = {"http://","https://","ftp://","sftp://","ssh://"};
 
 // ======================================== Tokenization ========================================
 
-/** Tokenizes the specific string and returns a vector of linguistically motivated tokens. */
+/**
+ * Returns a vector of linguistic tokens from the specific string.
+ * If there is no valid token, an empty vector is returned.
+ */
 std::vector<std::string> tokenize(std::string s);
 
 /**
- * Peforms v.append(s[begin_index:end_index]);
- * Returns true if s[begin_index:end_index] is valid; otherwise, false.
+ * Appends tokens within s[begin_index:end_index] to the specific vector.
+ * Returns true if any token is added; otherwise, false.
  */
-bool append(std::vector<std::string> &v, std::string s, int begin_index, int end_index);
+bool tokenize_aux(std::vector<std::string> &v, std::string s, size_t begin_index, size_t end_index);
 
+/** Returns the index where a hyperlink begins. */
+size_t find_hyperlink(std::string s, size_t begin_index, size_t end_index);
 
 
 
@@ -43,4 +52,11 @@ bool append(std::vector<std::string> &v, std::string s, int begin_index, int end
 /** Returns a string where all beginning and ending white spaces are trimmed from the specific string. */
 std::string trim(std::string s);
 
+/** Returns s[begin_index:end_index]. */
+std::string substr(std::string s, size_t begin_index, size_t end_index);
 
+/** Returns s[begin_index:end_index] in upper-case. */
+std::string toupper(std::string s, size_t begin_index, size_t end_index);
+
+/** Returns s[begin_index:end_index] in lower-case. */
+std::string tolower(std::string s, size_t begin_index, size_t end_index);
