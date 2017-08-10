@@ -13,25 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import sys
 import logging
 import time
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import wait
+from itertools import islice
 from random import shuffle
 from typing import Dict, List, Tuple, Union, Callable
 
 import mxnet as mx
 import numpy as np
-from itertools import islice
 
 from elit.component.template.lexicon import NLPLexiconMapper
 from elit.component.template.state import NLPState
 from elit.structure import NLPGraph
-
-import graphviz
 
 __author__ = 'Jinho D. Choi'
 
