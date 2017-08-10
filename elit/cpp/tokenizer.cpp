@@ -15,6 +15,7 @@
  *
  * Author: Jinho D. Choi
  */
+#include <iostream>
 #include "tokenizer.hpp"
 using namespace std;
 
@@ -49,7 +50,7 @@ vector<string> tokenize(string s)
  * Returns true if any token is added; otherwise, false.
  */
 bool tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_index)
-{
+{cout << begin_index << " " << end_index << "\n";
     // out of range
     if (end_index > s.size() || begin_index >= end_index)
         return false;
@@ -78,8 +79,9 @@ bool tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_in
 //        return true;
 //    }
     
-    
-    
+    // (\:\w+\:|\<[\/\\]?3|[\(\)\\\D|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DOPp\@\$\*\\\)\(\/\|])(?=\s|[\!\.\?]|$)
+    regex r("(\\:\\w+\\:|\\<[\\/\\\\]?3|[\\(\\)\\\\\\D|\\*\\$][\\-\\^]?[\\:\\;\\=]|[\\:\\;\\=B8][\\-\\^]?[3DOPp\\@\\$\\*\\\\\\)\\(\\/\\|])(?=\\s|[\\!\\.\\?]|$)");
+
     
     
     
@@ -89,17 +91,24 @@ bool tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_in
 }
 
 /** Returns the index where a hyperlink begins. */
-size_t find_hyperlink(string s, int begin_index, int end_index)
+size_t find_hyperlink(string s, size_t begin_index, size_t end_index)
 {
     size_t idx;
     
     for (string p : PROTOCOLS)
     {
-        idx = s.find(p, begin_index);
+        idx = find(s, p, begin_index, end_index);
         
         if (idx != string::npos)
             return idx;
     }
+    
+    return string::npos;
+}
+
+size_t find_emoticon(string s, size_t begin_index, size_t end_index)
+{
+    
     
     return string::npos;
 }
@@ -166,4 +175,31 @@ string tolower(string s, size_t begin_index, size_t end_index)
         t[i-begin_index] = tolower(s[i]);
     
     return t;
+}
+
+/**
+ * Returns the beginning index of the source string that matches the target string.
+ * If there is no match, return string::npos.
+ */
+size_t find(string source, string target, size_t source_begin, size_t source_end)
+{
+    bool found;
+    
+    for (size_t i=source_begin; i+target.size()<=source_end; i++)
+    {
+        found = true;
+
+        for (size_t j=0; j<target.size(); j++)
+        {
+            if (source[i+j] != target[j])
+            {
+                found = false;
+                break;
+            }
+        }
+        
+        if (found) return i;
+    }
+    
+    return string::npos;
 }

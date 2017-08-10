@@ -46,13 +46,13 @@ void print_v(string s)
 {
     vector<string> v = tokenize(s);
     cout << "[" << s << "] -> [";
-    for (string t : v) cout << t << ",";
+    for (string t : v) cout << t << ", ";
     cout << "]\n";
 }
 
 int main(int argc, const char * argv[])
 {
-    string t[] = {"", "  ", "AB CD EF", "  AB CD EF", "AB CD EF  ", "  AB CD EF  ", "AB  CD  EF"};
+    string t[] = {"", "  ", "AB CD EF", "  AB CD EF", "AB CD EF  ", "  AB CD EF  ", "AB  CD  EF", "http://ab CDftp://ef GH"};
     for (string s : t) print_v(s);
     return 0;
 }

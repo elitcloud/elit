@@ -18,6 +18,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <regex>
 #include <algorithm>
 
 const std::string PROTOCOLS[] = {"http://","https://","ftp://","sftp://","ssh://"};
@@ -60,3 +61,9 @@ std::string toupper(std::string s, size_t begin_index, size_t end_index);
 
 /** Returns s[begin_index:end_index] in lower-case. */
 std::string tolower(std::string s, size_t begin_index, size_t end_index);
+
+/**
+ * Returns the beginning index of the source string that matches the target string.
+ * If there is no match, return string::npos.
+ */
+size_t find(std::string source, std::string target, size_t source_begin, size_t source_end);
