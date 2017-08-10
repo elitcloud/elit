@@ -45,14 +45,27 @@ using namespace std;
 void print_v(string s)
 {
     vector<string> v = tokenize(s);
-    cout << "[" << s << "] -> [";
-    for (string t : v) cout << t << ", ";
-    cout << "]\n";
+    cout << s << " -> ";
+    for (string t : v) cout << t << " ";
+    cout << endl;
 }
 
 int main(int argc, const char * argv[])
 {
-    string t[] = {"", "  ", "AB CD EF", "  AB CD EF", "AB CD EF  ", "  AB CD EF  ", "AB  CD  EF", "http://ab CDftp://ef GH"};
+    string t[] = {
+            "",
+            "  ",
+            "AB CD EF",
+            "  AB CD EF",
+            "AB CD EF  ",
+            "  AB CD EF  ",
+            "AB  CD  EF",
+            "http://ab ;ftp://ef GH",
+            ":-) A:-( :). B:smile::sad: C:):(! :).,",
+            "jinho@elit.com,jinho.choi@elit.com,choi@elit.emory.edu,jinho:choi@0.0.0.0",
+            "ab&arrow;cd&#123;&#456;&down;ef",
+            "#happy2018,@Jinho_Choi: Hello",
+    };
     for (string s : t) print_v(s);
     return 0;
 }

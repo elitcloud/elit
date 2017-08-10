@@ -22,16 +22,15 @@ using namespace std;
 // ======================================== Tokenization ========================================
 
 /**
- * Returns a vector of linguistic tokens from the specific string.
- * If there is no valid token, an empty vector is returned.
+ * @param s string to be tokenized.
+ * @return vector of ordered tokens from the string. If there is no valid token, an empty vector is returned.
  */
 vector<string> tokenize(string s)
 {
     size_t begin_index = 0, end_index = 1;
     vector<string> v;
-    
     s = trim(s);
-    
+
     for (; end_index<s.size(); end_index++)
     {
         if (isspace(s[end_index]))
@@ -40,36 +39,28 @@ vector<string> tokenize(string s)
             begin_index = end_index + 1;
         }
     }
-    
+
     tokenize_aux(v, s, begin_index, end_index);
     return v;
 }
 
 /**
- * Appends tokens within s[begin_index:end_index] to the specific vector.
- * Returns true if any token is added; otherwise, false.
+ *
+ * @param v vector where tokens are added.
+ * @param s string to be tokenized.
+ * @param begin_index beginning index of the string to be processed (inclusive).
+ * @param end_index ending index of the string to be processed (exclusive).
+ * @return non-zero if any token is added; otherwise, 0.
  */
-bool tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_index)
-{cout << begin_index << " " << end_index << "\n";
+int tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_index)
+{
     // out of range
     if (end_index > s.size() || begin_index >= end_index)
-        return false;
-    
-    // tokenize hyperlink
-    size_t idx = find_hyperlink(s, begin_index, end_index);
-    
-    if (idx == 0)   // the entire substring is a hyperlink
-    {
-        v.push_back(substr(s, begin_index, end_index));
-        return true;
-    }
-    else if (idx != string::npos)
-    {
-        tokenize_aux(v, s, begin_index, idx);
-        v.push_back(substr(s, idx, end_index));
-        return true;
-    }
-    
+        return 0;
+
+    if (tokenize_regex(v, s, begin_index, end_index))
+        return 1;
+
 
 //    string lower = tolower(s, begin_index, end_index);
 //    
@@ -78,39 +69,82 @@ bool tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_in
 //        v.push_back(substr(s, begin_index, end_index));
 //        return true;
 //    }
-    
-    // (\:\w+\:|\<[\/\\]?3|[\(\)\\\D|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DOPp\@\$\*\\\)\(\/\|])(?=\s|[\!\.\?]|$)
-    regex r("(\\:\\w+\\:|\\<[\\/\\\\]?3|[\\(\\)\\\\\\D|\\*\\$][\\-\\^]?[\\:\\;\\=]|[\\:\\;\\=B8][\\-\\^]?[3DOPp\\@\\$\\*\\\\\\)\\(\\/\\|])(?=\\s|[\\!\\.\\?]|$)");
 
-    
-    
+
+
     
     
     v.push_back(substr(s, begin_index, end_index));
-    return true;
+    return 10;
 }
 
-/** Returns the index where a hyperlink begins. */
-size_t find_hyperlink(string s, size_t begin_index, size_t end_index)
+/** Auxiliary function to tokenize_regex(). */
+bool tokenize_regex_aux(vector<string> &v, string s, size_t begin_index, size_t end_index, string sub, regex r)
 {
-    size_t idx;
-    
-    for (string p : PROTOCOLS)
+    smatch m;
+
+    if (regex_search(sub, m, r))
     {
-        idx = find(s, p, begin_index, end_index);
-        
-        if (idx != string::npos)
-            return idx;
+        tokenize_aux(v, s, begin_index, begin_index+m.position(0));
+        v.push_back(m[0].str());
+        tokenize_aux(v, s, begin_index+m.position(0)+m[0].str().size(), end_index);
+        return true;
     }
-    
-    return string::npos;
+
+    return false;
 }
 
-size_t find_emoticon(string s, size_t begin_index, size_t end_index)
+/**
+ * Tokenizes using regular expressions: hyperlink, emoticon, email.
+ * @param v vector where tokens are added.
+ * @param s string to be tokenized.
+ * @param begin_index beginning index of the string to be processed (inclusive).
+ * @param end_index ending index of the string to be processed (exclusive).
+ * @return non-zero if any hyperlink is added; otherwise, 0.
+ */
+int tokenize_regex(vector<string> &v, string s, size_t begin_index, size_t end_index)
 {
-    
-    
-    return string::npos;
+    string sub = substr(s, begin_index, end_index);
+    smatch m;
+
+    // html entity
+    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, HTML_ENTITIES))
+        return 1;
+
+    // network protocol
+    if (regex_search(sub, m, PROTOCOLS))
+    {
+        if (m.position(0) > 0)
+        {
+            auto idx = begin_index + m.position(0);
+            tokenize_aux(v, s, begin_index, idx);
+            v.push_back(substr(s, idx, end_index));
+        }
+        else
+            v.push_back(sub);
+
+        return 2;
+    }
+
+    // email
+    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, EMAILS))
+        return 3;
+
+    // hashtag
+    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, HASHTAGS))
+        return 4;
+
+    // emoticon
+    if (regex_search(sub, m, EMOTICONS))
+    {
+        tokenize_aux(v, s, begin_index, begin_index+m.position(1));
+        v.push_back(m[1].str());
+        if (!trim(m[2].str()).empty()) v.push_back(m[2].str());
+        tokenize_aux(v, s, begin_index+m.position(2)+m[2].str().size(), end_index);
+        return 5;
+    }
+
+    return 0;
 }
 
 // ======================================== Utilities ========================================

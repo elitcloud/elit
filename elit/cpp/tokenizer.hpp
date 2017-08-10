@@ -19,27 +19,70 @@
 #include <string>
 #include <vector>
 #include <regex>
-#include <algorithm>
+#include <iterator>
 
-const std::string PROTOCOLS[] = {"http://","https://","ftp://","sftp://","ssh://"};
+// ======================================== Constants ========================================
+
+/** Network protocols. */
+const std::regex PROTOCOLS(
+    R"(([A-Za-z]{3,4})(:\/\/))");
+
+/**
+ * :smile: :hug: :pencil:
+ * <3 </3 <\3
+ * ): (: $: *:
+ * )-: (-: $-: *-:
+ * )^: (^: $^: *^:
+ * :( :) :P :p :O :3 :| :/ :\ :$ :* :@
+ * :-( :-) :-P :-p :-O :-3 :-| :-/ :-\ :-$ :-* :-@
+ * :^( :^) :^P :^p :^O :^3 :^| :^/ :^\ :^$ :^* :^@
+ */
+const std::regex EMOTICONS(
+    R"((\:\w+\:|\<[\/\\]?3|[\(\)\\\D|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DOPp\@\$\*\\\)\(\/\|])(\s|[\!\.\?\,\;]|$))");
+
+/**
+ * jinho@elit.com
+ * jinho.choi@elit.com
+ * choi@elit.emory.edu
+ * jinho:choi@0.0.0.0
+ */
+const std::regex EMAILS(
+    R"(([A-Za-z0-9\-\._]+(:\S+)?@)((([A-Za-z0-9\-]+\.)+([A-Za-z]{2,3}))|(\d{1,3}(\.\d{1,3}){3})))");
+
+/** &arrow; &#123; */
+const std::regex HTML_ENTITIES(
+    R"(\&([A-Za-z]+|(\#\d+))\;)");
+
+/** #happy2017,@JinhoChoi */
+const std::regex HASHTAGS(
+    R"([\#\@]([A-Za-z][A-Za-z0-9_]+))");
 
 // ======================================== Tokenization ========================================
 
 /**
- * Returns a vector of linguistic tokens from the specific string.
- * If there is no valid token, an empty vector is returned.
+ * @param s string to be tokenized.
+ * @return vector of ordered tokens from the string. If there is no valid token, an empty vector is returned.
  */
 std::vector<std::string> tokenize(std::string s);
 
 /**
- * Appends tokens within s[begin_index:end_index] to the specific vector.
- * Returns true if any token is added; otherwise, false.
+ * @param v vector where tokens are added.
+ * @param s string to be tokenized.
+ * @param begin_index beginning index of the string to be processed (inclusive).
+ * @param end_index ending index of the string to be processed (exclusive).
+ * @return non-zero if any token is added; otherwise, 0.
  */
-bool tokenize_aux(std::vector<std::string> &v, std::string s, size_t begin_index, size_t end_index);
+int tokenize_aux(std::vector<std::string> &v, std::string s, size_t begin_index, size_t end_index);
 
-/** Returns the index where a hyperlink begins. */
-size_t find_hyperlink(std::string s, size_t begin_index, size_t end_index);
-
+/**
+ * Tokenizes using regular expressions: hyperlink, emoticon, email.
+ * @param v vector where tokens are added.
+ * @param s string to be tokenized.
+ * @param begin_index beginning index of the string to be processed (inclusive).
+ * @param end_index ending index of the string to be processed (exclusive).
+ * @return non-zero if any hyperlink is added; otherwise, 0.
+ */
+int tokenize_regex(std::vector<std::string> &v, std::string s, size_t begin_index, size_t end_index);
 
 
 
