@@ -14,3 +14,4 @@ std::vector<std::string> vectorize(std::string s) {
         v.push_back(s);
     return v;
 };
+

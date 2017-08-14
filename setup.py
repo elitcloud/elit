@@ -8,7 +8,6 @@ import os
 EXCLUDE_FROM_PACKAGES = ['']
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
-TOKENIZER_BUILD_PATH = os.path.join(BASEPATH, 'elit/tokenizer/src')
 
 
 class TokenizerInstall(install):
@@ -34,8 +33,11 @@ class TokenizerInstall(install):
         install.run(self)
 
 
+# extension_mod = Extension("_tokenizer",
+#                           ["./elit/tokenizer/src/_tokenizer_module.cpp",
+#                            "./elit/tokenizer/src/tokenizer.cpp"])
+
 extension_mod = Extension("_tokenizer",
-                          ["./elit/tokenizer/src/_tokenizer_module.cpp", "./elit/tokenizer/src/tokenizer.cpp"])
 
 setup(
     name='elit',
