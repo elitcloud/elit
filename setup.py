@@ -35,7 +35,7 @@ class TokenizerInstall(install):
 
 
 extension_mod = Extension("_tokenizer",
-                          ["./elit/tokenizer/src/_tokenizer_module.cc", "./elit/tokenizer/src/tokenizer.cc"])
+                          ["./elit/tokenizer/src/_tokenizer_module.cpp", "./elit/tokenizer/src/tokenizer.cpp"])
 
 setup(
     name='elit',

@@ -95,10 +95,530 @@ except __builtin__.Exception:
         pass
     _newclass = 0
 
+class SwigPyIterator(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, SwigPyIterator, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, SwigPyIterator, name)
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+    __swig_destroy__ = _tokenizer.delete_SwigPyIterator
+    __del__ = lambda self: None
+
+    def value(self):
+        return _tokenizer.SwigPyIterator_value(self)
+
+    def incr(self, n=1):
+        return _tokenizer.SwigPyIterator_incr(self, n)
+
+    def decr(self, n=1):
+        return _tokenizer.SwigPyIterator_decr(self, n)
+
+    def distance(self, x):
+        return _tokenizer.SwigPyIterator_distance(self, x)
+
+    def equal(self, x):
+        return _tokenizer.SwigPyIterator_equal(self, x)
+
+    def copy(self):
+        return _tokenizer.SwigPyIterator_copy(self)
+
+    def next(self):
+        return _tokenizer.SwigPyIterator_next(self)
+
+    def __next__(self):
+        return _tokenizer.SwigPyIterator___next__(self)
+
+    def previous(self):
+        return _tokenizer.SwigPyIterator_previous(self)
+
+    def advance(self, n):
+        return _tokenizer.SwigPyIterator_advance(self, n)
+
+    def __eq__(self, x):
+        return _tokenizer.SwigPyIterator___eq__(self, x)
+
+    def __ne__(self, x):
+        return _tokenizer.SwigPyIterator___ne__(self, x)
+
+    def __iadd__(self, n):
+        return _tokenizer.SwigPyIterator___iadd__(self, n)
+
+    def __isub__(self, n):
+        return _tokenizer.SwigPyIterator___isub__(self, n)
+
+    def __add__(self, n):
+        return _tokenizer.SwigPyIterator___add__(self, n)
+
+    def __sub__(self, *args):
+        return _tokenizer.SwigPyIterator___sub__(self, *args)
+    def __iter__(self):
+        return self
+SwigPyIterator_swigregister = _tokenizer.SwigPyIterator_swigregister
+SwigPyIterator_swigregister(SwigPyIterator)
+
+class IntVector(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, IntVector, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, IntVector, name)
+    __repr__ = _swig_repr
+
+    def iterator(self):
+        return _tokenizer.IntVector_iterator(self)
+    def __iter__(self):
+        return self.iterator()
+
+    def __nonzero__(self):
+        return _tokenizer.IntVector___nonzero__(self)
+
+    def __bool__(self):
+        return _tokenizer.IntVector___bool__(self)
+
+    def __len__(self):
+        return _tokenizer.IntVector___len__(self)
+
+    def __getslice__(self, i, j):
+        return _tokenizer.IntVector___getslice__(self, i, j)
+
+    def __setslice__(self, *args):
+        return _tokenizer.IntVector___setslice__(self, *args)
+
+    def __delslice__(self, i, j):
+        return _tokenizer.IntVector___delslice__(self, i, j)
+
+    def __delitem__(self, *args):
+        return _tokenizer.IntVector___delitem__(self, *args)
+
+    def __getitem__(self, *args):
+        return _tokenizer.IntVector___getitem__(self, *args)
+
+    def __setitem__(self, *args):
+        return _tokenizer.IntVector___setitem__(self, *args)
+
+    def pop(self):
+        return _tokenizer.IntVector_pop(self)
+
+    def append(self, x):
+        return _tokenizer.IntVector_append(self, x)
+
+    def empty(self):
+        return _tokenizer.IntVector_empty(self)
+
+    def size(self):
+        return _tokenizer.IntVector_size(self)
+
+    def swap(self, v):
+        return _tokenizer.IntVector_swap(self, v)
+
+    def begin(self):
+        return _tokenizer.IntVector_begin(self)
+
+    def end(self):
+        return _tokenizer.IntVector_end(self)
+
+    def rbegin(self):
+        return _tokenizer.IntVector_rbegin(self)
+
+    def rend(self):
+        return _tokenizer.IntVector_rend(self)
+
+    def clear(self):
+        return _tokenizer.IntVector_clear(self)
+
+    def get_allocator(self):
+        return _tokenizer.IntVector_get_allocator(self)
+
+    def pop_back(self):
+        return _tokenizer.IntVector_pop_back(self)
+
+    def erase(self, *args):
+        return _tokenizer.IntVector_erase(self, *args)
+
+    def __init__(self, *args):
+        this = _tokenizer.new_IntVector(*args)
+        try:
+            self.this.append(this)
+        except __builtin__.Exception:
+            self.this = this
+
+    def push_back(self, x):
+        return _tokenizer.IntVector_push_back(self, x)
+
+    def front(self):
+        return _tokenizer.IntVector_front(self)
+
+    def back(self):
+        return _tokenizer.IntVector_back(self)
+
+    def assign(self, n, x):
+        return _tokenizer.IntVector_assign(self, n, x)
+
+    def resize(self, *args):
+        return _tokenizer.IntVector_resize(self, *args)
+
+    def insert(self, *args):
+        return _tokenizer.IntVector_insert(self, *args)
+
+    def reserve(self, n):
+        return _tokenizer.IntVector_reserve(self, n)
+
+    def capacity(self):
+        return _tokenizer.IntVector_capacity(self)
+    __swig_destroy__ = _tokenizer.delete_IntVector
+    __del__ = lambda self: None
+IntVector_swigregister = _tokenizer.IntVector_swigregister
+IntVector_swigregister(IntVector)
+
+class DoubleVector(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, DoubleVector, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, DoubleVector, name)
+    __repr__ = _swig_repr
+
+    def iterator(self):
+        return _tokenizer.DoubleVector_iterator(self)
+    def __iter__(self):
+        return self.iterator()
+
+    def __nonzero__(self):
+        return _tokenizer.DoubleVector___nonzero__(self)
+
+    def __bool__(self):
+        return _tokenizer.DoubleVector___bool__(self)
+
+    def __len__(self):
+        return _tokenizer.DoubleVector___len__(self)
+
+    def __getslice__(self, i, j):
+        return _tokenizer.DoubleVector___getslice__(self, i, j)
+
+    def __setslice__(self, *args):
+        return _tokenizer.DoubleVector___setslice__(self, *args)
+
+    def __delslice__(self, i, j):
+        return _tokenizer.DoubleVector___delslice__(self, i, j)
+
+    def __delitem__(self, *args):
+        return _tokenizer.DoubleVector___delitem__(self, *args)
+
+    def __getitem__(self, *args):
+        return _tokenizer.DoubleVector___getitem__(self, *args)
+
+    def __setitem__(self, *args):
+        return _tokenizer.DoubleVector___setitem__(self, *args)
+
+    def pop(self):
+        return _tokenizer.DoubleVector_pop(self)
+
+    def append(self, x):
+        return _tokenizer.DoubleVector_append(self, x)
+
+    def empty(self):
+        return _tokenizer.DoubleVector_empty(self)
+
+    def size(self):
+        return _tokenizer.DoubleVector_size(self)
+
+    def swap(self, v):
+        return _tokenizer.DoubleVector_swap(self, v)
+
+    def begin(self):
+        return _tokenizer.DoubleVector_begin(self)
+
+    def end(self):
+        return _tokenizer.DoubleVector_end(self)
+
+    def rbegin(self):
+        return _tokenizer.DoubleVector_rbegin(self)
+
+    def rend(self):
+        return _tokenizer.DoubleVector_rend(self)
+
+    def clear(self):
+        return _tokenizer.DoubleVector_clear(self)
+
+    def get_allocator(self):
+        return _tokenizer.DoubleVector_get_allocator(self)
+
+    def pop_back(self):
+        return _tokenizer.DoubleVector_pop_back(self)
+
+    def erase(self, *args):
+        return _tokenizer.DoubleVector_erase(self, *args)
+
+    def __init__(self, *args):
+        this = _tokenizer.new_DoubleVector(*args)
+        try:
+            self.this.append(this)
+        except __builtin__.Exception:
+            self.this = this
+
+    def push_back(self, x):
+        return _tokenizer.DoubleVector_push_back(self, x)
+
+    def front(self):
+        return _tokenizer.DoubleVector_front(self)
+
+    def back(self):
+        return _tokenizer.DoubleVector_back(self)
+
+    def assign(self, n, x):
+        return _tokenizer.DoubleVector_assign(self, n, x)
+
+    def resize(self, *args):
+        return _tokenizer.DoubleVector_resize(self, *args)
+
+    def insert(self, *args):
+        return _tokenizer.DoubleVector_insert(self, *args)
+
+    def reserve(self, n):
+        return _tokenizer.DoubleVector_reserve(self, n)
+
+    def capacity(self):
+        return _tokenizer.DoubleVector_capacity(self)
+    __swig_destroy__ = _tokenizer.delete_DoubleVector
+    __del__ = lambda self: None
+DoubleVector_swigregister = _tokenizer.DoubleVector_swigregister
+DoubleVector_swigregister(DoubleVector)
+
+class StringVector(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, StringVector, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, StringVector, name)
+    __repr__ = _swig_repr
+
+    def iterator(self):
+        return _tokenizer.StringVector_iterator(self)
+    def __iter__(self):
+        return self.iterator()
+
+    def __nonzero__(self):
+        return _tokenizer.StringVector___nonzero__(self)
+
+    def __bool__(self):
+        return _tokenizer.StringVector___bool__(self)
+
+    def __len__(self):
+        return _tokenizer.StringVector___len__(self)
+
+    def __getslice__(self, i, j):
+        return _tokenizer.StringVector___getslice__(self, i, j)
+
+    def __setslice__(self, *args):
+        return _tokenizer.StringVector___setslice__(self, *args)
+
+    def __delslice__(self, i, j):
+        return _tokenizer.StringVector___delslice__(self, i, j)
+
+    def __delitem__(self, *args):
+        return _tokenizer.StringVector___delitem__(self, *args)
+
+    def __getitem__(self, *args):
+        return _tokenizer.StringVector___getitem__(self, *args)
+
+    def __setitem__(self, *args):
+        return _tokenizer.StringVector___setitem__(self, *args)
+
+    def pop(self):
+        return _tokenizer.StringVector_pop(self)
+
+    def append(self, x):
+        return _tokenizer.StringVector_append(self, x)
+
+    def empty(self):
+        return _tokenizer.StringVector_empty(self)
+
+    def size(self):
+        return _tokenizer.StringVector_size(self)
+
+    def swap(self, v):
+        return _tokenizer.StringVector_swap(self, v)
+
+    def begin(self):
+        return _tokenizer.StringVector_begin(self)
+
+    def end(self):
+        return _tokenizer.StringVector_end(self)
+
+    def rbegin(self):
+        return _tokenizer.StringVector_rbegin(self)
+
+    def rend(self):
+        return _tokenizer.StringVector_rend(self)
+
+    def clear(self):
+        return _tokenizer.StringVector_clear(self)
+
+    def get_allocator(self):
+        return _tokenizer.StringVector_get_allocator(self)
+
+    def pop_back(self):
+        return _tokenizer.StringVector_pop_back(self)
+
+    def erase(self, *args):
+        return _tokenizer.StringVector_erase(self, *args)
+
+    def __init__(self, *args):
+        this = _tokenizer.new_StringVector(*args)
+        try:
+            self.this.append(this)
+        except __builtin__.Exception:
+            self.this = this
+
+    def push_back(self, x):
+        return _tokenizer.StringVector_push_back(self, x)
+
+    def front(self):
+        return _tokenizer.StringVector_front(self)
+
+    def back(self):
+        return _tokenizer.StringVector_back(self)
+
+    def assign(self, n, x):
+        return _tokenizer.StringVector_assign(self, n, x)
+
+    def resize(self, *args):
+        return _tokenizer.StringVector_resize(self, *args)
+
+    def insert(self, *args):
+        return _tokenizer.StringVector_insert(self, *args)
+
+    def reserve(self, n):
+        return _tokenizer.StringVector_reserve(self, n)
+
+    def capacity(self):
+        return _tokenizer.StringVector_capacity(self)
+    __swig_destroy__ = _tokenizer.delete_StringVector
+    __del__ = lambda self: None
+StringVector_swigregister = _tokenizer.StringVector_swigregister
+StringVector_swigregister(StringVector)
+
+class ConstCharVector(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, ConstCharVector, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, ConstCharVector, name)
+    __repr__ = _swig_repr
+
+    def iterator(self):
+        return _tokenizer.ConstCharVector_iterator(self)
+    def __iter__(self):
+        return self.iterator()
+
+    def __nonzero__(self):
+        return _tokenizer.ConstCharVector___nonzero__(self)
+
+    def __bool__(self):
+        return _tokenizer.ConstCharVector___bool__(self)
+
+    def __len__(self):
+        return _tokenizer.ConstCharVector___len__(self)
+
+    def __getslice__(self, i, j):
+        return _tokenizer.ConstCharVector___getslice__(self, i, j)
+
+    def __setslice__(self, *args):
+        return _tokenizer.ConstCharVector___setslice__(self, *args)
+
+    def __delslice__(self, i, j):
+        return _tokenizer.ConstCharVector___delslice__(self, i, j)
+
+    def __delitem__(self, *args):
+        return _tokenizer.ConstCharVector___delitem__(self, *args)
+
+    def __getitem__(self, *args):
+        return _tokenizer.ConstCharVector___getitem__(self, *args)
+
+    def __setitem__(self, *args):
+        return _tokenizer.ConstCharVector___setitem__(self, *args)
+
+    def pop(self):
+        return _tokenizer.ConstCharVector_pop(self)
+
+    def append(self, x):
+        return _tokenizer.ConstCharVector_append(self, x)
+
+    def empty(self):
+        return _tokenizer.ConstCharVector_empty(self)
+
+    def size(self):
+        return _tokenizer.ConstCharVector_size(self)
+
+    def swap(self, v):
+        return _tokenizer.ConstCharVector_swap(self, v)
+
+    def begin(self):
+        return _tokenizer.ConstCharVector_begin(self)
+
+    def end(self):
+        return _tokenizer.ConstCharVector_end(self)
+
+    def rbegin(self):
+        return _tokenizer.ConstCharVector_rbegin(self)
+
+    def rend(self):
+        return _tokenizer.ConstCharVector_rend(self)
+
+    def clear(self):
+        return _tokenizer.ConstCharVector_clear(self)
+
+    def get_allocator(self):
+        return _tokenizer.ConstCharVector_get_allocator(self)
+
+    def pop_back(self):
+        return _tokenizer.ConstCharVector_pop_back(self)
+
+    def erase(self, *args):
+        return _tokenizer.ConstCharVector_erase(self, *args)
+
+    def __init__(self, *args):
+        this = _tokenizer.new_ConstCharVector(*args)
+        try:
+            self.this.append(this)
+        except __builtin__.Exception:
+            self.this = this
+
+    def push_back(self, x):
+        return _tokenizer.ConstCharVector_push_back(self, x)
+
+    def front(self):
+        return _tokenizer.ConstCharVector_front(self)
+
+    def back(self):
+        return _tokenizer.ConstCharVector_back(self)
+
+    def assign(self, n, x):
+        return _tokenizer.ConstCharVector_assign(self, n, x)
+
+    def resize(self, *args):
+        return _tokenizer.ConstCharVector_resize(self, *args)
+
+    def insert(self, *args):
+        return _tokenizer.ConstCharVector_insert(self, *args)
+
+    def reserve(self, n):
+        return _tokenizer.ConstCharVector_reserve(self, n)
+
+    def capacity(self):
+        return _tokenizer.ConstCharVector_capacity(self)
+    __swig_destroy__ = _tokenizer.delete_ConstCharVector
+    __del__ = lambda self: None
+ConstCharVector_swigregister = _tokenizer.ConstCharVector_swigregister
+ConstCharVector_swigregister(ConstCharVector)
+
 
 def tokenize(name):
     return _tokenizer.tokenize(name)
 tokenize = _tokenizer.tokenize
+
+def vectorize(s):
+    return _tokenizer.vectorize(s)
+vectorize = _tokenizer.vectorize
 # This file is compatible with both classic and new-style classes.
 
 

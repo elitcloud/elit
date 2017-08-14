@@ -1,8 +1,18 @@
 %module tokenizer
 
 %{
-#include <stdlib.h>
-#include "tokenizer.hh"
+    #include "tokenizer.hpp"
 %}
 
-%include "tokenizer.hh"
+%include "std_vector.i"
+%include "std_string.i"
+
+// Instantiate templates used by example
+namespace std {
+   %template(IntVector) vector<int>;
+   %template(DoubleVector) vector<double>;
+   %template(StringVector) vector<string>;
+   %template(ConstCharVector) vector<const char*>;
+}
+
+%include "tokenizer.hpp"
