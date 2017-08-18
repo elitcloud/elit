@@ -5,8 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(SOURCE_FILES
         main.cpp
-        tokenizer.hpp
-        tokenizer.cpp
-)
+        string_utils.hpp string_utils.cpp
+        tokenizer.hpp tokenizer.cpp)
 
 add_executable(cpp ${SOURCE_FILES})

@@ -45,9 +45,9 @@ using namespace std;
 void print_v(string s)
 {
     vector<string> v = tokenize(s);
-    cout << s << " -> ";
+    cout << s << " -> [";
     for (string t : v) cout << t << " ";
-    cout << endl;
+    cout << "]\n";
 }
 
 int main(int argc, const char * argv[])
@@ -60,11 +60,11 @@ int main(int argc, const char * argv[])
             "AB CD EF  ",
             "  AB CD EF  ",
             "AB  CD  EF",
-            "http://ab ;ftp://ef GH",
-            ":-) A:-( :). B:smile::sad: C:):(! :).,",
+            "ab&larr;cd&#8592;&#x2190;ef&#X2190;",
+            "http://ab cd.ftp://ef eftp",
             "jinho@elit.com,jinho.choi@elit.com,choi@elit.emory.edu,jinho:choi@0.0.0.0",
-            "ab&arrow;cd&#123;&#456;&down;ef",
-            "#happy2018,@Jinho_Choi: Hello",
+            "#happy2018,@Jinho_Choi: ab@cde",
+            ":-) A:-( :). B:smile::sad: C:):(! :).,",
     };
     for (string s : t) print_v(s);
     return 0;

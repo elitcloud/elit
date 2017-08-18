@@ -15,225 +15,198 @@
  *
  * Author: Jinho D. Choi
  */
-#include <iostream>
 #include "tokenizer.hpp"
+#include <iostream>
 using namespace std;
 
-// ======================================== Tokenization ========================================
+
+// ======================================== Constants ========================================
+
+/** Network protocols (e.g., http://). */
+const std::regex NETWORK_PROTOCOL(
+        R"(([A-Za-z]{3,4})(:\/\/))");
 
 /**
- * @param s string to be tokenized.
- * @return vector of ordered tokens from the string. If there is no valid token, an empty vector is returned.
+ * :smile: :hug: :pencil:
+ * <3 </3 <\3
+ * ): (: $: *:
+ * )-: (-: $-: *-:
+ * )^: (^: $^: *^:
+ * :( :) :P :p :O :3 :| :/ :\ :$ :* :@
+ * :-( :-) :-P :-p :-O :-3 :-| :-/ :-\ :-$ :-* :-@
+ * :^( :^) :^P :^p :^O :^3 :^| :^/ :^\ :^$ :^* :^@
  */
-vector<string> tokenize(string s)
-{
-    size_t begin_index = 0, end_index = 1;
-    vector<string> v;
-    s = trim(s);
-
-    for (; end_index<s.size(); end_index++)
-    {
-        if (isspace(s[end_index]))
-        {
-            tokenize_aux(v, s, begin_index, end_index);
-            begin_index = end_index + 1;
-        }
-    }
-
-    tokenize_aux(v, s, begin_index, end_index);
-    return v;
-}
+const std::regex EMOTICON(
+        R"((\:\w+\:|\<[\/\\]?3|[\(\)\\\D|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DOPp\@\$\*\\\)\(\/\|])(\s|[\!\.\?\,\;]|$))");
 
 /**
- *
- * @param v vector where tokens are added.
- * @param s string to be tokenized.
- * @param begin_index beginning index of the string to be processed (inclusive).
- * @param end_index ending index of the string to be processed (exclusive).
- * @return non-zero if any token is added; otherwise, 0.
+ * jinho@elit.com
+ * jinho.choi@elit.com
+ * choi@elit.emory.edu
+ * jinho:choi@0.0.0.0
  */
-int tokenize_aux(vector<string> &v, string s, size_t begin_index, size_t end_index)
+const std::regex EMAIL(
+        R"([A-Za-z0-9\-\._]+(:\S+)?@(([A-Za-z0-9\-]+\.)+[A-Za-z]{2,3}|\d{1,3}(\.\d{1,3}){3}))");
+
+/** &arrow; &#123; */
+const std::regex HTML_ENTITY(
+        R"(\&([A-Za-z]+|\#[Xx]?\d+)\;)");
+
+/** #happy2017,@JinhoChoi */
+const std::regex HASHTAG(
+        R"((^|\W)([\#\@][A-Za-z][A-Za-z0-9_]+))");
+
+
+// ======================================== Regular Expression ========================================
+
+/** Considers the entire matching string as one token. */
+bool tokenize_regex_aux(string s, size_t begin, size_t end, vector<string> &v, const regex &r)
 {
-    // out of range
-    if (end_index > s.size() || begin_index >= end_index)
-        return 0;
+    auto it = sregex_iterator(s.begin()+begin, s.begin()+end, r);
 
-    if (tokenize_regex(v, s, begin_index, end_index))
-        return 1;
-
-
-//    string lower = tolower(s, begin_index, end_index);
-//    
-//    if (PRESERVE.find(lower) != PRESERVE.end())
-//    {
-//        v.push_back(substr(s, begin_index, end_index));
-//        return true;
-//    }
-
-
-
-    
-    
-    v.push_back(substr(s, begin_index, end_index));
-    return 10;
-}
-
-/** Auxiliary function to tokenize_regex(). */
-bool tokenize_regex_aux(vector<string> &v, string s, size_t begin_index, size_t end_index, string sub, regex r)
-{
-    smatch m;
-
-    if (regex_search(sub, m, r))
+    if (it != sregex_iterator())
     {
-        tokenize_aux(v, s, begin_index, begin_index+m.position(0));
-        v.push_back(m[0].str());
-        tokenize_aux(v, s, begin_index+m.position(0)+m[0].str().size(), end_index);
+        auto m = *it;
+        auto tok = m[0].str();
+        auto idx = begin + m.position(0);
+
+        tokenize(s, begin, idx, v);
+        v.push_back(tok);
+        tokenize(s, idx + tok.size(), end, v);
         return true;
     }
 
     return false;
 }
 
-/**
- * Tokenizes using regular expressions: hyperlink, emoticon, email.
- * @param v vector where tokens are added.
- * @param s string to be tokenized.
- * @param begin_index beginning index of the string to be processed (inclusive).
- * @param end_index ending index of the string to be processed (exclusive).
- * @return non-zero if any hyperlink is added; otherwise, 0.
- */
-int tokenize_regex(vector<string> &v, string s, size_t begin_index, size_t end_index)
+/** Tokenizes hyperlinks. */
+bool tokenize_regex_hyperlink(string s, size_t begin, size_t end, vector<string> &v, const regex &r)
 {
-    string sub = substr(s, begin_index, end_index);
-    smatch m;
+    auto it = sregex_iterator(s.begin()+begin, s.begin()+end, r);
 
-    // html entity
-    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, HTML_ENTITIES))
-        return 1;
-
-    // network protocol
-    if (regex_search(sub, m, PROTOCOLS))
+    if (it != sregex_iterator())
     {
+        auto m = *it;
+
         if (m.position(0) > 0)
         {
-            auto idx = begin_index + m.position(0);
-            tokenize_aux(v, s, begin_index, idx);
-            v.push_back(substr(s, idx, end_index));
+            auto idx = begin + m.position(0);
+            tokenize(s, begin, idx, v);
+            v.push_back(substr(s, idx, end));
         }
         else
-            v.push_back(sub);
+            v.push_back(substr(s, begin, end));
 
-        return 2;
+        return true;
     }
 
-    // email
-    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, EMAILS))
-        return 3;
+    return false;
+}
 
-    // hashtag
-    if (tokenize_regex_aux(v, s, begin_index, end_index, sub, HASHTAGS))
-        return 4;
+bool tokenize_regex_emoticon(string s, size_t begin, size_t end, vector<string> &v, const regex &r)
+{
+    auto it = sregex_iterator(s.begin()+begin, s.begin()+end, r);
 
-    // emoticon
-    if (regex_search(sub, m, EMOTICONS))
+    if (it != sregex_iterator())
     {
-        tokenize_aux(v, s, begin_index, begin_index+m.position(1));
+        cout << "EMO: " << substr(s, begin, end) << endl;
+        auto m = *it;
+
+        tokenize(s, begin, begin+m.position(1), v);
         v.push_back(m[1].str());
         if (!trim(m[2].str()).empty()) v.push_back(m[2].str());
-        tokenize_aux(v, s, begin_index+m.position(2)+m[2].str().size(), end_index);
-        return 5;
+        tokenize(s, begin+m.position(2)+m[2].str().size(), end, v);
+
+        return true;
     }
+
+    return false;
+}
+
+/** Tokenizes using regular expressions. */
+int tokenize_regex(string s, size_t begin, size_t end, vector<string> &v)
+{
+    smatch m;
+
+    // html entity: "&larr;", "&#8592;", "&#x2190;"
+    if (tokenize_regex_aux(s, begin, end, v, HTML_ENTITY))
+        return 1;
+
+    // email: "id@elit.com", "id:pw@elit.emory.edu", "id@0.0.0.0"
+    if (tokenize_regex_aux(s, begin, end, v, EMAIL))
+        return 2;
+
+    // hyperlink: "http://...", "sftp://..."
+    if (tokenize_regex_hyperlink(s, begin, end, v, NETWORK_PROTOCOL))
+        return 3;
+
+    // hashtag: "#ELIT", "@ELIT"
+    if (tokenize_regex_aux(s, begin, end, v, HASHTAG))
+        return 4;
+
+    // emoticon: ":-)", ":P"
+    if (tokenize_regex_emoticon(s, begin, end, v, EMOTICON))
+        return 5;
 
     return 0;
 }
 
-// ======================================== Utilities ========================================
 
-/** Returns a string where all beginning and ending white spaces are trimmed from the specific string. */
-string trim(string s)
+
+
+
+
+// ======================================== Tokenization ========================================
+
+/**
+ * Tokenizes the input string into linguistic tokens and saves them into a vector.
+ * @param s the input string.
+ * @return a vector of tokens from the input string; if there is no valid token, an empty vector is returned.
+ */
+vector<string> tokenize(string s)
 {
-    size_t idx;
-    
-    // trim beginning white spaces
-    for (idx=0; idx<s.size(); idx++)
+    size_t begin = 0, end = 1;
+    vector<string> v;
+    s = trim(s);
+
+    for (; end<s.size(); end++)
     {
-        if (!isspace(s[idx]))
+        if (isspace(s[end]) != 0)
         {
-            if (idx > 0) s.erase(0, idx);
-            break;
+            tokenize(s, begin, end, v);
+            begin = end + 1;
         }
     }
-    
-    // contain only white spaces
-    if (idx == s.size())
-        return "";
-    
-    size_t lst = s.size() - 1;
-    
-    // trim endding white spaces
-    for (idx=lst; idx>0; idx--)
-    {
-        if (!isspace(s[idx]))
-        {
-            if (idx < lst) s.erase(idx+1, lst-idx);
-            break;
-        }
-    }
-    
-    return s;
-}
 
-/** Returns s[begin_index:end_index]. */
-string substr(string s, size_t begin_index, size_t end_index)
-{
-    return s.substr(begin_index, end_index - begin_index);
-}
-
-/** Returns s[begin_index:end_index] in upper-case. */
-string toupper(string s, size_t begin_index, size_t end_index)
-{
-    string t(end_index - begin_index, '\0');
-    
-    for (size_t i=begin_index; i<end_index; i++)
-        t[i-begin_index] = toupper(s[i]);
-    
-    return t;
-}
-
-/** Returns s[begin_index:end_index] in lower-case. */
-string tolower(string s, size_t begin_index, size_t end_index)
-{
-    string t(end_index - begin_index, '\0');
-    
-    for (size_t i=begin_index; i<end_index; i++)
-        t[i-begin_index] = tolower(s[i]);
-    
-    return t;
+    tokenize(s, begin, end, v);
+    return v;
 }
 
 /**
- * Returns the beginning index of the source string that matches the target string.
- * If there is no match, return string::npos.
+ * Tokenizes s[begin:end] into linguistic tokens and adds them to the vector.
+ * @param s the input string.
+ * @param begin the beginning index of the string to be tokenized (inclusive).
+ * @param end the ending index of the string to be tokenized (exclusive).
+ * @param v the vector where tokens to be added.
+ * @return non-zero if any token is added; otherwise, 0.
  */
-size_t find(string source, string target, size_t source_begin, size_t source_end)
+int tokenize(std::string s, size_t begin, size_t end, std::vector<std::string> &v)
 {
-    bool found;
-    
-    for (size_t i=source_begin; i+target.size()<=source_end; i++)
-    {
-        found = true;
+    // out of range
+    if (end > s.size() || begin >= end)
+        return 0;
 
-        for (size_t j=0; j<target.size(); j++)
-        {
-            if (source[i+j] != target[j])
-            {
-                found = false;
-                break;
-            }
-        }
-        
-        if (found) return i;
-    }
-    
-    return string::npos;
+    if (tokenize_regex(s, begin, end, v) != 0)
+        return 1;
+
+//    string lower = tolower(s, begin, end);
+//
+//    if (PRESERVE.find(lower) != PRESERVE.end())
+//    {
+//        v.push_back(substr(s, begin, end));
+//        return true;
+//    }
+
+    v.push_back(substr(s, begin, end));
+    return 10;
 }
