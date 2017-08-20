@@ -15,8 +15,10 @@ addons:
 before_install:
   - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-4.9 /usr/bin/gcc
   - gcc --version
+  - sudo apt-get install swig
 install:
   - pip install Cython
   - pip install .
 # command to run tests
-script: nosetests
+script:
+  - nosetests
