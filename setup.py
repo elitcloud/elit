@@ -149,7 +149,7 @@ def setup_package():
                               ["./elit/tokenizer/_tokenizer_module.cpp",
                                "./elit/tokenizer/tokenizer.cpp"],
                               language='c++',
-                              extra_compile_args=['-std=c++0x', '-stdlib=libc++'])
+                              extra_compile_args=['-std=c++0x', '-std=c++11'])
 
     metadata = dict(
         name='elit',
