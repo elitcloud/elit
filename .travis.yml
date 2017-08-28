@@ -5,8 +5,20 @@ python:
   - "3.6"
 sudo: required
 # command to install dependencies
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.9
+    - g++-4.9
+before_install:
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-4.9 /usr/bin/gcc
+  - gcc --version
+  - sudo apt-get install swig
 install:
   - pip install Cython
   - pip install .
 # command to run tests
-script: nosetests
+script:
+  - nosetests

@@ -2,11 +2,6 @@ from elit.reader import TSVReader
 import unittest
 import os
 
-
-def check_node(node_num, graph):
-    assert len(graph) == node_num
-
-
 class ReaderTest(unittest.TestCase):
     def setUp(self):
         self.tsv_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
@@ -15,25 +10,26 @@ class ReaderTest(unittest.TestCase):
 
     def test_tsv_reader_nodes(self):
         self.reader.open(self.tsv_file)
-        assert len(self.reader.next_all) == 2
+        self.assertEqual(len(self.reader.next_all), 2)
         self.reader.close()
 
     def test_tsv_reader_node(self):
         self.reader.open(self.tsv_file)
         nodes = [7, 11]
         for i, node in enumerate(self.reader.next_all):
-            yield check_node(nodes[i + 1], node)
+            with self.subTest(i=i):
+                self.assertEqual(len(node), nodes[i])
         self.reader.close()
 
     def test_tsv_reader_graph(self):
         self.reader.open(self.tsv_file)
         node = self.reader.next.nodes[1]
-        assert node.node_id == 1
-        assert node.word == 'John'
-        assert node.lemma == 'john'
-        assert node.pos == 'NNP'
-        assert node.nament == 'U-PERSON'
-        assert node.feats == {}
+        self.assertEqual(node.node_id, 1)
+        self.assertEqual(node.word, 'John')
+        self.assertEqual(node.lemma, 'john')
+        self.assertEqual(node.pos, 'NNP')
+        self.assertEqual(node.nament, 'U-PERSON')
+        self.assertEqual(node.feats, {})
         self.reader.close()
 
 
