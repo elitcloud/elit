@@ -31,7 +31,7 @@ Operating System :: MacOS
 
 MAJOR = 0
 MINOR = 1
-MICRO = 1
+MICRO = 2
 ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
@@ -147,6 +147,7 @@ def setup_package():
 
     extension_mod = Extension("_tokenizer",
                               ["./elit/tokenizer/_tokenizer_module.cpp",
+                               "./elit/tokenizer/tokenizer.hpp",
                                "./elit/tokenizer/tokenizer.cpp"],
                               language='c++',
                               extra_compile_args=['-std=c++0x', '-std=c++11'])
