@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2017, Emory University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +15,8 @@
  *
  * Author: Jinho D. Choi
  */
-#include <string>
 
-/**
- * @param s the input string.
- * @return the string where all beginning and ending spaces are trimmed from the input string.
- */
-std::string trim(std::string s);
+// ======================================== String ========================================
 
 /**
  * @param s the input string.
@@ -29,7 +24,13 @@ std::string trim(std::string s);
  * @param end the ending index of the substring (exclusive).
  * @return s.substr(begin, end - begin).
  */
-std::string substr(std::string s, size_t begin, size_t end);
+std::wstring substr(std::wstring s, size_t begin, size_t end);
+
+/**
+ * @param s the input string.
+ * @return the string where all beginning and ending spaces are trimmed from the input string.
+ */
+std::wstring trim(std::wstring s);
 
 /**
  * @param source the source string.
@@ -39,3 +40,25 @@ std::string substr(std::string s, size_t begin, size_t end);
  * @return the beginning index of the source string that matches the target string; if no match, string::npos is returned.
  */
 size_t find(std::string source, std::string target, size_t source_begin, size_t source_end);
+
+// ======================================== Character ========================================
+
+bool is_range(wchar_t c, wchar_t begin, wchar_t end);
+
+bool is_single_quote(wchar_t c);
+
+bool is_double_quote(wchar_t c);
+
+bool is_left_bracket(wchar_t c);
+
+bool is_right_bracket(wchar_t c);
+
+bool is_bracket(wchar_t c);
+
+bool is_arrow(wchar_t c);
+
+bool is_hyphen(wchar_t c);
+
+bool is_currency(wchar_t c);
+
+bool is_final_mark(wchar_t c);

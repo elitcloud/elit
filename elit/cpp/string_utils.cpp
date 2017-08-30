@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2017, Emory University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +15,28 @@
  *
  * Author: Jinho D. Choi
  */
+#include <string>
 #include "string_utils.hpp"
 using namespace std;
+
+// ======================================== String ========================================
+
+/**
+ * @param s the input string.
+ * @param begin the beginning index of the substring (inclusive).
+ * @param end the ending index of the substring (exclusive).
+ * @return s.substr(begin, end - begin).
+ */
+wstring substr(wstring s, size_t begin, size_t end)
+{
+    return s.substr(begin, end - begin);
+}
 
 /**
  * @param s the input string.
  * @return the string where all beginning and ending spaces are trimmed from the input string.
  */
-string trim(string s)
+wstring trim(wstring s)
 {
     size_t idx;
 
@@ -38,7 +52,7 @@ string trim(string s)
 
     // contain only white spaces
     if (idx == s.size())
-        return "";
+        return L"";
 
     size_t lst = s.size() - 1;
 
@@ -53,17 +67,6 @@ string trim(string s)
     }
 
     return s;
-}
-
-/**
- * @param s the input string.
- * @param begin the beginning index of the substring (inclusive).
- * @param end the ending index of the substring (exclusive).
- * @return s.substr(begin, end - begin).
- */
-string substr(string s, size_t begin, size_t end)
-{
-    return s.substr(begin, end - begin);
 }
 
  /**
@@ -94,29 +97,54 @@ size_t find(string source, string target, size_t source_begin, size_t source_end
     return string::npos;
 }
 
-///**
-// * @param s the input string.
-// * @param begin the beginning index of the string to convert (inclusive).
-// * @param end the ending index of the string to convert (exclusive).
-// * @return
-// */
-//string toupper(string s, size_t begin, size_t end)
-//{
-//    string t(end - begin, '\0');
-//
-//    for (size_t i=begin; i<end; i++)
-//        t[i-begin] = toupper(s[i]);
-//
-//    return t;
-//}
-//
-///** Returns s[begin:end] in lower-case. */
-//string tolower(string s, size_t begin, size_t end)
-//{
-//    string t(end - begin, '\0');
-//
-//    for (size_t i=begin; i<end; i++)
-//        t[i-begin] = tolower(s[i]);
-//
-//    return t;
-//}
+// ======================================== Character ========================================
+
+bool is_range(wchar_t c, wchar_t begin, wchar_t end)
+{
+    return begin <= c && c <= end;
+}
+
+bool is_single_quote(wchar_t c)
+{
+    return c == '\'' || c == '`' || is_range(c, L'\u2018', L'\u201B');
+}
+
+bool is_double_quote(wchar_t c)
+{
+    return c == '"' || is_range(c, L'\u201C', L'\u201F');
+}
+
+bool is_bracket(wchar_t c)
+{
+    return is_left_bracket(c) || is_right_bracket(c);
+}
+
+bool is_left_bracket(wchar_t c)
+{
+    return c == '(' || c == '{' ||c == '[' ||c == '<';
+}
+
+bool is_right_bracket(wchar_t c)
+{
+    return c == ')' || c == '}' ||c == ']' ||c == '>';
+}
+
+bool is_arrow(wchar_t c)
+{
+    return is_range(c, L'\u2190', L'\u21FF') || is_range(c, L'\u27F0', L'\u27FF') || is_range(c, L'\u2900', L'\u297F');
+}
+
+bool is_hyphen(wchar_t c)
+{
+    return c == '-' || is_range(c, L'\u2010', L'\u2014');
+}
+
+bool is_currency(wchar_t c)
+{
+    return c == '$' || is_range(c, L'\u00A2', L'\u00A5') || is_range(c, L'\u20A0', L'\u20CF');
+}
+
+bool is_final_mark(wchar_t c)
+{
+    return c == '.' || c == '?' || c == '!' || c == L'\u203C' || is_range(c, L'\u2047', L'\u2049');
+}
