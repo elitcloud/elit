@@ -32,7 +32,7 @@ Operating System :: MacOS
 MAJOR = 0
 MINOR = 1
 MICRO = 2
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 # Return the git revision as a string
@@ -122,6 +122,9 @@ def setup_package():
 
     BASEPATH = os.path.dirname(os.path.abspath(__file__))
     TOKENIZER_BUILD_PATH = os.path.join(BASEPATH, 'elit/tokenizer')
+
+    # Rewrite the version file everytime
+    write_version_py()
 
     class TokenizerInstall(install):
         """
