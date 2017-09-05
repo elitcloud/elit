@@ -158,4 +158,4 @@ wsj-pos.dev.gold.tsv
 wsj-pos.trn.gold.tsv
 
 # cpp
-elit/cpp/cmake-build-debug/
+cmake-build-debug/
