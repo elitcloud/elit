@@ -5,7 +5,7 @@ import os
 class ReaderTest(unittest.TestCase):
     def setUp(self):
         self.tsv_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                     './../resources/sample/sample.tsv')
+                                     './../elit/resources/sample/sample.tsv')
         self.reader = TSVReader(1, 2, 3, 4, 5, 6, 7, 8)
 
     def test_tsv_reader_nodes(self):
