@@ -3,34 +3,16 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-matrix:
-  include:
-  - os: linux
-    env:
-      # Boost
-      - BOOST_VERSION=def
-    python:
-      - "3.4"
-      - "3.5"
-      - "3.6"
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
-        - g++-4.8
-        - libboost-all-dev
-  - os: osx
-    python:
-      - "3.4"
-      - "3.5"
-      - "3.6"
-before_install:
-- |
-  if ["$TRAVIS_OS_NAME" = "linux"]; then export CXX=g++-4.8 CC=gcc-4.8; fi
-  if ["$TRAVIS_OS_NAME" = "osx"]; then
-    brew update; brew install boost;
-  fi
+env:
+  # Boost
+  - BOOST_VERSION=def
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-4.8
+    - libboost-all-dev
 install:
   - pip install Cython
   - pip install .
