@@ -35,6 +35,7 @@ MICRO = 2
 ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
+
 # Return the git revision as a string
 def git_version():
     def _minimal_ext_cmd(cmd):
@@ -59,11 +60,12 @@ def git_version():
 
     return GIT_REVISION
 
-# BEFORE importing setuptools, remove MANIFEST. Otherwise it may not be
+
+# BEFORE importing setuptools, remove MANIFEST.in. Otherwise it may not be
 # properly updated when the contents of directories change (true for distutils,
 # not sure about setuptools).
-if os.path.exists('MANIFEST'):
-    os.remove('MANIFEST')
+if os.path.exists('MANIFEST.in'):
+    os.remove('MANIFEST.in')
 
 
 def get_version_info():
@@ -115,44 +117,92 @@ if not release:
 EXCLUDE_FROM_PACKAGES = ['']
 
 
+class get_pybind_include(object):
+    """Helper class to determine the pybind11 include path
+
+    The purpose of this class is to postpone importing pybind11
+    until it is actually installed, so that the ``get_include()``
+    method can be invoked. """
+
+    def __init__(self, user=False):
+        self.user = user
+
+    def __str__(self):
+        import pybind11
+        return pybind11.get_include(self.user)
+
+
 def setup_package():
     from setuptools import setup, find_packages, Extension
-    from setuptools.command.install import install
-    from subprocess import call
+    import setuptools
+    from setuptools.command.build_ext import build_ext
 
-    BASEPATH = os.path.dirname(os.path.abspath(__file__))
-    TOKENIZER_BUILD_PATH = os.path.join(BASEPATH, 'elit/tokenizer')
+    ext_modules = [
+        Extension(
+            'english_tokenizer',
+            ['elit/cpp/english_tokenizer.cpp',
+             'elit/cpp/string_utils.cpp',
+             'elit/cpp/io_utils.cpp'],
+            include_dirs=[
+                # Path to pybind11 headers
+                get_pybind_include(),
+                get_pybind_include(user=True)
+            ],
+            language='c++'
+        ),
+    ]
 
-    # Rewrite the version file everytime
-    write_version_py()
-
-    class TokenizerInstall(install):
+    # As of Python 3.6, CCompiler has a `has_flag` method.
+    # cf http://bugs.python.org/issue26689
+    def has_flag(compiler, flagname):
+        """Return a boolean indicating whether a flag name is supported on
+        the specified compiler.
         """
-        Class for build the C library of tokenizer
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+            f.write('int main (int argc, char **argv) { return 0; }')
+            try:
+                compiler.compile([f.name], extra_postargs=[flagname])
+            except setuptools.distutils.errors.CompileError:
+                return False
+        return True
+
+    def cpp_flag(compiler):
+        """Return the -std=c++[11/14] compiler flag.
+
+        The c++14 is prefered over c++11 (when it is available).
         """
+        if has_flag(compiler, '-std=c++14'):
+            return '-std=c++14'
+        elif has_flag(compiler, '-std=c++11'):
+            return '-std=c++11'
+        else:
+            raise RuntimeError('Unsupported compiler -- at least C++11 support '
+                               'is needed!')
 
-        def run(self):
-            """
-            Build and install the shared library of hostapd
-            """
+    class BuildExt(build_ext):
+        """A custom build extension for adding compiler-specific options."""
+        c_opts = {
+            'msvc': ['/EHsc'],
+            'unix': [],
+        }
 
-            def compile_tokenizer():
-                """
-                Compile the shared library of hostapd
-                """
-                call(['make'], cwd=TOKENIZER_BUILD_PATH)
+        if sys.platform == 'darwin':
+            c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
 
-            # Before installing, we compile the tokenizer library first
-            self.execute(compile_tokenizer, [],
-                         'Compiling tokenizer library')
-
-            install.run(self)
-
-    extension_mod = Extension("_tokenizer",
-                              ["./elit/tokenizer/_tokenizer_module.cpp",
-                               "./elit/tokenizer/tokenizer.cpp"],
-                              language='c++',
-                              extra_compile_args=['-std=c++0x', '-std=c++11'])
+        def build_extensions(self):
+            ct = self.compiler.compiler_type
+            opts = self.c_opts.get(ct, [])
+            if ct == 'unix':
+                opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
+                opts.append(cpp_flag(self.compiler))
+                if has_flag(self.compiler, '-fvisibility=hidden'):
+                    opts.append('-fvisibility=hidden')
+            elif ct == 'msvc':
+                opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            for ext in self.extensions:
+                ext.extra_compile_args = opts
+            build_ext.build_extensions(self)
 
     metadata = dict(
         name='elit',
@@ -163,6 +213,7 @@ def setup_package():
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
+        package_data={'': ['resources/tokenizer/*.txt']},
         include_package_data=True,
         install_requires=[
             'nose',
@@ -171,17 +222,17 @@ def setup_package():
             'argparse',
             'gensim',
             'fasttext',
-            'numpy'
+            'numpy',
+            'pybind11>=1.7'
         ],
         classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
-        ext_modules=[extension_mod],
-        cmdclass={
-            'install': TokenizerInstall,
-        }
+        ext_modules=ext_modules,
+        cmdclass={'build_ext': BuildExt}
     )
     metadata['version'] = get_version_info()[0]
 
     setup(**metadata)
+
 
 if __name__ == '__main__':
     setup_package()

@@ -23,6 +23,8 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 using namespace std;
 
@@ -99,6 +101,14 @@ t_vector tokenize(wstring s)
 
     tokenize_aux(v, s, begin, end);
     return v;
+}
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(english_tokenizer, m) {
+    m.doc() = "pybind11 example plugin"; // optional module docstring
+
+    m.def("tokenize", &tokenize, "A function which adds two numbers");
 }
 
 /** This is recursively called by many other functions. */

@@ -17,4 +17,4 @@
  */
 #include <string>
 
-const std::string RESOURCE_ROOT = "/Users/jdchoi/workspace/elit/elit/cpp/resources/";
+const std::string RESOURCE_ROOT = "elit/resources/tokenizer/";
