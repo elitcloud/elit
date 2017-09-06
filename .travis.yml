@@ -5,7 +5,7 @@ python:
   - "3.6"
 env:
   # Boost
-  - BOOST_VERSION=def
+  - BOOST_VERSION=default
 addons:
   apt:
     sources:
