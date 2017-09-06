@@ -19,7 +19,7 @@ class EmoticonsTest(unittest.TestCase):
     def test_tokenizer(self):
         test_case = ':smile: :hug: :pencil:'
         tokens = english_tokenizer.tokenize(test_case)
-        self.assertEquals(len(tokens), 3)
+        self.assertEqual(len(tokens), 3)
 
 
 if __name__ == '__main__':
