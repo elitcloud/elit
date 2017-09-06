@@ -7,7 +7,7 @@
 
 ## NLPGraph
 
-The following code reads the first dependency graph from [sample.tsv](../resources/sample/sample.tsv) (see [TSVReader](reader.md#tsvreader) for more details):
+The following code reads the first dependency graph from [sample.tsv](../elit/resources/sample/sample.tsv) (see [TSVReader](reader.md#tsvreader) for more details):
 
 ```python
 from elit.reader import TSVReader
