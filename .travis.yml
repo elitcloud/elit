@@ -11,8 +11,13 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - g++-4.8
+    - gcc-5.0
+    - g++-5.0
     - libboost-all-dev
+sudo: required
+before_install:
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5.0 /usr/bin/gcc
+  - gcc --version
 install:
   - pip install Cython
   - pip install .
