@@ -17,7 +17,8 @@ addons:
 sudo: false
 install:
 - pip install Cython
-- python setup.py install
+- pip install .
+- python setup.py build
 script:
 - nosetests
 deploy:
