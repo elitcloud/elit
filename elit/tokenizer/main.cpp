@@ -29,18 +29,11 @@ void print_v(wstring s)
 
 int main(int argc, const char * argv[])
 {
+    auto test = L"Hit 'em hard!";
+    print_v(test);
     wstring t[] = {
-            L"He possesses  dollars!"
-        L"It is simply papier-mâché", //unresolved!
-            L"The antique clock is from c.1900!", //unresolved!
-            L"Have you received my C.V.?",//unresolved
-            L"Ling et al. shall not get their way!",
-            L"Broccoli, etc. will not be a problem.",
-            L"Ibid., 29", //fixed
-            L"RC J.D. is a good man!",
-            L"I need 1 lb. of food!", //fixed
-            L"One equals three, Q.E.D.!", //unresolved
-            L"R.I.P., Mr. Finley!"
+            L"He made 20p!",
+            L"'Tis unacceptable!"
 
 
     };

@@ -381,9 +381,20 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
                (curr+4 >= end || !isdigit(s[curr+4], LOC_UTF8));
 
     // '97
-    if (is_single_quote(c))
-        return curr+2 < end && isdigit(s[curr+1], LOC_UTF8) && isdigit(s[curr+2], LOC_UTF8) &&
-               (curr+3 >= end || !isdigit(s[curr+3], LOC_UTF8));
+    if (is_single_quote(c)) {
+        if (curr + 2 < end && isdigit(s[curr + 1], LOC_UTF8) && isdigit(s[curr + 2], LOC_UTF8) &&
+            (curr + 3 >= end || !isdigit(s[curr + 3], LOC_UTF8))) {
+            return true;
+        }
+
+        if (curr + 2 < end){
+            if (s[curr + 1] == 'e' && s[curr + 2] == 'm'){
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     if (c == ':')
         return curr-1 >= begin && isdigit(s[curr-1], LOC_UTF8) &&
