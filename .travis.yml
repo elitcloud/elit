@@ -1,12 +1,11 @@
 language: python
 cache: pip
 python:
-  - "3.4"
-  - "3.5"
-  - "3.6"
+- '3.4'
+- '3.5'
+- '3.6'
 env:
-  # Boost
-  - BOOST_VERSION=default CC=/usr/bin/gcc-5 CXX=/usr/bin/g++-5
+- BOOST_VERSION=default CC=/usr/bin/gcc-5 CXX=/usr/bin/g++-5
 addons:
   apt:
     sources:
@@ -17,8 +16,15 @@ addons:
     - libboost-all-dev
 sudo: false
 install:
-  - pip install Cython
-  - pip install .
-# command to run tests
+- pip install Cython
+- pip install .
 script:
-  - nosetests
+- nosetests
+deploy:
+  provider: pypi
+  user: emorynlp
+  password:
+    secure: XTttyWsWYPYrsAoJ/cCQjg1kpW8KzO2jZ89rACtgFPB/dJZL4q1HsLeMUIKtecMX0QZJfOXob9Kj0dBYD9KoybRb5HhBcMFkKc1k1RfSpSZblbWwmAKvyyjLkK2FgNLfSqWom41geTlqRwaoCEO7PtD0mn98/KSvFbvHYELmqn1NscdtbTR4HWyP0elIPrMDFPMeX7GtWll7Bnjt1pI//0Mcv+4jB/lHPCvyh809OgPNKqA2vS97vQ7wJ/rBk+Qiu8a6taf7hYxHUxpwLkAEaGSQz92+OJzwmY6trQcJw5j9pMBfwGPSMz1r5TWd2g7VwmIGH/KM0U0WI0wPOJt9wnynYzfaa6633Ctzihmt2GLfQxcuhc427oHlKKHjmd5tCn8isjsLJICg8WeoWwcDLljsOunQfaaKDuZuchY2ol8gjmwvM9ATC4nZtGfFr0cPr3Et1GZcZcBG5LnNE8hzQDNGthHQuqmSH5gB2sdUfbU935MGL2xA/5SFOHz6C06uupv8tgjj2lQwaKxXNBX/5cEhoNe+4yaYcAFM3hN+BLyzW08xCg5SGgH1htJ5Nj+jC3SnlnIU6Y0DvENuEyuTpy6H5LdfhZW/VorwWsAfd7uQiT0UgveFMZ6pc/vnyqB9jTdReqgi3JHCBYVx/hlHvGhx35y7Gsr5PTG4kN9slT4=
+  on:
+    tags: true
+    branch: master
