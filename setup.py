@@ -225,6 +225,7 @@ def setup_package():
     )
     metadata['version'] = get_version_info()[0]
 
+    write_version_py()
     setup(**metadata)
 
 

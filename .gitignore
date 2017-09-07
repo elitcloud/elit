@@ -159,3 +159,5 @@ wsj-pos.trn.gold.tsv
 
 # cpp
 cmake-build-debug/
+
+elit/version.py
