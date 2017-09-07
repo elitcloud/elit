@@ -60,14 +60,6 @@ def git_version():
 
     return GIT_REVISION
 
-
-# BEFORE importing setuptools, remove MANIFEST.in. Otherwise it may not be
-# properly updated when the contents of directories change (true for distutils,
-# not sure about setuptools).
-if os.path.exists('MANIFEST.in'):
-    os.remove('MANIFEST.in')
-
-
 def get_version_info():
     # Adding the git rev number needs to be done inside write_version_py(),
     # otherwise the import of numpy.version messes up the build under Python 3.
