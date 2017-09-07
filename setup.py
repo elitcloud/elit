@@ -214,7 +214,7 @@ def setup_package():
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         package_data={'': ['resources/tokenizer/*.txt',
-                           'resources/sample/*.tsv']},
+                           'resources/sample/*']},
         include_package_data=True,
         install_requires=[
             'nose',
