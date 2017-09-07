@@ -17,4 +17,4 @@
  */
 #include <string>
 
-const std::string RESOURCE_ROOT = "elit/resources/tokenizer/";
+const std::string RESOURCE_ROOT = "./elit/resources/tokenizer/";
