@@ -1,0 +1,5 @@
+include README.md
+recursive-include elit/resources/sample
+recursive-include elit/resources/tokenizer *.txt
+recursive-include elit/tokenizer *.hpp
+recursive-include elit/tokenizer *.h
