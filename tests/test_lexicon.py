@@ -15,14 +15,26 @@
 # ========================================================================
 
 
-# from elit.component.template.lexicon import *
-#
-# __author__ = 'Jinho D. Choi'
-#
-# word_embeddings = KeyedVectors.load_word2vec_format('resources/sample/sample.w2v.bin', binary=True)
-# lexicon = NLPLexiconMapper(word_embeddings)
-#
-# print(get_default_vector(word_embeddings))
-# print(get_root_vector(word_embeddings))
-# print(get_vector(word_embeddings, 'Jinho'))
-# print(get_vector(word_embeddings, ''))
+from elit.component.template.lexicon import NLPLexiconMapper
+# from fasttext.model import WordVectorModel
+from gensim.models.keyedvectors import KeyedVectors
+
+import unittest
+import os
+
+__author__ = 'Jinho D. Choi'
+
+class LexiconTest(unittest.TestCase):
+
+    def setUp(self):
+        self.w2v_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                     './../elit/resources/sample/sample.w2v.bin')
+        self.word_embeddings = KeyedVectors.load_word2vec_format(self.w2v_file, binary=True)
+
+
+    def test_lexicon(self):
+        lexicon = NLPLexiconMapper(self.word_embeddings)
+        print(lexicon.w2v)
+
+if __name__ == '__main__':
+    unittest.main()
