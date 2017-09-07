@@ -1,4 +1,4 @@
-# The ELIT Project [![Build Status](https://travis-ci.org/emorynlp/elit.svg?branch=master)](https://travis-ci.org/emorynlp/elit) [![PyPI version](https://badge.fury.io/py/elit@2x.png)](https://badge.fury.io/py/elit)
+# The ELIT Project [![Build Status](https://travis-ci.org/emorynlp/elit.svg?branch=master)](https://travis-ci.org/emorynlp/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit)
 
 The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**anguage and **I**nformation **T**echnology (ELIT) project provides:
 
