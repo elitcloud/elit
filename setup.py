@@ -129,6 +129,8 @@ def setup_package():
     import setuptools
     from setuptools.command.build_ext import build_ext
 
+    write_version_py()
+
     ext_modules = [
         Extension(
             'english_tokenizer',
@@ -225,7 +227,6 @@ def setup_package():
     )
     metadata['version'] = get_version_info()[0]
 
-    write_version_py()
     setup(**metadata)
 
 
