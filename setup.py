@@ -141,8 +141,12 @@ def setup_package():
         Extension(
             'english_tokenizer',
             ['elit/tokenizer/english_tokenizer.cpp',
+             'elit/tokenizer/english_tokenizer.hpp',
              'elit/tokenizer/string_utils.cpp',
-             'elit/tokenizer/io_utils.cpp'],
+             'elit/tokenizer/string_utils.hpp',
+             'elit/tokenizer/io_utils.cpp',
+             'elit/tokenizer/io_utils.hpp',
+             'elit/tokenizer/global_const.h'],
             include_dirs=[
                 # Path to pybind11 headers
                 get_pybind_include(),
