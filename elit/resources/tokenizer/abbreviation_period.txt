@@ -72,6 +72,7 @@ gov
 govs
 hon
 hrs
+ibid
 ie
 inc
 inst
@@ -80,6 +81,8 @@ jan
 jr
 jul
 jun
+lb
+lbs
 lea
 lib
 lieut
@@ -149,6 +152,7 @@ thurs
 tue
 tues
 univ
+viz
 vol
 vs
 wed
