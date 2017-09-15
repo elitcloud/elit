@@ -16,6 +16,8 @@
  * Author: Jinho D. Choi
  */
 
+#define CATCH_CONFIG_RUNNER
+
 #include <iostream>
 #include <fstream>
 #include "english_tokenizer.hpp"
@@ -332,6 +334,32 @@ TEST_CASE("Regular Expression")
     }
 }
 
+TEST_CASE("Misc")
+{
+    wstring s = L"Mbaaah!hello prize.Please";
+    print_tokens(s);
+
+    s = L"|http://www.clearnlp.com www.clearnlp.com |mailto:support@clearnlp.com|jinho_choi@clearnlp.com|";
+    print_tokens(s);
+
+    s = L":-))) :---( Hi:).";
+    print_tokens(s);
+
+    s = L"---\"((``@#$Choi%&*''))\".?!===";
+    print_tokens(s);
+
+    s = L",,A---C**D~~~~E==F,G,,H..I.J-1.--2-K||L-#3";
+    print_tokens(s);
+
+    s = L"(e.g., bcd. BCD. and. T. T.. T.";
+    print_tokens(s);
+
+    s = L"$1 E2 L3 USD1 2KPW $1 USD1 us$ US$ ub$";
+    print_tokens(s);
+
+    s = L"I did it my way. Definitely not worth stopping by.";
+    print_tokens(s);
+}
 
 
 
