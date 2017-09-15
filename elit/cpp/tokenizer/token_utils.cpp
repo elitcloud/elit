@@ -53,7 +53,7 @@ bool equals(TokenList t1, TokenList t2)
     if (t1.size() != t2.size())
         return false;
 
-    for (auto i=0; i<t1.size(); i++)
+    for (int i=t1.size()-1; i>=0; i--)
     {
         if (!equals(t1[i], t2[i]))
             return false;

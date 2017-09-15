@@ -17,5 +17,5 @@
  */
 #include <string>
 
-//const std::string RESOURCE_ROOT = "./elit/resources/";
-const std::string RESOURCE_ROOT = "/Users/jdchoi/workspace/elit/elit/resources/";
+const std::string RESOURCE_ROOT = "./elit/resources/";
+//const std::string RESOURCE_ROOT = "/Users/jdchoi/workspace/elit/elit/resources/";

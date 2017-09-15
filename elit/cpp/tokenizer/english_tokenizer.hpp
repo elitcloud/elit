@@ -34,7 +34,7 @@ TokenList tokenize(std::wstring s);
  * @param s the input string.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
- * @return true if any token in s[begin:end] is added to the output vector; otherwise, false.
+ * @return true if any token in s[begin:end] is added to the output vector.
  */
 bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end);
 
@@ -46,7 +46,7 @@ bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end);
  * @param s the input token.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
- * @return true if any token in s[begin:end] is added to the output vector; otherwise, false.
+ * @return true if any token in s[begin:end] is added to the output vector.
  */
 bool tokenize_trivial(TokenList &v, std::wstring s, size_t begin, size_t end);
 
@@ -70,9 +70,9 @@ void add_token(TokenList &v, std::wstring token, size_t begin, size_t end);
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
  */
-void add_token_sub(TokenList &v, std::wstring s, size_t begin, size_t end);
+void add_token_aux(TokenList &v, std::wstring s, size_t begin, size_t end);
 
-// ======================================== Add Token: Merge ========================================
+// ======================================== Concatenate ========================================
 
 /**
  * Concatenates the input token to the previous token in the output vector.
@@ -80,32 +80,85 @@ void add_token_sub(TokenList &v, std::wstring s, size_t begin, size_t end);
  * @param token the input token.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
- * @return true is the input token is concatenated to the previous token; otherwise, false.
+ * @return true is the input token is concatenated to the previous token.
  */
-bool add_token_concat(TokenList &v, std::wstring token, size_t begin, size_t end);
+bool concat_token(TokenList &v, std::wstring token, size_t begin, size_t end);
 
 /**
- * Concatenates the current token to the previous token, that is an apostrophe (e.g., curr = {"cause", "tis", ...}
+ * @param prev w_{i-1}.
+ * @param curr w_{i}.
+ * @return true is the previous token is an apostrophe, and the current token is {"cause", "tis", ...}.
+ */
+bool is_concat_apostrophe_front(std::wstring prev, std::wstring curr);
+
+/**
+ * @param prev w_{i-1}.
+ * @param curr w_{i}.
+ * @return true is the previous token is an abbreviatioin, and the current token is a period.
+ */
+bool is_concat_abbreviation(std::wstring prev, std::wstring curr);
+
+/**
+ * PRE: curr.size() == 1.
+ * e.g., "AB&CD", "a|b", "1/2", "a-b".
+ * @param prev w_{i-1}.
+ * @param curr w_{i}.
+ * @param next w_{i+1}.
+ * @return true if the current token is [&|/], and the previous and next tokens are either single characters or all uppercase alphabets.
+ */
+bool is_concat_acronym(std::wstring prev, std::wstring curr, std::wstring next);
+
+/**
+ * PRE: curr.size() == 1.
+ * e.g., "mis-predict", "book-able".
+ * @param prev w_{i-1}.
+ * @param curr w_{i}.
+ * @param next w_{i+1}.
+ * @return true if the current token is a hyphen, and the previous or next token is a qualified prefix/suffix.
+ */
+bool is_concat_hyphen(std::wstring prev, std::wstring curr, std::wstring next);
+
+/**
+ * Concatenates "No" and "." preceeding a digit. (e.g., No. 1).
+ * @param v the output vector
+ * @param prev w_{i-1}.
+ * @param curr w_{i}.
+ * @param next w_{i+1}.
+ * @return true if the previous token is "no", the current token is "." and the next token is "[:digit:]".
+ */
+bool concat_token_no(TokenList &v, std::wstring prev, std::wstring curr, std::wstring next);
+
+// ======================================== Split ========================================
+
+/**
+ * Splits the input token if necessary and adds the sub-tokens.
  * @param v the output vector.
+ * @param token the input token.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
- * @param prev the previous token.
- * @param curr the current token.
- * @return true is the input token is concatenated to the previous token; otherwise, false.
+ * @return true if sub-tokens are added to the output vector.
  */
-bool add_token_concat_apostrophe_front(TokenList &v, size_t begin, size_t end, std::wstring prev, std::wstring curr);
+bool split_token(TokenList &v, std::wstring token, size_t begin, size_t end);
 
-// ======================================== Add Token: Split ========================================
+/**
+ * Splits the unit from the input token (e.g., 10cm).
+ * @param v the output vector.
+ * @param token the input token.
+ * @param begin the begin index of the input token (inclusive).
+ * @param end the end index of the input token (exclusive).
+ * @return true if sub-tokens are added to the output vector.
+ */
+bool split_token_unit(TokenList &v, std::wstring token, size_t begin, size_t end);
 
-bool add_token_split(TokenList &v, std::wstring token, size_t begin, size_t end);
-
-bool add_token_split_unit(TokenList &v, std::wstring token, size_t begin, size_t end);
-
-bool add_token_split_concat(TokenList &v, std::wstring token, size_t begin, size_t end);
-
-
-
-
+/**
+ * Splits concatenated words from the input token (e.g., whadya -> wha d ya).
+ * @param v the output vector.
+ * @param token the input token.
+ * @param begin the begin index of the input token (inclusive).
+ * @param end the end index of the input token (exclusive).
+ * @return true if sub-tokens are added to the output vector.
+ */
+bool split_token_concat_words(TokenList &v, std::wstring token, size_t begin, size_t end);
 
 // ======================================== Regular Expression ========================================
 

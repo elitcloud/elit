@@ -25,35 +25,35 @@
 
 using namespace std;
 
-//#include <pybind11/pybind11.h>
-//#include <pybind11/stl.h>
-//
-//namespace py = pybind11;
-//
-//PYBIND11_MODULE(english_tokenizer, m) {
-//    m.doc() = "pybind11 example plugin"; // optional module docstring
-//
-//    m.def("tokenize", &tokenize, "A function which adds two numbers");
-//}
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(english_tokenizer, m) {
+    m.doc() = "pybind11 example plugin"; // optional module docstring
+
+    m.def("tokenize", &tokenize, "A function which adds two numbers");
+}
 
 // ======================================== Lexicons ========================================
-
-const string RR = RESOURCE_ROOT + "/tokenizer/";
-
-const set<wstring> SET_ABBREVIATION_PERIOD = read_word_set(RR + "abbreviation_period.txt");
-const set<wstring> SET_APOSTROPHE_FRONT = read_word_set(RR + "english_apostrophe_front.txt");
-const map<wstring,vector<size_t>> MAP_CONCAT_WORD = read_concat_word_map(RR + "english_concat_words.txt");
-const set<wstring> SET_HYPHEN_PREFIX = read_word_set(RR + "english_hyphen_prefix.txt");
-const set<wstring> SET_HYPHEN_SUFFIX = read_word_set(RR + "english_hyphen_suffix.txt");
-const set<wstring> SET_UNIT = read_word_set(RR + "units.txt");
-
-// ======================================== Constants ========================================
 
 /** Locale: UTF8. */
 const locale LOC_UTF8("en_US.UTF-8");
 
+const string ROOT = RESOURCE_ROOT + "/tokenizer/";
+
+const set<wstring> SET_ABBREVIATION_PERIOD = read_word_set(ROOT + "english_abbreviation_period.txt");
+const set<wstring> SET_APOSTROPHE_FRONT = read_word_set(ROOT + "english_apostrophe_front.txt");
+const map<wstring,vector<size_t>> MAP_CONCAT_WORD = read_concat_word_map(ROOT + "english_concat_words.txt");
+const set<wstring> SET_HYPHEN_PREFIX = read_word_set(ROOT + "english_hyphen_prefix.txt");
+const set<wstring> SET_HYPHEN_SUFFIX = read_word_set(ROOT + "english_hyphen_suffix.txt");
+const set<wstring> SET_UNIT = read_word_set(ROOT + "units.txt");
+
+// ======================================== Regular Expressions ========================================
+
 /** Network protocols (e.g., http://). */
-const wregex RE_PROTOCOL(L"(([[:alpha:]]{3,})(:\\/\\/))");
+const wregex RE_PROTOCOL(L"((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|imap4|sip)(:\\/\\/))");
 
 /**
  * :smile: :hug: :pencil:
@@ -126,7 +126,7 @@ bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end)
     if (tokenize_symbol(v, s, begin, end))
         return true;
 
-    add_token_sub(v, s, begin, end);
+    add_token_aux(v, s, begin, end);
     return true;
 }
 
@@ -136,14 +136,14 @@ bool tokenize_trivial(TokenList &v, wstring s, size_t begin, size_t end)
     // single character
     if (end - begin == 1)
     {
-        add_token_sub(v, s, begin, end);
+        add_token_aux(v, s, begin, end);
         return true;
     }
 
     // contains only alphabets and digits
     if (all_of(s.begin()+begin, s.begin()+end, ::isalnum))
     {
-        add_token_sub(v, s, begin, end);
+        add_token_aux(v, s, begin, end);
         return true;
     }
 
@@ -154,94 +154,55 @@ bool tokenize_trivial(TokenList &v, wstring s, size_t begin, size_t end)
 
 void add_token(TokenList &v, wstring token, size_t begin, size_t end)
 {
-    if (!add_token_concat(v, token, begin, end) && !add_token_split(v, token, begin, end))
+    if (!concat_token(v, token, begin, end) && !split_token(v, token, begin, end))
         v.emplace_back(token, begin, end);
 }
 
-void add_token_sub(TokenList &v, wstring s, size_t begin, size_t end)
+void add_token_aux(TokenList &v, wstring s, size_t begin, size_t end)
 {
     add_token(v, substr(move(s), begin, end), begin, end);
 }
 
-// ======================================== Add Token: Concatenate ========================================
+// ======================================== Concatenate ========================================
 
-bool add_token_concat(TokenList &v, wstring token, size_t begin, size_t end)
+bool concat_token(TokenList &v, wstring token, size_t begin, size_t end)
 {
     if (!v.empty())
     {
-        auto prev = get_form(v[v.size()-1]);
-        auto merge = add_token_concat_apostrophe_front(v, begin, end, prev, token);
+        auto p = v.back();
+        const auto &prev = get_form(p);
+        const auto &curr = token;
 
-        if (merge)
+        if (is_concat_apostrophe_front(prev, curr) || is_concat_abbreviation(prev, curr))
         {
-            auto p = v.back();
             v.pop_back();
-            v.emplace_back(get_form(p)+token, get_begin(p), end);
+            v.emplace_back(prev+curr, get_begin(p), end);
             return true;
         }
     }
 
     if (v.size() >= 2)
     {
-        auto prev = get_form(v[v.size()-2]);
-        auto curr = get_form(v[v.size()-1]);
-        auto next = token;
+        auto p = v[v.size()-2];
+        auto c = v[v.size()-1];
+        const auto &prev = get_form(p);
+        const auto &curr = get_form(c);
+        const auto &next = token;
 
-        if (curr.size() == 1)
+        if (is_concat_acronym(prev, curr, next) || is_concat_hyphen(prev, curr, next))
         {
-            bool merge = false;
-            auto c = curr[0];
-
-            if ((c == '&' || c == '|' || c == '/'))
-            {
-                merge = (prev.size() == 1 && next.size() == 1) ||
-                        (all_of(next.begin(), next.end(), ::isupper) && all_of(next.begin(), next.end(), ::isupper));
-            }
-            else if (is_hyphen(c))
-            {
-                if ((prev.size() == 1 && next.size() == 1) ||
-                    (all_of(next.begin(), next.end(), ::isupper) && all_of(next.begin(), next.end(), ::isupper)))
-                {
-                    merge = true;
-                }
-                else
-                {
-                    boost::to_lower(prev);
-                    boost::to_lower(next);
-                    merge = (SET_HYPHEN_PREFIX.count(prev) > 0 && all_of(next.begin(), next.end(), ::isalnum)) ||
-                            (SET_HYPHEN_SUFFIX.count(next) > 0 && all_of(prev.begin(), prev.end(), ::isalnum));
-                }
-            }
-            else if (c == '.')
-            {
-                boost::to_lower(prev);
-
-                if (regex_match(prev, RE_ABBREVIATION) ||
-                    SET_ABBREVIATION_PERIOD.count(prev) > 0 ||
-                    (boost::iequals(prev, L"no") && isdigit(next[0], LOC_UTF8)))
-                {
-                    auto p1 = v[v.size()-1];
-                    auto p2 = v[v.size()-2];
-                    v.erase(v.end()-2, v.end());
-                    v.emplace_back(get_form(p2) + get_form(p1), get_begin(p2), get_end(p1));
-                }
-            }
-
-            if (merge)
-            {
-                auto p1 = v[v.size()-1];
-                auto p2 = v[v.size()-2];
-                v.erase(v.end()-2, v.end());
-                v.emplace_back(get_form(p2) + get_form(p1) + token, get_begin(p2), end);
-                return true;
-            }
+            v.erase(v.end()-2, v.end());
+            v.emplace_back(prev+curr+next, get_begin(p), end);
+            return true;
         }
+
+        concat_token_no(v, prev, curr, next);
     }
 
     return false;
 }
 
-bool add_token_concat_apostrophe_front(TokenList &v, size_t begin, size_t end, wstring prev, wstring curr)
+bool is_concat_apostrophe_front(wstring prev, wstring curr)
 {
     if (prev.size() == 1 && is_single_quote(prev[0]))
     {
@@ -252,14 +213,65 @@ bool add_token_concat_apostrophe_front(TokenList &v, size_t begin, size_t end, w
     return false;
 }
 
-// ======================================== Add Token: Split ========================================
-
-bool add_token_split(TokenList &v, wstring token, size_t begin, size_t end)
+bool is_concat_abbreviation(wstring prev, wstring curr)
 {
-    return add_token_split_unit(v, token, begin, end) || add_token_split_concat(v, token, begin, end);
+    if (curr == L".")
+    {
+        boost::to_lower(prev);
+        return regex_match(prev, RE_ABBREVIATION) || SET_ABBREVIATION_PERIOD.count(prev) > 0;
+    }
+
+    return false;
 }
 
-bool add_token_split_unit(TokenList &v, wstring token, size_t begin, size_t end)
+bool is_concat_acronym(wstring prev, wstring curr, wstring next)
+{
+    auto c = curr[0];
+
+    if (curr.size() == 1 && (c == '&' || c == '|' || c == '/' || c == '-'))
+    {
+        return (prev.size() == 1 && next.size() == 1) ||
+               (all_of(next.begin(), next.end(), ::isupper) && all_of(next.begin(), next.end(), ::isupper));
+    }
+
+    return false;
+}
+
+bool is_concat_hyphen(wstring prev, wstring curr, wstring next)
+{
+    if (curr.size() == 1 && is_hyphen(curr[0]))
+    {
+        boost::to_lower(prev);
+        boost::to_lower(next);
+        return (SET_HYPHEN_PREFIX.count(prev) > 0 && all_of(next.begin(), next.end(), ::isalnum)) ||
+               (SET_HYPHEN_SUFFIX.count(next) > 0 && all_of(prev.begin(), prev.end(), ::isalnum));
+    }
+
+    return false;
+}
+
+bool concat_token_no(TokenList &v, wstring prev, wstring curr, wstring next)
+{
+    if (boost::iequals(prev, L"no") && curr == L"." && isdigit(next[0], LOC_UTF8))
+    {
+        auto p = v[v.size()-2];
+        auto c = v[v.size()-1];
+        v.erase(v.end()-2, v.end());
+        v.emplace_back(prev+curr, get_begin(p), get_end(c));
+        return true;
+    }
+
+    return false;
+}
+
+// ======================================== Split ========================================
+
+bool split_token(TokenList &v, wstring token, size_t begin, size_t end)
+{
+    return split_token_unit(v, token, begin, end) || split_token_concat_words(v, token, begin, end);
+}
+
+bool split_token_unit(TokenList &v, wstring token, size_t begin, size_t end)
 {
     for (int i=token.size()-1; i>=0; i--)
     {
@@ -282,7 +294,7 @@ bool add_token_split_unit(TokenList &v, wstring token, size_t begin, size_t end)
     return false;
 }
 
-bool add_token_split_concat(TokenList &v, wstring token, size_t begin, size_t end)
+bool split_token_concat_words(TokenList &v, wstring token, size_t begin, size_t end)
 {
     wstring t = boost::to_lower_copy(token);
     auto it = MAP_CONCAT_WORD.find(t);
@@ -367,10 +379,10 @@ void regex_hyperlink(TokenList &v, wstring s, size_t begin, size_t end, wsmatch 
     {
         auto idx = begin + m.position(0);
         tokenize_aux(v, s, begin, idx);
-        add_token_sub(v, s, idx, end);
+        add_token_aux(v, s, idx, end);
     }
     else
-        add_token_sub(v, s, begin, end);
+        add_token_aux(v, s, begin, end);
 }
 
 // ======================================== Symbol ========================================
@@ -421,20 +433,6 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
     return false;
 }
 
-//bool skip_symbol_period(wstring s, size_t begin, size_t end, size_t curr)
-//{
-//    if (s[curr] != '.') return false;
-//    wstring sub = substr(s, begin, curr);
-//
-//    // a.b.c.
-//    if (regex_match(sub, RE_ABBREVIATION))
-//        return true;
-//
-//    // ph.d.
-//    boost::to_lower(sub, LOC_UTF8);
-//    return SET_ABBREVIATION_PERIOD.count(sub) > 0;
-//}
-
 bool tokenize_symbol(TokenList &v, wstring s, size_t begin, size_t end, size_t curr, symbol_aux_0 f0, symbol_aux_1 f1)
 {
     if (f0(s[curr]))
@@ -444,7 +442,7 @@ bool tokenize_symbol(TokenList &v, wstring s, size_t begin, size_t end, size_t c
         if (f1(s, begin, end, curr, last))
         {
             tokenize_aux(v, s, begin, curr);
-            add_token_sub(v, s, curr, last);
+            add_token_aux(v, s, curr, last);
             tokenize_aux(v, s, last, end);
             return true;
         }
