@@ -65,7 +65,7 @@ const wregex RE_PROTOCOL(L"((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|i
  * :-( :-) :-P :-p :-O :-3 :-| :-/ :-\ :-$ :-* :-@
  * :^( :^) :^P :^p :^O :^3 :^| :^/ :^\ :^$ :^* :^@
  */
-const wregex RE_EMOTICON(L"(\\:\\w+\\:|\\<[\\/\\\\]?3|[\\(\\)\\\\|\\*\\$][\\-\\^]?[\\:\\;\\=]|[\\:\\;\\=B8][\\-\\^]?[3DOPp\\@\\$\\*\\\\\\)\\(\\/\\|])(\\W|$)");
+const wregex RE_EMOTICON(L"(\\:\\w+\\:|\\<[\\/\\\\]?3|[\\(\\)\\\\|\\*\\$][\\-\\^]?[\\:\\;\\=]|[\\:\\;\\=B8]([\\-\\^]+)?[3DOPp\\@\\$\\*\\\\\\)\\(\\/\\|]+)(\\W|$)");
 
 /**
  * jinho@elit.com
@@ -79,13 +79,13 @@ const wregex RE_EMAIL(L"([[:alnum:]\\-\\._]+(:\\S+)?@(([[:alnum:]\\-]+\\.)+[[:al
 const wregex RE_HTML_ENTITY(L"(\\&([[:alpha:]]+|\\#[Xx]?\\d+)\\;)");
 
 /** [1], (1a), [A.1] */
-const wregex RE_LIST_ITEM(L"(([\\[\\(]+)(\\d+[[:alpha:]]?|[[:alpha:]]\\d*|\\W+)(\\.(\\d+|[[:alpha:]]))*([\\]\\)])+)");
+const wregex RE_LIST_ITEM(L"(([\\[\\(\\{\\<]+)(\\d+[[:alpha:]]?|[[:alpha:]]\\d*|\\W+)(\\.(\\d+|[[:alpha:]]))*([\\]\\)\\}\\>])+)");
 
 /** doesn't */
 const wregex RE_APOSTROPHE(L"[[:alpha:]](n['\u2019]t|['\u2019](ll|nt|re|ve|[dmstz]))(\\W|$)", regex_constants::icase);
 
 /** a.b.c */
-const wregex RE_ABBREVIATION(L"^[[:alpha:]](\\.[[:alpha:]])*");
+const wregex RE_ABBREVIATION(L"^[[:alnum:]]([\\.-][[:alnum:]])*");
 
 // ======================================== Tokenization ========================================
 
@@ -130,18 +130,9 @@ bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end)
     return true;
 }
 
-/** Tokenizes general cases. */
 bool tokenize_trivial(TokenList &v, wstring s, size_t begin, size_t end)
 {
-    // single character
-    if (end - begin == 1)
-    {
-        add_token_aux(v, s, begin, end);
-        return true;
-    }
-
-    // contains only alphabets and digits
-    if (all_of(s.begin()+begin, s.begin()+end, ::isalnum))
+    if (end - begin == 1 || all_of(s.begin()+begin, s.begin()+end, ::isalnum))
     {
         add_token_aux(v, s, begin, end);
         return true;
@@ -228,10 +219,10 @@ bool is_concat_acronym(wstring prev, wstring curr, wstring next)
 {
     auto c = curr[0];
 
-    if (curr.size() == 1 && (c == '&' || c == '|' || c == '/' || c == '-'))
+    if (curr.size() == 1 && (c == '&' || c == '|' || c == '/'))
     {
-        return (prev.size() == 1 && next.size() == 1) ||
-               (all_of(next.begin(), next.end(), ::isupper) && all_of(next.begin(), next.end(), ::isupper));
+        return (prev.size() <= 2 && next.size() <= 2) ||
+               (all_of(prev.begin(), prev.end(), ::isupper) && all_of(next.begin(), next.end(), ::isupper));
     }
 
     return false;
@@ -241,6 +232,16 @@ bool is_concat_hyphen(wstring prev, wstring curr, wstring next)
 {
     if (curr.size() == 1 && is_hyphen(curr[0]))
     {
+        // 000-0000, 000-000-000
+        if (3 <= prev.size() && all_of(prev.end()-3, prev.end(), ::isdigit) && (prev.size() == 3 || is_hyphen(prev[prev.size()-4])) &&
+            3 <= next.size() && next.size() <= 4 && all_of(next.begin(), next.end(), ::isdigit))
+            return true;
+
+        // p-u-s-h
+        if (isalnum(prev.back(), LOC_UTF8) && (prev.size() == 1 || is_hyphen(prev[prev.size()-2])) &&
+            next.size() == 1 && isalnum(next[0], LOC_UTF8))
+            return true;
+
         boost::to_lower(prev);
         boost::to_lower(next);
         return (SET_HYPHEN_PREFIX.count(prev) > 0 && all_of(next.begin(), next.end(), ::isalnum)) ||
@@ -268,7 +269,7 @@ bool concat_token_no(TokenList &v, wstring prev, wstring curr, wstring next)
 
 bool split_token(TokenList &v, wstring token, size_t begin, size_t end)
 {
-    return split_token_unit(v, token, begin, end) || split_token_concat_words(v, token, begin, end);
+    return split_token_unit(v, token, begin, end) || split_token_concat_words(v, token, begin, end) || split_token_final_mark(v, token, begin, end);
 }
 
 bool split_token_unit(TokenList &v, wstring token, size_t begin, size_t end)
@@ -310,6 +311,26 @@ bool split_token_concat_words(TokenList &v, wstring token, size_t begin, size_t 
         }
 
         return true;
+    }
+
+    return false;
+}
+
+#include <iostream>
+bool split_token_final_mark(TokenList &v, wstring token, size_t begin, size_t end)
+{
+    if (token.size() < 9)
+        return false;
+
+    for (int i=3; i<token.size()-4; i++)
+    {
+        if (is_final_mark(token[i]) && all_of(token.begin(), token.begin()+i, ::isalpha) && all_of(token.begin()+i+1, token.end(), ::isalpha))
+        {
+            v.emplace_back(substr(token, 0, i), begin, begin+i);
+            v.emplace_back(wstring(1, token[i]), begin+i, begin+i+1);
+            v.emplace_back(substr(token, i+1, token.size()), begin+i+1, end);
+            return true;
+        }
     }
 
     return false;
@@ -415,6 +436,10 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
     if (c == '.' || c == '+')
         return curr+1 < end && isdigit(s[curr+1], LOC_UTF8);
 
+    // -1
+    if (c == '-')
+        return curr == begin && curr+1 < end && isdigit(s[curr+1], LOC_UTF8);
+
     // 1,000,000
     if (c == ',')
         return curr-1 >= begin && isdigit(s[curr-1], LOC_UTF8) &&
@@ -426,6 +451,7 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
         return curr+2 < end && isdigit(s[curr+1], LOC_UTF8) && isdigit(s[curr+2], LOC_UTF8) &&
                (curr+3 >= end || !isdigit(s[curr+3], LOC_UTF8));
 
+    // 10:30
     if (c == ':')
         return curr-1 >= begin && isdigit(s[curr-1], LOC_UTF8) &&
                curr+1 < end && isdigit(s[curr+1], LOC_UTF8);

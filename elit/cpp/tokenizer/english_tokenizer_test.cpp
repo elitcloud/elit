@@ -22,8 +22,8 @@
 #include <fstream>
 #include "english_tokenizer.hpp"
 #include "../catch.hpp"
+#include "../string_utils.hpp"
 
-using Catch::Matchers::VectorContains;
 using namespace std;
 
 void print_tokens(wstring s)
@@ -84,45 +84,50 @@ TEST_CASE("Concatenate")
 
     SECTION("abbreviation")
     {
-        wstring s = L"A.B. a.B.c AB.C. Ph.D.";
+        wstring s = L"A.B. a.B.c AB.C. Ph.D. 1.2. A-1.";
 
         TokenList gold = {
                 make_tuple(L"A.B." ,  0,  4),
                 make_tuple(L"a.B.c",  5, 10),
                 make_tuple(L"AB.C" , 11, 15),
                 make_tuple(L"."    , 15, 16),
-                make_tuple(L"Ph.D.", 17, 22)};
+                make_tuple(L"Ph.D.", 17, 22),
+                make_tuple(L"1.2." , 23, 27),
+                make_tuple(L"A-1." , 28, 32)};
 
         CHECK(equals(gold, tokenize(s)));
     }
 
     SECTION("acronym")
     {
-        wstring s = L"ab&cd AB|CD 1/2";
+        wstring s = L"ab&cd AB|CD 1/2 a-1 1-2";
 
         TokenList gold = {
-                make_tuple(L"ab"   ,  0,  2),
-                make_tuple(L"&"    ,  2,  3),
-                make_tuple(L"cd"   ,  3,  5),
+                make_tuple(L"ab&cd",  0,  5),
                 make_tuple(L"AB|CD",  6, 11),
-                make_tuple(L"1/2"  , 12, 15)};
+                make_tuple(L"1/2"  , 12, 15),
+                make_tuple(L"a-1"  , 16, 19),
+                make_tuple(L"1-2"  , 20, 23)};
 
         CHECK(equals(gold, tokenize(s)));
     }
 
     SECTION("hyphenated")
     {
-        wstring s = L"mis-predict mic-predict book-able book-es";
+        wstring s = L"mis-predict mic-predict book - able book-es 000-0000 000-000-000 p-u-s-h-1-2";
 
         TokenList gold = {
                 make_tuple(L"mis-predict",  0, 11),
                 make_tuple(L"mic"        , 12, 15),
                 make_tuple(L"-"          , 15, 16),
                 make_tuple(L"predict"    , 16, 23),
-                make_tuple(L"book-able"  , 24, 33),
-                make_tuple(L"book"       , 34, 38),
-                make_tuple(L"-"          , 38, 39),
-                make_tuple(L"es"         , 39, 41)};
+                make_tuple(L"book-able"  , 24, 35),
+                make_tuple(L"book"       , 36, 40),
+                make_tuple(L"-"          , 40, 41),
+                make_tuple(L"es"         , 41, 43),
+                make_tuple(L"000-0000"   , 44, 52),
+                make_tuple(L"000-000-000", 53, 64),
+                make_tuple(L"p-u-s-h-1-2", 65, 76)};
 
         CHECK(equals(gold, tokenize(s)));
     }
@@ -175,6 +180,21 @@ TEST_CASE("Split")
                 make_tuple(L"DO" ,  7,  9),
                 make_tuple(L"N'" ,  9, 11),
                 make_tuple(L"CHA", 11, 14)};
+
+        CHECK(equals(gold, tokenize(s)));
+    }
+
+    SECTION("final mark")
+    {
+        wstring s = L"Mbaaah.Please hello!world";
+
+        TokenList gold = {
+                make_tuple(L"Mbaaah",  0,  6),
+                make_tuple(L"."     ,  6,  7),
+                make_tuple(L"Please",  7, 13),
+                make_tuple(L"hello" , 14, 19),
+                make_tuple(L"!"     , 19, 20),
+                make_tuple(L"world" , 20, 25)};
 
         CHECK(equals(gold, tokenize(s)));
     }
@@ -234,22 +254,6 @@ TEST_CASE("Regular Expression")
         CHECK(equals(gold, tokenize(s)));
     }
 
-    SECTION("html entity")
-    {
-        wstring s = L"ab&larr;cd&#8592;&#x2190;ef&rarr;";
-
-        TokenList gold = {
-                make_tuple(L"ab"      ,  0,  2),
-                make_tuple(L"&larr;"  ,  2,  8),
-                make_tuple(L"cd"      ,  8, 10),
-                make_tuple(L"&#8592;" , 10, 17),
-                make_tuple(L"&#x2190;", 17, 25),
-                make_tuple(L"ef"      , 25, 27),
-                make_tuple(L"&rarr;"  , 27, 33)};
-
-        CHECK(equals(gold, tokenize(s)));
-    }
-
     SECTION("network protocol")
     {
         wstring s = L"a:http://ab sftp://ef abeftp://";
@@ -267,7 +271,7 @@ TEST_CASE("Regular Expression")
 
     SECTION("emoticon")
     {
-        wstring s = L":-) A:-( :). B:smile::sad: C:):(! :)., :)";
+        wstring s = L":-) A:-( :). B:smile::sad: C:):(! :)., :-))) :---( Hi:).";
 
         TokenList gold = {
                 make_tuple(L":-)"    ,  0,  3),
@@ -285,16 +289,18 @@ TEST_CASE("Regular Expression")
                 make_tuple(L":)"     , 34, 36),
                 make_tuple(L"."      , 36, 37),
                 make_tuple(L","      , 37, 38),
-                make_tuple(L":)"     , 39, 41),
-
-        };
+                make_tuple(L":-)))"  , 39, 44),
+                make_tuple(L":---("  , 45, 50),
+                make_tuple(L"Hi"     , 51, 53),
+                make_tuple(L":)"     , 53, 55),
+                make_tuple(L"."      , 55, 56)};
 
         CHECK(equals(gold, tokenize(s)));
     }
 
     SECTION("list")
     {
-        wstring s = L"[a](1)(1.a)[11.22.a.33](A.1)[a1][hello]";
+        wstring s = L"[a](1)(1.a)[11.22.a.33](A.1)[a1][hello]{22}";
 
         TokenList gold = {
                 make_tuple(L"[a]"         ,  0,  3),
@@ -306,7 +312,7 @@ TEST_CASE("Regular Expression")
                 make_tuple(L"["           , 32, 33),
                 make_tuple(L"hello"       , 33, 38),
                 make_tuple(L"]"           , 38, 39),
-        };
+                make_tuple(L"{22}"        , 39, 43)};
 
         CHECK(equals(gold, tokenize(s)));
     }
@@ -327,97 +333,140 @@ TEST_CASE("Regular Expression")
                 make_tuple(L"0's"   , 25, 28),
                 make_tuple(L"DO"    , 29, 31),
                 make_tuple(L"N'T"   , 31, 34),
-                make_tuple(L"ab'cd" , 35, 40),
-        };
+                make_tuple(L"ab'cd" , 35, 40)};
 
         CHECK(equals(gold, tokenize(s)));
     }
 }
 
-TEST_CASE("Misc")
+TEST_CASE("Symbol")
 {
-    wstring s = L"Mbaaah!hello prize.Please";
-    print_tokens(s);
+    SECTION("skip")
+    {
+        wstring s = L".1 +1 -1 1,000,000.00 1,00 '97 '90s '1990 10:30 1:2 a:b";
 
-    s = L"|http://www.clearnlp.com www.clearnlp.com |mailto:support@clearnlp.com|jinho_choi@clearnlp.com|";
-    print_tokens(s);
+        TokenList gold = {
+                make_tuple(L".1"          ,  0,  2),
+                make_tuple(L"+1"          ,  3,  5),
+                make_tuple(L"-1"          ,  6,  8),
+                make_tuple(L"1,000,000.00",  9, 21),
+                make_tuple(L"1"           , 22, 23),
+                make_tuple(L","           , 23, 24),
+                make_tuple(L"00"          , 24, 26),
+                make_tuple(L"'97"         , 27, 30),
+                make_tuple(L"'90s"        , 31, 35),
+                make_tuple(L"'"           , 36, 37),
+                make_tuple(L"1990"        , 37, 41),
+                make_tuple(L"10:30"       , 42, 47),
+                make_tuple(L"1:2"         , 48, 51),
+                make_tuple(L"a"           , 52, 53),
+                make_tuple(L":"           , 53, 54),
+                make_tuple(L"b"           , 54, 55)};
 
-    s = L":-))) :---( Hi:).";
-    print_tokens(s);
+        CHECK(equals(gold, tokenize(s)));
+    }
 
-    s = L"---\"((``@#$Choi%&*''))\".?!===";
-    print_tokens(s);
+    SECTION("hyphenated digit")
+    {
+        wstring s = L"1997-2012,1990's-2000S '97-2012 '12-14's";
 
-    s = L",,A---C**D~~~~E==F,G,,H..I.J-1.--2-K||L-#3";
-    print_tokens(s);
+        TokenList gold = {
+                make_tuple(L"1997"  ,  0,  4),
+                make_tuple(L"-"     ,  4,  5),
+                make_tuple(L"2012"  ,  5,  9),
+                make_tuple(L","     ,  9, 10),
+                make_tuple(L"1990's", 10, 16),
+                make_tuple(L"-"     , 16, 17),
+                make_tuple(L"2000S" , 17, 22),
+                make_tuple(L"'97"   , 23, 26),
+                make_tuple(L"-"     , 26, 27),
+                make_tuple(L"2012"  , 27, 31),
+                make_tuple(L"'12"   , 32, 35),
+                make_tuple(L"-"     , 35, 36),
+                make_tuple(L"14's"  , 36, 40)};
 
-    s = L"(e.g., bcd. BCD. and. T. T.. T.";
-    print_tokens(s);
+        CHECK(equals(gold, tokenize(s)));
+    }
 
-    s = L"$1 E2 L3 USD1 2KPW $1 USD1 us$ US$ ub$";
-    print_tokens(s);
+    SECTION("separator")
+    {
+        wstring s = L"aa;;;b:c\"\"d\"\" 0'''s ''a''a'' 'a'a'a'.?!..";
 
-    s = L"I did it my way. Definitely not worth stopping by.";
-    print_tokens(s);
+        TokenList gold = {
+                make_tuple(L"aa"   ,  0,  2),
+                make_tuple(L";;;"  ,  2,  5),
+                make_tuple(L"b"    ,  5,  6),
+                make_tuple(L":"    ,  6,  7),
+                make_tuple(L"c"    ,  7,  8),
+                make_tuple(L"\"\"" ,  8, 10),
+                make_tuple(L"d"    , 10, 11),
+                make_tuple(L"\"\"" , 11, 13),
+                make_tuple(L"0"    , 14, 15),
+                make_tuple(L"'''"  , 15, 18),
+                make_tuple(L"s"    , 18, 19),
+                make_tuple(L"''"   , 20, 22),
+                make_tuple(L"a"    , 22, 23),
+                make_tuple(L"''"   , 23, 25),
+                make_tuple(L"a"    , 25, 26),
+                make_tuple(L"''"   , 26, 28),
+                make_tuple(L"'"    , 29, 30),
+                make_tuple(L"a'a'a", 30, 35),
+                make_tuple(L"'"    , 35, 36),
+                make_tuple(L".?!..", 36, 41)};
+
+        CHECK(equals(gold, tokenize(s)));
+    }
+
+    SECTION("hashtag")
+    {
+        wstring s = L"#happy2018,@Jinho_Choi: ab@cde";
+
+        TokenList gold = {
+                make_tuple(L"#happy2018" ,  0, 10),
+                make_tuple(L","          , 10, 11),
+                make_tuple(L"@Jinho_Choi", 11, 22),
+                make_tuple(L":"          , 22, 23),
+                make_tuple(L"ab@cde"     , 24, 30)};
+
+        CHECK(equals(gold, tokenize(s)));
+    }
+
+    SECTION("currency")
+    {
+        wstring s = L"#1 $1 ";
+
+        TokenList gold = {
+                make_tuple(L"#", 0, 1),
+                make_tuple(L"1", 1, 2),
+                make_tuple(L"$", 3, 4),
+                make_tuple(L"1", 4, 5)};
+
+        CHECK(equals(gold, tokenize(s)));
+    }
+
 }
 
-
-
-
-
-//TEST_CASE("Compound nouns with dashes are tokenized together", "[compounds]"){
-//    CHECK(tokenize(L"I really need a pick-me-up!").size() == 6);
-//    CHECK(tokenize(L"I don't like hand-me-down clothes!").size() == 7);
-//}
-
-//TEST_CASE("Novel -- Check range sanity", "[novel]")
-//{
-//    wifstream fin("/home/catherine/dev/elit/elit/cpp/test_data/wiki_text.txt");
+TEST_CASE("Benchmark")
+{
+//    wifstream fin(RESOURCE_ROOT+"sample/wiki_text.txt");
+//    long long tt = 0, wc = 0;
+//    TokenList ls;
 //    wstring line;
-//    while(getline(fin, line)){
-//        auto tokens = tokenize(line);
-//        SECTION("Checking range correspondence with the original text string")
-//        {
-//            for (auto token : tokens)
-//            {
-//                size_t start_pos = get_begin(token);
-//                size_t length = token.second.second - start_pos;
-//                wstring expected_string = line.substr(start_pos, length);
-//                CHECK(expected_string == token.first);
-//            }
-//        }
 //
-//        SECTION("Checking ranges for illegal overlaps")
-//        {
-//            for (int i = 0; i < tokens.size(); ++i)
-//            {
+//    while(getline(fin, line))
+//    {
+//        auto st = chrono::high_resolution_clock::now();
+//        ls = tokenize(line);
+//        auto et = chrono::high_resolution_clock::now();
+//        wc += ls.size();
+//        tt += chrono::duration_cast<std::chrono::milliseconds>(et-st).count();
 //
-//                auto token = tokens[i];
-//
-//                pair<size_t, size_t> curr = token.second;
-//                CHECK(curr.second > curr.first);
-//                if (i > 0)
-//                {
-//                    pair<size_t, size_t> prev = tokens[i-1].second;
-//                    CHECK(curr.first >= prev.second);
-//                    if (curr.first < prev.second){
-//                        wcout << line << endl;
-//                        wcout << "LENGTH: " << line.size() << endl;
-//                        wcout << "PREV: " << line.substr(prev.first, prev.second - prev.first) << endl;
-//                        wcout << "CURR: " << line.substr(curr.first, curr.second - curr.first) << endl;
-//                        wcout << "TOKENS:" << endl;
-//                        for (auto token : tokens){
-//                            wcout << token.first << " ";
-//                        }
-//                        wcout << endl;
-//                    }
-//                }
-//
-//                CHECK(curr.second <= line.length());
-//            }
-//        }
+//        for (Token t : ls) wcout << get_form(t) << ' ';
+//        wcout << endl;
 //    }
-//}
+//
+//    cout << wc * 1000 / tt << endl;
+}
 
 int main(int argc, const char *const *const argv)
 {

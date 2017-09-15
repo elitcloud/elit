@@ -160,6 +160,8 @@ bool split_token_unit(TokenList &v, std::wstring token, size_t begin, size_t end
  */
 bool split_token_concat_words(TokenList &v, std::wstring token, size_t begin, size_t end);
 
+bool split_token_final_mark(TokenList &v, std::wstring token, size_t begin, size_t end);
+
 // ======================================== Regular Expression ========================================
 
 typedef void (* regex_aux)(TokenList &v, std::wstring s, size_t begin, size_t end, std::wsmatch m, size_t flag);
