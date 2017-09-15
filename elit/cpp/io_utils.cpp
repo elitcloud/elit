@@ -1,4 +1,4 @@
-#include "english_tokenizer.hpp"
+#include "tokenizer/english_tokenizer.hpp"
 #include <set>
 
 /*
@@ -19,9 +19,9 @@
  * Author: Jinho D. Choi
  */
 #include "io_utils.hpp"
+#include "string_utils.hpp"
 #include <sstream>
 #include <fstream>
-#include <codecvt>
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -32,16 +32,16 @@ using namespace std;
 
 set<wstring> read_word_set(string filename)
 {
-    wifstream fin(filename);
+    ifstream fin(filename);
     set<wstring> s;
-    wstring line;
+    string line;
 
-    fin.imbue(locale(std::locale(), new codecvt_utf8<wchar_t>));
+//  fin.imbue(locale(std::locale(), new codecvt_utf8<wchar_t>));
 
     while (getline(fin, line))
     {
         boost::trim(line);
-        if (!line.empty()) s.insert(line);
+        if (!line.empty()) s.insert(utf8_to_wstring(line));
     }
 
     cout << boost::format("Init: %s (%d keys)\n") % filename % s.size();
@@ -51,10 +51,10 @@ set<wstring> read_word_set(string filename)
 map<wstring,vector<size_t>> read_concat_word_map(string filename)
 {
     map<wstring,vector<size_t>> m;
-    wifstream fin(filename);
-    wstring line;
+    ifstream fin(filename);
+    string line;
 
-    fin.imbue(locale(std::locale(), new codecvt_utf8<wchar_t>));
+//  fin.imbue(locale(std::locale(), new codecvt_utf8<wchar_t>));
 
     while (getline(fin, line))
     {
@@ -65,7 +65,7 @@ map<wstring,vector<size_t>> read_concat_word_map(string filename)
             wstringstream k;
             size_t i = 0;
 
-            for (wchar_t c : line)
+            for (wchar_t c : utf8_to_wstring(line))
             {
                 if (c == ' ')
                     v.push_back(i);

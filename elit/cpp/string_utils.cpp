@@ -16,8 +16,11 @@
  * Author: Jinho D. Choi
  */
 #include <string>
+#include <boost/locale/encoding_utf.hpp>
 #include "string_utils.hpp"
+
 using namespace std;
+using boost::locale::conv::utf_to_utf;
 
 // ======================================== String ========================================
 
@@ -147,4 +150,16 @@ bool is_currency(wchar_t c)
 bool is_final_mark(wchar_t c)
 {
     return c == '.' || c == '?' || c == '!' || c == L'\u203C' || is_range(c, L'\u2047', L'\u2049');
+}
+
+// ======================================== Encoding ========================================
+
+wstring utf8_to_wstring(const string& str)
+{
+    return utf_to_utf<wchar_t>(str.c_str(), str.c_str() + str.size());
+}
+
+string wstring_to_utf8(const wstring& str)
+{
+    return utf_to_utf<char>(str.c_str(), str.c_str() + str.size());
 }

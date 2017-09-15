@@ -16,17 +16,36 @@
  * Author: Jinho D. Choi
  */
 #include "english_tokenizer.hpp"
-#include "string_utils.hpp"
-#include "io_utils.hpp"
-#include "global_const.h"
+#include "../string_utils.hpp"
+#include "../io_utils.hpp"
+#include "../global_const.h"
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string.hpp>
-#include <iostream>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
 using namespace std;
+
+//#include <pybind11/pybind11.h>
+//#include <pybind11/stl.h>
+//
+//namespace py = pybind11;
+//
+//PYBIND11_MODULE(english_tokenizer, m) {
+//    m.doc() = "pybind11 example plugin"; // optional module docstring
+//
+//    m.def("tokenize", &tokenize, "A function which adds two numbers");
+//}
+
+// ======================================== Lexicons ========================================
+
+const string RR = RESOURCE_ROOT + "/tokenizer/";
+
+const set<wstring> SET_ABBREVIATION_PERIOD = read_word_set(RR + "abbreviation_period.txt");
+const set<wstring> SET_APOSTROPHE_FRONT = read_word_set(RR + "english_apostrophe_front.txt");
+const map<wstring,vector<size_t>> MAP_CONCAT_WORD = read_concat_word_map(RR + "english_concat_words.txt");
+const set<wstring> SET_HYPHEN_PREFIX = read_word_set(RR + "english_hyphen_prefix.txt");
+const set<wstring> SET_HYPHEN_SUFFIX = read_word_set(RR + "english_hyphen_suffix.txt");
+const set<wstring> SET_UNIT = read_word_set(RR + "units.txt");
 
 // ======================================== Constants ========================================
 
@@ -68,22 +87,12 @@ const wregex RE_APOSTROPHE(L"[[:alpha:]](n['\u2019]t|['\u2019](ll|nt|re|ve|[dmst
 /** a.b.c */
 const wregex RE_ABBREVIATION(L"^[[:alpha:]](\\.[[:alpha:]])*");
 
-const set<wstring> SET_UNIT = read_word_set(RESOURCE_ROOT + "units.txt");
-
-const set<wstring> SET_ABBREVIATION_PERIOD = read_word_set(RESOURCE_ROOT + "abbreviation_period.txt");
-
-const set<wstring> SET_HYPHEN_PREFIX = read_word_set(RESOURCE_ROOT + "english_hyphen_prefix.txt");
-
-const set<wstring> SET_HYPHEN_SUFFIX = read_word_set(RESOURCE_ROOT + "english_hyphen_suffix.txt");
-
-const map<wstring,vector<size_t>> MAP_CONCAT_WORD = read_concat_word_map(RESOURCE_ROOT + "english_concat_words.txt");
-
 // ======================================== Tokenization ========================================
 
-t_vector tokenize(wstring s)
+TokenList tokenize(wstring s)
 {
     size_t begin, end;
-    t_vector v;
+    TokenList v;
 
     // skip preceding spaces
     for (begin=0; begin<s.size(); begin++)
@@ -103,16 +112,7 @@ t_vector tokenize(wstring s)
     return v;
 }
 
-namespace py = pybind11;
-
-PYBIND11_MODULE(english_tokenizer, m) {
-    m.doc() = "pybind11 example plugin"; // optional module docstring
-
-    m.def("tokenize", &tokenize, "A function which adds two numbers");
-}
-
-/** This is recursively called by many other functions. */
-bool tokenize_aux(t_vector &v, wstring s, size_t begin, size_t end)
+bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end)
 {
     if (begin >= end || end > s.size())
         return false;
@@ -131,7 +131,7 @@ bool tokenize_aux(t_vector &v, wstring s, size_t begin, size_t end)
 }
 
 /** Tokenizes general cases. */
-bool tokenize_trivial(t_vector &v, wstring s, size_t begin, size_t end)
+bool tokenize_trivial(TokenList &v, wstring s, size_t begin, size_t end)
 {
     // single character
     if (end - begin == 1)
@@ -152,23 +152,39 @@ bool tokenize_trivial(t_vector &v, wstring s, size_t begin, size_t end)
 
 // ======================================== Add Token ========================================
 
-void add_token(t_vector &v, wstring token, size_t begin, size_t end)
+void add_token(TokenList &v, wstring token, size_t begin, size_t end)
 {
-    if (!add_token_merge(v, token, begin, end) && !add_token_split(v, token, begin, end))
-        v.emplace_back(token, make_pair(begin, end));
+    if (!add_token_concat(v, token, begin, end) && !add_token_split(v, token, begin, end))
+        v.emplace_back(token, begin, end);
 }
 
-void add_token_sub(t_vector &v, wstring s, size_t begin, size_t end)
+void add_token_sub(TokenList &v, wstring s, size_t begin, size_t end)
 {
     add_token(v, substr(move(s), begin, end), begin, end);
 }
 
-bool add_token_merge(t_vector &v, wstring token, size_t begin, size_t end)
+// ======================================== Add Token: Concatenate ========================================
+
+bool add_token_concat(TokenList &v, wstring token, size_t begin, size_t end)
 {
+    if (!v.empty())
+    {
+        auto prev = get_form(v[v.size()-1]);
+        auto merge = add_token_concat_apostrophe_front(v, begin, end, prev, token);
+
+        if (merge)
+        {
+            auto p = v.back();
+            v.pop_back();
+            v.emplace_back(get_form(p)+token, get_begin(p), end);
+            return true;
+        }
+    }
+
     if (v.size() >= 2)
     {
-        auto prev = v[v.size()-2].first;
-        auto curr = v[v.size()-1].first;
+        auto prev = get_form(v[v.size()-2]);
+        auto curr = get_form(v[v.size()-1]);
         auto next = token;
 
         if (curr.size() == 1)
@@ -207,7 +223,7 @@ bool add_token_merge(t_vector &v, wstring token, size_t begin, size_t end)
                     auto p1 = v[v.size()-1];
                     auto p2 = v[v.size()-2];
                     v.erase(v.end()-2, v.end());
-                    v.emplace_back(p2.first + p1.first, make_pair(p2.second.first, p1.second.second));
+                    v.emplace_back(get_form(p2) + get_form(p1), get_begin(p2), get_end(p1));
                 }
             }
 
@@ -216,7 +232,7 @@ bool add_token_merge(t_vector &v, wstring token, size_t begin, size_t end)
                 auto p1 = v[v.size()-1];
                 auto p2 = v[v.size()-2];
                 v.erase(v.end()-2, v.end());
-                v.emplace_back(p2.first + p1.first + token, make_pair(p2.second.first, end));
+                v.emplace_back(get_form(p2) + get_form(p1) + token, get_begin(p2), end);
                 return true;
             }
         }
@@ -225,12 +241,25 @@ bool add_token_merge(t_vector &v, wstring token, size_t begin, size_t end)
     return false;
 }
 
-bool add_token_split(t_vector &v, wstring token, size_t begin, size_t end)
+bool add_token_concat_apostrophe_front(TokenList &v, size_t begin, size_t end, wstring prev, wstring curr)
+{
+    if (prev.size() == 1 && is_single_quote(prev[0]))
+    {
+        boost::to_lower(curr);
+        return SET_APOSTROPHE_FRONT.count(curr) > 0;
+    }
+
+    return false;
+}
+
+// ======================================== Add Token: Split ========================================
+
+bool add_token_split(TokenList &v, wstring token, size_t begin, size_t end)
 {
     return add_token_split_unit(v, token, begin, end) || add_token_split_concat(v, token, begin, end);
 }
 
-bool add_token_split_unit(t_vector &v, wstring token, size_t begin, size_t end)
+bool add_token_split_unit(TokenList &v, wstring token, size_t begin, size_t end)
 {
     for (int i=token.size()-1; i>=0; i--)
     {
@@ -241,8 +270,8 @@ bool add_token_split_unit(t_vector &v, wstring token, size_t begin, size_t end)
 
             if (SET_UNIT.count(boost::to_lower_copy(t)) > 0)
             {
-                v.emplace_back(substr(token, 0, i), make_pair(begin, begin+i));
-                v.emplace_back(t, make_pair(begin+i, end));
+                v.emplace_back(substr(token, 0, i), begin, begin+i);
+                v.emplace_back(t, begin+i, end);
                 return true;
             }
 
@@ -253,7 +282,7 @@ bool add_token_split_unit(t_vector &v, wstring token, size_t begin, size_t end)
     return false;
 }
 
-bool add_token_split_concat(t_vector &v, wstring token, size_t begin, size_t end)
+bool add_token_split_concat(TokenList &v, wstring token, size_t begin, size_t end)
 {
     wstring t = boost::to_lower_copy(token);
     auto it = MAP_CONCAT_WORD.find(t);
@@ -264,7 +293,7 @@ bool add_token_split_concat(t_vector &v, wstring token, size_t begin, size_t end
 
         for (auto last : it->second)
         {
-            v.emplace_back(substr(token, curr, last), make_pair(begin+curr, begin+last));
+            v.emplace_back(substr(token, curr, last), begin+curr, begin+last);
             curr = last;
         }
 
@@ -277,7 +306,7 @@ bool add_token_split_concat(t_vector &v, wstring token, size_t begin, size_t end
 // ======================================== Regular Expression ========================================
 
 /** Tokenizes using regular expressions. */
-bool tokenize_regex(t_vector &v, wstring s, size_t begin, size_t end)
+bool tokenize_regex(TokenList &v, wstring s, size_t begin, size_t end)
 {
     // html entity: "&larr;", "&#8592;", "&#x2190;"
     if (tokenize_regex_aux(v, s, begin, end, RE_HTML_ENTITY, regex_group))
@@ -306,7 +335,7 @@ bool tokenize_regex(t_vector &v, wstring s, size_t begin, size_t end)
     return false;
 }
 
-bool tokenize_regex_aux(t_vector &v, wstring s, size_t begin, size_t end, wregex r, regex_aux f, size_t flag)
+bool tokenize_regex_aux(TokenList &v, wstring s, size_t begin, size_t end, wregex r, regex_aux f, size_t flag)
 {
     auto it = wsregex_iterator(s.begin()+begin, s.begin()+end, r);
 
@@ -320,7 +349,7 @@ bool tokenize_regex_aux(t_vector &v, wstring s, size_t begin, size_t end, wregex
 }
 
 /** Considers the entire matching string as one token. */
-void regex_group(t_vector &v, wstring s, size_t begin, size_t end, wsmatch m, size_t flag)
+void regex_group(TokenList &v, wstring s, size_t begin, size_t end, wsmatch m, size_t flag)
 {
     auto tok = m[flag].str();
     auto idx = begin + m.position(flag);
@@ -332,7 +361,7 @@ void regex_group(t_vector &v, wstring s, size_t begin, size_t end, wsmatch m, si
 }
 
 /** Tokenizes hyperlinks. */
-void regex_hyperlink(t_vector &v, wstring s, size_t begin, size_t end, wsmatch m, size_t flag)
+void regex_hyperlink(TokenList &v, wstring s, size_t begin, size_t end, wsmatch m, size_t flag)
 {
     if (m.position(0) > 0)
     {
@@ -346,7 +375,7 @@ void regex_hyperlink(t_vector &v, wstring s, size_t begin, size_t end, wsmatch m
 
 // ======================================== Symbol ========================================
 
-bool tokenize_symbol(t_vector &v, wstring s, size_t begin, size_t end)
+bool tokenize_symbol(TokenList &v, wstring s, size_t begin, size_t end)
 {
     for (auto curr=begin; curr<end; curr++)
     {
@@ -381,20 +410,9 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
                (curr+4 >= end || !isdigit(s[curr+4], LOC_UTF8));
 
     // '97
-    if (is_single_quote(c)) {
-        if (curr + 2 < end && isdigit(s[curr + 1], LOC_UTF8) && isdigit(s[curr + 2], LOC_UTF8) &&
-            (curr + 3 >= end || !isdigit(s[curr + 3], LOC_UTF8))) {
-            return true;
-        }
-
-        if (curr + 2 < end){
-            if (s[curr + 1] == 'e' && s[curr + 2] == 'm'){
-                return true;
-            }
-        }
-
-        return false;
-    }
+    if (is_single_quote(c))
+        return curr+2 < end && isdigit(s[curr+1], LOC_UTF8) && isdigit(s[curr+2], LOC_UTF8) &&
+               (curr+3 >= end || !isdigit(s[curr+3], LOC_UTF8));
 
     if (c == ':')
         return curr-1 >= begin && isdigit(s[curr-1], LOC_UTF8) &&
@@ -417,7 +435,7 @@ bool skip_symbol(wstring s, size_t begin, size_t end, size_t curr)
 //    return SET_ABBREVIATION_PERIOD.count(sub) > 0;
 //}
 
-bool tokenize_symbol(t_vector &v, wstring s, size_t begin, size_t end, size_t curr, symbol_aux_0 f0, symbol_aux_1 f1)
+bool tokenize_symbol(TokenList &v, wstring s, size_t begin, size_t end, size_t curr, symbol_aux_0 f0, symbol_aux_1 f1)
 {
     if (f0(s[curr]))
     {
