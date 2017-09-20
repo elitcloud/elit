@@ -133,15 +133,16 @@ def setup_package():
 
     ext_modules = [
         Extension(
-            'english_tokenizer',
-            ['elit/tokenizer/english_tokenizer.cpp',
-             'elit/tokenizer/string_utils.cpp',
-             'elit/tokenizer/io_utils.cpp'],
+            'elit.tokenizer.english_tokenizer',
+            ['elit/cpp/tokenizer/english_tokenizer_py.cpp',
+             'elit/cpp/tokenizer/english_tokenizer.cpp',
+             'elit/cpp/tokenizer/token_utils.cpp',
+             'elit/cpp/string_utils.cpp',
+             'elit/cpp/io_utils.cpp'],
             include_dirs=[
                 # Path to pybind11 headers
                 get_pybind_include(),
                 get_pybind_include(user=True),
-                'elit/tokenizer'
             ],
             language='c++'
         ),
@@ -207,7 +208,7 @@ def setup_package():
         author_email='choi@mathcs.emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
-        packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
+        packages=['elit'],
         package_data={'': ['resources/tokenizer/*.txt',
                            'resources/sample/*']},
         include_package_data=True,

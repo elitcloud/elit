@@ -18,7 +18,7 @@ sudo: false
 install:
 - pip install Cython
 - pip install .
-- python setup.py build
+- python setup.py build_ext --inplace
 script:
 - nosetests
 deploy:

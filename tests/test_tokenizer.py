@@ -1,4 +1,4 @@
-import english_tokenizer
+from elit.tokenizer import english_tokenizer
 import os
 import unittest
 
