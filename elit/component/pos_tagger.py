@@ -33,7 +33,7 @@ from elit.component.template.state import NLPState
 from elit.component.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn, \
     argparse_lexicon, conv_pool
 from elit.reader import TSVReader
-from elit.structure import NLPGraph, NLPNode
+from elit.structure import NLPGraph, NLPToken
 
 import graphviz
 
@@ -91,7 +91,7 @@ class POSState(NLPState):
     # ============================== Transition ==============================
 
     def process(self, label: str, scores: np.array=None):
-        node: NLPNode = self.graph.nodes[self.idx_curr]
+        node: NLPToken = self.graph.nodes[self.idx_curr]
         if scores is not None: node.pos_scores = scores
         node.pos = label
         self.idx_curr += 1
@@ -102,7 +102,7 @@ class POSState(NLPState):
 
     # ============================== Feature ==============================
 
-    def features(self, node: NLPNode) -> List[np.array]:
+    def features(self, node: NLPToken) -> List[np.array]:
         fs = [node.pos_scores if node else self.lex.pos_zeros]
         if self.lex.w2v: fs.append(self.lex.w2v.get(node))
         if self.lex.f2v: fs.append(self.lex.f2v.get(node))

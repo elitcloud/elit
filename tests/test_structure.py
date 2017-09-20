@@ -16,7 +16,7 @@
 
 
 import unittest
-from elit.structure import NLPNode, NLPGraph
+from elit.structure import NLPToken, NLPGraph
 from elit.reader import TSVReader
 
 __author__ = 'T Lee'

@@ -63,6 +63,8 @@ bool is_currency(wchar_t c);
 
 bool is_final_mark(wchar_t c);
 
+bool contains_only_final_mark(std::wstring s);
+
 // ======================================== Encdoing ========================================
 
 std::wstring utf8_to_wstring(const std::string& str);

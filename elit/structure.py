@@ -37,14 +37,15 @@ DELIM_ARC_KV = ':'
 
 
 @functools.total_ordering
-class NLPNode:
-    def __init__(self, node_id=-1, word=None, lemma=None, pos=None, nament=None,
-                 feats=None):
+class NLPToken:
+    def __init__(self, sen_id=-1, token_id=-1, form=None, lemma=None, pos=None, nament=None, feats=None):
         """
-        :param node_id: node id.
-        :type node_id: int
-        :param word: word form.
-        :type word: str
+        :param sen_id: sentence id.
+        :type sen_id: int
+        :param token_id: node id.
+        :type token_id: int
+        :param form: word form.
+        :type form: str
         :param lemma: lemma.
         :type lemma: str
         :param pos: part-of-speech tag.
@@ -55,8 +56,9 @@ class NLPNode:
         :type feats: Dict[str, str]
         """
         # fields
-        self.node_id = node_id
-        self.word = word
+        self.sen_id = sen_id
+        self.token_id = token_id
+        self.form = form
         self.lemma = lemma
         self.pos = pos
         self.nament = nament
@@ -73,14 +75,14 @@ class NLPNode:
         return hash(id(self))
 
     def __lt__(self, other):
-        return self.node_id < other.node_id
+        return self.token_id < other.node_id
 
     def __eq__(self, other):
         return id(self) == id(other)
 
     def __str__(self):
-        node_id = str(self.node_id)
-        word = self.word if self.word else BLANK
+        node_id = str(self.token_id)
+        form = self.form if self.form else BLANK
         lemma = self.lemma if self.lemma else BLANK
         pos = self.pos if self.pos else BLANK
         nament = self.nament if self.nament else BLANK
@@ -89,7 +91,7 @@ class NLPNode:
         deprel = self.get_dependency_label(self.parent) or BLANK
         sheads = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.node_id), self.get_dependency_label(parent)))
                                 for parent in self.secondary_parents) if self.secondary_parents else BLANK
-        return '\t'.join((node_id, word, lemma, pos, feats, head_id, deprel, sheads, nament))
+        return '\t'.join((node_id, form, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     def set_pos(self, pos):
         """
@@ -116,14 +118,14 @@ class NLPNode:
         """
 
         :return: the GRANDPARENT of this node if exists; otherwise, None.
-        :rtype: NLPNode
+        :rtype: NLPToken
         """
         return self.parent.parent if self.parent else None
 
     def get_dependency_label(self, node=None):
         """
         :param node: the parent of this node.
-        :type node: NLPNode
+        :type node: NLPToken
         :return: the dependency label between this node and the PARENT node
                 if exists; otherwise, None.
         :rtype: str
@@ -135,7 +137,7 @@ class NLPNode:
     def set_dependency_label(self, node, label):
         """
         :param node: the PARENT of this node.
-        :type node: NLPNode
+        :type node: NLPToken
         :param label: the dependency relation to the PARENT.
         :type label: str
         """
@@ -145,11 +147,11 @@ class NLPNode:
     def set_parent(self, node, label=None):
         """
         :param node: the node to be set as the PARENT of this node.
-        :type node: NLPNode
+        :type node: NLPToken
         :param label: the dependency relation between this node and the PARENT.
         :type label: str
         :return the previous PARENT if exists; otherwise, None.
-        :rtype: NLPNode
+        :rtype: NLPToken
         """
         # handle the previous PARENT
         prev_parent = self.parent
@@ -170,7 +172,7 @@ class NLPNode:
     def child_of(self, node):
         """
         :param node: the node to be compared.
-        :type node: NLPNode
+        :type node: NLPToken
         :return: True if this node is a child of the specific node; otherwise, False.
         :rtype: bool
         """
@@ -179,7 +181,7 @@ class NLPNode:
     def add_secondary_parent(self, node, label=None):
         """
         :param node: the node to be added as a secondary PARENT.
-        :type node: NLPNode
+        :type node: NLPToken
         :param label: the dependency relation to the PARENT.
         :type label: str
         """
@@ -190,7 +192,7 @@ class NLPNode:
     def remove_secondary_parent(self, node):
         """
         :param node: the node to be removed from the secondary PARENT list.
-        :type node: NLPNode
+        :type node: NLPToken
         :return: True if the node is removed successfully; otherwise, False.
         :rtype: bool
         """
@@ -304,7 +306,7 @@ class NLPGraph:
         :type  nodes: List[NLPNode]
           An artificial root is automatically added to the front of the node list.
         """
-        self.nodes = [NLPNode.root()]
+        self.nodes = [NLPToken.root()]
         if nodes:
             self.nodes.extend(nodes)
 

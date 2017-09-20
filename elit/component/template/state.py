@@ -19,7 +19,7 @@ from typing import Union, List
 
 import numpy as np
 
-from elit.structure import NLPGraph, NLPNode, Relation
+from elit.structure import NLPGraph, NLPToken, Relation
 
 __author__ = 'Jinho D. Choi'
 
@@ -68,12 +68,12 @@ class NLPState(metaclass=ABCMeta):
     # ============================== Feature ==============================
 
     @abstractmethod
-    def features(self, node: NLPNode) -> List[np.array]:
+    def features(self, node: NLPToken) -> List[np.array]:
         """
         :return: features given the current state.
         """
 
-    def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPNode, None]:
+    def get_node(self, index: int, window: int=0, relation: Relation=None, root: bool=False) -> Union[NLPToken, None]:
         """
         :param index: the index of the anchor node.
         :param window: the context window to the anchor node.
@@ -83,7 +83,7 @@ class NLPState(metaclass=ABCMeta):
         """
         index += window
         begin = 0 if root else 1
-        node: NLPNode = self.graph.nodes[index] if begin <= index < len(self.graph) else None
+        node: NLPToken = self.graph.nodes[index] if begin <= index < len(self.graph) else None
 
         if node and relation:
             # 1st order
@@ -128,14 +128,14 @@ class NLPState(metaclass=ABCMeta):
 
         return node
 
-    def is_first(self, node: NLPNode) -> bool:
+    def is_first(self, node: NLPToken) -> bool:
         """
         :param node: the node to be compared
         :return: True if the node is the first node in the graph; otherwise, False
         """
         return len(self.graph) > 1 and self.graph.nodes[1] == node
 
-    def is_last(self, node: NLPNode) -> bool:
+    def is_last(self, node: NLPToken) -> bool:
         """
         :param node: the node to be compared
         :return: True if the node is the last node in the graph; otherwise, False

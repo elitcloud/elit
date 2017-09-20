@@ -22,7 +22,6 @@
 #include <fstream>
 #include "english_tokenizer.hpp"
 #include "../catch.hpp"
-#include "../string_utils.hpp"
 
 using namespace std;
 
@@ -444,11 +443,28 @@ TEST_CASE("Symbol")
         CHECK(equals(gold, tokenize(s)));
     }
 
+    SECTION("segment")
+    {
+        wstring s = L"Hello world! \"I'm Jinho.\" \"Dr. Choi\" (I'm a prof...) [[Really?]] Yes!";
+        vector<pair<int,int>> b = segment(tokenize(s));
+        int g[] = {0, 3, 9, 20, 24, 26};
+
+        for (int i=0; i<b.size(); i++)
+            CHECK(g[i] == b[i].first);
+    }
 }
 
 TEST_CASE("Benchmark")
 {
-//    wifstream fin(RESOURCE_ROOT+"sample/wiki_text.txt");
+//    for (TokenList tokens: segment(contents))
+//    {
+//        for (Token token : tokens) wcout << get_form(token) << ' ';
+//        wcout << endl;
+//    }
+
+//    wifstream fin("/Users/jdchoi/workspace/elit/sample.txt");
+//    wstring contents{istreambuf_iterator<wchar_t>(fin), istreambuf_iterator<wchar_t>()};
+//
 //    long long tt = 0, wc = 0;
 //    TokenList ls;
 //    wstring line;
@@ -470,5 +486,7 @@ TEST_CASE("Benchmark")
 
 int main(int argc, const char *const *const argv)
 {
+    init("/Users/jdchoi/workspace/elit/resources/tokenizer/");
+//    init("./elit/resources/tokenizer/");
     Catch::Session().run(argc, argv);
 }

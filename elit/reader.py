@@ -15,7 +15,7 @@
 # ========================================================================
 import re
 from elit.structure import DELIM_ARC, DELIM_ARC_KV, DELIM_FEAT_KV, BLANK, ROOT_TAG, \
-    NLPNode, NLPGraph
+    NLPToken, NLPGraph
 
 __author__ = 'Jinho D. Choi'
 
@@ -170,7 +170,7 @@ class TSVReader:
             :param i:
             :type i: int
             :return: NLPNode
-            :rtype: NLPNode
+            :rtype: NLPToken
             """
             row = tsv[i]
             node_id = i + 1
@@ -179,12 +179,12 @@ class TSVReader:
             pos = get_field(row, self.pos_index)
             nament = get_field(row, self.nament_index)
             feats = get_feats(row) if row else None
-            return NLPNode(node_id=node_id,
-                           word=word,
-                           lemma=lemma,
-                           pos=pos,
-                           nament=nament,
-                           feats=feats)
+            return NLPToken(token_id=node_id,
+                            word=word,
+                            lemma=lemma,
+                            pos=pos,
+                            nament=nament,
+                            feats=feats)
 
         graph = NLPGraph([init_node(i) for i in range(len(tsv))])
 

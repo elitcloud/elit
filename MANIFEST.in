@@ -1,5 +1,4 @@
 include README.md
-recursive-include elit/resources/sample
-recursive-include elit/resources/tokenizer *.txt
-recursive-include elit/cpp *.hpp
-recursive-include elit/cpp *.h
+recursive-include resources *
+recursive-include cpp *.hpp
+recursive-include cpp *.h

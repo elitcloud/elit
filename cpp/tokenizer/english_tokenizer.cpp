@@ -18,26 +18,26 @@
 #include "english_tokenizer.hpp"
 #include "../string_utils.hpp"
 #include "../io_utils.hpp"
-#include "../global_const.h"
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/range.hpp>
 
 using namespace std;
 
 // ======================================== Lexicons ========================================
 
+set<wstring> SET_ABBREVIATION_PERIOD;
+set<wstring> SET_APOSTROPHE_FRONT;
+map<wstring,vector<size_t>> MAP_CONCAT_WORD;
+set<wstring> SET_HYPHEN_PREFIX;
+set<wstring> SET_HYPHEN_SUFFIX;
+set<wstring> SET_UNIT;
+
+// ======================================== Constants ========================================
+
 /** Locale: UTF8. */
 const locale LOC_UTF8("en_US.UTF-8");
-
-const string ROOT = RESOURCE_ROOT + "/tokenizer/";
-
-const set<wstring> SET_ABBREVIATION_PERIOD = read_word_set(ROOT + "english_abbreviation_period.txt");
-const set<wstring> SET_APOSTROPHE_FRONT = read_word_set(ROOT + "english_apostrophe_front.txt");
-const map<wstring,vector<size_t>> MAP_CONCAT_WORD = read_concat_word_map(ROOT + "english_concat_words.txt");
-const set<wstring> SET_HYPHEN_PREFIX = read_word_set(ROOT + "english_hyphen_prefix.txt");
-const set<wstring> SET_HYPHEN_SUFFIX = read_word_set(ROOT + "english_hyphen_suffix.txt");
-const set<wstring> SET_UNIT = read_word_set(ROOT + "units.txt");
 
 // ======================================== Regular Expressions ========================================
 
@@ -76,9 +76,54 @@ const wregex RE_APOSTROPHE(L"[[:alpha:]](n['\u2019]t|['\u2019](ll|nt|re|ve|[dmst
 /** a.b.c */
 const wregex RE_ABBREVIATION(L"^[[:alnum:]]([\\.-][[:alnum:]])*");
 
+// ======================================== Initialization ========================================
+
+void init(const string &resource_dir)
+{
+    SET_ABBREVIATION_PERIOD = read_word_set(resource_dir + "/english_abbreviation_period.txt");
+    SET_APOSTROPHE_FRONT = read_word_set(resource_dir + "/english_apostrophe_front.txt");
+    MAP_CONCAT_WORD = read_concat_word_map(resource_dir + "/english_concat_words.txt");
+    SET_HYPHEN_PREFIX = read_word_set(resource_dir + "/english_hyphen_prefix.txt");
+    SET_HYPHEN_SUFFIX = read_word_set(resource_dir + "/english_hyphen_suffix.txt");
+    SET_UNIT = read_word_set(resource_dir + "/units.txt");
+}
+
+// ======================================== Segmentation ========================================
+
+vector<pair<int,int>> segment(TokenList tokens)
+{
+    vector<pair<int,int>> boundaries;
+    int begin, end, double_quote = 0;
+
+    for (begin=0, end=0; end<tokens.size(); end++)
+    {
+        auto token = get_form(tokens[end]);
+
+        if (token[0] == L'"')
+            double_quote = (double_quote + 1) % 2;
+
+        if (contains_only_final_mark(token))
+        {
+            boundaries.emplace_back(begin, end+1);
+            begin = end + 1;
+        }
+        else if (!boundaries.empty() && begin == end &&
+                (is_right_bracket(token[0]) || token[0] == L'\u201D' || (token[0] == L'"' && double_quote == 0)))
+        {
+            boundaries.back().second++;
+            begin = end + 1;
+        }
+    }
+
+    if (begin < end)
+        boundaries.emplace_back(begin, end);
+
+    return boundaries;
+}
+
 // ======================================== Tokenization ========================================
 
-TokenList tokenize(wstring s)
+TokenList tokenize(wstring s, bool white_space)
 {
     size_t begin, end;
     TokenList v;
@@ -92,19 +137,25 @@ TokenList tokenize(wstring s)
     {
         if (isspace(s[end], LOC_UTF8))
         {
-            tokenize_aux(v, s, begin, end);
+            tokenize_aux(v, s, begin, end, white_space);
             begin = end + 1;
         }
     }
 
-    tokenize_aux(v, s, begin, end);
+    tokenize_aux(v, s, begin, end, white_space);
     return v;
 }
 
-bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end)
+bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end, bool white_space)
 {
     if (begin >= end || end > s.size())
         return false;
+
+    if (white_space)
+    {
+        v.emplace_back(substr(move(s), begin, end), begin, end);
+        return true;
+    }
 
     if (tokenize_trivial(v, s, begin, end))
         return true;
@@ -306,6 +357,8 @@ bool split_token_concat_words(TokenList &v, wstring token, size_t begin, size_t 
 }
 
 #include <iostream>
+#include <utility>
+
 bool split_token_final_mark(TokenList &v, wstring token, size_t begin, size_t end)
 {
     if (token.size() < 9)

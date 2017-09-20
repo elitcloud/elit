@@ -152,6 +152,17 @@ bool is_final_mark(wchar_t c)
     return c == '.' || c == '?' || c == '!' || c == L'\u203C' || is_range(c, L'\u2047', L'\u2049');
 }
 
+bool contains_only_final_mark(wstring s)
+{
+    for (wchar_t c : s)
+    {
+        if (!is_final_mark(c))
+            return false;
+    }
+
+    return true;
+}
+
 // ======================================== Encoding ========================================
 
 wstring utf8_to_wstring(const string& str)

@@ -19,7 +19,7 @@ from fasttext.model import WordVectorModel
 from gensim.models.keyedvectors import KeyedVectors
 
 from elit import structure
-from elit.structure import NLPNode
+from elit.structure import NLPToken
 
 __author__ = 'Jinho D. Choi'
 
@@ -54,13 +54,13 @@ class NLPEmbedding:
     def get(self, node):
         """
         :param node:
-        :type node: NLPNode
+        :type node: NLPToken
         :return: the embedding of the specific node with respect to the key_field.
         :rtype: np.array
         """
         if node is None:
             return self.zero
-        if node.node_id == 0:
+        if node.token_id == 0:
             return self.root
         if hasattr(node, self.emb_field):
             return getattr(node, self.emb_field)

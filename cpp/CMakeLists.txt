@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(SOURCE_FILES
         tokenizer/english_tokenizer_test.cpp
-        global_const.h
         string_utils.hpp string_utils.cpp
         io_utils.cpp io_utils.hpp
         tokenizer/token_utils.cpp tokenizer/token_utils.hpp

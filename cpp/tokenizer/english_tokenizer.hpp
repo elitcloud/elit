@@ -18,14 +18,27 @@
 #include "token_utils.hpp"
 #include <regex>
 
+// ======================================== Initialization ========================================
+
+/**
+ * Initializes the English tokenizer; this function must be called once before tokenization.
+ * @param resource_dir the resource directory (default: ./elit/resources).
+ */
+void init(const std::string &resource_dir);
+
+// ======================================== Segmentation ========================================
+
+std::vector<std::pair<int,int>> segment(TokenList tokens);
+
 // ======================================== Tokenization ========================================
 
 /**
  * Tokenizes the input string into linguistic tokens and saves them into a vector.
  * @param s the input string (supports unicode characters).
+ * @param white_space if true, tokenize by only white spaces.
  * @return the vector of pairs, where each pair consists of (token, beginning index).
  */
-TokenList tokenize(std::wstring s);
+TokenList tokenize(std::wstring s, bool white_space=false);
 
 /**
  * Tokenizes s[begin:end] into tokens and adds them to the output vector.
@@ -34,9 +47,10 @@ TokenList tokenize(std::wstring s);
  * @param s the input string.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
+ * @param white_space if true, tokenize by only white spaces.
  * @return true if any token in s[begin:end] is added to the output vector.
  */
-bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end);
+bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end, bool white_space=false);
 
 /**
  * Tokenizes trivial cases where s[begin:end] should be considered as one token:
