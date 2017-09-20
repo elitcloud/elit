@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 
-from setuptools import setup, Extension
+from setuptools import setup, find_packages, Extension
 import setuptools
 from setuptools.command.build_ext import build_ext
 
@@ -39,6 +39,7 @@ MICRO = 6
 ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
+EXCLUDE_FROM_PACKAGES = ['']
 
 # Return the git revision as a string
 def git_version():
@@ -196,6 +197,8 @@ def setup_package():
                 # Path to pybind11 headers
                 PybindInclude(),
                 PybindInclude(user=True),
+                'elit/cpp',
+                'elit/cpp/tokenizer'
             ],
             language='c++'
         ),
@@ -209,10 +212,9 @@ def setup_package():
         author_email='choi@mathcs.emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
-        packages=['elit'],
         package_data={'': ['resources/tokenizer/*.txt',
                            'resources/sample/*']},
-        include_package_data=True,
+        packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         install_requires=[
             'Cython',
             'mxnet',
