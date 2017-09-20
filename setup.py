@@ -224,6 +224,7 @@ def setup_package():
         tests_require=[
             'nose',
         ],
+        test_suite='nose.collector',
         classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
         ext_modules=ext_modules,
         cmdclass={'build_ext': BuildExt}
