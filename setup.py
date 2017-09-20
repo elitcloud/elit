@@ -213,7 +213,6 @@ def setup_package():
                            'resources/sample/*']},
         include_package_data=True,
         install_requires=[
-            'nose',
             'Cython',
             'mxnet',
             'argparse',
@@ -221,6 +220,9 @@ def setup_package():
             'fasttext',
             'numpy',
             'pybind11>=1.7'
+        ],
+        tests_require=[
+            'nose',
         ],
         classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
         ext_modules=ext_modules,
