@@ -53,6 +53,12 @@ size_t get_begin(Token t);
  */
 size_t get_end(Token t);
 
+void set_form(Token t, std::wstring s);
+
+void set_begin(Token t, size_t offset);
+
+void set_end(Token t, size_t offset);
+
 /**
  * @param t1 the first token.
  * @param t2 the second token.

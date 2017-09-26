@@ -90,10 +90,12 @@ void init(const string &resource_dir)
 
 // ======================================== Segmentation ========================================
 
-vector<pair<int,int>> segment(TokenList tokens)
+vector<int> segment(TokenList tokens)
 {
-    vector<pair<int,int>> boundaries;
     int begin, end, double_quote = 0;
+    vector<int> boundaries;
+
+    boundaries.push_back(0);
 
     for (begin=0, end=0; end<tokens.size(); end++)
     {
@@ -104,26 +106,29 @@ vector<pair<int,int>> segment(TokenList tokens)
 
         if (contains_only_final_mark(token))
         {
-            boundaries.emplace_back(begin, end+1);
+//          boundaries.emplace_back(begin, end+1);
+            boundaries.push_back(end + 1);
             begin = end + 1;
         }
         else if (!boundaries.empty() && begin == end &&
                 (is_right_bracket(token[0]) || token[0] == L'\u201D' || (token[0] == L'"' && double_quote == 0)))
         {
-            boundaries.back().second++;
+//          boundaries.back().second++;
+            boundaries.back()++;
             begin = end + 1;
         }
     }
 
     if (begin < end)
-        boundaries.emplace_back(begin, end);
+        boundaries.push_back(end);
+//      boundaries.emplace_back(begin, end);
 
     return boundaries;
 }
 
 // ======================================== Tokenization ========================================
 
-TokenList tokenize(wstring s, bool white_space)
+TokenList tokenize(wstring s, bool whitespace)
 {
     size_t begin, end;
     TokenList v;
@@ -137,21 +142,21 @@ TokenList tokenize(wstring s, bool white_space)
     {
         if (isspace(s[end], LOC_UTF8))
         {
-            tokenize_aux(v, s, begin, end, white_space);
+            tokenize_aux(v, s, begin, end, whitespace);
             begin = end + 1;
         }
     }
 
-    tokenize_aux(v, s, begin, end, white_space);
+    tokenize_aux(v, s, begin, end, whitespace);
     return v;
 }
 
-bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end, bool white_space)
+bool tokenize_aux(TokenList &v, wstring s, size_t begin, size_t end, bool whitespace)
 {
     if (begin >= end || end > s.size())
         return false;
 
-    if (white_space)
+    if (whitespace)
     {
         v.emplace_back(substr(move(s), begin, end), begin, end);
         return true;

@@ -446,11 +446,11 @@ TEST_CASE("Symbol")
     SECTION("segment")
     {
         wstring s = L"Hello world! \"I'm Jinho.\" \"Dr. Choi\" (I'm a prof...) [[Really?]] Yes!";
-        vector<pair<int,int>> b = segment(tokenize(s));
+        vector<int> b = segment(tokenize(s));
         int g[] = {0, 3, 9, 20, 24, 26};
 
         for (int i=0; i<b.size(); i++)
-            CHECK(g[i] == b[i].first);
+            CHECK(g[i] == b[i]);
     }
 }
 

@@ -17,28 +17,20 @@ __author__ = 'Jinho D. Choi'
 
 import json
 from enum import Enum
-import itertools
 from io import StringIO
 from elit.tokenizer import english_tokenizer
 
-
-DOC_DELIM = '<@#DOC$%>'
+DOC_MAX_SIZE = 10485760
+DOC_DELIM = '@#DOC$%'
 
 FLAG_INPUT_FORMAT = 0
-FLAG_DOCUMENT_SPLIT = 1
 FLAG_TOKENIZATION = 1
 FLAG_SEGMENTATION = 2
 FLAG_SENTIMENT = 3
 
-
-def to_dict(tokens, segments, sentiment):
-    d = {'tokens': [token[0] for token in tokens],
-         'offsets': [(token[1], token[2]) for token in tokens],
-         'segments': segments, 'sentiment': sentiment}
-
-    return d
-
-
+KEY_FORMS = 'forms'
+KEY_OFFSETS = 'offsets'
+KEY_SENTIMENT = 'sentiment'
 
 
 class Language(Enum):
@@ -54,59 +46,97 @@ class NLPDecoder:
         else:
             raise ValueError('Unsupported language: '+str(lang))
 
-    def read_document(self, stream, flag):
+    ############################## DECODE ##############################
 
+    def decode(self, flag, istream, ostream=None):
+        """
+        :param flag:
+        :param istream: either StringIO or File
+        :param ostream: either StringIO or File
+        :return:
+        """
+        if ostream is not None: ostream.write('[')
 
+        d = self.decode_raw(flag, istream, ostream) if flag[FLAG_INPUT_FORMAT] == '0' \
+                                                    else self.decode_line(flag, istream, ostream)
 
-    def read_document(self, stream, flag):
-        buf = []
-
-        for line in stream:
-            if line.strip():
-                buf
-
-
-                return line
-
-
-        # 1: line
-        if flag[FLAG_DOCUMENT_SPLIT] == '1':
-            return self.red_next_line(stream)
-
-        # 0: delim
-
-    #
-    #
-    #
-    #
-    #
-    #
-    # def read_next_line(self, stream):
-    #     for line in stream:
-    #         line = line.strip()
-    #         if line: return line
-    #
-    #     return None
-    #
-    # def decode_file(self, filename, flag='1111'):
-    #     documents = []
-    #
-    #     if flag[FLAG_INPUT_FORMAT] == '0': # raw
-    #         fin = open(filename, buffering=(2 << 16) + 8)
-    #         documents.append()
-
-
-
-    def decode_aux(self, text, flag='1111'):
-        tokens = self.tokenize(text, flag[FLAG_TOKENIZATION] == '0')
-        segments = self.segment(tokens) if flag[FLAG_SEGMENTATION] == '1' else [(0, len(tokens))]
-        sentiment = '1'
-        d = to_dict(tokens, segments, sentiment)
-
-        js = json.dumps(d)
-        print(str(js))
-
+        if ostream is not None: ostream.write(']')
         return d
+
+    def decode_raw(self, flag, istream, ostream=None):
+        def decode():
+            d = self.text_to_sentences(flag, ''.join(lines))
+            if ostream is None:
+                documents.append(d)
+            else:
+                ostream.write(str(json.dumps(d)) + ',')
+
+        documents = []
+        offset = 0
+        lines = []
+
+        for line in istream:
+            if line.strip() == DOC_DELIM:
+                decode()
+                offset = 0
+                lines.clear()
+            elif offset + len(line) <= DOC_MAX_SIZE:
+                offset += len(line)
+                lines.append(line)
+
+        if lines: decode()
+        return documents
+
+    def decode_line(self, flag, istream, ostream=None):
+        def decode():
+            if ostream is None:
+                documents.append(sentences)
+            else:
+                ostream.write(str(json.dumps(sentences)) + ',')
+
+        documents = []
+        sentences = []
+        offset = 0
+
+        for line in istream:
+            if line.strip() == DOC_DELIM:
+                decode()
+                offset = 0
+                sentences = []
+            elif offset + len(line) <= DOC_MAX_SIZE:
+                d = self.text_to_sentences(flag, line, offset)
+                offset += len(line)
+                sentences.extend(d)
+
+        if sentences: decode()
+        return documents
+
+    ############################## CONVERSION ##############################
+
+    def text_to_sentences(self, flag, text, offset=0):
+        tokens = self.tokenize(text, flag[FLAG_TOKENIZATION] == '0')
+
+        if flag[FLAG_SEGMENTATION] == '0':
+            return [self.tokens_to_sentence(flag, tokens, offset)]
+
+        return self.tokens_to_sentences(flag, tokens, self.segment(tokens), offset)
+
+    def tokens_to_sentences(self, flag, tokens, segments, offset):
+        return [self.tokens_to_sentence(flag, tokens[segments[i]:segments[i+1]], offset) for i in range(0, len(segments)-1)]
+
+    def tokens_to_sentence(self, flag, tokens, offset):
+        sentence = {KEY_FORMS: [token[0] for token in tokens],
+                    KEY_OFFSETS: [(token[1] + offset, token[2] + offset) for token in tokens]}
+
+        if flag[FLAG_SENTIMENT] == '1': self.sentiment_analyze(sentence)
+        return sentence
+
+    ############################## COMPONENTS ##############################
+
+    def sentiment_analyze(self, sentence):
+        sentence[KEY_SENTIMENT] = 1.0
+
+
 
 
 
@@ -115,32 +145,13 @@ class NLPDecoder:
 # import os
 # print(os.getcwd())
 # nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/tokenizer')
-# nd.decode('Hello wrold! Ph.D. Choi is here.  How are you?')
-# ./elit/resources/
-
-
-# import io
-# buf = io.StringIO('a\nb\nc')
-# for i,line in enumerate(buf):
-#     print(line.strip())
-#     if (i == 1): break
+# flag = '0110'
+# input_text = 'This is an example of the\n raw format. It assumes no\n segmentation for the input text.'
+# input_text = 'The first sentence in the first segment.\nThe second sentence in the first segment\nThe third sentence in the second segment.'
+# input_text = 'This is the first document.\nContents of the first document are here.\n@#DOC$%\nThis is the second document.\nThe delimiter is not required for the last document.'
 #
-# print('sdklfjsklfs')
-# for i,line in enumerate(buf):
-#     print(line.strip())
-#     if (i == 1): break
-
-# import sys
-# fin = open('/Users/jdchoi/Documents/Data/experiments/general-en/dev/google_email.dev')
-# for line in fin:
-#     sys.stdout.write(line)
-# fin.close()
-# for line in buf:
-#     sys.stdout.write(line)
-
-import io
-stream = io.StringIO('a\nb\n\nc\nd\ne')
-l = list(itertools.takewhile(lambda x: x.strip(), [x for x in stream]))
-print(str(l))
-l = list(itertools.takewhile(lambda x: x.strip(), [x for x in stream]))
-print(str(l))
+# istream = StringIO(input_text)
+# ostream = open('tmp.json', 'w')
+# d = nd.decode(flag, istream, ostream)
+# j = json.dumps(d)
+# print(j)

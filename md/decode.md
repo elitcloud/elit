@@ -24,66 +24,29 @@ ELIT supports two types of input formats:
    raw format. It assumes no
    segmentation for the input text.
    ```
+
+* `line`: each line is considered a segment, delimited by the newline character (`\n`).
+For the following example, the second and the third sentences are guaranteed to be separated, which is not ensured by the `raw` format.
+
+   ```
+   The first sentence in the first segment. The second sentence in the first segment
+   The third sentence in the second segment.
+   ```
+
+By default, the entire input text is considered one document.
+The input text can be split into multiple documents by annotating the document delimiter: `@#DOC$%`.
+The document delimiter must be the only string in the line of its presence.
    
-   This option uses the delimiter `<@#DOC$%>` to indicate the end of each document.
-   The delimiter must be the only non-white space string in the line of its presence.
-   The delimiter is not required for the last document.
-   
-   ```
-   This is the first
-   document. Contents for
-   the 1st document are here
-   <@#DOC$%>
-   This is the second
-   documents. Contents for
-   the 2nd document are here.
-   ```
+```
+This is the first document.
+Contents of the first document are here.
+@#DOC$%
+This is the second document.
+The delimiter is not required for the last document.
+```
 
-* `line`: each line is considered a paragraph, which is delimited by the newline character `'\n'`.
-
-   ```
-   The 1st sentence in the 1st paragraph. The 2nd sentence in the 1st paragraph.
-   The 1st sentence in the 2nd paragraph.
-   ```
-   
-   Each line may consist of multiple sentences.
-   
-   ```
-   This is the first sentence. The second sentence is here.
-   It ensures to separate the first two sentences from this sentence.
-   ```
-   
-   This option uses a blank line (a line with only white spaces) to indicate the end each document.
-
-## Document Split
-
-There are two ways of splitting the input text into documents:
-
-* `delim`: use the delimiter `<@#DOC$%>` to indicate the end of each document.
-
-   ```
-   This is the first document.
-   Contents for the first document.
-   <@#DOC$%>
-   This is the second document.
-   Contents for the second document.
-   <@#DOC$%>
-   This is the third document.
-   Contents for the third document.
-   ```
-   
-   The delimiter must be the only non-white space string in the line of its presence.
-
-* `line`: each line is considered a document and delimited by the newline character `'\n'`.
-
-   ```
-   This is the first document. Contents for the first document.
-   This is the second document. Contents for the second document.
-   This is the third document. Contents for the third document.
-   ```
-   
-   This option assumes no blank line
-
+The size of each document is limited to 10MB (including whitespaces) due to the memory efficiency.
+Any document exceeding this size will be artificially truncated.
 
 ## Tokenization
 
@@ -91,26 +54,26 @@ Tokenization splits the input text into linguistic tokens.
 For example,
 
 ```
-I'm Jinho, a professor at Emory.
+I'm Dr. Choi, a professor at Emory University.
 ```
 
 it splits the above text into the following tokens:
 
 ```python
-["I", "'m", "Jinho", ",", "a", "professor", "at", "Emory", "."]
+["I", "'m", "Dr.", "Choi", ",", "a", "professor", "at", "Emory", "University", "."]
 ```
 
 If tokenization is not chosen, the text is split by only white spaces,
 
 ```python
-["I'm", "Jinho,", "a", "professor", "at", "Emory."]
+["I'm", "Dr.", "Choi,", "a", "professor", "at", "Emory", "University."]
 ```
 
 which can be useful if the input is pre-tokenized (that is not the case for the above example).
 
 ## Segmentation
 
-Segmentation gives boundaries for grouping tokens into sentences. Given the following tokens,
+Segmentation separates tokens into sentences. Given the following tokens,
 
 ```
 ["This", "is", "the", "first", "sentence", ".", "The", "second", "sentence", "is", "here", "."]

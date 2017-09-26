@@ -28,17 +28,17 @@ void init(const std::string &resource_dir);
 
 // ======================================== Segmentation ========================================
 
-std::vector<std::pair<int,int>> segment(TokenList tokens);
+std::vector<int> segment(TokenList tokens);
 
 // ======================================== Tokenization ========================================
 
 /**
  * Tokenizes the input string into linguistic tokens and saves them into a vector.
  * @param s the input string (supports unicode characters).
- * @param white_space if true, tokenize by only white spaces.
+ * @param whitespace if true, tokenize by only white spaces (default: false).
  * @return the vector of pairs, where each pair consists of (token, beginning index).
  */
-TokenList tokenize(std::wstring s, bool white_space=false);
+TokenList tokenize(std::wstring s, bool whitespace=false);
 
 /**
  * Tokenizes s[begin:end] into tokens and adds them to the output vector.
@@ -47,10 +47,10 @@ TokenList tokenize(std::wstring s, bool white_space=false);
  * @param s the input string.
  * @param begin the begin index of the input token (inclusive).
  * @param end the end index of the input token (exclusive).
- * @param white_space if true, tokenize by only white spaces.
+ * @param whitespace if true, tokenize by only white spaces.
  * @return true if any token in s[begin:end] is added to the output vector.
  */
-bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end, bool white_space=false);
+bool tokenize_aux(TokenList &v, std::wstring s, size_t begin, size_t end, bool whitespace=false);
 
 /**
  * Tokenizes trivial cases where s[begin:end] should be considered as one token:

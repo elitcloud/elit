@@ -18,6 +18,7 @@
 
 #include "token_utils.hpp"
 #include <iostream>
+#include <utility>
 
 using namespace std;
 
@@ -41,6 +42,21 @@ size_t get_begin(Token t)
 size_t get_end(Token t)
 {
     return get<2>(t);
+}
+
+void set_form(Token t, wstring s)
+{
+    get<0>(t) = std::move(s);
+}
+
+void set_begin(Token t, size_t offset)
+{
+    get<1>(t) = offset;
+}
+
+void set_end(Token t, size_t offset)
+{
+    get<2>(t) = offset;
 }
 
 bool equals(Token t1, Token t2)
