@@ -25,9 +25,12 @@ import numpy as np
 
 __author__ = 'Bonggun Shin'
 
+from elit.tokenizer import english_tokenizer
+
+# english_tokenizer.tokenize("string")
 
 class SentimentAnalysis():
-    def __init__(self, w2v_dim=400, maxlen=60, w2v_path='../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm'):
+    def __init__(self, w2v_dim=400, maxlen=60, w2v_path='../../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm'):
         self.w2v_dim = w2v_dim
         self.maxlen = maxlen
         self.embedding, self.vocab = self.load_embedding(w2v_path)
@@ -48,7 +51,7 @@ class SentimentAnalysis():
 
         return embedding_matrix, emb_model.vocab
 
-    def load_model(self, model_path = '../resources/sentiment/model/s17-400-v2-3'):
+    def load_model(self, model_path = '../../resources/sentiment/model/s17-400-v2'):
         filter_sizes = (1, 2, 3, 4, 5)
         num_filters = 80
         hidden_dims = 20
@@ -118,13 +121,12 @@ class SentimentAnalysis():
             self.a_model.layers[i].set_weights(self.p_model.layers[i].get_weights())
 
     def preprocess_x(self, sentences):
-        x_text = [line for line in sentences]
         x = []
-        for s in x_text:
+        for s in sentences:
             one_doc = []
-            for token in s.strip().split(" "):
+            for token in s:
                 try:
-                    one_doc.append(self.vocab[token].index)
+                    one_doc.append(self.vocab[token[0]].index)
                 except:
                     one_doc.append(len(self.vocab))
 
@@ -153,13 +155,5 @@ class SentimentAnalysis():
 
             all_att.append(one_sample_att)
 
+
         return y, all_att
-
-
-if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-
-    sentence = "I feel a little bit tired today , but I am really happy !"
-    sa = SentimentAnalysis()
-
-    y, att = sa.decode([sentence])
