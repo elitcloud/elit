@@ -153,7 +153,16 @@ class SentimentAnalysis():
                     attention_matrix[gram_index][sample_index][0])
                 one_sample_att.append(norm_one_sample[-sentence_len_list[sample_index] + gram_index:])
 
-            all_att.append(one_sample_att)
+            new_att = np.zeros([5, len(one_sample_att[0])])
+            new_att[0, :] = one_sample_att[0]
 
+            for i in range(1, 5):
+                for j in range(len(one_sample_att[i])):
+                    ngram = i + 1
+                    for n in range(ngram):
+                        new_att[i, j + n] += one_sample_att[i][j] / (ngram)
+
+                new_att[i] = new_att[i] / max(new_att[i])
+            all_att.append(new_att)
 
         return y, all_att
