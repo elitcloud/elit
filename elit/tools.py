@@ -17,7 +17,6 @@ __author__ = 'Jinho D. Choi'
 
 import json
 from enum import Enum
-from io import StringIO
 from elit.tokenizer import english_tokenizer
 
 DOC_MAX_SIZE = 10485760
@@ -136,12 +135,7 @@ class NLPDecoder:
     def sentiment_analyze(self, sentence):
         sentence[KEY_SENTIMENT] = 1.0
 
-
-
-
-
-
-
+# from io import StringIO
 # import os
 # print(os.getcwd())
 # nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/tokenizer')
