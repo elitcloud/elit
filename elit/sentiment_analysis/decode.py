@@ -145,24 +145,37 @@ class SentimentAnalysis():
         y = self.p_model.predict(x, batch_size=2000, verbose=0)
         attention_matrix = self.a_model.predict(x, batch_size=2000, verbose=0)
 
-        all_att = []
+        all_norm_att = []
+        all_raw_att = []
+
         for sample_index in range(len(sentence_len_list)):
-            one_sample_att = []
+            sample_norm_att_list = []
+            sample_raw_att_list = []
             for gram_index in range(5):
-                norm_one_sample = attention_matrix[gram_index][sample_index][0] / max(
-                    attention_matrix[gram_index][sample_index][0])
-                one_sample_att.append(norm_one_sample[-sentence_len_list[sample_index] + gram_index:])
+                sample_raw_att = attention_matrix[gram_index][sample_index][0]
+                sample_norm_att = sample_raw_att / max(sample_raw_att)
+                sample_norm_att_list.append(sample_norm_att[-sentence_len_list[sample_index] + gram_index:])
+                sample_raw_att_list.append(sample_raw_att[-sentence_len_list[sample_index] + gram_index:])
 
-            new_att = np.zeros([5, len(one_sample_att[0])])
-            new_att[0, :] = one_sample_att[0]
+            new_norm_att = np.zeros([5, len(sample_norm_att_list[0])])
+            new_norm_att[0, :] = sample_norm_att_list[0]
 
+            new_raw_att = np.zeros([5, len(sample_raw_att_list[0])])
+            new_raw_att[0, :] = sample_raw_att_list[0]
+
+            raw_att_avg = np.zeros([1, len(sample_raw_att_list[0])])
             for i in range(1, 5):
-                for j in range(len(one_sample_att[i])):
+                for j in range(len(sample_norm_att_list[i])):
                     ngram = i + 1
                     for n in range(ngram):
-                        new_att[i, j + n] += one_sample_att[i][j] / (ngram)
+                        new_norm_att[i, j + n] += sample_norm_att_list[i][j] / (ngram)
+                        new_raw_att[i, j + n] += sample_raw_att_list[i][j] / (ngram)
 
-                new_att[i] = new_att[i] / max(new_att[i])
-            all_att.append(new_att)
+                new_norm_att[i] = new_norm_att[i] / max(new_norm_att[i])
 
-        return y, all_att
+            raw_att_avg[0] = new_raw_att.sum(0)
+            norm_att_avg = raw_att_avg / max(raw_att_avg[0])
+            all_norm_att.append(np.concatenate((norm_att_avg, new_norm_att), axis=0))
+            all_raw_att.append(np.concatenate((raw_att_avg, new_raw_att), axis=0))
+
+        return y, all_norm_att, all_raw_att
