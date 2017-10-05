@@ -43,7 +43,7 @@ class NLPDecoder:
             self.tokenize = english_tokenizer.tokenize
             self.segment = english_tokenizer.segment
         else:
-            raise ValueError('Unsupported language: '+str(lang))
+            raise ValueError('Unsupported language: ' + str(lang))
 
     ############################## DECODE ##############################
 
@@ -54,12 +54,14 @@ class NLPDecoder:
         :param ostream: either StringIO or File
         :return:
         """
-        if ostream is not None: ostream.write('[')
+        if ostream is not None:
+            ostream.write('[')
 
         d = self.decode_raw(flag, istream, ostream) if flag[FLAG_INPUT_FORMAT] == '0' \
-                                                    else self.decode_line(flag, istream, ostream)
+            else self.decode_line(flag, istream, ostream)
 
-        if ostream is not None: ostream.write(']')
+        if ostream is not None:
+            ostream.write(']')
         return d
 
     def decode_raw(self, flag, istream, ostream=None):
@@ -83,7 +85,8 @@ class NLPDecoder:
                 offset += len(line)
                 lines.append(line)
 
-        if lines: decode()
+        if lines:
+            decode()
         return documents
 
     def decode_line(self, flag, istream, ostream=None):
@@ -107,7 +110,8 @@ class NLPDecoder:
                 offset += len(line)
                 sentences.extend(d)
 
-        if sentences: decode()
+        if sentences:
+            decode()
         return documents
 
     ############################## CONVERSION ##############################
@@ -121,13 +125,15 @@ class NLPDecoder:
         return self.tokens_to_sentences(flag, tokens, self.segment(tokens), offset)
 
     def tokens_to_sentences(self, flag, tokens, segments, offset):
-        return [self.tokens_to_sentence(flag, tokens[segments[i]:segments[i+1]], offset) for i in range(0, len(segments)-1)]
+        return [self.tokens_to_sentence(flag, tokens[segments[i]:segments[i + 1]], offset) for i in
+                range(0, len(segments) - 1)]
 
     def tokens_to_sentence(self, flag, tokens, offset):
         sentence = {KEY_FORMS: [token[0] for token in tokens],
                     KEY_OFFSETS: [(token[1] + offset, token[2] + offset) for token in tokens]}
 
-        if flag[FLAG_SENTIMENT] == '1': self.sentiment_analyze(sentence)
+        if flag[FLAG_SENTIMENT] == '1':
+            self.sentiment_analyze(sentence)
         return sentence
 
     ############################## COMPONENTS ##############################
