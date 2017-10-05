@@ -19,17 +19,14 @@ from keras.models import Model
 from keras.preprocessing import sequence
 from keras import backend as K
 
-import os
 import gensim
 import numpy as np
+import abc
 
 __author__ = 'Bonggun Shin'
 
-from elit.tokenizer import english_tokenizer
 
-# english_tokenizer.tokenize("string")
-
-class SentimentAnalysis():
+class SentimentAnalysis(object):
     def __init__(self, w2v_dim=400, maxlen=60, w2v_path='../../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm'):
         self.w2v_dim = w2v_dim
         self.maxlen = maxlen
@@ -51,71 +48,21 @@ class SentimentAnalysis():
 
         return embedding_matrix, emb_model.vocab
 
-    def load_model(self, model_path = '../../resources/sentiment/model/s17-400-v2'):
-        filter_sizes = (1, 2, 3, 4, 5)
-        num_filters = 80
-        hidden_dims = 20
+    @abc.abstractmethod
+    def prediction_model(self, model_input, model_path):
+        """Method documentation"""
+        return
 
-        def prediction_model(model_input, model_path):
-            conv_blocks = []
-            for sz in filter_sizes:
-                conv = Conv1D(num_filters,
-                              sz,
-                              padding="valid",
-                              activation="relu",
-                              strides=1)(model_input)
-                print(conv)
-                conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
-                conv = AveragePooling1D(pool_size=num_filters)(conv)
+    @abc.abstractmethod
+    def attention_model(self, model_input):
+        """Method documentation"""
+        return
 
-                attention_size = self.maxlen - sz + 1
-
-                multiplied_vector_list = []
-                for i in range(attention_size):
-                    selected_attention = Lambda(lambda x: x[:, 0, i] / float(sz))(conv)
-
-                    for j in range(sz):
-                        selected_token = Lambda(lambda x: x[:, i + j, :])(model_input)
-                        multiplied_vector = Lambda(lambda x: Multiply()(x))([selected_token, selected_attention])
-
-                        multiplied_vector_list.append(multiplied_vector)
-
-                attentioned_conv = Average()(multiplied_vector_list)
-
-                print(attentioned_conv)
-                conv_blocks.append(attentioned_conv)
-
-            z = Average()(conv_blocks)
-            z = Dense(hidden_dims, activation="relu")(z)
-            model_output = Dense(3, activation="softmax")(z)
-
-            model = Model(model_input, model_output)
-            model.load_weights(model_path)
-            model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
-
-            return model
-
-        def attention_model(model_input):
-            att_list = []
-            for sz in filter_sizes:
-                conv = Conv1D(num_filters,
-                              sz,
-                              padding="valid",
-                              activation="relu",
-                              strides=1)(model_input)
-                conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
-                att = AveragePooling1D(pool_size=num_filters)(conv)
-                att_list.append(att)
-
-            model = Model(model_input, att_list)
-            model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
-
-            return model
-
+    def load_model(self):
         input_shape = (self.maxlen, self.w2v_dim)
         model_input = Input(shape=input_shape)
-        self.p_model = prediction_model(model_input, model_path)
-        self.a_model = attention_model(model_input)
+        self.p_model = self.prediction_model(model_input)
+        self.a_model = self.attention_model(model_input)
 
         for i in range(len(self.a_model.layers)):
             self.a_model.layers[i].set_weights(self.p_model.layers[i].get_weights())
@@ -179,3 +126,136 @@ class SentimentAnalysis():
             all_raw_att.append(np.concatenate((raw_att_avg, new_raw_att), axis=0))
 
         return y, all_norm_att, all_raw_att
+
+
+class S17Model(SentimentAnalysis):
+    def __init__(self):
+        super(S17Model, self).__init__(maxlen=60, w2v_path='../../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm')
+
+    def prediction_model(self, model_input, model_path='../../resources/sentiment/model/s17-400-v2'):
+        filter_sizes = (1, 2, 3, 4, 5)
+        num_filters = 80
+        hidden_dims = 20
+        conv_blocks = []
+        for sz in filter_sizes:
+            conv = Conv1D(num_filters,
+                          sz,
+                          padding="valid",
+                          activation="relu",
+                          strides=1)(model_input)
+            print(conv)
+            conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
+            conv = AveragePooling1D(pool_size=num_filters)(conv)
+
+            attention_size = self.maxlen - sz + 1
+
+            multiplied_vector_list = []
+            for i in range(attention_size):
+                selected_attention = Lambda(lambda x: x[:, 0, i] / float(sz))(conv)
+
+                for j in range(sz):
+                    selected_token = Lambda(lambda x: x[:, i + j, :])(model_input)
+                    multiplied_vector = Lambda(lambda x: Multiply()(x))([selected_token, selected_attention])
+
+                    multiplied_vector_list.append(multiplied_vector)
+
+            attentioned_conv = Average()(multiplied_vector_list)
+
+            print(attentioned_conv)
+            conv_blocks.append(attentioned_conv)
+
+        z = Average()(conv_blocks)
+        z = Dense(hidden_dims, activation="relu")(z)
+        model_output = Dense(3, activation="softmax")(z)
+
+        model = Model(model_input, model_output)
+        model.load_weights(model_path)
+        model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+
+        return model
+
+    def attention_model(self, model_input):
+        filter_sizes = (1, 2, 3, 4, 5)
+        num_filters = 80
+        att_list = []
+        for sz in filter_sizes:
+            conv = Conv1D(num_filters,
+                          sz,
+                          padding="valid",
+                          activation="relu",
+                          strides=1)(model_input)
+            conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
+            att = AveragePooling1D(pool_size=num_filters)(conv)
+            att_list.append(att)
+
+        model = Model(model_input, att_list)
+        model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+
+        return model
+
+
+class SSTModel(SentimentAnalysis):
+    def __init__(self):
+        super(SSTModel, self).__init__(maxlen=100, w2v_path='../../resources/sentiment/w2v/w2v-400-amazon.gnsm')
+
+    def prediction_model(self, model_input, model_path='../../resources/sentiment/model/sst3-400-v2'):
+        filter_sizes = (1, 2, 3, 4, 5)
+        num_filters = 64
+        hidden_dims = 50
+        conv_blocks = []
+        for sz in filter_sizes:
+            conv = Conv1D(num_filters,
+                          sz,
+                          padding="valid",
+                          activation="relu",
+                          strides=1)(model_input)
+            print(conv)
+            conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
+            conv = AveragePooling1D(pool_size=num_filters)(conv)
+
+            attention_size = self.maxlen - sz + 1
+
+            multiplied_vector_list = []
+            for i in range(attention_size):
+                selected_attention = Lambda(lambda x: x[:, 0, i] / float(sz))(conv)
+
+                for j in range(sz):
+                    selected_token = Lambda(lambda x: x[:, i + j, :])(model_input)
+                    multiplied_vector = Lambda(lambda x: Multiply()(x))([selected_token, selected_attention])
+
+                    multiplied_vector_list.append(multiplied_vector)
+
+            attentioned_conv = Average()(multiplied_vector_list)
+
+            print(attentioned_conv)
+            conv_blocks.append(attentioned_conv)
+
+        z = Average()(conv_blocks)
+        z = Dense(hidden_dims, activation="relu")(z)
+        model_output = Dense(3, activation="softmax")(z)
+
+        model = Model(model_input, model_output)
+        model.load_weights(model_path)
+        model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+
+        return model
+
+    def attention_model(self, model_input):
+        filter_sizes = (1, 2, 3, 4, 5)
+        num_filters = 64
+        att_list = []
+        for sz in filter_sizes:
+            conv = Conv1D(num_filters,
+                          sz,
+                          padding="valid",
+                          activation="relu",
+                          strides=1)(model_input)
+            conv = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(conv)
+            att = AveragePooling1D(pool_size=num_filters)(conv)
+            att_list.append(att)
+
+        model = Model(model_input, att_list)
+        model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+
+        return model
+
