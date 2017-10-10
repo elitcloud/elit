@@ -141,17 +141,22 @@ class NLPDecoder:
     def sentiment_analyze(self, sentence):
         sentence[KEY_SENTIMENT] = 1.0
 
-# from io import StringIO
 # import os
 # print(os.getcwd())
-# nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/tokenizer')
-# flag = '0110'
-# input_text = 'This is an example of the\n raw format. It assumes no\n segmentation for the input text.'
 # input_text = 'The first sentence in the first segment.\nThe second sentence in the first segment\nThe third sentence in the second segment.'
 # input_text = 'This is the first document.\nContents of the first document are here.\n@#DOC$%\nThis is the second document.\nThe delimiter is not required for the last document.'
 #
-# istream = StringIO(input_text)
-# ostream = open('tmp.json', 'w')
-# d = nd.decode(flag, istream, ostream)
-# j = json.dumps(d)
+from io import StringIO
+import ujson
+flag = '0110'
+input_text = 'This is an example of the\n raw format. It assumes no\n segmentation for the input text.'
+nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/tokenizer')
+istream = StringIO(input_text)
+d = nd.decode(flag, istream, None)
+j = ujson.dumps(d)
 # print(j)
+
+json_text = '[[{"forms":["This","is","an","example","of","the","raw","format","."],"offsets":[[0,4],[5,7],[8,10],[11,18],[19,21],[22,25],[27,30],[31,37],[37,38]]},{"forms":["It","assumes","no","segmentation","for","the","input","text","."],"offsets":[[39,41],[42,49],[50,52],[54,66],[67,70],[71,74],[75,80],[81,85],[85,86]]}]]'
+d = ujson.load(StringIO(json_text))
+print(d)
+print(type(d))
