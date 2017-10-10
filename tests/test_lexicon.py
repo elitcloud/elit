@@ -15,7 +15,7 @@
 # ========================================================================
 
 
-from elit.component.template.lexicon import NLPLexiconMapper
+from elit.dev.template.lexicon import NLPLexiconMapper
 # from fasttext.model import WordVectorModel
 from gensim.models.keyedvectors import KeyedVectors
 

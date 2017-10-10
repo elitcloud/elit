@@ -19,7 +19,7 @@ from typing import Union, List
 
 import numpy as np
 
-from elit.structure import NLPGraph, NLPToken, Relation
+from elit.dev.structure import NLPGraph, NLPToken, Relation
 
 __author__ = 'Jinho D. Choi'
 

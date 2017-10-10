@@ -19,9 +19,9 @@ import os
 from typing import List, Tuple, Callable
 
 import mxnet as mx
-
-from elit.reader import TSVReader
 from elit.structure import NLPGraph
+
+from elit.dev.reader import TSVReader
 
 __author__ = 'Jinho D. Choi'
 

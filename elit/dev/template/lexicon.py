@@ -18,8 +18,8 @@ import numpy as np
 from fasttext.model import WordVectorModel
 from gensim.models.keyedvectors import KeyedVectors
 
-from elit import structure
-from elit.structure import NLPToken
+from elit.dev import structure
+from elit.dev.structure import NLPToken
 
 __author__ = 'Jinho D. Choi'
 
@@ -30,9 +30,9 @@ class NLPEmbedding:
         :param vsm: the vector space model in either the form of Word2Vec or FastText.
         :type vsm: Union[KeyedVectors, WordVectorModel]
         :param key_field: the field in NLPNode (e.g., word, pos) used as the key to retrieve
-                the embedding from vsm.
+                the emb_matrix from vsm.
         :type key_field: str
-        :param emb_field: where the embedding with respect to the key is saved in NLPNode.
+        :param emb_field: where the emb_matrix with respect to the key is saved in NLPNode.
         :type emb_field: str
         """
         self.vsm = vsm
@@ -55,7 +55,7 @@ class NLPEmbedding:
         """
         :param node:
         :type node: NLPToken
-        :return: the embedding of the specific node with respect to the key_field.
+        :return: the emb_matrix of the specific node with respect to the key_field.
         :rtype: np.array
         """
         if node is None:

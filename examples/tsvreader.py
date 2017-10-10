@@ -1,4 +1,4 @@
-from elit.reader import TSVReader
+from elit.dev.reader import TSVReader
 
 tsv_file_path = './../resources/sample/sample.tsv'
 

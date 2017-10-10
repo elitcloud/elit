@@ -13,87 +13,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
+
+import numpy as np
+from keras import backend as K
 from keras.layers import Conv1D, Average, Multiply
 from keras.layers import Dense, AveragePooling1D, Input, Lambda
 from keras.models import Model
-from keras.preprocessing import sequence
-from keras import backend as K
 
-import gensim
-import numpy as np
-import abc
-
-__author__ = 'Bonggun Shin'
+__author__ = 'Bonggun Shin, Jinho D. Choi'
 
 
-class SentimentAnalysis(object):
-    def __init__(self, w2v_dim=400, maxlen=60, w2v_path='../../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm'):
-        self.w2v_dim = w2v_dim
+class SentimentAnalyzer(object):
+    def __init__(self, emb_model, model_path, maxlen=60):
+        self.emb_model = emb_model
+        self.model_path = model_path
         self.maxlen = maxlen
-        self.embedding, self.vocab = self.load_embedding(w2v_path)
-        self.load_model()
-
-    def load_embedding(self, w2v_path):
-        print('Loading w2v...')
-        emb_model = gensim.models.KeyedVectors.load(w2v_path, mmap='r')
-
-        print('creating w2v mat...')
-        word_index = emb_model.vocab
-        embedding_matrix = np.zeros((len(word_index) + 1, 400), dtype=np.float32)
-        for word, i in word_index.items():
-            embedding_vector = emb_model[word]
-            if embedding_vector is not None:
-                # words not found in embedding index will be all-zeros.
-                embedding_matrix[i.index] = embedding_vector
-
-        return embedding_matrix, emb_model.vocab
+        self.p_model, self.a_model = self.load_model()
 
     @abc.abstractmethod
-    def prediction_model(self, model_input, model_path):
-        """Method documentation"""
+    def prediction_model(self, model_input):
         return
 
     @abc.abstractmethod
     def attention_model(self, model_input):
-        """Method documentation"""
         return
 
     def load_model(self):
-        input_shape = (self.maxlen, self.w2v_dim)
+        input_shape = (self.maxlen, self.emb_model.dim)
         model_input = Input(shape=input_shape)
-        self.p_model = self.prediction_model(model_input)
-        self.a_model = self.attention_model(model_input)
+        p_model = self.prediction_model(model_input)
+        a_model = self.attention_model(model_input)
 
-        for i in range(len(self.a_model.layers)):
-            self.a_model.layers[i].set_weights(self.p_model.layers[i].get_weights())
+        for i in range(len(a_model.layers)):
+            a_model.layers[i].set_weights(p_model.layers[i].get_weights())
 
-    def preprocess_x(self, sentences):
-        x = []
-        for s in sentences:
-            one_doc = []
-            for token in s:
-                try:
-                    one_doc.append(self.vocab[token[0]].index)
-                except:
-                    one_doc.append(len(self.vocab))
+        return p_model, a_model
 
-            x.append(one_doc)
+    # def preprocess_x(self, sentences):
+    #     x = []
+    #     for s in sentences:
+    #         one_doc = []
+    #         for i, token in enumerate(s):
+    #             if i >= self.maxlen: break
+    #
+    #             try:
+    #                 one_doc.append(self.vocab[token[0]].index)
+    #             except:
+    #                 one_doc.append(len(self.vocab))
+    #
+    #         x.append(one_doc)
+    #
+    #     x = np.array(x)
+    #     sentence_len_list = [len(sentence) for sentence in x]
+    #
+    #     x = sequence.pad_sequences(x, maxlen=self.maxlen)
+    #     x = self.emb_matrix[x]
+    #
+    #     return x, sentence_len_list
 
-        x = np.array(x)
-        sentence_len_list = [len(sentence) for sentence in x]
-
-        x = sequence.pad_sequences(x, maxlen=self.maxlen)
-        x = self.embedding[x]
-
-        return x, sentence_len_list
-
-    def decode(self, sentences):
-        x, sentence_len_list = self.preprocess_x(sentences)
-        y = self.p_model.predict(x, batch_size=2000, verbose=0)
-        attention_matrix = self.a_model.predict(x, batch_size=2000, verbose=0)
-
+    def decode(self, sentences, batch_size=2000, attn=False):
+        x = self.emb_model.docs_to_emb(sentences, self.maxlen)
+        y = self.p_model.predict(x, batch_size=batch_size, verbose=0)
         all_norm_att = []
         all_raw_att = []
+
+        if not attn: return y, all_norm_att, all_raw_att
+        sentence_len_list = [len(sentence) for sentence in x]
+        attention_matrix = self.a_model.predict(x, batch_size=batch_size, verbose=0)
 
         for sample_index in range(len(sentence_len_list)):
             sample_norm_att_list = []
@@ -128,11 +115,12 @@ class SentimentAnalysis(object):
         return y, all_norm_att, all_raw_att
 
 
-class S17Model(SentimentAnalysis):
-    def __init__(self):
-        super(S17Model, self).__init__(maxlen=60, w2v_path='../../resources/sentiment/w2v/w2v-400-semevaltrndev.gnsm')
+class SemEvalSentimentAnalyzer(SentimentAnalyzer):
+    def __init__(self, emb_model, model_path):
+        super(SemEvalSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=60)
 
-    def prediction_model(self, model_input, model_path='../../resources/sentiment/model/s17-400-v2'):
+    def prediction_model(self, model_input):
+        print('Init: '+self.model_path)
         filter_sizes = (1, 2, 3, 4, 5)
         num_filters = 80
         hidden_dims = 20
@@ -169,7 +157,7 @@ class S17Model(SentimentAnalysis):
         model_output = Dense(3, activation="softmax")(z)
 
         model = Model(model_input, model_output)
-        model.load_weights(model_path)
+        model.load_weights(self.model_path)
         model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
 
         return model
@@ -194,11 +182,12 @@ class S17Model(SentimentAnalysis):
         return model
 
 
-class SSTModel(SentimentAnalysis):
-    def __init__(self):
-        super(SSTModel, self).__init__(maxlen=100, w2v_path='../../resources/sentiment/w2v/w2v-400-amazon.gnsm')
+class SSTSentimentAnalyzer(SentimentAnalyzer):
+    def __init__(self, emb_model, model_path):
+        super(SSTSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=100)
 
-    def prediction_model(self, model_input, model_path='../../resources/sentiment/model/sst3-400-v2'):
+    def prediction_model(self, model_input):
+        print('Init: ' + self.model_path)
         filter_sizes = (1, 2, 3, 4, 5)
         num_filters = 64
         hidden_dims = 50
@@ -235,7 +224,7 @@ class SSTModel(SentimentAnalysis):
         model_output = Dense(3, activation="softmax")(z)
 
         model = Model(model_input, model_output)
-        model.load_weights(model_path)
+        model.load_weights(self.model_path)
         model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
 
         return model

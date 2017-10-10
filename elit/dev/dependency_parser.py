@@ -16,9 +16,9 @@
 from fasttext.model import WordVectorModel
 from gensim.models import KeyedVectors
 
-from elit.component.template.lexicon import NLPLexiconMapper
-from elit.component.template.state import NLPState
-from elit.structure import NLPGraph
+from elit.dev.structure import NLPGraph
+from elit.dev.template.lexicon import NLPLexiconMapper
+from elit.dev.template.state import NLPState
 
 __author__ = 'Jinho D. Choi'
 

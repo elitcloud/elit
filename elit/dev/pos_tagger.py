@@ -27,15 +27,12 @@ import fasttext
 from fasttext.model import WordVectorModel
 from gensim.models import KeyedVectors
 
-from elit.component.template.lexicon import NLPLexiconMapper, NLPEmbedding
-from elit.component.template.model import NLPModel
-from elit.component.template.state import NLPState
-from elit.component.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, create_ffnn, \
-    argparse_lexicon, conv_pool
-from elit.reader import TSVReader
-from elit.structure import NLPGraph, NLPToken
-
-import graphviz
+from elit.dev.template.lexicon import NLPLexiconMapper, NLPEmbedding
+from elit.dev.template.model import NLPModel
+from elit.dev.template.state import NLPState
+from elit.dev.template.util import argparse_ffnn, argparse_model, argparse_data, read_graphs, argparse_lexicon, conv_pool
+from elit.dev.reader import TSVReader
+from elit.dev.structure import NLPGraph, NLPToken
 
 __author__ = 'Jinho D. Choi'
 

@@ -14,7 +14,8 @@
 # limitations under the License.
 # ========================================================================
 import re
-from elit.structure import DELIM_ARC, DELIM_ARC_KV, DELIM_FEAT_KV, BLANK, ROOT_TAG, \
+
+from elit.dev.structure import DELIM_ARC, DELIM_ARC_KV, DELIM_FEAT_KV, BLANK, ROOT_TAG, \
     NLPToken, NLPGraph
 
 __author__ = 'Jinho D. Choi'

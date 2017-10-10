@@ -17,11 +17,11 @@ import functools
 from enum import Enum
 from itertools import islice
 
-from elit.util.bisect import bisect_index
-from elit.util.bisect import bisect_left
-from elit.util.bisect import bisect_remove
-from elit.util.bisect import bisect_right
-from elit.util.bisect import insort_right
+from elit.dev.util.bisect import bisect_index
+from elit.dev.util.bisect import bisect_left
+from elit.dev.util.bisect import bisect_remove
+from elit.dev.util.bisect import bisect_right
+from elit.dev.util.bisect import insort_right
 
 __author__ = 'Jinho D. Choi'
 

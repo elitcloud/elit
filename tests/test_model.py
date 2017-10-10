@@ -17,7 +17,7 @@
 
 import unittest
 
-from elit.component.template.model import NLPModel
+from elit.dev.template.model import NLPModel
 
 __author__ = 'T Lee'
 
