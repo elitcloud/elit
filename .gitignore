@@ -163,3 +163,7 @@ cmake-build-debug/
 elit/version.py
 tmp/
 resources/sentiment
+resources/embedding/w2v-400-amazon-review.gnsm
+resources/embedding/w2v-400-amazon-review.gnsm.syn0.npy
+resources/embedding/w2v-400-twitter.gnsm
+resources/embedding/w2v-400-twitter.gnsm.syn0.npy

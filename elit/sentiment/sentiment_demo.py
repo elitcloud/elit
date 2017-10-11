@@ -19,22 +19,22 @@ from elit.tokenizer import english_tokenizer
 
 __author__ = 'Bonggun Shin'
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
-# EMB_FILE = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-twitter.gnsm'
-# MODEL_PATH = '/Users/jdchoi/Downloads/tmp/model/sentiment-semeval17-400-v2'
-#
-# emb_model = Word2Vec(EMB_FILE)
-# sa = SemEvalSentimentAnalyzer(emb_model, MODEL_PATH)
-#
-# sentences = ["I feel a little bit tired today, but I am really happy!",
-#              "Although the rain stopped, I hate this thick cloud in the sky."]
-#
-# tokenized_sentences = [[token[0] for token in english_tokenizer.tokenize(s, False)] for s in sentences]
-#
-# y, att, raw_att = sa.decode(tokenized_sentences, attn=True)
-# print(y)
-# print(att)
-# print(raw_att)
+# os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+EMB_FILE = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-twitter.gnsm'
+MODEL_PATH = '/Users/jdchoi/Downloads/tmp/model/sentiment-semeval17-400-v2'
+
+emb_model = Word2Vec(EMB_FILE)
+sa = SemEvalSentimentAnalyzer(emb_model, MODEL_PATH)
+
+sentences = ["I feel a little bit tired today, but I am really happy!",
+             "Although the rain stopped, I hate this thick cloud in the sky."]
+
+tokenized_sentences = [[token[0] for token in english_tokenizer.tokenize(s, False)] for s in sentences]
+
+y, att, raw_att = sa.decode(tokenized_sentences, attn=True)
+print(y)
+print(att)
+print(raw_att)
 
 EMB_FILE = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-amazon-review.gnsm'
 MODEL_PATH = '/Users/jdchoi/Downloads/tmp/model/sentiment-sst-400-v2'

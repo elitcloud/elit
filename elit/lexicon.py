@@ -48,7 +48,11 @@ class Word2Vec:
             v = self.model.vocab.get(document[token_index], None)
             return self.model.syn0[v.index] if v is not None else self.pad
 
-        return np.array([emb(i) for i in range(maxlen)])
+        # return np.array([emb(i) for i in range(maxlen)])
+        # TODO: the following 3 lines should be replaced by the above return statement
+        l = [self.model.syn0[0] for _ in range(maxlen-len(document))]
+        l.extend([emb(i) for i in range(min(maxlen, len(document)))])
+        return np.array(l)
 
     def docs_to_emb(self, documents, maxlen):
         """
@@ -57,33 +61,3 @@ class Word2Vec:
         :return:
         """
         return np.array([self.doc_to_emb(document, maxlen) for document in documents])
-
-
-
-
-
-# import time
-# import numpy as np
-# filepath = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-amazon-review.gnsm'
-# start = time.time()
-# emb_model = Word2Vec(filepath)
-# end = time.time()
-# print(end-start)
-#
-# documents = [['hello', '', 'world'], ['hello', '', 'world']]
-# print(emb_model.docs_to_emb(documents, 5))
-
-# start = time.time()
-# word_index = emb_model.vocab
-# emd_dim = emb_model.syn0.shape[1]
-# emb_matrix = np.zeros((len(word_index), emd_dim), dtype=np.float32)
-# emb_matrix[:len(emb_model.syn0)] = emb_model.syn0
-# # for word, i in word_index.items():
-# #     emb = emb_model[word]
-# #     if emb is not None:   # words not found in w2v_model are set to zeros
-# #         # if not np.array_equal(emb, emb_model.syn0[i.index]):
-# #             # print('NOOOO')
-# #         emb_matrix[i.index] = emb
-#
-# end = time.time()
-# print(end-start)

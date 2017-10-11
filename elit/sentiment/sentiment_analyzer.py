@@ -50,28 +50,6 @@ class SentimentAnalyzer(object):
 
         return p_model, a_model
 
-    # def preprocess_x(self, sentences):
-    #     x = []
-    #     for s in sentences:
-    #         one_doc = []
-    #         for i, token in enumerate(s):
-    #             if i >= self.maxlen: break
-    #
-    #             try:
-    #                 one_doc.append(self.vocab[token[0]].index)
-    #             except:
-    #                 one_doc.append(len(self.vocab))
-    #
-    #         x.append(one_doc)
-    #
-    #     x = np.array(x)
-    #     sentence_len_list = [len(sentence) for sentence in x]
-    #
-    #     x = sequence.pad_sequences(x, maxlen=self.maxlen)
-    #     x = self.emb_matrix[x]
-    #
-    #     return x, sentence_len_list
-
     def decode(self, sentences, batch_size=2000, attn=False):
         x = self.emb_model.docs_to_emb(sentences, self.maxlen)
         y = self.p_model.predict(x, batch_size=batch_size, verbose=0)
@@ -79,7 +57,7 @@ class SentimentAnalyzer(object):
         all_raw_att = []
 
         if not attn: return y, all_norm_att, all_raw_att
-        sentence_len_list = [len(sentence) for sentence in x]
+        sentence_len_list = [len(sentence) for sentence in sentences]
         attention_matrix = self.a_model.predict(x, batch_size=batch_size, verbose=0)
 
         for sample_index in range(len(sentence_len_list)):
