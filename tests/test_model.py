@@ -15,18 +15,18 @@
 # ========================================================================
 
 
-import unittest
-
-from elit.dev.template.model import NLPModel
-
-__author__ = 'T Lee'
-
-
-class ModelTest(unittest.TestCase):
-    # TODO:
-    def setUp(self):
-        pass
-
-
-if __name__ == '__main__':
-    unittest.main()
+# import unittest
+#
+# from elit.dev.template.model import NLPModel
+#
+# __author__ = 'T Lee'
+#
+#
+# class ModelTest(unittest.TestCase):
+#     # TODO:
+#     def setUp(self):
+#         pass
+#
+#
+# if __name__ == '__main__':
+#     unittest.main()

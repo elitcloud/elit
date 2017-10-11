@@ -21,20 +21,20 @@ from gensim.models.keyedvectors import KeyedVectors
 
 import unittest
 import os
-
-__author__ = 'Jinho D. Choi'
-
-class LexiconTest(unittest.TestCase):
-
-    def setUp(self):
-        self.w2v_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                     './../elit/resources/sample/sample.w2v.bin')
-        self.word_embeddings = KeyedVectors.load_word2vec_format(self.w2v_file, binary=True)
-
-
-    def test_lexicon(self):
-        lexicon = NLPLexiconMapper(self.word_embeddings)
-        print(lexicon.w2v)
-
-if __name__ == '__main__':
-    unittest.main()
+#
+# __author__ = 'Jinho D. Choi'
+#
+# class LexiconTest(unittest.TestCase):
+#
+#     def setUp(self):
+#         self.w2v_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+#                                      './../elit/resources/sample/sample.w2v.bin')
+#         self.word_embeddings = KeyedVectors.load_word2vec_format(self.w2v_file, binary=True)
+#
+#
+#     def test_lexicon(self):
+#         lexicon = NLPLexiconMapper(self.word_embeddings)
+#         print(lexicon.w2v)
+#
+# if __name__ == '__main__':
+#     unittest.main()
