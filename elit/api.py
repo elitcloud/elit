@@ -50,11 +50,11 @@ class NLPDecoder:
             self.segment = english_tokenizer.segment
 
             # embedding
-            # self.twitter_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+            self.twitter_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
             self.amazon_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
 
             # sentiment analyzers
-            # self.sentiment_semeval = SemEvalSentimentAnalyzer(self.twitter_emb, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
+            self.sentiment_semeval = SemEvalSentimentAnalyzer(self.twitter_emb, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
             self.sentiment_sst = SSTSentimentAnalyzer(self.amazon_emb, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
         else:
             raise ValueError('Unsupported language: ' + str(lang))

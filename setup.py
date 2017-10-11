@@ -222,6 +222,8 @@ def setup_package():
             'gensim',
             'fasttext',
             'numpy',
+            'keras',
+            'tensorflow',
             'pybind11>=2.2'
         ],
         tests_require=[
