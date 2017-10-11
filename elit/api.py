@@ -164,12 +164,12 @@ class NLPDecoder:
             sentence[KEY_SENTIMENT] = y[i].tolist()
             if attn: sentence[KEY_SENTIMENT_ATTENTION] = att[i].tolist()
 
-
-from io import StringIO
-flag = '0112'
-input_text = 'This is the first document. Contents of the first document are here.\n@#DOC$%\nThis is the second document. The delimiter is not required for the last document.'
-nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/')
-istream = StringIO(input_text)
-d = nd.decode(flag, istream, None)
-j = ujson.dumps(d)
-print(j)
+#
+# from io import StringIO
+# flag = '0112'
+# input_text = 'This is the first document. Contents of the first document are here.\n@#DOC$%\nThis is the second document. The delimiter is not required for the last document.'
+# nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/')
+# istream = StringIO(input_text)
+# d = nd.decode(flag, istream, None)
+# j = ujson.dumps(d)
+# print(j)
