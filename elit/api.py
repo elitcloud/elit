@@ -32,7 +32,7 @@ FLAG_TOKENIZATION = 1
 FLAG_SEGMENTATION = 2
 FLAG_SENTIMENT = 3
 
-KEY_FORMS = 'forms'
+KEY_TOKENS = 'tokens'
 KEY_OFFSETS = 'offsets'
 KEY_SENTIMENT = 'sentiment'
 KEY_SENTIMENT_ATTENTION = 'sentiment_attention'
@@ -142,7 +142,7 @@ class NLPDecoder:
         return sentences
 
     def tokens_to_sentence(self, flag, tokens, offset):
-        sentence = {KEY_FORMS: [token[0] for token in tokens],
+        sentence = {KEY_TOKENS: [token[0] for token in tokens],
                     KEY_OFFSETS: [(token[1] + offset, token[2] + offset) for token in tokens]}
 
         return sentence
@@ -157,7 +157,7 @@ class NLPDecoder:
         analyzer = self.sentiment_semeval if flag % 2 == 1 else self.sentiment_sst
         attn = flag > 2
 
-        sens = [sentence[KEY_FORMS] for sentence in sentences]
+        sens = [sentence[KEY_TOKENS] for sentence in sentences]
         y, att, raw_att = analyzer.decode(sens, attn=attn)
 
         for i, sentence in enumerate(sentences):
@@ -165,16 +165,11 @@ class NLPDecoder:
             if attn: sentence[KEY_SENTIMENT_ATTENTION] = att[i].tolist()
 
 
-# from io import StringIO
-# flag = '0114'
-# input_text = 'This is a film well worth seeing, talking and singing heads and all. The sort of movie that gives tastelessness a bad rap. Marisa Tomei is good, but Just A Kiss is just a mess.'
-# nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/')
-# istream = StringIO(input_text)
-# d = nd.decode(flag, istream, None)
-# j = ujson.dumps(d)
-# print(j)
-
-# json_text = '[[{"forms":["This","is","an","example","of","the","raw","format","."],"offsets":[[0,4],[5,7],[8,10],[11,18],[19,21],[22,25],[27,30],[31,37],[37,38]]},{"forms":["It","assumes","no","segmentation","for","the","input","text","."],"offsets":[[39,41],[42,49],[50,52],[54,66],[67,70],[71,74],[75,80],[81,85],[85,86]]}]]'
-# d = ujson.load(StringIO(json_text))
-# print(d)
-# print(type(d))
+from io import StringIO
+flag = '0112'
+input_text = 'This is the first document. Contents of the first document are here.\n@#DOC$%\nThis is the second document. The delimiter is not required for the last document.'
+nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/')
+istream = StringIO(input_text)
+d = nd.decode(flag, istream, None)
+j = ujson.dumps(d)
+print(j)

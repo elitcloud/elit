@@ -225,4 +225,3 @@ class SSTSentimentAnalyzer(SentimentAnalyzer):
         model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
 
         return model
-
