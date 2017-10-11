@@ -42,20 +42,21 @@ class Language(Enum):
 
 
 class NLPDecoder:
-    def __init__(self, resource_dir, lang=Language.English):
+    def __init__(self, resource_dir, lang=Language.English, load_model=True):
         if lang == Language.English:
             # tokenizer
             english_tokenizer.init(os.path.join(resource_dir, 'tokenizer'))
             self.tokenize = english_tokenizer.tokenize
             self.segment = english_tokenizer.segment
 
-            # embedding
-            self.twitter_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
-            self.amazon_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+            if load_model:
+                # embedding
+                self.twitter_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+                self.amazon_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
 
-            # sentiment analyzers
-            self.sentiment_semeval = SemEvalSentimentAnalyzer(self.twitter_emb, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
-            self.sentiment_sst = SSTSentimentAnalyzer(self.amazon_emb, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
+                # sentiment analyzers
+                self.sentiment_semeval = SemEvalSentimentAnalyzer(self.twitter_emb, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
+                self.sentiment_sst = SSTSentimentAnalyzer(self.amazon_emb, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
         else:
             raise ValueError('Unsupported language: ' + str(lang))
 
