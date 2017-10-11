@@ -224,6 +224,7 @@ def setup_package():
             'numpy',
             'keras',
             'tensorflow',
+            'h5py',
             'pybind11>=2.2'
         ],
         tests_require=[
