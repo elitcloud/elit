@@ -15,13 +15,12 @@
 # ========================================================================
 import os
 import ujson
-import json
 from elit.lexicon import Word2Vec
-from elit.sentiment.sentiment_analyzer import SSTSentimentAnalyzer, SemEvalSentimentAnalyzer
+from elit.sentiment.sentiment_analyzer import SSTSentimentAnalyzer, TwitterSentimentAnalyzer
 
 __author__ = 'Jinho D. Choi'
 
-
+import json
 from enum import Enum
 from elit.tokenizer import english_tokenizer
 
@@ -42,24 +41,27 @@ class Language(Enum):
     English = 'en'
 
 
-class NLPDecoder:
-    def __init__(self, resource_dir, lang=Language.English, load_model=True):
-        if lang == Language.English:
+class ELITDecoder:
+    def __init__(self, resource_dir, language=Language.English, sentiment_twitter=True, sentiment_movie=True):
+        if language == Language.English:
             # tokenizer
             english_tokenizer.init(os.path.join(resource_dir, 'tokenizer'))
             self.tokenize = english_tokenizer.tokenize
             self.segment = english_tokenizer.segment
 
-            if load_model:
-                # embedding
-                self.twitter_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
-                self.amazon_emb = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+            # init sentiment: twitter
+            if sentiment_twitter:
+                self.emb_twitter = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+                self.sentiment_twitter = TwitterSentimentAnalyzer(
+                    self.emb_twitter, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
 
-                # sentiment analyzers
-                self.sentiment_semeval = SemEvalSentimentAnalyzer(self.twitter_emb, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
-                self.sentiment_sst = SSTSentimentAnalyzer(self.amazon_emb, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
+            # init sentiment: movie review
+            if sentiment_movie:
+                self.emb_review = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+                self.sentiment_sst = SSTSentimentAnalyzer(
+                    self.emb_review, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
         else:
-            raise ValueError('Unsupported language: ' + str(lang))
+            raise ValueError('Unsupported language: '+str(language))
 
     ############################## DECODE ##############################
 
@@ -156,7 +158,7 @@ class NLPDecoder:
     ############################## COMPONENTS ##############################
 
     def sentiment_analyze(self, flag, sentences):
-        analyzer = self.sentiment_semeval if flag % 2 == 1 else self.sentiment_sst
+        analyzer = self.sentiment_twitter if flag % 2 == 1 else self.sentiment_sst
         attn = flag > 2
 
         sens = [sentence[KEY_TOKENS] for sentence in sentences]
@@ -165,13 +167,3 @@ class NLPDecoder:
         for i, sentence in enumerate(sentences):
             sentence[KEY_SENTIMENT] = y[i].tolist()
             if attn: sentence[KEY_SENTIMENT_ATTENTION] = att[i].tolist()
-
-# import ujson
-# from elit.api import NLPDecoder
-# from io import StringIO
-# flag = '0112'
-# input_text = 'This is the first document. Contents of the first document are here.\n@#DOC$%\nThis is the second document. The delimiter is not required for the last document.'
-# nd = NLPDecoder(resource_dir='/Users/gary/Documents/research/resources/')
-# istream = StringIO(input_text)
-# d = nd.decode(flag, istream, None)
-# print(d)
