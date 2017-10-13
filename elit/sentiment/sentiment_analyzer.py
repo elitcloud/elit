@@ -93,9 +93,9 @@ class SentimentAnalyzer(object):
         return y, all_norm_att, all_raw_att
 
 
-class SemEvalSentimentAnalyzer(SentimentAnalyzer):
+class TwitterSentimentAnalyzer(SentimentAnalyzer):
     def __init__(self, emb_model, model_path):
-        super(SemEvalSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=60)
+        super(TwitterSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=60)
 
     def prediction_model(self, model_input):
         print('Init: '+self.model_path)
