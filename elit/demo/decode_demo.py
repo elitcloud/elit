@@ -14,4 +14,20 @@
 # limitations under the License.
 # ========================================================================
 
+from elit.api import NLPDecoder
+from io import StringIO
+
 __author__ = 'Jinho D. Choi'
+
+flag = '0111'
+input_text = 'I watched "The Sound of Music" last night. It is my favorite movie.'
+nd = NLPDecoder(resource_dir='../../resources/')
+
+# returns the output as a list of documents
+docs = nd.decode(flag, StringIO(input_text))
+print(docs)
+
+# saves the output as a JSON file: out.json
+fout = open('out.json', 'w')
+nd.decode(flag, StringIO(input_text), fout)
+
