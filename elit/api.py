@@ -15,12 +15,13 @@
 # ========================================================================
 import os
 import ujson
+import json
 from elit.lexicon import Word2Vec
 from elit.sentiment.sentiment_analyzer import SSTSentimentAnalyzer, SemEvalSentimentAnalyzer
 
 __author__ = 'Jinho D. Choi'
 
-import json
+
 from enum import Enum
 from elit.tokenizer import english_tokenizer
 
@@ -165,12 +166,12 @@ class NLPDecoder:
             sentence[KEY_SENTIMENT] = y[i].tolist()
             if attn: sentence[KEY_SENTIMENT_ATTENTION] = att[i].tolist()
 
-#
+# import ujson
+# from elit.api import NLPDecoder
 # from io import StringIO
 # flag = '0112'
 # input_text = 'This is the first document. Contents of the first document are here.\n@#DOC$%\nThis is the second document. The delimiter is not required for the last document.'
-# nd = NLPDecoder(resource_dir='/Users/jdchoi/workspace/elit/resources/')
+# nd = NLPDecoder(resource_dir='/Users/gary/Documents/research/resources/')
 # istream = StringIO(input_text)
 # d = nd.decode(flag, istream, None)
-# j = ujson.dumps(d)
-# print(j)
+# print(d)

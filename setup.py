@@ -225,6 +225,7 @@ def setup_package():
             'keras',
             'tensorflow',
             'h5py',
+            'ujson',
             'pybind11>=2.2'
         ],
         tests_require=[
