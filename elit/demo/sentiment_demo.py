@@ -15,7 +15,7 @@
 # limitations under the License.
 # ========================================================================
 from elit.lexicon import Word2Vec
-from elit.sentiment.sentiment_analyzer import SemEvalSentimentAnalyzer, SSTSentimentAnalyzer
+from elit.sentiment.sentiment_analyzer import TwitterSentimentAnalyzer, SSTSentimentAnalyzer
 from elit.tokenizer import english_tokenizer
 
 __author__ = 'Bonggun Shin'
@@ -25,7 +25,7 @@ EMB_FILE = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-twitter.gnsm'
 MODEL_PATH = '/Users/jdchoi/Downloads/tmp/model/sentiment-semeval17-400-v2'
 
 emb_model = Word2Vec(EMB_FILE)
-sa = SemEvalSentimentAnalyzer(emb_model, MODEL_PATH)
+sa = TwitterSentimentAnalyzer(emb_model, MODEL_PATH)
 
 sentences = ["I feel a little bit tired today, but I am really happy!",
              "Although the rain stopped, I hate this thick cloud in the sky."]
