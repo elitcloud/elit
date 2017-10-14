@@ -27,7 +27,7 @@ class Word2Vec:
         self.model = None
 
         if filepath.endswith('.gnsm'):
-            self.model = KeyedVectors.load(filepath, mmap='r')
+            self.model = KeyedVectors.load(filepath)
         elif filepath.endswith('.bin'):
             self.model = KeyedVectors.load_word2vec_format(filepath, binary=True)
         else:
