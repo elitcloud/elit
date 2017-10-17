@@ -53,6 +53,7 @@ class SentimentAnalyzer(object):
         return p_model, a_model
 
     def decode(self, sentences, batch_size=2000, attn=False):
+        # TODO: should handle any sentence with no token or more than maxlen tokens
         x = self.emb_model.docs_to_emb(sentences, self.maxlen)
         with self.graph.as_default():
             y = self.p_model.predict(x, batch_size=batch_size, verbose=0)
@@ -69,8 +70,12 @@ class SentimentAnalyzer(object):
                 for gram_index in range(5):
                     sample_raw_att = attention_matrix[gram_index][sample_index][0]
                     sample_norm_att = sample_raw_att / max(sample_raw_att)
-                    sample_norm_att_list.append(sample_norm_att[-sentence_len_list[sample_index] + gram_index:])
-                    sample_raw_att_list.append(sample_raw_att[-sentence_len_list[sample_index] + gram_index:])
+                    valid_token_start_index = -sentence_len_list[sample_index] + gram_index
+                    if valid_token_start_index>=0:
+                        valid_token_start_index = len(sample_norm_att)
+
+                    sample_norm_att_list.append(sample_norm_att[valid_token_start_index:])
+                    sample_raw_att_list.append(sample_raw_att[valid_token_start_index:])
 
                 new_norm_att = np.zeros([5, len(sample_norm_att_list[0])])
                 new_norm_att[0, :] = sample_norm_att_list[0]
@@ -83,10 +88,12 @@ class SentimentAnalyzer(object):
                     for j in range(len(sample_norm_att_list[i])):
                         ngram = i + 1
                         for n in range(ngram):
-                            new_norm_att[i, j + n] += sample_norm_att_list[i][j] / (ngram)
-                            new_raw_att[i, j + n] += sample_raw_att_list[i][j] / (ngram)
+                            if len(sample_norm_att_list[i]) != 0:
+                                new_norm_att[i, j + n] += sample_norm_att_list[i][j] / (ngram)
+                                new_raw_att[i, j + n] += sample_raw_att_list[i][j] / (ngram)
 
-                    new_norm_att[i] = new_norm_att[i] / max(new_norm_att[i])
+                    if max(new_norm_att[i]) != 0:
+                        new_norm_att[i] = new_norm_att[i] / max(new_norm_att[i])
 
                 raw_att_avg[0] = new_raw_att.sum(0)
                 norm_att_avg = raw_att_avg / max(raw_att_avg[0])
