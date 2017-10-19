@@ -28,13 +28,13 @@ _ARC_KV = re.compile(DELIM_ARC_KV)
 
 
 class TSVReader:
-    def __init__(self, word_index=-1, lemma_index=-1, pos_index=-1,
+    def __init__(self, form_index=-1, lemma_index=-1, pos_index=-1,
                  feats_index=-1, head_index=-1, deprel_index=-1,
                  sheads_index=-1, nament_index=-1):
         """
 
-        :param word_index: the column index of word forms.1
-        :type word_index: int
+        :param form_index: the column index of form forms.1
+        :type form_index: int
         :param lemma_index: the column index of lemma.
         :type lemma_index: int
         :param pos_index: the column index of part-of-speech tags.
@@ -50,7 +50,7 @@ class TSVReader:
         :param nament_index: the column index of of named entity tags.
         :type nament_index: int
         """
-        self.word_index = word_index
+        self.form_index = form_index
         self.lemma_index = lemma_index
         self.pos_index = pos_index
         self.feats_index = feats_index
@@ -78,7 +78,7 @@ class TSVReader:
         :return: a reader adapting the configuration (not the input stream) from the other reader.
         :rtype: TSVReader
         """
-        return TSVReader(word_index=reader.word_index,
+        return TSVReader(form_index=reader.form_index,
                          lemma_index=reader.lemma_index,
                          pos_index=reader.pos_index,
                          feats_index=reader.feats_index,
@@ -87,7 +87,7 @@ class TSVReader:
                          sheads_index=reader.sheads_index,
                          nament_index=reader.nament_index)
 
-    def open(self, filename: str):
+    def open(self, filename):
         """
 
         :param filename: file
@@ -174,14 +174,14 @@ class TSVReader:
             :rtype: NLPToken
             """
             row = tsv[i]
-            node_id = i + 1
-            word = get_field(row, self.word_index)
+            token_id = i + 1
+            form = get_field(row, self.form_index)
             lemma = get_field(row, self.lemma_index)
             pos = get_field(row, self.pos_index)
             nament = get_field(row, self.nament_index)
             feats = get_feats(row) if row else None
-            return NLPToken(token_id=node_id,
-                            word=word,
+            return NLPToken(token_id=token_id,
+                            form=form,
                             lemma=lemma,
                             pos=pos,
                             nament=nament,

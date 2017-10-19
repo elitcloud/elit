@@ -42,7 +42,7 @@ class NLPToken:
         """
         :param sen_id: sentence id.
         :type sen_id: int
-        :param token_id: node id.
+        :param token_id: token id.
         :type token_id: int
         :param form: word form.
         :type form: str
@@ -75,23 +75,23 @@ class NLPToken:
         return hash(id(self))
 
     def __lt__(self, other):
-        return self.token_id < other.node_id
+        return self.token_id < other.token_id
 
     def __eq__(self, other):
         return id(self) == id(other)
 
     def __str__(self):
-        node_id = str(self.token_id)
+        token_id = str(self.token_id)
         form = self.form if self.form else BLANK
         lemma = self.lemma if self.lemma else BLANK
         pos = self.pos if self.pos else BLANK
         nament = self.nament if self.nament else BLANK
         feats = DELIM_FEAT.join((DELIM_FEAT_KV.join((k, v)) for k, v in self.feats.items())) if self.feats else BLANK
-        head_id = str(self.parent.node_id) if self.parent else BLANK
+        head_id = str(self.parent.token_id) if self.parent else BLANK
         deprel = self.get_dependency_label(self.parent) or BLANK
-        sheads = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.node_id), self.get_dependency_label(parent)))
+        sheads = DELIM_ARC.join(DELIM_ARC_KV.join((str(parent.token_id), self.get_dependency_label(parent)))
                                 for parent in self.secondary_parents) if self.secondary_parents else BLANK
-        return '\t'.join((node_id, form, lemma, pos, feats, head_id, deprel, sheads, nament))
+        return '\t'.join((token_id, form, lemma, pos, feats, head_id, deprel, sheads, nament))
 
     def set_pos(self, pos):
         """
@@ -111,7 +111,7 @@ class NLPToken:
         :return: cls
         :rtype: cls
         """
-        return cls(node_id=0, word=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)
+        return cls(token_id=0, form=ROOT_TAG, lemma=ROOT_TAG, pos=ROOT_TAG, nament=ROOT_TAG)
 
     @property
     def grandparent(self):

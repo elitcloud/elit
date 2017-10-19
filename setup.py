@@ -36,7 +36,7 @@ Operating System :: MacOS
 MAJOR = 0
 MINOR = 1
 MICRO = 12
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 EXCLUDE_FROM_PACKAGES = ['']
@@ -212,8 +212,6 @@ def setup_package():
         author_email='choi@mathcs.emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
-        package_data={'': ['resources/tokenizer/*.txt',
-                           'resources/sample/*']},
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         install_requires=[
             'Cython',
@@ -229,9 +227,8 @@ def setup_package():
             'pybind11>=2.2'
         ],
         tests_require=[
-            'nose',
+            'pytest',
         ],
-        test_suite='nose.collector',
         classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
         ext_modules=ext_modules,
         cmdclass={'build_ext': BuildExt}
