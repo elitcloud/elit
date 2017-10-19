@@ -15,7 +15,7 @@
 # limitations under the License.
 # ========================================================================
 from elit.lexicon import Word2Vec
-from elit.sentiment.sentiment_analyzer import TwitterSentimentAnalyzer, SSTSentimentAnalyzer
+from elit.sentiment.sentiment_analyzer import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
 from elit.tokenizer import english_tokenizer
 
 __author__ = 'Bonggun Shin'
@@ -41,7 +41,7 @@ EMB_FILE = '/Users/jdchoi/Downloads/tmp/w2v/w2v-400-amazon-review.gnsm'
 MODEL_PATH = '/Users/jdchoi/Downloads/tmp/model/sentiment-sst-400-v2'
 
 emb_model = Word2Vec(EMB_FILE)
-sa = SSTSentimentAnalyzer(emb_model, MODEL_PATH)
+sa = MovieSentimentAnalyzer(emb_model, MODEL_PATH)
 
 sentences = ["This is a film well worth seeing, talking and singing heads and all.",
              "The sort of movie that gives tastelessness a bad rap.",

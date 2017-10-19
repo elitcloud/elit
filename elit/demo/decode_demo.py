@@ -14,20 +14,27 @@
 # limitations under the License.
 # ========================================================================
 
-from elit.api import ELITDecoder
+from elit.api import EnglishDecoder
 from io import StringIO
+from elit.configuration import *
+
 
 __author__ = 'Jinho D. Choi'
 
-flag = '0114'
-input_text = 'I watched "The Sound of Music" last night. It is my favorite movie.'
-nd = ELITDecoder(resource_dir='../../resources/', sentiment_twitter=False)
+input_text = 'I watched "The Sound of Music" last night. The ending could have been better. However, it is my favorite movie.'
+config = Configuration(tokenize=TOKENIZE_DEFAULT, segment=SEGMENT_DEFAULT, sentiment=(SENTIMENT_TWITTER, SENTIMENT_MOVIE))
+nd = EnglishDecoder(resource_dir='../../resources/', config=config)
 
 # returns the output as a list of documents
-docs = nd.decode(flag, StringIO(input_text))
+config = Configuration(language=LANGUAGE_ENGLISH,
+                       input_format=INPUT_FORMAT_RAW,
+                       tokenize=TOKENIZE_DEFAULT,
+                       segment=SEGMENT_DEFAULT,
+                       sentiment=SENTIMENT_MOVIE_ATTENTION)
+docs = nd.decode(config, StringIO(input_text))
 print(docs)
 
 # saves the output as a JSON file: out.json
 fout = open('out.json', 'w')
-nd.decode(flag, StringIO(input_text), fout)
+nd.decode(config, StringIO(input_text), fout)
 

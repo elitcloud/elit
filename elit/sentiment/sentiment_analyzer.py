@@ -170,9 +170,9 @@ class TwitterSentimentAnalyzer(SentimentAnalyzer):
         return model
 
 
-class SSTSentimentAnalyzer(SentimentAnalyzer):
+class MovieSentimentAnalyzer(SentimentAnalyzer):
     def __init__(self, emb_model, model_path):
-        super(SSTSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=100)
+        super(MovieSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=100)
 
     def prediction_model(self, model_input):
         print('Init: ' + self.model_path)

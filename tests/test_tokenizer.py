@@ -18,7 +18,7 @@ import unittest
 #
 #     def test_tokenizer(self):
 #         test_case = ':smile: :hug: :pencil:'
-#         tokens = english_tokenizer.tokenize(test_case)
+#         tokens = english_tokenizer.input_format(test_case)
 #         self.assertEqual(len(tokens), 3)
 #
 #

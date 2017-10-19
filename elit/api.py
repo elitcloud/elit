@@ -13,78 +13,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
 import os
-import ujson
+import json
 from elit.lexicon import Word2Vec
-from elit.sentiment.sentiment_analyzer import SSTSentimentAnalyzer, TwitterSentimentAnalyzer
+from elit.configuration import *
+from elit.sentiment.sentiment_analyzer import MovieSentimentAnalyzer, TwitterSentimentAnalyzer
+from elit.tokenizer import english_tokenizer
+
 
 __author__ = 'Jinho D. Choi'
 
-import json
-from enum import Enum
-from elit.tokenizer import english_tokenizer
 
 DOC_MAX_SIZE = 10485760
 DOC_DELIM = '@#DOC$%'
-
-FLAG_INPUT_FORMAT = 0
-FLAG_TOKENIZATION = 1
-FLAG_SEGMENTATION = 2
-FLAG_SENTIMENT = 3
 
 KEY_TOKENS = 'tokens'
 KEY_OFFSETS = 'offsets'
 KEY_SENTIMENT = 'sentiment'
 KEY_SENTIMENT_ATTENTION = 'sentiment_attention'
 
-class Language(Enum):
-    English = 'en'
 
-
-class ELITDecoder:
-    def __init__(self, resource_dir, language=Language.English, sentiment_twitter=True, sentiment_movie=True):
-        if language == Language.English:
-            # tokenizer
-            english_tokenizer.init(os.path.join(resource_dir, 'tokenizer'))
-            self.tokenize = english_tokenizer.tokenize
-            self.segment = english_tokenizer.segment
-
-            # init sentiment: twitter
-            if sentiment_twitter:
-                self.emb_twitter = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
-                self.sentiment_twitter = TwitterSentimentAnalyzer(
-                    self.emb_twitter, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
-
-            # init sentiment: movie review
-            if sentiment_movie:
-                self.emb_review = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
-                self.sentiment_sst = SSTSentimentAnalyzer(
-                    self.emb_review, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
-        else:
-            raise ValueError('Unsupported language: '+str(language))
-
-    ############################## DECODE ##############################
-
-    def decode(self, flag, istream, ostream=None):
+class Decoder:
+    def decode(self, config, istream, ostream=None):
         """
-        :param flag:
+        :param config: elit.configuration.Configuration
         :param istream: either StringIO or File
         :param ostream: either StringIO or File
         :return:
         """
-        if ostream is not None:
-            ostream.write('[')
+        if ostream is not None: ostream.write('[')
 
-        d = self.decode_raw(flag, istream, ostream) if flag[FLAG_INPUT_FORMAT] == '0' \
-            else self.decode_line(flag, istream, ostream)
+        d = self.decode_raw(config, istream, ostream) if config.is_input_format(INPUT_FORMAT_RAW) \
+            else self.decode_line(config, istream, ostream)
 
-        if ostream is not None:
-            ostream.write(']')
+        if ostream is not None: ostream.write(']')
         return d
 
-    def decode_raw(self, flag, istream, ostream=None):
+    def decode_raw(self, config, istream, ostream=None):
         def decode():
-            d = self.text_to_sentences(flag, ''.join(lines))
+            d = self.text_to_sentences(config, ''.join(lines))
             if ostream is None:
                 documents.append(d)
             else:
@@ -103,11 +71,10 @@ class ELITDecoder:
                 offset += len(line)
                 lines.append(line)
 
-        if lines:
-            decode()
+        if lines: decode()
         return documents
 
-    def decode_line(self, flag, istream, ostream=None):
+    def decode_line(self, config, istream, ostream=None):
         def decode():
             if ostream is None:
                 documents.append(sentences)
@@ -124,42 +91,68 @@ class ELITDecoder:
                 offset = 0
                 sentences = []
             elif offset + len(line) <= DOC_MAX_SIZE:
-                d = self.text_to_sentences(flag, line, offset)
+                d = self.text_to_sentences(config, line, offset)
                 offset += len(line)
                 sentences.extend(d)
 
-        if sentences:
-            decode()
+        if sentences: decode()
         return documents
 
     ############################## CONVERSION ##############################
 
-    def text_to_sentences(self, flag, text, offset=0):
-        tokens = self.tokenize(text, flag[FLAG_TOKENIZATION] == '0')
+    @abc.abstractmethod
+    def text_to_sentences(self, config, text, offset=0):
+        return
 
-        sentences = [self.tokens_to_sentence(flag, tokens, offset)] if flag[FLAG_SEGMENTATION] == '0' else \
-                     self.tokens_to_sentences(flag, tokens, self.segment(tokens), offset)
+    def tokens_to_sentences(self, config, tokens, segments, offset):
+        return [self.tokens_to_sentence(config, tokens[segments[i]:segments[i + 1]], offset) for i in
+                range(0, len(segments) - 1)]
 
-        if flag[FLAG_SENTIMENT] != '0':
-            self.sentiment_analyze(int(flag[FLAG_SENTIMENT]), sentences)
-
-        return sentences
-
-    def tokens_to_sentence(self, flag, tokens, offset):
+    def tokens_to_sentence(self, config, tokens, offset):
         sentence = {KEY_TOKENS: [token[0] for token in tokens],
                     KEY_OFFSETS: [(token[1] + offset, token[2] + offset) for token in tokens]}
 
         return sentence
 
-    def tokens_to_sentences(self, flag, tokens, segments, offset):
-        return [self.tokens_to_sentence(flag, tokens[segments[i]:segments[i + 1]], offset) for i in
-                range(0, len(segments) - 1)]
+
+class EnglishDecoder(Decoder):
+    def __init__(self, resource_dir, config):
+        # init tokenizer
+        if config.is_tokenize(TOKENIZE_DEFAULT):
+            english_tokenizer.init(os.path.join(resource_dir, 'tokenizer'))
+            self.tokenize = english_tokenizer.tokenize
+            self.segment = english_tokenizer.segment
+
+        # init sentiment analyzer: twitter
+        if config.is_sentiment(SENTIMENT_TWITTER):
+            self.emb_twit = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+            self.sentiment_twit = TwitterSentimentAnalyzer(
+                self.emb_twit, os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2'))
+
+        # init sentiment analyzer: movie review
+        if config.is_sentiment(SENTIMENT_MOVIE):
+            self.emb_mov = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+            self.sentiment_mov = MovieSentimentAnalyzer(
+                self.emb_mov, os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2'))
+
+    ############################## CONVERSION ##############################
+
+    def text_to_sentences(self, config, text, offset=0):
+        tokens = self.tokenize(text, config.is_tokenize(FLAG_FALSE))
+
+        sentences = [self.tokens_to_sentence(config, tokens, offset)] if config.is_segment(FLAG_FALSE) else \
+                     self.tokens_to_sentences(config, tokens, self.segment(tokens), offset)
+
+        if not config.is_sentiment(FLAG_FALSE):
+            self.sentiment_analyze(config, sentences)
+
+        return sentences
 
     ############################## COMPONENTS ##############################
 
-    def sentiment_analyze(self, flag, sentences):
-        analyzer = self.sentiment_twitter if flag % 2 == 1 else self.sentiment_sst
-        attn = flag > 2
+    def sentiment_analyze(self, config, sentences):
+        analyzer = self.sentiment_twit if config.sentiment.startswith(SENTIMENT_TWITTER) else self.sentiment_mov
+        attn = config.is_sentiment(SENTIMENT_TWITTER_ATTENTION) or config.is_sentiment(SENTIMENT_MOVIE_ATTENTION)
 
         sens = [sentence[KEY_TOKENS] for sentence in sentences]
         y, att, raw_att = analyzer.decode(sens, attn=attn)
