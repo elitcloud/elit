@@ -20,7 +20,7 @@ install:
 - pip install .
 - python setup.py build_ext --inplace
 script:
-- nosetests
+- pytest
 deploy:
   provider: pypi
   user: emorynlp
