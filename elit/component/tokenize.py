@@ -104,12 +104,12 @@ class EnglishTokenizer(Tokenizer):
         choi@demo.elit.cloud
         jinho:choi@127.0.0.1
         """
-        self.RE_EMAIL = re.compile(r"([\w\-\.]+(:\S+)?@(([A-Za-z0-9\-]+\.)+[A-Za-z]{2,12}|\d{1,3}(\.\d{1,3}){3}))")
+        self.RE_EMAIL = re.compile(r"[\w\-\.]+(:\S+)?@(([A-Za-z0-9\-]+\.)+[A-Za-z]{2,12}|\d{1,3}(\.\d{1,3}){3})")
         """
         &arrow;
         &#123; &#x123; &#X123;
         """
-        self.RE_HTML_ENTITY = re.compile(r"(&([A-Za-z]+|#[Xx]?\d+);)")
+        self.RE_HTML_ENTITY = re.compile(r"&([A-Za-z]+|#[Xx]?\d+);")
         """
         # [1] (1a) {A} <a1> [***] [A.a] [A.1] [1.a] ((---))
         """
@@ -172,12 +172,11 @@ class EnglishTokenizer(Tokenizer):
         def general(regex, gid=0):
             m = regex.search(token)
             if m:
-                tok = m.group(gid)
                 idx = begin + m.start(gid)
-                lst = idx + m.end(gid)
+                lst = begin + m.end(gid)
 
                 self.tokenize_aux(tokens, offsets, text, begin, idx)
-                self.add_token(tokens, offsets, tok, idx, lst)
+                self.add_token(tokens, offsets, m.group(gid), idx, lst)
                 self.tokenize_aux(tokens, offsets, text, lst, end)
                 return True
 
@@ -196,6 +195,7 @@ class EnglishTokenizer(Tokenizer):
 
             return False
 
+        # split by regular expressions
         if general(self.RE_HTML_ENTITY): return True
         if general(self.RE_EMAIL): return True
         if hyperlink(): return True
@@ -380,15 +380,3 @@ def is_digit(token, i, j=None):
         if 0 <= j <= len(token): return token[i:j].isdigit()
     return False
 
-
-# import time
-# fin = open('/Users/jdchoi/Desktop/a.txt')
-# s = fin.read()
-# t = EnglishTokenizer('../../resources/tokenizer')
-# t = english_tokenizer
-# t = SpaceTokenizer()
-#
-# st = time.time()
-# a = t.tokenize(s)
-# et = time.time()
-# print(et-st)
