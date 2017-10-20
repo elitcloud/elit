@@ -14,13 +14,13 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import os
 import json
-from elit.lexicon import Word2Vec
+import os
+
 from elit.configuration import *
+from elit.lexicon import Word2Vec
 from elit.sentiment.sentiment_analyzer import MovieSentimentAnalyzer, TwitterSentimentAnalyzer
 from elit.tokenizer import english_tokenizer
-
 
 __author__ = 'Jinho D. Choi'
 

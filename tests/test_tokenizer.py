@@ -1,6 +1,3 @@
-from elit.tokenizer import english_tokenizer
-import os
-import unittest
 #
 # RESOURCE_PATH = './../elit/resources/tokenizer'
 #
