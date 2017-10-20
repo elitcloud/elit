@@ -24,7 +24,7 @@ from elit.string_util import *
 __author__ = 'Jinho D. Choi'
 
 
-class Tokenizer:
+class Tokenizer(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def tokenize(self, text):
         """
@@ -59,12 +59,6 @@ class Tokenizer:
 
 
 class SpaceTokenizer(Tokenizer):
-    """
-    Tokenize by only whitespaces.
-    """
-    def __init__(self):
-        print('Initialize SpaceTokenizer')
-
     def tokenize(self, text):
         tokens = text.split()
         return tokens, Tokenizer.offsets(text, tokens)
@@ -79,15 +73,12 @@ class EnglishTokenizer(Tokenizer):
         :param resource_dir: the path to the directory containing resources for tokenization.
         :type resource_dir: str
         """
-        print('Initialize EnglishTokenizer')
-
         # from resources
         self.SET_ABBREVIATION_PERIOD = read_word_set(os.path.join(resource_dir, 'english_abbreviation_period.txt'))
         self.SET_APOSTROPHE_FRONT = read_word_set(os.path.join(resource_dir, 'english_apostrophe_front.txt'))
         self.MAP_CONCAT_WORD = read_concat_word_dict(os.path.join(resource_dir, 'english_concat_words.txt'))
         self.SET_HYPHEN_PREFIX = read_word_set(os.path.join(resource_dir, 'english_hyphen_prefix.txt'))
         self.SET_HYPHEN_SUFFIX = read_word_set(os.path.join(resource_dir, 'english_hyphen_suffix.txt'))
-        self.SET_UNIT = read_word_set(os.path.join(resource_dir, 'units.txt'))
 
         # regular expressions
         self.RE_NETWORK_PROTOCOL = re.compile(r"((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|imap4|sip)(://))")
@@ -121,7 +112,7 @@ class EnglishTokenizer(Tokenizer):
         """
         a.b.c 1-2-3
         """
-        self.RE_ABBREVIATION = re.compile(r"^[A-Za-z0-9]([\.-][A-Za-z0-9])*")
+        self.RE_ABBREVIATION = re.compile(r"[A-Za-z0-9]([\.-][A-Za-z0-9])*$")
         """
         10kg 1cm
         """
@@ -129,7 +120,7 @@ class EnglishTokenizer(Tokenizer):
         """
         hello.World
         """
-        self.RE_FINAL_MARK_IN_BETWEEN = re.compile(r"([a-z]{3,})(\.)([A-Z][A-Za-z]{2,})$")
+        self.RE_FINAL_MARK_IN_BETWEEN = re.compile(r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
 
     def tokenize(self, text):
         tokens = []
@@ -155,9 +146,12 @@ class EnglishTokenizer(Tokenizer):
         if begin >= end or end > len(text): return False
         token = text[begin:end]
 
+        # handle special cases
         if self.tokenize_trivial(tokens, offsets, token, begin, end): return True
         if self.tokenize_regex(tokens, offsets, text, begin, end, token): return True
         if self.tokenize_symbol(tokens, offsets, text, begin, end, token): return True
+
+        # add the token as it is
         self.add_token(tokens, offsets, token, begin, end)
         return True
 
@@ -169,7 +163,7 @@ class EnglishTokenizer(Tokenizer):
         return False
 
     def tokenize_regex(self, tokens, offsets, text, begin, end, token):
-        def general(regex, gid=0):
+        def group(regex, gid=0):
             m = regex.search(token)
             if m:
                 idx = begin + m.start(gid)
@@ -196,24 +190,15 @@ class EnglishTokenizer(Tokenizer):
             return False
 
         # split by regular expressions
-        if general(self.RE_HTML_ENTITY): return True
-        if general(self.RE_EMAIL): return True
+        if group(self.RE_HTML_ENTITY): return True
+        if group(self.RE_EMAIL): return True
         if hyperlink(): return True
-        if general(self.RE_EMOTICON, 1): return True
-        if general(self.RE_LIST_ITEM): return True
-        if general(self.RE_APOSTROPHE, 1): return True
+        if group(self.RE_EMOTICON, 1): return True
+        if group(self.RE_LIST_ITEM): return True
+        if group(self.RE_APOSTROPHE, 1): return True
         return False
 
     def tokenize_symbol(self, tokens, offsets, text, begin, end, token):
-        def is_separator(c):
-            return c in {',', ';', ':', '~', '&', '|', '/'} or is_bracket(c) or is_arrow(c) or is_double_quote(c) or is_hyphen(c)
-
-        def is_currency_like(c):
-            return c == '#' or is_currency(c)
-
-        def is_edge(c):
-            return is_single_quote(c) or is_final_mark(c)
-
         def index_last_sequence(i, c):
             final_mark = is_final_mark(c)
 
@@ -223,14 +208,14 @@ class EnglishTokenizer(Tokenizer):
                 elif c != d:
                     return j
 
-            return i+1
+            return len(token)
 
         def skip(i, c):
-            if c == '.' or c == '+': return is_digit(token, i+1)                                                # .1, +1
-            if c == '-': return i == 0 and is_digit(token, i+1)                                                 # -1
-            if c == ',': return is_digit(token, i-1) and is_digit(token, i+1, i+4) and not is_digit(token, i+4) # 1,000,000
-            if c == ':': return is_digit(token, i-1) and is_digit(token, i+1)                                   # 1:2
-            if is_single_quote(c): return is_digit(token, i+1, i+3) and not is_digit(token, i+3)                # '97
+            if c == '.' or c == '+': return is_digit(token, i+1)                                                 # .1, +1
+            if c == '-': return i == 0 and is_digit(token, i+1)                                                  # -1
+            if c == ',': return is_digit(token, i-1) and is_digit(token, i+1, i+4) and not is_digit(token, i+4)  # 1,000,000
+            if c == ':': return is_digit(token, i-1) and is_digit(token, i+1)                                    # 1:2
+            if is_single_quote(c): return is_digit(token, i+1, i+3) and not is_digit(token, i+3)                 # '97
             return False
 
         def split(i, c, p0, p1):
@@ -248,17 +233,28 @@ class EnglishTokenizer(Tokenizer):
 
             return False
 
-        def split_edge(i, j):
-            return i+1 < j or i == 0 or j == len(token) or is_punct(token[i-1]) or is_punct(token[j])
+        def separator_0(c):
+            return c in {',', ';', ':', '~', '&', '|', '/'} or \
+                   is_bracket(c) or is_arrow(c) or is_double_quote(c) or is_hyphen(c)
 
-        def split_currency(i, j):
-            return i+1 < j or j == len(token) or token[j].isdigit()
+        def edge_symbol_0(c):
+            return is_single_quote(c) or is_final_mark(c)
 
+        def currency_like_0(c):
+            return c == '#' or is_currency(c)
+
+        def edge_symbol_1(i, j):
+            return i + 1 < j or i == 0 or j == len(token) or is_punct(token[i - 1]) or is_punct(token[j])
+
+        def currency_like_1(i, j):
+            return i + 1 < j or j == len(token) or token[j].isdigit()
+
+        # split by symbols
         for i, c in enumerate(token):
             if skip(i, c): continue
-            if split(i, c, is_separator, lambda i, j: True): return True
-            if split(i, c, is_edge, split_edge): return True
-            if split(i, c, is_currency_like, split_currency): return True
+            if split(i, c, separator_0, lambda i, j: True): return True
+            if split(i, c, edge_symbol_0, edge_symbol_1): return True
+            if split(i, c, currency_like_0, currency_like_1): return True
 
         return False
 
@@ -271,32 +267,27 @@ class EnglishTokenizer(Tokenizer):
         offsets.append((begin, end))
 
     def concat_token(self, tokens, offsets, token, begin, end):
-        def apostrophy_front(prev, curr):
-            return len(prev) == 1 and is_single_quote(prev) and curr.lower() in self.SET_APOSTROPHE_FRONT
+        def apostrophe_front(prev, curr):
+            return len(prev) == 1 and is_single_quote(prev) and curr in self.SET_APOSTROPHE_FRONT
 
         def abbreviation(prev, curr):
-            return curr == '.' and (self.RE_ABBREVIATION.match(prev) or prev.lower() in self.SET_ABBREVIATION_PERIOD)
+            return curr == '.' and (self.RE_ABBREVIATION.match(prev) or prev in self.SET_ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
-            return len(curr) == 1 and curr in {'&', '|', '/'} and len(prev) <= 2 and len(next) <= 2 and prev.isupper() and next.issupper()
+            return len(curr) == 1 and curr in {'&', '|', '/'} and (len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
 
-        def hyphen(prev, curr, next):
+        def hyphenated(prev, curr, next):
             p = len(prev)
 
             if len(curr) == 1 and is_hyphen(curr):
-                # 000-0000, 000-000-0000
-                if is_digit(prev, p-3, p) and (p == 3 or is_hyphen(prev[[p-4]])) and next.isdigit(): return True
-                # p-u-s-h
-                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p-2])) and len(next) == 1 and next.isalnum(): return True
-
-                prev = prev.lower()
-                next = next.lower()
+                if is_digit(prev, p-3, p) and (p == 3 or is_hyphen(prev[p-4])) and next.isdigit(): return True  # 000-0000, 000-000-0000
+                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p-2])) and len(next) == 1 and next.isalnum(): return True  # p-u-s-h
                 return (prev in self.SET_HYPHEN_PREFIX and next.isalnum()) or (next in self.SET_HYPHEN_SUFFIX and prev.isalnum())
 
             return False
 
-        def no_digit(prev, curr, next):
-            if prev.lower() == 'no' and curr == '.' and next[0].isdigit():
+        def no_dot_digit(prev, curr, next):
+            if prev == 'no' and curr == '.' and next[0].isdigit():
                 t, o = tokens.pop(), offsets.pop()
                 tokens[-1] += t
                 offsets[-1] = (offsets[-1][0], o[1])
@@ -304,27 +295,29 @@ class EnglishTokenizer(Tokenizer):
 
             return False
 
+        # concatenate split tokens if necessary
         if tokens:
-            prev = tokens[-1]
-            curr = token
+            prev = tokens[-1].lower()
+            curr = token.lower()
 
-            if apostrophy_front(prev, curr) or abbreviation(prev, curr):
-                tokens[-1] += curr
+            if apostrophe_front(prev, curr) or abbreviation(prev, curr):
+                tokens[-1] += token
                 offsets[-1] = (offsets[-1][0], end)
                 return True
 
         if len(tokens) >= 2:
-            prev = tokens[-2]
-            curr = tokens[-1]
-            next = token
+            prev = tokens[-2].lower()
+            curr = tokens[-1].lower()
+            next = token.lower()
 
-            if acronym(prev, curr, next) or hyphen(prev, curr, next):
-                tokens[-2] += curr + next
+            if acronym(tokens[-2], curr, token) or hyphenated(prev, curr, next):
+                tokens[-2] += tokens[-1] + token
                 offsets[-2] = (offsets[-2][0], end)
-                offsets.pop()
+                del tokens[-1]
+                del offsets[-1]
                 return True
 
-            no_digit(prev, curr, next)
+            no_dot_digit(prev, curr, next)
 
         return False
 
@@ -333,7 +326,7 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_UNIT.search(token)
             if m:
                 idx = begin + m.start(2)
-                self.add_token_aux(tokens, offsets, token[:idx], begin, idx)
+                self.add_token_aux(tokens, offsets, token[:m.start(2)], begin, idx)
                 self.add_token_aux(tokens, offsets, m.group(2), idx, end)
                 return True
             return False
@@ -344,7 +337,7 @@ class EnglishTokenizer(Tokenizer):
                 i = 0
                 for j in t:
                     self.add_token_aux(tokens, offsets, token[i:j], begin+i, begin+j)
-                    j = i
+                    i = j
                 return True
             return False
 
@@ -377,6 +370,6 @@ def read_concat_word_dict(filename):
 def is_digit(token, i, j=None):
     if 0 <= i < len(token):
         if j is None: return token[i].isdigit()
-        if 0 <= j <= len(token): return token[i:j].isdigit()
+        if i < j <= len(token): return token[i:j].isdigit()
     return False
 
