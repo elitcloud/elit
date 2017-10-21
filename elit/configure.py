@@ -13,51 +13,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from enum import Enum
 
 __author__ = 'Jinho D. Choi'
 
-# constants
+# flag
 FLAG_FALSE = '0'
+FLAG_TRUE = '1'
 
+# language
 LANGUAGE_ENGLISH = 'en'
 
+# input format
 INPUT_FORMAT_RAW = 'raw'
 INPUT_FORMAT_LINE = 'line'
 
-TOKENIZE_DEFAULT = '1'
-SEGMENT_DEFAULT = '1'
-
+# sentiment analysis
 SENTIMENT_TWITTER = 'twit'
 SENTIMENT_MOVIE = 'mov'
-SENTIMENT_TWITTER_ATTENTION = 'twit-att'
-SENTIMENT_MOVIE_ATTENTION = 'mov-att'
+SENTIMENT_TWITTER_ATT = 'twit-att'
+SENTIMENT_MOVIE_ATT = 'mov-att'
 
 
 class Configuration:
     def __init__(self,
                  language=LANGUAGE_ENGLISH,
                  input_format=INPUT_FORMAT_RAW,
-                 tokenize=TOKENIZE_DEFAULT,
-                 segment=SEGMENT_DEFAULT,
-                 sentiment=SENTIMENT_TWITTER):
+                 tokenize=FLAG_TRUE,
+                 segment=FLAG_TRUE,
+                 sentiment=(SENTIMENT_TWITTER, SENTIMENT_MOVIE)):
         self.language = language
         self.input_format = input_format
         self.tokenize = tokenize
         self.segment = segment
         self.sentiment = sentiment
-
-    def is_language(self, language):
-        return self.language == language
-
-    def is_input_format(self, format):
-        return self.input_format == format
-
-    def is_tokenize(self, flag):
-        return self.tokenize == flag
-
-    def is_segment(self, flag):
-        return self.sentiment == flag
-
-    def is_sentiment(self, flag):
-        return self.sentiment == flag if isinstance(self.sentiment, str) else flag in self.sentiment

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.component.tokenizer import SpaceTokenizer, EnglishTokenizer
 import unittest
 
 __author__ = 'Jinho D. Choi'
@@ -22,16 +22,17 @@ __author__ = 'Jinho D. Choi'
 class TestSpaceTokenizer(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestSpaceTokenizer, self).__init__(*args, **kwargs)
-        self.tokenize = SpaceTokenizer().tokenize
+        self.tok = SpaceTokenizer()
 
     def test(self):
+        # hello world
         test(self, '  Hello\t\r, world  !\n\n', ['Hello', ',', 'world', '!'], [(2, 7), (9, 10), (11, 16), (18, 19)])
 
 
 class TestEnglishTokenizer(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestEnglishTokenizer, self).__init__(*args, **kwargs)
-        self.tokenize = EnglishTokenizer('../../../resources/tokenizer').tokenize
+        self.tok = EnglishTokenizer('../../../resources/tokenizer')
 
     def test_space(self):
         # empty string
@@ -140,9 +141,19 @@ class TestEnglishTokenizer(unittest.TestCase):
              ['Mbaaah', '.', 'Please', 'hello', '.!?', 'world'],
              [(0, 6), (6, 7), (7, 13), (14, 19), (19, 22), (22, 27)])
 
+    def test_offset(self):
+        test(self, 'Hello, world!', ['Hello', ',', 'world', '!'], [(5, 10), (10, 11), (12, 17), (17, 18)], 5)
 
-def test(t, s, gold_tokens, gold_offsets):
-    tokens, offsets = t.tokenize(s)
+    # def test_segment(self):
+    #     tokens, offsets = self.tok.tokenize('. "1st sentence." 2nd sentence? "3rd sentence!"')
+    #     self.assertEqual(self.tok.segment(tokens, offsets),
+    #     [{'tokens': ['.', '"', '1st', 'sentence', '.', '"'], 'offsets': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]},
+    #      {'tokens': ['2nd', 'sentence', '?'], 'offsets': [(18, 21), (22, 30), (30, 31)]},
+    #      {'tokens': ['"', '3rd', 'sentence', '!', '"'], 'offsets': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]}])
+
+
+def test(t, s, gold_tokens, gold_offsets, offset=0):
+    tokens, offsets = t.tok.tokenize(s, offset)
     t.assertEqual(tokens, gold_tokens)
     t.assertEqual(offsets, gold_offsets)
 

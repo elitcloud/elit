@@ -26,6 +26,20 @@ __author__ = 'Bonggun Shin, Jinho D. Choi'
 
 
 class SentimentAnalyzer(object):
+    @abc.abstractmethod
+    def decode(self, documents):
+        """
+        :param documents: the list of input documents, where each document is a list of tokens.
+        :type documents: list<list<str>>
+        :return:
+            the tuple of (predictions[, custom values]*), where the predictions are stored in a nx3 matrix (n = len(documents).
+            the prediction of each document is represented by [negative score, neutral score, positive score].
+        :rtype: (list of [float, float, float], *args)
+        """
+        return
+
+
+class CNNSentimentAnalyzer(SentimentAnalyzer):
     def __init__(self, emb_model, model_path, maxlen=60):
         self.emb_model = emb_model
         self.model_path = model_path
@@ -52,25 +66,25 @@ class SentimentAnalyzer(object):
 
         return p_model, a_model
 
-    def decode(self, sentences, batch_size=2000, attn=False):
-        # TODO: should handle any sentence with no token or more than maxlen tokens
-        x = self.emb_model.docs_to_emb(sentences, self.maxlen)
+    def decode(self, documents, batch_size=2000, att=False):
+        x = self.emb_model.docs_to_emb(documents, self.maxlen)
+
         with self.graph.as_default():
             y = self.p_model.predict(x, batch_size=batch_size, verbose=0)
             all_norm_att = []
-            all_raw_att = []
+            # all_raw_att = []
+            if not att: return y, all_norm_att
 
-            if not attn: return y, all_norm_att, all_raw_att
-            sentence_len_list = [len(sentence) for sentence in sentences]
+            document_len_list = [len(document) for document in documents]
             attention_matrix = self.a_model.predict(x, batch_size=batch_size, verbose=0)
 
-            for sample_index in range(len(sentence_len_list)):
+            for sample_index in range(len(document_len_list)):
                 sample_norm_att_list = []
                 sample_raw_att_list = []
                 for gram_index in range(5):
                     sample_raw_att = attention_matrix[gram_index][sample_index][0]
                     sample_norm_att = sample_raw_att / max(sample_raw_att)
-                    valid_token_start_index = -sentence_len_list[sample_index] + gram_index
+                    valid_token_start_index = -document_len_list[sample_index] + gram_index
                     if valid_token_start_index>=0:
                         valid_token_start_index = len(sample_norm_att)
 
@@ -98,12 +112,12 @@ class SentimentAnalyzer(object):
                 raw_att_avg[0] = new_raw_att.sum(0)
                 norm_att_avg = raw_att_avg / max(raw_att_avg[0])
                 all_norm_att.append(np.concatenate((norm_att_avg, new_norm_att), axis=0))
-                all_raw_att.append(np.concatenate((raw_att_avg, new_raw_att), axis=0))
+                # all_raw_att.append(np.concatenate((raw_att_avg, new_raw_att), axis=0))
 
-        return y, all_norm_att, all_raw_att
+        return y, all_norm_att
 
 
-class TwitterSentimentAnalyzer(SentimentAnalyzer):
+class TwitterSentimentAnalyzer(CNNSentimentAnalyzer):
     def __init__(self, emb_model, model_path):
         super(TwitterSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=60)
 
@@ -170,7 +184,7 @@ class TwitterSentimentAnalyzer(SentimentAnalyzer):
         return model
 
 
-class MovieSentimentAnalyzer(SentimentAnalyzer):
+class MovieSentimentAnalyzer(CNNSentimentAnalyzer):
     def __init__(self, emb_model, model_path):
         super(MovieSentimentAnalyzer, self).__init__(emb_model=emb_model, model_path=model_path, maxlen=100)
 

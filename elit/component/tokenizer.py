@@ -13,30 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
 import os
 import re
-import abc
-
-from elit.tokenizer import english_tokenizer
 
 from elit.string_util import *
 
 __author__ = 'Jinho D. Choi'
 
 
-class Tokenizer(metaclass=abc.ABCMeta):
+class Tokenizer(object):
     @abc.abstractmethod
-    def tokenize(self, text):
+    def tokenize(self, text, offset=0):
         """
         :param text: the input text.
         :type text: str
-        :return: the pair of (list of tokens, list of offsets); see the comments for Tokenizer.offsets().
-        :rtype: (list of str, list of (int, int))
+        :param offset: the starting offset.
+        :type offset: int
+        :return:
+            the tuple of (tokens, offsets[, custom values]*);
+            see the comments for Tokenizer.offsets() for more details about the offsets.
+        :rtype: (list of str, list of (int, int), *args)
         """
         return
 
     @staticmethod
-    def offsets(text, tokens):
+    def offsets(text, tokens, offset=0):
         """
         :param text: the input text.
         :type text: str
@@ -48,20 +50,23 @@ class Tokenizer(metaclass=abc.ABCMeta):
             e.g., text = 'Hello, world!', tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
         :rtype list of (int, int)
         """
-        def offset(token):
+        def get_offset(token):
             nonlocal end
             begin = text.index(token, end)
             end = begin + len(token)
-            return (begin, end)
+            return (begin+offset, end+offset)
 
         end = 0
-        return [offset(token) for token in tokens]
+        return [get_offset(token) for token in tokens]
 
 
 class SpaceTokenizer(Tokenizer):
-    def tokenize(self, text):
+    """
+    Tokenize by only spaces.
+    """
+    def tokenize(self, text, offset=0):
         tokens = text.split()
-        return tokens, Tokenizer.offsets(text, tokens)
+        return tokens, Tokenizer.offsets(text, tokens, offset)
 
 
 class EnglishTokenizer(Tokenizer):
@@ -122,7 +127,7 @@ class EnglishTokenizer(Tokenizer):
         """
         self.RE_FINAL_MARK_IN_BETWEEN = re.compile(r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
 
-    def tokenize(self, text):
+    def tokenize(self, text, offset=0):
         tokens = []
         offsets = []
 
@@ -136,42 +141,42 @@ class EnglishTokenizer(Tokenizer):
         # search for in-between spaces
         for end, c in enumerate(text[begin+1:last], begin+1):
             if c.isspace():
-                self.tokenize_aux(tokens, offsets, text, begin, end)
+                self.tokenize_aux(tokens, offsets, text, begin, end, offset)
                 begin = end + 1
 
-        self.tokenize_aux(tokens, offsets, text, begin, last)
+        self.tokenize_aux(tokens, offsets, text, begin, last, offset)
         return tokens, offsets
 
-    def tokenize_aux(self, tokens, offsets, text, begin, end):
+    def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
         if begin >= end or end > len(text): return False
         token = text[begin:end]
 
         # handle special cases
-        if self.tokenize_trivial(tokens, offsets, token, begin, end): return True
-        if self.tokenize_regex(tokens, offsets, text, begin, end, token): return True
-        if self.tokenize_symbol(tokens, offsets, text, begin, end, token): return True
+        if self.tokenize_trivial(tokens, offsets, token, begin, end, offset): return True
+        if self.tokenize_regex(tokens, offsets, text, begin, end, offset, token): return True
+        if self.tokenize_symbol(tokens, offsets, text, begin, end, offset, token): return True
 
         # add the token as it is
-        self.add_token(tokens, offsets, token, begin, end)
+        self.add_token(tokens, offsets, token, begin, end, offset)
         return True
 
-    def tokenize_trivial(self, tokens, offsets, token, begin, end):
+    def tokenize_trivial(self, tokens, offsets, token, begin, end, offset):
         if end - begin == 1 or token.isalnum():
-            self.add_token(tokens, offsets, token, begin, end)
+            self.add_token(tokens, offsets, token, begin, end, offset)
             return True
 
         return False
 
-    def tokenize_regex(self, tokens, offsets, text, begin, end, token):
+    def tokenize_regex(self, tokens, offsets, text, begin, end, offset, token):
         def group(regex, gid=0):
             m = regex.search(token)
             if m:
                 idx = begin + m.start(gid)
                 lst = begin + m.end(gid)
 
-                self.tokenize_aux(tokens, offsets, text, begin, idx)
-                self.add_token(tokens, offsets, m.group(gid), idx, lst)
-                self.tokenize_aux(tokens, offsets, text, lst, end)
+                self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
+                self.add_token(tokens, offsets, m.group(gid), idx, lst, offset)
+                self.tokenize_aux(tokens, offsets, text, lst, end, offset)
                 return True
 
             return False
@@ -181,10 +186,10 @@ class EnglishTokenizer(Tokenizer):
             if m:
                 if m.start() > 0:
                     idx = begin + m.start()
-                    self.tokenize_aux(tokens, offsets, text, begin, idx)
-                    self.add_token(tokens, offsets, token[m.start():], idx, end)
+                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
+                    self.add_token(tokens, offsets, token[m.start():], idx, end, offset)
                 else:
-                    self.add_token(tokens, offsets, token, begin, end)
+                    self.add_token(tokens, offsets, token, begin, end, offset)
                 return True
 
             return False
@@ -198,7 +203,7 @@ class EnglishTokenizer(Tokenizer):
         if group(self.RE_APOSTROPHE, 1): return True
         return False
 
-    def tokenize_symbol(self, tokens, offsets, text, begin, end, token):
+    def tokenize_symbol(self, tokens, offsets, text, begin, end, offset, token):
         def index_last_sequence(i, c):
             final_mark = is_final_mark(c)
 
@@ -226,9 +231,9 @@ class EnglishTokenizer(Tokenizer):
                     idx = begin + i
                     lst = begin + j
 
-                    self.tokenize_aux(tokens, offsets, text, begin, idx)
-                    self.add_token(tokens, offsets, token[i:j], idx, lst)
-                    self.tokenize_aux(tokens, offsets, text, lst, end)
+                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
+                    self.add_token(tokens, offsets, token[i:j], idx, lst, offset)
+                    self.tokenize_aux(tokens, offsets, text, lst, end, offset)
                     return True
 
             return False
@@ -258,15 +263,12 @@ class EnglishTokenizer(Tokenizer):
 
         return False
 
-    def add_token(self, tokens, offsets, token, begin, end):
-        if not self.concat_token(tokens, offsets, token, begin, end) and not self.split_token(tokens, offsets, token, begin, end):
-            self.add_token_aux(tokens, offsets, token, begin, end)
+    def add_token(self, tokens, offsets, token, begin, end, offset):
+        if not self.concat_token(tokens, offsets, token, end) and \
+           not self.split_token(tokens, offsets, token, begin, end, offset):
+            add_token_aux(tokens, offsets, token, begin, end, offset)
 
-    def add_token_aux(self, tokens, offsets, token, begin, end):
-        tokens.append(token)
-        offsets.append((begin, end))
-
-    def concat_token(self, tokens, offsets, token, begin, end):
+    def concat_token(self, tokens, offsets, token, end):
         def apostrophe_front(prev, curr):
             return len(prev) == 1 and is_single_quote(prev) and curr in self.SET_APOSTROPHE_FRONT
 
@@ -321,13 +323,13 @@ class EnglishTokenizer(Tokenizer):
 
         return False
 
-    def split_token(self, tokens, offsets, token, begin, end):
+    def split_token(self, tokens, offsets, token, begin, end, offset):
         def unit():
             m = self.RE_UNIT.search(token)
             if m:
                 idx = begin + m.start(2)
-                self.add_token_aux(tokens, offsets, token[:m.start(2)], begin, idx)
-                self.add_token_aux(tokens, offsets, m.group(2), idx, end)
+                add_token_aux(tokens, offsets, token[:m.start(2)], begin, idx, offset)
+                add_token_aux(tokens, offsets, m.group(2), idx, end, offset)
                 return True
             return False
 
@@ -336,7 +338,7 @@ class EnglishTokenizer(Tokenizer):
             if t:
                 i = 0
                 for j in t:
-                    self.add_token_aux(tokens, offsets, token[i:j], begin+i, begin+j)
+                    add_token_aux(tokens, offsets, token[i:j], begin + i, begin + j, offset)
                     i = j
                 return True
             return False
@@ -345,7 +347,7 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_FINAL_MARK_IN_BETWEEN.match(token)
             if m:
                 for i in range(1, 4):
-                    self.add_token_aux(tokens, offsets, m.group(i), begin+m.start(i), begin+m.end(i))
+                    add_token_aux(tokens, offsets, m.group(i), begin + m.start(i), begin + m.end(i), offset)
                 return True
             return False
 
@@ -353,7 +355,9 @@ class EnglishTokenizer(Tokenizer):
 
 
 def read_word_set(filename):
-    return set(line.strip() for line in open(filename))
+    s = set(line.strip() for line in open(filename))
+    print('Init: %s (keys = %d)' % (filename, len(s)))
+    return s
 
 
 def read_concat_word_dict(filename):
@@ -364,7 +368,14 @@ def read_concat_word_dict(filename):
         l.append(len(line))
         return line, l
 
-    return dict(key_value(line.strip()) for line in open(filename))
+    d = dict(key_value(line.strip()) for line in open(filename))
+    print('Init: %s (keys = %d)' % (filename, len(d)))
+    return d
+
+
+def add_token_aux(tokens, offsets, token, begin, end, offset):
+    tokens.append(token)
+    offsets.append((begin+offset, end+offset))
 
 
 def is_digit(token, i, j=None):
@@ -372,4 +383,3 @@ def is_digit(token, i, j=None):
         if j is None: return token[i].isdigit()
         if i < j <= len(token): return token[i:j].isdigit()
     return False
-
