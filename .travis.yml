@@ -15,7 +15,7 @@ before_install:
   - aws s3 cp s3://elit-public/resources/tokenizer /home/travis/build/emorynlp/resources/tokenizer --recursive
 install:
   - pip install cython
-  - pip install .
+  - pip setup.py install
 deploy:
   provider: pypi
   user: emorynlp
