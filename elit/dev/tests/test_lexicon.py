@@ -15,12 +15,12 @@
 # ========================================================================
 
 
-from elit.dev.template.lexicon import NLPLexiconMapper
-# from fasttext.model import WordVectorModel
-from gensim.models.keyedvectors import KeyedVectors
-
-import unittest
-import os
+# from elit.dev.template.lexicon import NLPLexiconMapper
+# # from fasttext.model import WordVectorModel
+# from gensim.models.keyedvectors import KeyedVectors
+#
+# import unittest
+# import os
 #
 # __author__ = 'Jinho D. Choi'
 #

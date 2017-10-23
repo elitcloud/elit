@@ -16,7 +16,7 @@ before_install:
 install:
   - pip install cython
   - pip install .
-  - pip install -r requirements.txt
+  - python setup.py build
 deploy:
   provider: pypi
   user: emorynlp
