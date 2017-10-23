@@ -130,7 +130,6 @@ def setup_package():
             'numpy',
             'keras',
             'tensorflow',
-            'h5py',
             'ujson',
         ],
         tests_require=[
