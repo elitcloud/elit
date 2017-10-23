@@ -4,7 +4,6 @@ bz2file==0.98
 certifi==2017.7.27.1
 chardet==3.0.4
 Cython==0.27.2
-elit==0.1.12.dev0+8bee905
 fasttext==0.8.3
 future==0.16.0
 gensim==3.0.1
