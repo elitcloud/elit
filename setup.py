@@ -123,6 +123,7 @@ def setup_package():
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         install_requires=[
+            'cython',
             'argparse',
             'gensim',
             'fasttext',

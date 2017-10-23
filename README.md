@@ -12,8 +12,6 @@ The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.
 The machine should satisfy the requirements below before installing elit. If you installed the requirements below, you can skip next part of setup machine environment.  
 
 - python > 3.4
-- gcc > 5
-- boost > 1.5 
 
 ### Setup machine environment
 
@@ -23,7 +21,7 @@ In this section, all the installation command execute
 
 ```
 sudo apt-get -y update
-sudo apt-get -y install gcc libboost-all-dev python3-pip python-dev build-essential
+sudo apt-get -y install python3-pip python-dev build-essential
 ```
 
 #### MacOS
@@ -32,7 +30,7 @@ On Mac OS, please install [homebrew](https://brew.sh/) first.
 
 ```
 brew update
-brew install gcc boost python3 
+brew install python3 
 ```
 
 
@@ -64,10 +62,10 @@ After you activate your virtualenv, you should your environment name in the star
 
 Let's assume your are running your python in the virtualenv, so I don't put the prefix `env` anymore.
 
-Because we have c/cpp extention, two packages, cython and pybind11, are required and installed before we install elit. Since we're running python 3 in the virtualenv, we can just use pip instead of pip3.  
+Because of [fasttext](https://github.com/facebookresearch/fastText), cython are required and installed before we install elit. Since we're running python 3 in the virtualenv, we can just use pip instead of pip3.  
 
 ```
-pip install cython pybind11
+pip install cython
 ``` 
 
 Now, we can install elit!
