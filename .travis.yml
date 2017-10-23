@@ -13,6 +13,8 @@ before_install:
   - pip install awscli
   - export PATH=$PATH:$HOME/.local/bin
   - aws s3 cp s3://elit-public/resources/tokenizer /home/travis/build/emorynlp/resources/tokenizer --recursive
+install:
+  - pip install .
 deploy:
   provider: pypi
   user: emorynlp
