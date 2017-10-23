@@ -1,5 +1,2 @@
 include README.md
 include LICENSE.txt
-recursive-include resources *
-recursive-include cpp *.hpp
-recursive-include cpp *.h
