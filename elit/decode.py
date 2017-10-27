@@ -167,10 +167,9 @@ def segment(tokens, offsets):
     """
     :param tokens: the input tokens.
     :type tokens: list of str
+    :param offsets: the offsets of the corresponding tokens in the original text.
+    :type offsets: list of (int, int)
     :return: the list of sentences, where each sentence is a dictionary containing tokens and offsets as keys.
-        the sentence boundaries with respect to the tokens.
-        e.g., tokens = ['1st', 'sentence', '.', '2nd', 'sentence', '?', '3rd', 'sentence', '!'] -> [0, 3, 6, 9],
-              where each pair (0, 3), (3, 6), (6, 9) represents the corresponding sentence.
     """
     def sentence(begin, end):
         return {KEY_TOKENS: tokens[begin:end], KEY_OFFSETS: offsets[begin:end]}
