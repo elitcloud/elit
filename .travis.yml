@@ -12,7 +12,7 @@ env:
 before_install:
   - pip install awscli
   - export PATH=$PATH:$HOME/.local/bin
-  - aws s3 cp s3://elit-public/resources/tokenizer /home/travis/build/emorynlp/resources/tokenizer --recursive
+  - aws s3 cp s3://elit-public/resources/tokenize /home/travis/build/emorynlp/resources/tokenize --recursive
 install:
   - pip install cython
   - pip install .

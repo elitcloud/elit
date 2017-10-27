@@ -16,10 +16,6 @@
 
 __author__ = 'Jinho D. Choi'
 
-# flag
-FLAG_FALSE = '0'
-FLAG_TRUE = '1'
-
 # language
 LANGUAGE_ENGLISH = 'en'
 
@@ -28,21 +24,29 @@ INPUT_FORMAT_RAW = 'raw'
 INPUT_FORMAT_LINE = 'line'
 
 # sentiment analysis
-SENTIMENT_TWITTER = 'twit'
 SENTIMENT_MOVIE = 'mov'
-SENTIMENT_TWITTER_ATT = 'twit-att'
+SENTIMENT_TWITTER = 'twit'
 SENTIMENT_MOVIE_ATT = 'mov-att'
+SENTIMENT_TWITTER_ATT = 'twit-att'
 
 
 class Configuration:
     def __init__(self,
                  language=LANGUAGE_ENGLISH,
                  input_format=INPUT_FORMAT_RAW,
-                 tokenize=FLAG_TRUE,
-                 segment=FLAG_TRUE,
+                 tokenize=True,
+                 segment=True,
                  sentiment=(SENTIMENT_MOVIE, SENTIMENT_TWITTER)):
         self.language = language
         self.input_format = input_format
         self.tokenize = tokenize
         self.segment = segment
         self.sentiment = sentiment
+
+
+def is_valid_input_format(format):
+    return format in {INPUT_FORMAT_RAW, INPUT_FORMAT_LINE}
+
+
+def is_valid_sentiment(sentiment):
+    return sentiment in {SENTIMENT_MOVIE, SENTIMENT_TWITTER, SENTIMENT_MOVIE_ATT, SENTIMENT_TWITTER_ATT}

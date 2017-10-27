@@ -17,21 +17,18 @@ import abc
 import json
 import os
 
+from elit.component.segment import EnglishSegmenter
 from elit.component.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
-from elit.component.tokenizer import SpaceTokenizer, EnglishTokenizer
-from elit.configure import *
-from elit.lexicon import Word2Vec
-from elit.string_util import is_right_bracket, is_final_mark
+from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.util.configure import *
+from elit.util.lexicon import Word2Vec
+from elit.util.structure import KEY_TOKENS, KEY_OFFSETS, KEY_SENTIMENT
 
 __author__ = 'Jinho D. Choi'
 
 
 DOC_MAX_SIZE = 10485760
 DOC_DELIM = '@#DOC$%'
-
-KEY_TOKENS = 'tokens'
-KEY_OFFSETS = 'offsets'
-KEY_SENTIMENT = 'sentiment'
 
 
 class Decoder:
@@ -102,14 +99,60 @@ class Decoder:
     def text_to_sentences(self, config, text, offset=0):
         return
 
+    def params_to_config(self, params):
+        errors = []
+
+        # input text
+        input_text = params.get('text', '')
+
+        if not input_text:
+            errors.append('input text is missing')
+
+        # input format
+        input_format = params.get('input_format', INPUT_FORMAT_RAW)
+
+        if not is_valid_input_format(input_format):
+            errors.append('invalid input format: '+input_format)
+
+        # tokenize
+        tokenize = params.get('tokenize', '1')
+
+        if tokenize not in {'0', '1'}:
+            errors.append('invalid tokenize: '+tokenize)
+
+        tokenize = False if tokenize == '0' else True
+
+        # segment
+        segment = params.get('segment', '1')
+
+        if segment not in {'0', '1'}:
+            errors.append('invalid segment: '+segment)
+
+        segment = False if segment == '0' else True
+
+        # sentiment
+        sentiment = list(filter(None, params.get('sentiment', '').split(',')))
+
+        if not all(is_valid_sentiment(s) for s in sentiment):
+            errors.append('invalid sentiment: '+','.join(sentiment))
+
+        config = Configuration(language=LANGUAGE_ENGLISH,
+                               input_format=input_format,
+                               tokenize=tokenize,
+                               segment=segment,
+                               sentiment=sentiment)
+
+        return config, errors
+
 
 class EnglishDecoder(Decoder):
     def __init__(self, resource_dir, config):
         # init tokenizer
         self.tokenizer_space = SpaceTokenizer()
+        if config.tokenize: self.tokenizer = EnglishTokenizer(os.path.join(resource_dir, 'tokenize'))
 
-        if config.tokenize == FLAG_TRUE:
-            self.tokenizer = EnglishTokenizer(os.path.join(resource_dir, 'tokenizer'))
+        # init segmenter
+        if config.segment: self.segmenter = EnglishSegmenter()
 
         # init sentiment analyzer: twitter
         if SENTIMENT_TWITTER in config.sentiment:
@@ -127,11 +170,11 @@ class EnglishDecoder(Decoder):
 
     def text_to_sentences(self, config, text, offset=0):
         # tokenization
-        tokenizer = self.tokenizer if config.tokenize == FLAG_TRUE else self.tokenizer_space
-        tokens, offsets = tokenizer.tokenize(text, offset)
+        tokenizer = self.tokenizer if config.tokenize else self.tokenizer_space
+        tokens, offsets = tokenizer.decode(text, offset)
 
         # segmentation
-        sentences = segment(tokens, offsets) if config.segment == FLAG_TRUE \
+        sentences = self.segmenter.decode(tokens, offsets) if config.segment \
                     else [{KEY_TOKENS: tokens, KEY_OFFSETS: offsets}]
 
         # sentiment analysis
@@ -159,40 +202,5 @@ class EnglishDecoder(Decoder):
             y, att = analyzer.decode(sens, att=att)
 
             for i, sentence in enumerate(sentences):
-                sentence[KEY_SENTIMENT+'-'+key] = y[i].tolist()
-                if att: sentence[KEY_SENTIMENT+'-'+key+'-att'] = att[i].tolist()
-
-
-def segment(tokens, offsets):
-    """
-    :param tokens: the input tokens.
-    :type tokens: list of str
-    :param offsets: the offsets of the corresponding tokens in the original text.
-    :type offsets: list of (int, int)
-    :return: the list of sentences, where each sentence is a dictionary containing tokens and offsets as keys.
-    """
-    def sentence(begin, end):
-        return {KEY_TOKENS: tokens[begin:end], KEY_OFFSETS: offsets[begin:end]}
-
-    sentences = []
-    begin = 0
-    right_quote = True
-
-    for i, token in enumerate(tokens):
-        t = token[0]
-        if t == '"': right_quote = not right_quote
-
-        if begin == i:
-            if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
-                d = sentences[-1]
-                d[KEY_TOKENS].append(token)
-                d[KEY_OFFSETS].append(offsets[i])
-                begin = i + 1
-        elif all(is_final_mark(c) for c in token):
-            sentences.append(sentence(begin, i+1))
-            begin = i + 1
-
-    if begin < len(tokens):
-        sentences.append(sentence(begin, len(tokens)))
-
-    return sentences
+                sentence[KEY_SENTIMENT + '-' + key] = y[i].tolist()
+                if att: sentence[KEY_SENTIMENT + '-' + key + '-att'] = att[i].tolist()

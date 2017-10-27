@@ -17,14 +17,14 @@ import abc
 import os
 import re
 
-from elit.string_util import *
+from elit.util.string_util import *
 
 __author__ = 'Jinho D. Choi'
 
 
 class Tokenizer(object):
     @abc.abstractmethod
-    def tokenize(self, text, offset=0):
+    def decode(self, text, offset=0):
         """
         :param text: the input text.
         :type text: str
@@ -64,7 +64,7 @@ class SpaceTokenizer(Tokenizer):
     """
     Tokenize by only spaces.
     """
-    def tokenize(self, text, offset=0):
+    def decode(self, text, offset=0):
         tokens = text.split()
         return tokens, Tokenizer.offsets(text, tokens, offset)
 
@@ -127,7 +127,7 @@ class EnglishTokenizer(Tokenizer):
         """
         self.RE_FINAL_MARK_IN_BETWEEN = re.compile(r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
 
-    def tokenize(self, text, offset=0):
+    def decode(self, text, offset=0):
         tokens = []
         offsets = []
 

@@ -1,5 +1,5 @@
 #
-# RESOURCE_PATH = './../elit/resources/tokenizer'
+# RESOURCE_PATH = './../elit/resources/tokenize'
 #
 #
 # def resource_file(filename):

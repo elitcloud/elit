@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component.tokenizer import SpaceTokenizer, EnglishTokenizer
+from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
 import unittest
 
 __author__ = 'Jinho D. Choi'
@@ -33,7 +33,7 @@ class TestSpaceTokenizer(unittest.TestCase):
 class TestEnglishTokenizer(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestEnglishTokenizer, self).__init__(*args, **kwargs)
-        self.tok = EnglishTokenizer('../resources/tokenizer')
+        self.tok = EnglishTokenizer('../resources/tokenize')
 
     def test_space(self):
         # empty string
@@ -179,7 +179,7 @@ class TestEnglishTokenizer(unittest.TestCase):
 
 # Change to tokenizer_helper because function name with test cause test framework confused.
 def tokenizer_helper(t, s, gold_tokens, gold_offsets, offset=0):
-    tokens, offsets = t.tok.tokenize(s, offset)
+    tokens, offsets = t.tok.decode(s, offset)
     t.assertEqual(tokens, gold_tokens)
     t.assertEqual(offsets, gold_offsets)
 

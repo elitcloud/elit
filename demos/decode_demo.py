@@ -16,21 +16,20 @@
 
 from io import StringIO
 
-from elit.configure import Configuration, FLAG_TRUE, SENTIMENT_TWITTER, SENTIMENT_MOVIE, INPUT_FORMAT_RAW, FLAG_FALSE, \
-    INPUT_FORMAT_LINE
 from elit.decode import EnglishDecoder, DOC_DELIM
+from elit.util.configure import Configuration, SENTIMENT_TWITTER, SENTIMENT_MOVIE, INPUT_FORMAT_RAW, INPUT_FORMAT_LINE
 
 __author__ = 'Jinho D. Choi'
 
-config = Configuration(tokenize=FLAG_TRUE, segment=FLAG_TRUE, sentiment=(SENTIMENT_MOVIE, SENTIMENT_TWITTER))
+config = Configuration(tokenize=True, segment=True, sentiment=(SENTIMENT_MOVIE, SENTIMENT_TWITTER))
 elit = EnglishDecoder(resource_dir='../resources/', config=config)
 config.sentiment = ()
 
 # returns the output as a list of documents
 input_text = 'I watched "The Sound of Music" last night. The ending could have been better. It is my favorite movie though.'
 config.input_format = INPUT_FORMAT_RAW
-config.tokenize = FLAG_FALSE
-config.segment = FLAG_FALSE
+config.tokenize = False
+config.segment = False
 docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
@@ -39,7 +38,7 @@ docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
 config.input_format = INPUT_FORMAT_RAW
-config.tokenize = FLAG_TRUE
+config.tokenize = True
 docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
@@ -48,7 +47,7 @@ docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
 config.input_format = INPUT_FORMAT_RAW
-config.segment = FLAG_TRUE
+config.segment = True
 docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
