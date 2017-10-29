@@ -16,6 +16,7 @@
 import abc
 import os
 import re
+import codecs
 
 from elit.util.string_util import *
 
@@ -355,8 +356,9 @@ class EnglishTokenizer(Tokenizer):
 
 
 def read_word_set(filename):
-    s = set(line.strip() for line in open(filename))
-    print('Init: %s (keys = %d)' % (filename, len(s)))
+    fin = codecs.open(filename, mode='r', encoding='utf - 8')
+    s = set(line.strip() for line in fin)
+    print('Init: % s(keys= % d)' % (filename, len(s)))
     return s
 
 
@@ -368,7 +370,8 @@ def read_concat_word_dict(filename):
         l.append(len(line))
         return line, l
 
-    d = dict(key_value(line.strip()) for line in open(filename))
+    fin = codecs.open(filename, mode='r', encoding='utf-8')
+    d = dict(key_value(line.strip()) for line in fin)
     print('Init: %s (keys = %d)' % (filename, len(d)))
     return d
 
