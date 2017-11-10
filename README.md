@@ -1,4 +1,4 @@
-# [![ELIT](media/header.png)](https://github.com/elitcloud/elit)
+# [![ELIT](media/logo.png)](https://github.com/elitcloud/elit)
 
 # The ELIT Project [![Build Status](https://travis-ci.org/elitcloud/elit.svg?branch=master)](https://travis-ci.org/elitcloud/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit)
 
