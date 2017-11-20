@@ -13,13 +13,139 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
+import logging
+import marisa_trie
+
 import numpy as np
+from fasttext import fasttext
 from gensim.models import KeyedVectors
 
 __author__ = 'Jinho D. Choi'
 
 
-class Word2Vec:
+class LabelMap:
+    """
+    LabelMap gives the mapping between class labels and their unique IDs.
+    """
+    def __init__(self):
+        self.index_map = {}
+        self.labels = []
+
+    def __len__(self):
+        return len(self.labels)
+
+    def index(self, label):
+        """
+        :param label: the y to get the index of.
+        :type label: str
+        :return: the index of the y if exits; otherwise, -1.
+        :rtype: int
+        """
+        return self.index_map.get(label, -1)
+
+    def get(self, index):
+        """
+        :param index: the index of the y to retrieve.
+        :type index: int
+        :return: the index'th y.
+        :rtype: str
+        """
+        return self.labels[index]
+
+    def add(self, label):
+        """
+        Add the y to this map if not already exist.
+        :param label: the y to be added.
+        :type label: str
+        :return: the index of the y.
+        :rtype int
+        """
+        idx = self.index(label)
+        if idx < 0:
+            idx = len(self.labels)
+            self.index_map[label] = idx
+            self.labels.append(label)
+        return idx
+
+
+class VectorSpaceModel(object):
+    def __init__(self, model, dim):
+        """
+        :param model: the word embedding model.
+        :type model: Union[KeyedVectors]
+        :param dim: the dimension of each word embedding.
+        :type dim: int
+        """
+        self.model = model
+        self.dim = dim
+
+        # for zero padding
+        self.zero = np.zeros(dim).astype('float32')
+
+    @abc.abstractmethod
+    def _get(self, word):
+        """
+        This is an auxiliary function for #get().
+        :param word: a word form (must not be None).
+        :type word: str
+        :return: the embedding of the word.
+        :rtype: numpy.array
+        """
+        return
+
+    def get(self, word=None):
+        """
+        :param word: a word form.
+        :type word: Union[str, None]
+        :return: the embedding of the word; if word is None, the zero embedding.
+        :rtype: numpy.array
+        """
+        return self.zero if word is None else self._get(word)
+
+    def get_list(self, words):
+        """
+        :param words: a list of words.
+        :type words: list of str
+        :return: the list of embeddings for the corresponding words.
+        :rtype: list of mxnet.nd.array
+        """
+        return [self.get(word) for word in words]
+
+
+class FastText(VectorSpaceModel):
+    def __init__(self, filepath):
+        """
+        :param filepath: the path to the file containing word embeddings.
+        :type filepath: str
+        """
+        model = fasttext.load_model(filepath)
+        dim = model.dim
+        super(FastText, self).__init__(model, dim)
+        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.words), dim))
+
+    def _get(self, word):
+        return np.array(self.model[word]).astype('float32')
+
+
+class Word2Vec(VectorSpaceModel):
+    def __init__(self, filepath):
+        """
+        :param filepath: the path to the file containing word embeddings.
+        :type filepath: str
+        """
+        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else \
+                KeyedVectors.load_word2vec_format(filepath, binary=True)
+        dim = model.syn0.shape[1]
+        super(Word2Vec, self).__init__(model, dim)
+        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
+
+    def _get(self, word):
+        vocab = self.model.vocab.get(word, None)
+        return self.zero if vocab is None else self.model.syn0[vocab.index]
+
+
+class Word2VecTmp:
     def __init__(self, filepath):
         """
         :param filepath: the path to the file containing word embeddings.
@@ -61,3 +187,8 @@ class Word2Vec:
         :return:
         """
         return np.array([self.doc_to_emb(document, maxlen) for document in documents])
+
+
+class PrefixTree:
+    def __init__(self):
+        trie = marisa_trie.Trie([u'key1', u'key2', u'key12'])

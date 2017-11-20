@@ -62,3 +62,23 @@ def is_punct(c):
     return c in string.punctuation
 
 
+def collapse_digits(s):
+    def get(i, c):
+        if i+1 < len(s) and digits[i+1]:
+            if is_currency(c) or c in {'.', '-', '+', '#'}:
+                return ''
+            if i-1 >= 0 and digits[i-1] and (is_hyphen(c) or c in {',', ':', '/', '='}):
+                return ''
+        elif i-1 >= 0 and digits[i-1]:
+            if c == '%':
+                return ''
+        elif digits[i]:
+            if t and t[0] == '0':
+                return ''
+
+        t[0] = '0' if digits[i] else c
+        return t[0]
+
+    t = ['']
+    digits = [c.isdigit() for c in s]
+    return ''.join([get(i, c) for i, c in enumerate(s)])

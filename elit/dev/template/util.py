@@ -30,7 +30,7 @@ __author__ = 'Jinho D. Choi'
 
 def create_ffnn(hidden: List[Tuple[int, str, float]], input_dropout: float=0, output_size: int=2,
                 context: mx.context.Context=mx.cpu()) -> mx.mod.Module:
-    net = mx.sym.Variable('data')
+    net = mx.sym.Variable('x')
     if input_dropout > 0: net = mx.sym.Dropout(net, p=input_dropout)
 
     for i, (num_hidden, act_type, dropout) in enumerate(hidden, 1):
@@ -71,8 +71,8 @@ def argparse_data(parser: argparse.ArgumentParser, tsv: Callable[[Tuple[int]], T
     """
     args = parser.add_argument_group('Data')
 
-    args.add_argument('--trn_data', type=str, metavar='filepath', help='path to the training data')
-    args.add_argument('--dev_data', type=str, metavar='filepath', help='path to the development data')
+    args.add_argument('--trn_data', type=str, metavar='filepath', help='path to the training x')
+    args.add_argument('--dev_data', type=str, metavar='filepath', help='path to the development x')
 
     if tsv:
         def reader(s: str):
@@ -192,9 +192,9 @@ def argparse_ffnn(parser: argparse.ArgumentParser):
 #     add_arguments_ffnn(parser)
 #
 #
-#     # data
-#     parser.add_argument('--train', nargs=1, type=str, help='path to the training data')
-#     parser.add_argument('--develop', nargs=1, type=str, help='path to the development data')
+#     # x
+#     parser.add_argument('--train', nargs=1, type=str, help='path to the training x')
+#     parser.add_argument('--develop', nargs=1, type=str, help='path to the development x')
 #
 #     # mxnet
 #     parser.add_argument('--context', nargs=2, type)

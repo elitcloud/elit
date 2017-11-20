@@ -68,7 +68,7 @@ class DEPState(NLPState):
 
     def next(self, label: str):
         """
-        :param label: arc + transition + label
+        :param label: arc + transition + y
         """
         s = self.get_stack()
         i = self.get_input()

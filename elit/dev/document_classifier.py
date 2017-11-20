@@ -24,7 +24,7 @@ batch_size = 50
 emb_dim = 200
 document_size = 256
 
-input_x = mx.sym.Variable('data')
+input_x = mx.sym.Variable('x')
 input_y = mx.sym.Variable('softmax_label')
 emb_layer = mx.sym.Embedding(data=input_x, input_dim=vocab_size, output_dim=emb_dim, name='vocab_emb')
 conv_input = mx.sym.Reshape(data=emb_layer, target_shape=(batch_size, 1, document_size, emb_dim))

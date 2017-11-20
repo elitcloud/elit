@@ -17,12 +17,12 @@ import abc
 import json
 import os
 
-from elit.component.segment import EnglishSegmenter
-from elit.component.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
-from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.core.segment import EnglishSegmenter
+from elit.core.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
+from elit.core.tokenize import SpaceTokenizer, EnglishTokenizer
 from elit.util.configure import *
-from elit.util.lexicon import Word2Vec
-from elit.util.structure import KEY_TOKENS, KEY_OFFSETS, KEY_SENTIMENT
+from elit.util.lexicon import Word2VecTmp
+from elit.util.structure import TOKENS, OFFSETS, SENTIMENT
 
 __author__ = 'Jinho D. Choi'
 
@@ -156,13 +156,13 @@ class EnglishDecoder(Decoder):
 
         # init sentiment analyzer: twitter
         if SENTIMENT_TWITTER in config.sentiment:
-            emb_model = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+            emb_model = Word2VecTmp(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
             model_file = os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2')
             self.sentiment_twit = TwitterSentimentAnalyzer(emb_model, model_file)
 
         # init sentiment analyzer: movie review
         if SENTIMENT_MOVIE in config.sentiment:
-            emb_model = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+            emb_model = Word2VecTmp(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
             model_file = os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2')
             self.sentiment_mov = MovieSentimentAnalyzer(emb_model, model_file)
 
@@ -175,7 +175,7 @@ class EnglishDecoder(Decoder):
 
         # segmentation
         sentences = self.segmenter.decode(tokens, offsets) if config.segment \
-                    else [{KEY_TOKENS: tokens, KEY_OFFSETS: offsets}]
+                    else [{TOKENS: tokens, OFFSETS: offsets}]
 
         # sentiment analysis
         if config.sentiment:
@@ -198,9 +198,9 @@ class EnglishDecoder(Decoder):
 
         for s in config.sentiment:
             analyzer, att, key = get_analyzer(s)
-            sens = [d[KEY_TOKENS] for d in sentences]
+            sens = [d[TOKENS] for d in sentences]
             y, att = analyzer.decode(sens, att=att)
 
             for i, sentence in enumerate(sentences):
-                sentence[KEY_SENTIMENT + '-' + key] = y[i].tolist()
-                if att: sentence[KEY_SENTIMENT + '-' + key + '-att'] = att[i].tolist()
+                sentence[SENTIMENT + '-' + key] = y[i].tolist()
+                if att: sentence[SENTIMENT + '-' + key + '-att'] = att[i].tolist()

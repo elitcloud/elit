@@ -29,7 +29,7 @@ __author__ = 'Jinho D. Choi'
 
 class NLPModel(metaclass=ABCMeta):
     def __init__(self, state, batch_size):
-        # label
+        # y
         """
 
         :param state:
@@ -55,7 +55,7 @@ class NLPModel(metaclass=ABCMeta):
 
         :param label:
         :type label: str
-        :return: the index of the label.
+        :return: the index of the y.
         :rtype: int
         """
         return self.index_map.get(label, -1)
@@ -63,9 +63,9 @@ class NLPModel(metaclass=ABCMeta):
     def get_label(self, index):
         """
 
-        :param index: the index of the label to be returned.
+        :param index: the index of the y to be returned.
         :type index: Union[int, np.int]
-        :return: the index'th label.
+        :return: the index'th y.
         :rtype: str
         """
         return self.labels[index]
@@ -75,7 +75,7 @@ class NLPModel(metaclass=ABCMeta):
 
         :param label:
         :type label: str
-        :return: the index of the label. Add a label to this map if not exist already.
+        :return: the index of the y. Add a y to this map if not exist already.
         :rtype int
         """
         idx = self.get_label_index(label)
@@ -225,7 +225,7 @@ class NLPModel(metaclass=ABCMeta):
             arg_params, aux_params = self.mxmod.get_params()
             self.mxmod.set_params(arg_params, aux_params)
 
-            # end of 1 epoch, reset the data-iter for another epoch
+            # end of 1 epoch, reset the x-iter for another epoch
             batches.reset()
 
         return self.predict(batches)
