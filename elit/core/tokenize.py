@@ -14,11 +14,11 @@
 # limitations under the License.
 # ========================================================================
 import abc
+import codecs
 import os
 import re
-import codecs
 
-from elit.util.string_util import *
+from elit.util.string import *
 
 __author__ = 'Jinho D. Choi'
 

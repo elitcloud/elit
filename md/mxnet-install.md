@@ -57,6 +57,12 @@ wget https://s3.amazonaws.com/elit-public/resources/embedding/ambiguity-50-wikip
 cd ..
 ```
 
+## Jupyter
+
+```
+http://docs.aws.amazon.com/mxnet/latest/dg/setup-jupyter-configure-server.html
+```
+
 ## Add Path
 
 ```

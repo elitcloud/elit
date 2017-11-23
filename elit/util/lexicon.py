@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import abc
+import codecs
 import logging
 import marisa_trie
 
@@ -145,6 +146,32 @@ class Word2Vec(VectorSpaceModel):
         return self.zero if vocab is None else self.model.syn0[vocab.index]
 
 
+class NamedEntityTree:
+    def __init__(self, filenames):
+        """
+        :param filepath: the path to the resource files (e.g., resources/nament/english).
+        :type filepath: str
+        """
+        keys, values = [], []
+        for i, filename in enumerate(sorted(filenames)):
+            fin = codecs.open(filename, mode='r', encoding='utf-8')
+            l = [''+u' '.join(line.split()) for line in fin]
+            logging.info('Init: %s (%d)' % (filename, len(l)))
+            keys.extend(l)
+            values.extend([[i]]*len(l))
+
+        self.trie = marisa_trie.RecordTrie("h", zip(keys, values))
+
+    # def get_list(self, words):
+    #     for i, word in enumerate(words):
+    #         for j in range(i+1, len(words)):
+    #             w = u' '.join(words[i:j])
+    #             if w not in
+
+
+
+
+
 class Word2VecTmp:
     def __init__(self, filepath):
         """
@@ -189,6 +216,3 @@ class Word2VecTmp:
         return np.array([self.doc_to_emb(document, maxlen) for document in documents])
 
 
-class PrefixTree:
-    def __init__(self):
-        trie = marisa_trie.Trie([u'key1', u'key2', u'key12'])
