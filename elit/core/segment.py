@@ -15,7 +15,7 @@
 # ========================================================================
 import abc
 
-from elit.util.string_util import is_right_bracket, is_final_mark
+from elit.util.string import is_right_bracket, is_final_mark
 from elit.util.structure import TOKENS, OFFSETS
 
 __author__ = 'Jinho D. Choi'
