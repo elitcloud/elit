@@ -17,8 +17,10 @@
 import numpy as np
 from mxnet import gluon, nd
 
-from elit.util.component import ForwardState, CONTEXT_WINDOWS, NLPEval, BILOU, WORD_VSM, LABEL_MAP, NGRAM_CONV, DROPOUT, \
-    NLPState
+from elit.util.component import CONTEXT_WINDOWS, BILOU, WORD_VSM, LABEL_MAP, NGRAM_CONV, DROPOUT
+from elit.nlp.util import argparse_train
+from elit.nlp.model import NLPEval
+from elit.nlp.state import NLPState, ForwardState
 
 __author__ = 'Jinho D. Choi'
 
@@ -45,11 +47,11 @@ class NERState(ForwardState):
     @property
     def x(self):
         word_emb = self.word_emb[self.sen_id]
-        scores = self.scores[self.sen_id]
+        scores = self.output[self.sen_id]
 
-        p = [self._x_position(i) for i in self.context_windows]
-        w = [self._extract_x(i, word_emb, self.word_vsm.zero) for i in self.context_windows]
-        s = [self._extract_x(i, scores, self.zero_output) for i in self.context_windows]
+        p = [self.x_position(i) for i in self.context_windows]
+        w = [self.x_extract(i, word_emb, self.word_vsm.zero) for i in self.context_windows]
+        s = [self.x_extract(i, scores, self.zero_output) for i in self.context_windows]
 
         return np.column_stack((p, w, s))
 
@@ -63,7 +65,7 @@ class NERModel(gluon.Block):
         dropout = params[DROPOUT]
 
         with self.name_scope():
-            k = len(NLPState.x_lst) + word_dim + num_class
+            k = len(NLPState.X_LST) + word_dim + num_class
             self.ngram_conv = []
             for i, f in enumerate(ngram_conv):
                 name = 'ngram_conv_' + str(i)
@@ -88,19 +90,19 @@ class NERModel(gluon.Block):
 class NEREval(NLPEval):
     def __init__(self):
         """
-        NEREval measures the F1 scores of named entity recognition.
+        NEREval measures the F1 output of named entity recognition.
         """
         self.correct = 0
         self.p_total = 0
         self.r_total = 0
 
     def update(self, state):
-        get = state.label_map.get
+        get = state.label_map.score
 
         for i, sentence in enumerate(state.document):
             gold = [get(s) for s in sentence[NER_GOLD]]
             auto = [get(s) for s in np.argmax(state.scores[i], axis=1)]
-            BILOU.quick_fix(auto)
+            # BILOU.quick_fix(auto)
 
             gold = BILOU.collect(gold)
             auto = BILOU.collect(auto)
@@ -109,10 +111,10 @@ class NEREval(NLPEval):
             self.r_total += len(auto)
 
             for k, g in gold:
-                if g == auto.get(k, None):
+                if g == auto.score():
                     self.correct += 1
 
-    def get(self):
+    def score(self):
         p = 100.0 * self.correct / self.p_total
         r = 100.0 * self.correct / self.r_total
         return 2 * p * r / (p + r)
@@ -121,7 +123,19 @@ class NEREval(NLPEval):
         self.correct = self.p_total = self.r_total = 0
 
 
+def args_train():
+    parser = argparse_train('Train: named entity recognition')
 
+    # lexicon
+    parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath', help='vector space model for word embeddings')
+    parser.add_argument('-cw', '--context_windows', type=lambda x: tuple(map(int, x.split(','))), metavar='int[,int]*', default=(-2, -1, 0, 1, 2), help='context window for feature extraction')
+
+    # train
+    parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01, help='learning rate')
+    parser.add_argument('-nc', '--ngram_conv', type=lambda x: tuple(map(int, x.split(','))), metavar='int[,int]*', default=(128, 128, 128, 128, 128), help='list of filter numbers for n-gram convolutions')
+    parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2, help='dropout')
+
+    return parser.parse_args()
 
 
 
@@ -193,8 +207,8 @@ class NEREval(NLPEval):
 #             return self.fst_word if i == 0 else self.lst_word if i+1 == size else self.mid_word
 #
 #         def aux(sentence):
-#             word_emb = sentence.setdefault(WORD_EMB, self.word_vsm.get_list(sentence[TOKENS]))
-#             ambi_emb = sentence.setdefault(AMBI_EMB, self.ambi_vsm.get_list(sentence[TOKENS]))
+#             word_emb = sentence.setdefault(WORD_EMB, self.word_vsm.get_list(sentence[TOKEN]))
+#             ambi_emb = sentence.setdefault(AMBI_EMB, self.ambi_vsm.get_list(sentence[TOKEN]))
 #             pos_scores = sentence.get(POS_OUT, None)
 #
 #             return [np.concatenate((
@@ -225,18 +239,18 @@ class NEREval(NLPEval):
 #         else:
 #             return labels
 #
-#     def set_scores(self, document, scores):
+#     def set_scores(self, document, output):
 #         """
 #         :param document: a sentence or a list of sentences, where each sentence is represented by a dictionary.
 #         :type document: Union[list of dict, dict]
-#         :param scores: the scores of the part-of-speech tag predictions.
-#         :param scores: numpy.array -> max_len * num_class
+#         :param output: the output of the part-of-speech tag predictions.
+#         :param output: numpy.array -> max_len * num_class
 #         """
 #         def index(i):
 #             return (begin + i) * self.num_class
 #
 #         def get(sentence):
-#             return [scores[index(i):index(i+1)] for i in range(0, len(sentence))]
+#             return [output[index(i):index(i+1)] for i in range(0, len(sentence))]
 #
 #         begin = 0
 #

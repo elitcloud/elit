@@ -55,7 +55,7 @@ class NLPState(metaclass=ABCMeta):
     def process(self, label: str, scores: np.array=None):
         """
         :param label: the y given the current state.
-        :param scores: prediction scores.
+        :param scores: prediction output.
           Apply the y to the current state and move onto the next state.
         """
 

@@ -101,8 +101,8 @@ class POSState(NLPState):
 
     def features(self, node: NLPToken) -> List[np.array]:
         fs = [node.pos_scores if node else self.lex.pos_zeros]
-        if self.lex.w2v: fs.append(self.lex.w2v.get(node))
-        if self.lex.f2v: fs.append(self.lex.f2v.get(node))
+        if self.lex.w2v: fs.append(self.lex.w2v.score())
+        if self.lex.f2v: fs.append(self.lex.f2v.score())
         if self.lex.a2v: fs.append(self.lex.a2v.get(node))
         return fs
 
