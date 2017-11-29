@@ -16,7 +16,7 @@
 
 __author__ = 'Jinho D. Choi'
 
-TOKEN = 'word'
+TOKEN = 'token'
 LEMMA = 'lemma'
 POS = 'pos'
 NER = 'ner'
@@ -26,22 +26,24 @@ OFFSET = 'offset'
 SENTIMENT = 'sentiment'
 
 
-
-# part-of-speech tagging
-
-# named entity recognition
-
-
 class Sentence(dict):
     def __init__(self, d=None):
         """
         :param d: a dictionary containing fields for the sentence.
         :type d: dict
         """
-        super(Sentence, self).__init__()
+        super().__init__()
         if d is not None: self.update(d)
 
     def __len__(self):
         return len(self[TOKEN])
 
 
+class Document(list):
+    def __init__(self, l=None):
+        """
+        :param l: a list containing sentences.
+        :type l: list of Sentence
+        """
+        super().__init__()
+        if l is not None: self.extend(l)

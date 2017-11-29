@@ -21,9 +21,9 @@ __author__ = 'Jinho D. Choi'
 class NLPState(metaclass=abc.ABCMeta):
     def __init__(self, document):
         """
-        NLPState implements a decoding strategy to process the input document.
+        NLPState defines a decoding strategy to process the input document.
         :param document: the input document.
-        :type document: list of elit.util.structure.Sentence
+        :type document: elit.nlp.structure.Document
         """
         self.document = document
         self.output = None
@@ -31,14 +31,14 @@ class NLPState(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def reset(self):
         """
-        Resets to the beginning state.
+        Resets to the initial state.
         """
         pass
 
     @abc.abstractmethod
     def process(self, output):
         """
-        Applies the output to the current state, and move onto the next state.
+        Applies the output to the current state, and moves onto the next state.
         :param output: the prediction output of the current state.
         :type output: numpy.array
         """
@@ -48,18 +48,18 @@ class NLPState(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def has_next(self):
         """
-        :return: True if there exists the next state that can be processed; otherwise, False.
+        :return: True if there exists the next state to be processed; otherwise, False.
         :rtype: bool
         """
         return
 
 
-class ForwardState(NLPState, metaclass=abc.ABCMeta):
+class ForwardState(NLPState):
     def __init__(self, document, zero_output):
         """
-        ForwardState implements the one-pass, left-to-right decoding strategy.
+        ForwardState defines the one-pass, left-to-right decoding strategy.
         :param document: the input document.
-        :type document: list of elit.util.structure.Sentence
+        :type document: list of elit.nlp.structure.Sentence
         :param zero_output: a vector of size `num_class` where all values are 0; used to zero pad label embeddings.
         :type zero_output: numpy.array
         """

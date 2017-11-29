@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.nlp.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
-from elit.nlp.tokenize import EnglishTokenizer
-from elit.util.lexicon import Word2VecTmp
-from elit.util.structure import TOKEN
+from elit.nlp.component.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
+from elit.nlp.component.tokenize import EnglishTokenizer
+from elit.nlp.lexicon import Word2VecTmp
+from elit.nlp.structure import TOKEN
 
 __author__ = 'Bonggun Shin, Jinho D. Choi'
 

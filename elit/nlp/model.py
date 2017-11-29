@@ -14,60 +14,11 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import logging
 
-import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from elit.nlp.util import process_online, reshape_conv2d
-
 __author__ = 'Jinho D. Choi'
-
-
-class LabelMap:
-    """
-    LabelMap gives the mapping between class labels and their unique IDs.
-    """
-    def __init__(self):
-        self.index_map = {}
-        self.labels = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def index(self, label):
-        """
-        :param label: the class label.
-        :type label: str
-        :return: the ID of the class label if exists; otherwise, -1.
-        :rtype: int
-        """
-        return self.index_map[label] if label in self.index_map else -1
-
-    def get(self, index):
-        """
-        :param index: the ID of the class label.
-        :type index: int
-        :return: the index'th class label.
-        :rtype: str
-        """
-        return self.labels[index]
-
-    def add(self, label):
-        """
-        Adds the class label to this map if not already exist.
-        :param label: the class label.
-        :type label: str
-        :return: the ID of the class label.
-        :rtype int
-        """
-        idx = self.index(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
 
 
 class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
@@ -84,20 +35,10 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
         self.trainer = None
 
     @abc.abstractmethod
-    def create_state(self, document):
-        """
-        :param document: the input document.
-        :type document: list of elit.util.structure.Sentence
-        :return: the state to process the input document.
-        :rtype: elit.nlp.state.NLPState
-        """
-        return
-
-    @abc.abstractmethod
     def x(self, state):
         """
         :param state: the input state.
-        :type state: elit.nlp.state.NLPState
+        :type state: elit.nlp.NLPState
         :return: the feature vector given the current state.
         :rtype: numpy.array, elit.nlp.state.NLPState
         """
@@ -107,7 +48,7 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
     def y(self, state):
         """
         :param state: the input state.
-        :type state: elit.nlp.state.NLPState
+        :type state: elit.nlp.NLPState
         :return: the ID of the gold-standard label.
         :rtype: int
         """
@@ -118,7 +59,7 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
         """
         Evaluates the predictions in the state.
         :param state: the input state.
-        :type state: elit.nlp.state.NLPState
+        :type state: elit.nlp.NLPState
         :param counts: the evaluation counts.
         :type counts: argparse.Namespace
         :return: the evaluation score.
@@ -131,7 +72,7 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
         """
         Sets the string labels to each sentence using the predicted output.
         :param state: the input state.
-        :type state: elit.nlp.state.NLPState
+        :type state: elit.nlp.NLPState
         """
         pass
 
@@ -139,7 +80,7 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
         """
         Trims the output of the state with respect to the size of the label map.
         :param state: the input state.
-        :type state: elit.nlp.state.NLPState
+        :type state: elit.nlp.NLPState
         """
         num_class = len(self.label_map)
 
