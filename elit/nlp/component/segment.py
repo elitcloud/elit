@@ -15,8 +15,8 @@
 # ========================================================================
 import abc
 
+from elit.nlp.structure import TOKEN, OFFSET
 from elit.util.string import is_right_bracket, is_final_mark
-from elit.util.structure import TOKEN, OFFSET
 
 __author__ = 'Jinho D. Choi'
 

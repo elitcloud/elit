@@ -20,7 +20,7 @@ from mxnet import gluon, nd
 from elit.util.component import CONTEXT_WINDOWS, BILOU, WORD_VSM, LABEL_MAP, NGRAM_CONV, DROPOUT
 from elit.nlp.util import argparse_train
 from elit.nlp.model import NLPEval
-from elit.nlp.state import NLPState, ForwardState
+from elit.nlp import NLPState, ForwardState
 
 __author__ = 'Jinho D. Choi'
 

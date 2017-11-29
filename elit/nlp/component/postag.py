@@ -22,11 +22,11 @@ import mxnet as mx
 import numpy as np
 from mxnet import gluon, nd
 
-from elit.nlp.model import LabelMap, NLPModel, x_position, x_extract
+from elit.nlp.lexicon import FastText, Word2Vec
+from elit.nlp.model import NLPModel, x_position, x_extract
 from elit.nlp.state import ForwardState
-from elit.nlp.util import read_tsv, process_online, reshape_conv2d
-from elit.util.lexicon import FastText, Word2Vec
-from elit.util.structure import TOKEN, POS
+from elit.nlp.structure import TOKEN, POS
+from elit.nlp.util import read_tsv, process_online, reshape_conv2d, LabelMap
 
 __author__ = 'Jinho D. Choi'
 

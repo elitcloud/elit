@@ -13,16 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import argparse
 import bisect
 import glob
 import logging
 import time
 from random import shuffle
 
-from mxnet import ndarray, gluon, autograd
+from mxnet import gluon, autograd
 
-from elit.util.structure import TOKEN, DEP, Sentence
+from elit.nlp.structure import TOKEN, DEP, Sentence
 
 __author__ = 'Jinho D. Choi'
 
@@ -33,11 +32,11 @@ def read_tsv(filepath, create_state, cols):
     :param filepath: the path to a file (e.g., train.tsv) or multiple files (e.g., folder/*.tsv).
     :type filepath: str
     :param create_state: a function that takes a document and returns a state.
-    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.state.NLPState
+    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.NLPState
     :param kwargs: a ditionary containing the column index of each field.
     :type kwargs: dict
     :return: a list of states containing documents, where each document is a list of sentences.
-    :rtype: list of elit.nlp.state.NLPState
+    :rtype: list of elit.nlp.NLPState
     """
     def create_dict():
         return {k: [] for k in cols.keys()}
@@ -79,11 +78,11 @@ def group_states(sentences, create_state, max_len=-1):
     :param sentences: list of sentences.
     :type sentences: list of elit.util.structure.Sentence
     :param create_state: a function that takes a document and returns a state.
-    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.state.NLPState
+    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.NLPState
     :param max_len: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
     :type max_len: int
     :return: list of states, where each state roughly consists of the max_len number of words.
-    :rtype: list of elit.nlp.state.NLPState
+    :rtype: list of elit.nlp.NLPState
     """
     def aux(i):
         ls = d[keys[i]]
@@ -120,7 +119,7 @@ def group_states(sentences, create_state, max_len=-1):
 def data_loader(states, batch_size, shuffle=False):
     """
     :param states: the list of NLP states.
-    :type states: list of elit.nlp.state.NLPState
+    :type states: list of elit.nlp.NLPState
     :param batch_size: the batch size.
     :type batch_size: int
     :param shuffle: if True, shuffle the instances.
@@ -195,3 +194,48 @@ def argparse_train(title):
 
 def reshape_conv2d(x):
     return x.reshape((0, 1, x.shape[1], x.shape[2]))
+
+
+class LabelMap:
+    """
+    LabelMap gives the mapping between class labels and their unique IDs.
+    """
+    def __init__(self):
+        self.index_map = {}
+        self.labels = []
+
+    def __len__(self):
+        return len(self.labels)
+
+    def index(self, label):
+        """
+        :param label: the class label.
+        :type label: str
+        :return: the ID of the class label if exists; otherwise, -1.
+        :rtype: int
+        """
+        return self.index_map[label] if label in self.index_map else -1
+
+    def get(self, index):
+        """
+        :param index: the ID of the class label.
+        :type index: int
+        :return: the index'th class label.
+        :rtype: str
+        """
+        return self.labels[index]
+
+    def add(self, label):
+        """
+        Adds the class label to this map if not already exist.
+        :param label: the class label.
+        :type label: str
+        :return: the ID of the class label.
+        :rtype int
+        """
+        idx = self.index(label)
+        if idx < 0:
+            idx = len(self.labels)
+            self.index_map[label] = idx
+            self.labels.append(label)
+        return idx
