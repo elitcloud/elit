@@ -345,7 +345,7 @@ class NLPModel(metaclass=ABCMeta):
         acc = 0
 
         for state in backup:
-            acc = state.eval(stats)
+            acc = state.score()
 
         return acc
 

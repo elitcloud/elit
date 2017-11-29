@@ -25,51 +25,6 @@ from gensim.models import KeyedVectors
 __author__ = 'Jinho D. Choi'
 
 
-class LabelMap:
-    """
-    LabelMap gives the mapping between class labels and their unique IDs.
-    """
-    def __init__(self):
-        self.index_map = {}
-        self.labels = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def index(self, label):
-        """
-        :param label: the y to get the index of.
-        :type label: str
-        :return: the index of the y if exits; otherwise, -1.
-        :rtype: int
-        """
-        return self.index_map.get(label, -1)
-
-    def get(self, index):
-        """
-        :param index: the index of the y to retrieve.
-        :type index: int
-        :return: the index'th y.
-        :rtype: str
-        """
-        return self.labels[index]
-
-    def add(self, label):
-        """
-        Add the y to this map if not already exist.
-        :param label: the y to be added.
-        :type label: str
-        :return: the index of the y.
-        :rtype int
-        """
-        idx = self.index(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
-
-
 class VectorSpaceModel(object):
     def __init__(self, model, dim):
         """
@@ -142,7 +97,7 @@ class Word2Vec(VectorSpaceModel):
         logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
     def _get(self, word):
-        vocab = self.model.vocab.get(word, None)
+        vocab = self.model.vocab.score()
         return self.zero if vocab is None else self.model.syn0[vocab.index]
 
 
@@ -198,7 +153,7 @@ class Word2VecTmp:
         """
         def emb(token_index):
             if token_index >= len(document): return self.pad
-            v = self.model.vocab.get(document[token_index], None)
+            v = self.model.vocab.score()
             return self.model.syn0[v.index] if v is not None else self.pad
 
         # return np.array([emb(i) for i in range(maxlen)])
