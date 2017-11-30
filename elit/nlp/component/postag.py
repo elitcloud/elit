@@ -48,6 +48,16 @@ class POSState(ForwardState):
         self.word_emb = [word_vsm.get_list(s[TOKEN]) for s in document]
         self.ambi_emb = [ambi_vsm.get_list(s[TOKEN]) for s in document] if ambi_vsm else None
 
+    def eval(self, acc):
+        """
+        :type acc: elit.util.metric.Accuracy
+        """
+        for i, sentence in enumerate(self.document):
+            gold = sentence[POS]
+            pred = self.get_labels()
+            acc.correct += len([1 for g, p in zip(gold, pred) if g == p])
+            acc.total += len(gold)
+
 
 class POSModel(NLPModel):
     def __init__(self, params, **kwargs):

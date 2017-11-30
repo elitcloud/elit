@@ -67,25 +67,6 @@ class NLPModel(gluon.Block, metaclass=abc.ABCMeta):
         """
         return
 
-    @abc.abstractmethod
-    def set_labels(self, state):
-        """
-        Sets the string labels to each sentence using the predicted output.
-        :param state: the input state.
-        :type state: elit.nlp.NLPState
-        """
-        pass
-
-    def trim_output(self, state):
-        """
-        Trims the output of the state with respect to the size of the label map.
-        :param state: the input state.
-        :type state: elit.nlp.NLPState
-        """
-        num_class = len(self.label_map)
-
-        if state.output and num_class < len(state.output[0]):
-            state.output = [[o[:num_class] for o in output] for output in state.output]
 
 
 X_FST = np.array([1, 0]).astype('float32')  # the first word
