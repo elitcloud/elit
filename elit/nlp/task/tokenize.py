@@ -18,7 +18,9 @@ import codecs
 import os
 import re
 
+from elit.nlp.structure import TOKEN, OFFSET
 from elit.util.string import *
+from elit.util.string import is_right_bracket, is_final_mark
 
 __author__ = 'Jinho D. Choi'
 
@@ -386,3 +388,45 @@ def is_digit(token, i, j=None):
         if j is None: return token[i].isdigit()
         if i < j <= len(token): return token[i:j].isdigit()
     return False
+
+
+class Segmenter(object):
+    @abc.abstractmethod
+    def decode(self, tokens, offsets):
+        """
+        :param tokens: the input tokens.
+        :type tokens: list of str
+        :param offsets: the offsets of the corresponding tokens in the original text.
+        :type offsets: list of (int, int)
+        :return: the list of sentences, where each sentence is a dictionary containing tokens and offsets as keys.
+        """
+        return
+
+
+class EnglishSegmenter(Segmenter):
+    def decode(self, tokens, offsets):
+        def sentence(begin, end):
+            return {TOKEN: tokens[begin:end], OFFSET: offsets[begin:end]}
+
+        sentences = []
+        begin = 0
+        right_quote = True
+
+        for i, token in enumerate(tokens):
+            t = token[0]
+            if t == '"': right_quote = not right_quote
+
+            if begin == i:
+                if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
+                    d = sentences[-1]
+                    d[TOKEN].append(token)
+                    d[OFFSET].append(offsets[i])
+                    begin = i + 1
+            elif all(is_final_mark(c) for c in token):
+                sentences.append(sentence(begin, i + 1))
+                begin = i + 1
+
+        if begin < len(tokens):
+            sentences.append(sentence(begin, len(tokens)))
+
+        return sentences
