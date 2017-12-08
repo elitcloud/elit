@@ -25,6 +25,54 @@ from gensim.models import KeyedVectors
 __author__ = 'Jinho D. Choi'
 
 
+class LabelMap:
+    """
+    LabelMap gives the mapping between class labels and their unique IDs.
+    """
+    def __init__(self):
+        self.index_map = {}
+        self.labels = []
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __str__(self):
+        return str(self.index_map)
+
+    def index(self, label):
+        """
+        :param label: the class label.
+        :type label: str
+        :return: the ID of the class label if exists; otherwise, -1.
+        :rtype: int
+        """
+        return self.index_map[label] if label in self.index_map else -1
+
+    def get(self, index):
+        """
+        :param index: the ID of the class label.
+        :type index: int
+        :return: the index'th class label.
+        :rtype: str
+        """
+        return self.labels[index]
+
+    def add(self, label):
+        """
+        Adds the class label to this map if not already exist.
+        :param label: the class label.
+        :type label: str
+        :return: the ID of the class label.
+        :rtype int
+        """
+        idx = self.index(label)
+        if idx < 0:
+            idx = len(self.labels)
+            self.index_map[label] = idx
+            self.labels.append(label)
+        return idx
+
+
 class VectorSpaceModel(object):
     def __init__(self, model, dim):
         """
@@ -90,15 +138,14 @@ class Word2Vec(VectorSpaceModel):
         :param filepath: the path to the file containing word embeddings.
         :type filepath: str
         """
-        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else \
-                KeyedVectors.load_word2vec_format(filepath, binary=True)
+        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
         dim = model.syn0.shape[1]
         super(Word2Vec, self).__init__(model, dim)
         logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
     def _get(self, word):
-        vocab = self.model.vocab.score()
-        return self.zero if vocab is None else self.model.syn0[vocab.index]
+        vocab = self.model.vocab.get(word, None)
+        return self.model.syn0[vocab.index] if vocab else self.zero
 
 
 class NamedEntityTree:
@@ -122,9 +169,6 @@ class NamedEntityTree:
     #         for j in range(i+1, len(words)):
     #             w = u' '.join(words[i:j])
     #             if w not in
-
-
-
 
 
 class Word2VecTmp:
@@ -169,5 +213,3 @@ class Word2VecTmp:
         :return:
         """
         return np.array([self.doc_to_emb(document, maxlen) for document in documents])
-
-

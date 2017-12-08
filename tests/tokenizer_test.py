@@ -15,7 +15,7 @@
 # ========================================================================
 import unittest
 
-from elit.nlp.component.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.nlp.task.tokenize import SpaceTokenizer, EnglishTokenizer
 
 __author__ = 'Jinho D. Choi'
 

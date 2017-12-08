@@ -13,42 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-
 __author__ = 'Jinho D. Choi'
-
-
-TOKEN = 'token'
-LEMMA = 'lemma'
-OFFSET = 'offset'
-
-POS = 'pos'
-NER = 'ner'
-DEPREL = 'deprel'
-COREF = 'coref'
-SENTIMENT = 'sentiment'
-
-OUT = '-out'
-
-class Sentence(dict):
-    def __init__(self, d=None):
-        """
-        :param d: a dictionary containing fields for the sentence.
-        :type d: dict
-        """
-        super().__init__()
-        if d is not None: self.update(d)
-
-    def __len__(self):
-        return len(self[TOKEN])
-
-
-class Document(list):
-    def __init__(self, l=None):
-        """
-        :param l: a list containing sentences.
-        :type l: list of Sentence
-        """
-        super().__init__()
-        if l is not None: self.extend(l)
-
-

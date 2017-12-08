@@ -44,4 +44,29 @@ class Accuracy(Metric):
         self.total = 0
 
     def get(self):
+        """
+        :rtype: float
+        """
         return 100.0 * self.correct / self.total
+
+
+class F1(Metric):
+    def __init__(self):
+        self.correct = 0
+        self.p_total = 0
+        self.r_total = 0
+
+    def reset(self):
+        self.correct = 0
+        self.p_total = 0
+        self.r_total = 0
+
+    def get(self):
+        """
+        :return: (F1 score, prediction, recall)
+        :rtype: (float, float, float)
+        """
+        p = 100.0 * self.correct / self.p_total
+        r = 100.0 * self.correct / self.r_total
+        f1 = 2 * p * r / (p + r)
+        return f1, p, r

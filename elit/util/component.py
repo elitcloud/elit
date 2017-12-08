@@ -28,7 +28,8 @@ class BILOU:
     O = 'O'     # outside
     U = 'U'     # unit
 
-    def collect(self, tags):
+    @classmethod
+    def collect(cls, tags):
         """
         :param tags: a list of tags encoded by the BILOU format.
         :type tags: list of str
@@ -38,19 +39,19 @@ class BILOU:
         begin = -1
 
         for i, tag in enumerate(tags):
-            c = tag[0]
+            t = tag[0]
 
-            if tag == self.B:
+            if t == cls.B:
                 begin = i
-            elif tag == self.I:
+            elif t == cls.I:
                 pass
-            elif tag == self.L:
-                if begin >= 0: entities[(begin, i+1)] = tags[2:]
+            elif t == cls.L:
+                if begin >= 0: entities[(begin, i+1)] = tag[2:]
                 begin = -1
-            elif tag == self.O:
+            elif t == cls.O:
                 begin = -1
-            elif tag == self.U:
-                entities[(i, i+1)] = tags[2:]
+            elif t == cls.U:
+                entities[(i, i+1)] = tag[2:]
                 begin = -1
 
         return entities
@@ -111,4 +112,136 @@ class MultiLabelSoftmaxCrossEntropyLoss(Loss):
         loss = _apply_weighting(F, loss, self._weight, sample_weight)
         return F.mean(loss, axis=self._batch_axis, exclude=True)
 
+
+
+
+# class ConvBlock(gluon.Block):
+#     def __init__(self):
+#         super(ConvBlock, self).__init__()
+#         with self.name_scope():
+#             self.fc0 = gluon.nn.Dense(5)
+#             self.fc1 = gluon.nn.Dense(5)
+#             self.fc2 = gluon.nn.Dense(5)
+#             self.fcn = [self.fc0, self.fc1, self.fc2]
+#
+#     def forward(self, x):
+#         t = [fc(x) for fc in self.fcn]
+#         x = nd.concat(*t, dim=0)
+#         return x
+#
+# X = nd.array([
+#     [[1,0,0,0,0], [2,0,0,0,0], [3,0,0,0,0], [4,0,0,0,0]],
+#     [[0,1,0,0,0], [0,2,0,0,0], [0,3,0,0,0], [0,4,0,0,0]],
+#     [[0,0,1,0,0], [0,0,2,0,0], [0,0,3,0,0], [0,0,4,0,0]],
+#     [[0,0,0,1,0], [0,0,0,2,0], [0,0,0,3,0], [0,0,0,4,0]],
+#     [[0,0,0,0,1], [0,0,0,0,2], [0,0,0,0,3], [0,0,0,0,4]]
+# ])
+#
+# Y = nd.array([[0,1,2],[0,1,2],[0,1,2],[0,-1,-1],[0,1,-1]])
+#
+# ctx = mx.cpu()
+# net = ConvBlock()
+# net.collect_params().initialize(mx.init.Xavier(magnitude=2.24), ctx=ctx)
+# trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.1})
+#
+# batch_size = 2
+# L = MultiLabelSoftmaxCrossEntropyLoss()
+# data = gluon.data.DataLoader(gluon.data.ArrayDataset(X, Y), batch_size=batch_size)
+#
+# for x, y in data:
+#     x = x.as_in_context(ctx)
+#     y = y.as_in_context(ctx)
+#     y = nd.transpose(y).reshape((-1,1))
+#     with autograd.record():
+#         output = net(x)
+#         print(output)
+#         print(y)
+#         loss = L(output, y)
+#         loss.backward()
+#
+#
+#     trainer.step(x.shape[0])
+#
+#
+# @property
+#     def x(self):
+#         """
+#         If the total number of words in the document is greater than max_len, the rest gets discarded.
+#         :param document: a sentence or a list of sentences, where each sentence is represented by a dictionary.
+#         :type document: Union[list of dict, dict]
+#         :return: a list of feature vectors for the corresponding words across sentences.
+#         :rtype: list of numpy.array -> max_len * (word_vsm.dim + ambi_vsm.dim + num_class)
+#         """
+#         def position(i, size):
+#             return self.fst_word if i == 0 else self.lst_word if i+1 == size else self.mid_word
+#
+#         def aux(sentence):
+#             word_emb = sentence.setdefault(WORD_EMB, self.word_vsm.get_list(sentence[TOKEN]))
+#             ambi_emb = sentence.setdefault(AMBI_EMB, self.ambi_vsm.get_list(sentence[TOKEN]))
+#             pos_scores = sentence.get(POS_OUT, None)
+#
+#             return [np.concatenate((
+#                 position(i, len(sentence)),
+#                 word_emb[i],
+#                 ambi_emb[i],
+#                 self.zero_scores if pos_scores is None else pos_scores[i]))
+#                 for i in range(len(sentence))]
+#
+#         matrix = [v for s in document for v in aux(s)]
+#
+#         # zero padding
+#         if len(matrix) < self.max_len:
+#             matrix.extend([np.zeros(len(matrix[0]))] * (self.max_len - len(matrix)))
+#         elif len(matrix) > self.max_len:
+#             matrix = matrix[:self.max_len]
+#
+#         return np.array(matrix)
+#
+#     def gold_labels(self, document):
+#         labels = np.concatenate([d[POS_GOLD] for d in document])
+#
+#         # zero padding
+#         if len(labels) < self.max_len:
+#             return np.append(labels, np.full(self.max_len - len(labels), -1))
+#         elif len(labels) > self.max_len:
+#             return labels[:self.max_len]
+#         else:
+#             return labels
+#
+#     def set_scores(self, document, output):
+#         """
+#         :param document: a sentence or a list of sentences, where each sentence is represented by a dictionary.
+#         :type document: Union[list of dict, dict]
+#         :param output: the output of the part-of-speech tag predictions.
+#         :param output: numpy.array -> max_len * num_class
+#         """
+#         def index(i):
+#             return (begin + i) * self.num_class
+#
+#         def get(sentence):
+#             return [output[index(i):index(i+1)] for i in range(0, len(sentence))]
+#
+#         begin = 0
+#
+#         if isinstance(document, dict):
+#             document[POS_OUT] = get(document)
+#         else:
+#             for d in document:
+#                 sc = get(d)
+#                 d[POS_OUT] = sc
+#                 begin += sc
+#
+# def trunc_pads(labels, output):
+#     idx = next((i for i, label in enumerate(labels) if label.asscalar() == -1), None)
+#     return (labels[:idx], output[:idx]) if idx else (labels, output)
+
+# def evaluate(dat_path, word_vsm, ambi_vsm, model_path):
+#     word_vsm = FastText(word_vsm)
+#     ambi_vsm = Word2Vec(ambi_vsm) if ambi_vsm else None
+#     comp = POSTagger(mx.gpu(0), word_vsm, ambi_vsm, model_path=model_path)
+#
+#     cols = {TOKEN: 0, POS: 1}
+#     dev_states = read_tsv(dat_path, cols, comp.create_state)
+#     dev_eval = comp.evaluate(dev_states, 512, Accuracy())
+#     print(dev_eval)
 

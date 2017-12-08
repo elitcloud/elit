@@ -19,24 +19,69 @@ import logging
 import time
 from random import shuffle
 
+import numpy as np
 from mxnet import gluon, autograd
 
-from elit.nlp.structure import TOKEN, DEP, Sentence
+from elit.nlp.structure import DEPREL, TOKEN, Sentence, Document
 
 __author__ = 'Jinho D. Choi'
 
 
-def read_tsv(filepath, create_state, cols):
+X_FST = np.array([1, 0]).astype('float32')  # the first word
+X_LST = np.array([0, 1]).astype('float32')  # the last word
+X_ANY = np.array([0, 0]).astype('float32')  # any other word
+
+
+def get_loc_embeddings(document):
+    """
+    :return: the position embedding of the (self.tok_id + window)'th word.
+    :rtype: numpy.array
+    """
+    def aux(sentence):
+        size = len(sentence)
+        return [X_FST if i == 0 else X_LST if i+1 == size else X_ANY for i in range(size)]
+
+    return [aux(s) for s in document], X_ANY
+
+
+def get_embeddings(vsm, document, key=TOKEN):
+    """
+    :param vsm: a vector space model.
+    :type vsm: elit.nlp.lexicon.VectorSpaceModel
+    :param document: a document.
+    :type document: elit.nlp.structure.Document
+    :param key: the key to each sentence.
+    :type key: str
+    :return:
+    """
+    return [vsm.get_list(s[key]) for s in document], vsm.zero
+
+
+def x_extract(tok_id, window, size, emb, zero):
+    """
+    :param window: the context window.
+    :type window: int
+    :param emb: the list of embeddings.
+    :type emb: numpy.array
+    :param zero: the vector for zero-padding.
+    :type zero: numpy.array
+    :return: the (self.tok_id + window)'th embedding if exists; otherwise, the zero-padded embedding.
+    """
+    i = tok_id + window
+    return emb[i] if 0 <= i < size else zero
+
+
+def read_tsv(filepath, cols, create_state=None):
     """
     Reads data from TSV files specified by the filepath.
     :param filepath: the path to a file (e.g., train.tsv) or multiple files (e.g., folder/*.tsv).
     :type filepath: str
+    :param cols: a dictionary containing the column index of each field.
+    :type cols: dict
     :param create_state: a function that takes a document and returns a state.
-    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.NLPState
-    :param kwargs: a ditionary containing the column index of each field.
-    :type kwargs: dict
+    :type create_state: Document -> elit.nlp.component.NLPState
     :return: a list of states containing documents, where each document is a list of sentences.
-    :rtype: list of elit.nlp.NLPState
+    :rtype: list of elit.nlp.component.NLPState
     """
     def create_dict():
         return {k: [] for k in cols.keys()}
@@ -50,7 +95,7 @@ def read_tsv(filepath, create_state, cols):
             l = line.split()
             if l:
                 for k, v in cols.items():
-                    if k == DEP:  # (head ID, deprel)
+                    if k == DEPREL:  # (head ID, deprel)
                         f = (int(l[v[0]]) - 1, l[v[1]])
                     else:
                         f = l[v]
@@ -71,19 +116,22 @@ def read_tsv(filepath, create_state, cols):
     return states
 
 
-def group_states(sentences, create_state, max_len=-1):
+def group_states(sentences, create_state=None, max_len=-1):
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.
     :param sentences: list of sentences.
     :type sentences: list of elit.util.structure.Sentence
     :param create_state: a function that takes a document and returns a state.
-    :type create_state: (list of elit.util.structure.Sentence) -> elit.nlp.NLPState
+    :type create_state: Document -> elit.nlp.component.NLPState
     :param max_len: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
     :type max_len: int
     :return: list of states, where each state roughly consists of the max_len number of words.
     :rtype: list of elit.nlp.NLPState
     """
+    def dummy(doc):
+        return doc
+
     def aux(i):
         ls = d[keys[i]]
         t = ls.pop()
@@ -98,8 +146,9 @@ def group_states(sentences, create_state, max_len=-1):
     if max_len < 0: max_len = keys[-1]
 
     states = []
-    document = []
+    document = Document()
     wc = max_len - aux(-1)
+    if create_state is None: create_state = dummy
 
     while keys:
         idx = bisect.bisect_left(keys, wc)
@@ -107,135 +156,10 @@ def group_states(sentences, create_state, max_len=-1):
             idx -= 1
         if idx < 0:
             states.append(create_state(document))
-            document = []
+            document = Document()
             wc = max_len - aux(-1)
         else:
             wc -= aux(idx)
 
     if document: states.append(create_state(document))
     return states
-
-
-def data_loader(states, batch_size, shuffle=False):
-    """
-    :param states: the list of NLP states.
-    :type states: list of elit.nlp.NLPState
-    :param batch_size: the batch size.
-    :type batch_size: int
-    :param shuffle: if True, shuffle the instances.
-    :type shuffle: bool
-    :return: the data loader containing pairs of feature vectors and their labels.
-    :rtype: gluon.data.DataLoader
-    """
-    xs = nd.array([state.x for state in states])
-    ys = nd.array([state.y for state in states])
-    batch_size = min(batch_size, len(xs))
-    return gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size, shuffle=shuffle), xs, ys
-
-
-def process_online(model, states, batch_size, ctx, trainer=None, loss_func=None, eval_counts=None, reshape_x=None, xs=None, ys=None, reset=True):
-    st = time.time()
-    tmp = list(states)
-
-    while tmp:
-        begin = 0
-        if trainer: shuffle(tmp)
-        batches, txs, tys = data_loader(tmp, batch_size)
-        for x, y in batches:
-            x = x.as_in_context(ctx)
-            y = y.as_in_context(ctx)
-            if reshape_x: x = reshape_x(x)
-
-            if trainer:
-                with autograd.record():
-                    output = model(x)
-                    loss = loss_func(output, y)
-                    loss.backward()
-                trainer.step(x.shape[0])
-            else:
-                output = model(x)
-
-            for i in range(len(y)): tmp[begin+i].process(output[i].asnumpy())
-            begin += len(output)
-
-        tmp = [state for state in tmp if state.has_next]
-        if xs is not None: xs.append(txs)
-        if ys is not None: ys.extend(tys)
-
-    for state in states:
-        if eval_counts: model.eval(state, eval_counts)
-        if reset: state.reset()
-
-    return time.time() - st
-
-
-def train_batch(model, batches, ctx, trainer=None, loss_func=None, reshape_x=None):
-    st = time.time()
-
-    for x, y in batches:
-        x = x.as_in_context(ctx)
-        y = y.as_in_context(ctx)
-        if reshape_x: x = reshape_x(x)
-
-        with autograd.record():
-            output = model(x)
-            loss = loss_func(output, y)
-            loss.backward()
-        trainer.step(x.shape[0])
-
-    return time.time() - st
-
-
-def argparse_train(title):
-
-
-    return parser
-
-
-def reshape_conv2d(x):
-    return x.reshape((0, 1, x.shape[1], x.shape[2]))
-
-
-class LabelMap:
-    """
-    LabelMap gives the mapping between class labels and their unique IDs.
-    """
-    def __init__(self):
-        self.index_map = {}
-        self.labels = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def index(self, label):
-        """
-        :param label: the class label.
-        :type label: str
-        :return: the ID of the class label if exists; otherwise, -1.
-        :rtype: int
-        """
-        return self.index_map[label] if label in self.index_map else -1
-
-    def get(self, index):
-        """
-        :param index: the ID of the class label.
-        :type index: int
-        :return: the index'th class label.
-        :rtype: str
-        """
-        return self.labels[index]
-
-    def add(self, label):
-        """
-        Adds the class label to this map if not already exist.
-        :param label: the class label.
-        :type label: str
-        :return: the ID of the class label.
-        :rtype int
-        """
-        idx = self.index(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
