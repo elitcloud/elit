@@ -197,14 +197,14 @@ class Word2VecTmp:
         """
         def emb(token_index):
             if token_index >= len(document): return self.pad
-            v = self.model.vocab.score()
-            return self.model.syn0[v.index] if v is not None else self.pad
+            vocab = self.model.vocab.get(document[token_index], None)
+            return self.model.syn0[vocab.index] if vocab else self.pad
 
-        # return np.array([emb(i) for i in range(maxlen)])
+        return np.array([emb(i) for i in range(maxlen)])
         # TODO: the following 3 lines should be replaced by the above return statement
-        l = [self.model.syn0[0] for _ in range(maxlen-len(document))]
-        l.extend([emb(i) for i in range(min(maxlen, len(document)))])
-        return np.array(l)
+        # l = [self.model.syn0[0] for _ in range(maxlen-len(document))]
+        # l.extend([emb(i) for i in range(min(maxlen, len(document)))])
+        # return np.array(l)
 
     def docs_to_emb(self, documents, maxlen):
         """
