@@ -149,13 +149,13 @@ class Word2Vec(VectorSpaceModel):
 
 
 class NamedEntityTree:
-    def __init__(self, filenames):
+    def __init__(self, filepath):
         """
         :param filepath: the path to the resource files (e.g., resources/nament/english).
         :type filepath: str
         """
         keys, values = [], []
-        for i, filename in enumerate(sorted(filenames)):
+        for i, filename in enumerate(sorted(filepath)):
             fin = codecs.open(filename, mode='r', encoding='utf-8')
             l = [''+u' '.join(line.split()) for line in fin]
             logging.info('Init: %s (%d)' % (filename, len(l)))
@@ -163,6 +163,39 @@ class NamedEntityTree:
             values.extend([[i]]*len(l))
 
         self.trie = marisa_trie.RecordTrie("h", zip(keys, values))
+
+    def get_list(self, words):
+        """
+        :param words:
+        :return: best entity for each word
+
+        TODO:
+        -convert entity to frequency vector
+        -consider all entities vs just max_entities
+        -if all, normalize?
+        -include word vs phrase
+        """
+        entities = [[] for x in words]
+        #max_entities = [0 for x in words]
+        best_entities = []
+        for i, word in enumerate(words):
+            entity = word
+            components = [i]
+            for j in range(i+1, len(words)):
+                entity += " " + words[j]
+                components.append(j)
+                if entity not in self.trie:
+                    break
+                for component in components:
+                    entities[component].append((j-i, entity))
+                    #max_entities = max(max_entities[component], j-i)
+        for i, word in enumerate(words):
+            entities[i].sort(reverse=True)
+            if not entities[i].empty():
+                best_entities[i] = entities[i][0][1]
+        return best_entities
+
+
 
     # def get_list(self, words):
     #     for i, word in enumerate(words):
