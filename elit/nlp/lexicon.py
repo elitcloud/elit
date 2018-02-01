@@ -154,6 +154,7 @@ class NamedEntityTree:
         :param filepath: the path to the resource files (e.g., resources/nament/english).
         :type filepath: str
         """
+        self.num_labels = len(filepath)
         keys, values = [], []
         for i, filename in enumerate(sorted(filepath)):
             fin = codecs.open(filename, mode='r', encoding='utf-8')
@@ -176,32 +177,61 @@ class NamedEntityTree:
         -include word vs phrase
         """
         entities = [[] for x in words]
-        #max_entities = [0 for x in words]
+        # max_entities = [0 for x in words]
         best_entities = []
         for i, word in enumerate(words):
             entity = word
             components = [i]
-            for j in range(i+1, len(words)):
+            for j in range(i + 1, len(words)):
                 entity += " " + words[j]
                 components.append(j)
                 if entity not in self.trie:
                     break
                 for component in components:
-                    entities[component].append((j-i, entity))
-                    #max_entities = max(max_entities[component], j-i)
+                    entities[component].append((j - i, entity))  # self.trie[entity]
+                    # max_entities = max(max_entities[component], j-i)
         for i, word in enumerate(words):
             entities[i].sort(reverse=True)
             if not entities[i].empty():
                 best_entities[i] = entities[i][0][1]
+
         return best_entities
 
+    def get_entity_vectors(self, words):
+        """
+        :param words
+        :return: entity vector for each word
 
+        """
+        entity_vectors = [np.zeros(self.num_labels) for _ in words]
+
+        for i, word in enumerate(words):
+            entity = u''
+            components = []
+            for j in range(i, len(words)):
+                entity += u' ' + words[j]
+                components.append(j)
+                if entity not in self.trie:
+                    break
+                for label in self.trie[entity]:
+                    for component in components:
+                        entity_vectors[component][label] += (j+1-i)*(j+1-i)  # = 1
+        for vector in entity_vectors:
+            normalize(vector)
+        return entity_vectors
 
     # def get_list(self, words):
     #     for i, word in enumerate(words):
     #         for j in range(i+1, len(words)):
     #             w = u' '.join(words[i:j])
     #             if w not in
+
+
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0:
+        return v
+    return v / norm
 
 
 class Word2VecTmp:

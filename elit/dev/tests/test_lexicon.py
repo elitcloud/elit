@@ -16,7 +16,7 @@
 
 
 # from elit.dev.template.lexicon import NLPLexiconMapper
-# # from fasttext.model import WordVectorModel
+# from fasttext.model import WordVectorModel
 # from gensim.models.keyedvectors import KeyedVectors
 #
 # import unittest
@@ -24,13 +24,12 @@
 #
 # __author__ = 'Jinho D. Choi'
 #
-# class LexiconTest(unittest.TestCase):
 #
+# class LexiconTest(unittest.TestCase):
 #     def setUp(self):
 #         self.w2v_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
 #                                      './../elit/resources/sample/sample.w2v.bin')
 #         self.word_embeddings = KeyedVectors.load_word2vec_format(self.w2v_file, binary=True)
-#
 #
 #     def test_lexicon(self):
 #         lexicon = NLPLexiconMapper(self.word_embeddings)
