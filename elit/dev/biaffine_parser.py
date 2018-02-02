@@ -33,6 +33,9 @@ class BiaffineParser(object):
                  mlp_rel_size,
                  dropout_mlp,
                  learning_rate,
+                 beta_1,
+                 beta_2,
+                 epsilon,
                  model_output,
                  debug=False
                  ):
@@ -53,6 +56,9 @@ class BiaffineParser(object):
         :param mlp_rel_size: MLP_rel size
         :param dropout_mlp: word dropout of inputs to MLP
         :param learning_rate: float
+        :param beta_1: Adam optimizer beta_1
+        :param beta_2: Adam optimizer beta_2
+        :param epsilon: Adam optimizer epsilon
         :param model_output: where to save model
         :param debug: debug mode, will use some simple tricks to save time
         """
@@ -172,7 +178,7 @@ class BiaffineParser(object):
             rel_loss = tf.losses.sparse_softmax_cross_entropy(rel_targets, select_rel_logits, mask)
 
         self.loss = tf.reduce_mean(arc_loss + rel_loss)
-        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate, beta_1, beta_2, epsilon)
         self.train_op = optimizer.minimize(self.loss)
 
         # accuracy
@@ -537,9 +543,8 @@ if __name__ == '__main__':
         pickle.dump(vocab, open(config.save_vocab_path, 'wb'))
     parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb, config.lstm_layers,
                             config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
-                            config.mlp_arc_size,
-                            config.mlp_rel_size, config.dropout_mlp, config.learning_rate, config.save_model_path,
-                            config.debug)
+                            config.mlp_arc_size, config.mlp_rel_size, config.dropout_mlp, config.learning_rate,
+                            config.beta_1, config.beta_2, config.epsilon, config.save_model_path, config.debug)
     train = DataSet(config.train_file, config.num_buckets_train, vocab)
     dev = DataSet(config.dev_file, config.num_buckets_valid, vocab)
     parser.train(train, dev, config.train_batch_size, config.test_batch_size, config.train_iters)
