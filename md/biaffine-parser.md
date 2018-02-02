@@ -85,9 +85,8 @@ Use the information inside the config file:
 ```
 parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb, config.lstm_layers,
                         config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
-                        config.mlp_arc_size,
-                        config.mlp_rel_size, config.dropout_mlp, config.learning_rate, config.save_model_path,
-                        config.debug)
+                        config.mlp_arc_size, config.mlp_rel_size, config.dropout_mlp, config.learning_rate,
+                        config.beta_1, config.beta_2, config.epsilon, config.save_model_path, config.debug)
 ```
 
 ### 4.Parse raw sentence
