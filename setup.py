@@ -115,8 +115,8 @@ def setup_package():
 
     metadata = dict(
         name='elit',
-        url='https://github.com/emorynlp/elit',
-        download_url='https://github.com/emorynlp/elit/tree/master',
+        url='https://github.com/elitcloud/elit',
+        download_url='https://github.com/elitcloud/elit/tree/master',
         author='Jinho D. Choi',
         author_email='choi@mathcs.emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
