@@ -165,3 +165,6 @@ tmp/
 resources/*
 
 .python-version
+
+data/
+result/
