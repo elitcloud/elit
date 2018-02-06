@@ -16,7 +16,7 @@
 import abc
 
 from elit.util.string_util import is_right_bracket, is_final_mark
-from elit.util.structure import KEY_TOKENS, KEY_OFFSETS
+from elit.util.structure import TOKENS, OFFSETS
 
 __author__ = 'Jinho D. Choi'
 
@@ -37,7 +37,7 @@ class Segmenter(object):
 class EnglishSegmenter(Segmenter):
     def decode(self, tokens, offsets):
         def sentence(begin, end):
-            return {KEY_TOKENS: tokens[begin:end], KEY_OFFSETS: offsets[begin:end]}
+            return {TOKENS: tokens[begin:end], OFFSETS: offsets[begin:end]}
 
         sentences = []
         begin = 0
@@ -50,8 +50,8 @@ class EnglishSegmenter(Segmenter):
             if begin == i:
                 if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
                     d = sentences[-1]
-                    d[KEY_TOKENS].append(token)
-                    d[KEY_OFFSETS].append(offsets[i])
+                    d[TOKENS].append(token)
+                    d[OFFSETS].append(offsets[i])
                     begin = i + 1
             elif all(is_final_mark(c) for c in token):
                 sentences.append(sentence(begin, i + 1))

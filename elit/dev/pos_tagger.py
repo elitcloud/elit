@@ -163,7 +163,7 @@ class POSModel(NLPModel):
         concat = mx.sym.Concat(*pooled, dim=1)
 
         h_pool = mx.sym.Reshape(name="concat_pooling", data=concat, shape=(batch_size, 2 * ngram_filter * len(ngram_filter_list)))
-      # h_pool = mx.sym.Dropout(data=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
+      # h_pool = mx.sym.Dropout(x=h_pool, p=dropouts[0]) if dropouts[0] > 0.0 else h_pool
 
         # block gradient
         h_pool = mx.sym.BlockGrad(h_pool, name="concat_pooling")
@@ -184,7 +184,7 @@ class POSModel(NLPModel):
 def parse_args():
     parser = argparse.ArgumentParser('Train a part-of-speech tagger')
 
-    # data
+    # x
     args= argparse_data(parser, tsv=lambda t: TSVReader(word_index=t[0], pos_index=t[1]))
     args.add_argument('--log', type=str, metavar='filepath', help='path to the logging file')
 
@@ -210,7 +210,7 @@ def main():
     if args.log: logging.basicConfig(filename=args.log, format='%(message)s', level=logging.INFO)
     else: logging.basicConfig(format='%(message)s', level=logging.INFO)
 
-    # data
+    # x
     trn_graphs = read_graphs(args.tsv, args.trn_data)
     dev_graphs = read_graphs(args.tsv, args.dev_data)
 

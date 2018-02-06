@@ -126,7 +126,7 @@ class NLPToken:
         """
         :param node: the parent of this node.
         :type node: NLPToken
-        :return: the dependency label between this node and the PARENT node
+        :return: the dependency y between this node and the PARENT node
                 if exists; otherwise, None.
         :rtype: str
         """

@@ -14,21 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
-from elit.component.tokenize import EnglishTokenizer
-from elit.util.lexicon import Word2Vec
-from elit.util.structure import KEY_TOKENS
+from elit.core.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
+from elit.core.tokenize import EnglishTokenizer
+from elit.util.lexicon import Word2VecTmp
+from elit.util.structure import TOKENS
 
 __author__ = 'Bonggun Shin, Jinho D. Choi'
 
 
 def run(analyzer, emb_file, model_file, text):
-    emb_model = Word2Vec(emb_file)
+    emb_model = Word2VecTmp(emb_file)
     sentiment = analyzer(emb_model, model_file)
     tokenizer = EnglishTokenizer('../../../resources/tokenize')
 
     tokens, offsets = tokenizer.decode(text)[:2]
-    sentences = [d[KEY_TOKENS] for d in tokenizer.segment(tokens, offsets)]
+    sentences = [d[TOKENS] for d in tokenizer.segment(tokens, offsets)]
     y, att = sentiment.decode(sentences, att=True)[:2]
 
     print(y)

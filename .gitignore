@@ -166,5 +166,7 @@ resources/*
 
 .python-version
 
-data/
-result/
+# Ignore large files.
+data/*
+result/*
+elit/dat/*

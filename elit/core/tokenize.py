@@ -356,7 +356,7 @@ class EnglishTokenizer(Tokenizer):
 
 
 def read_word_set(filename):
-    fin = codecs.open(filename, mode='r', encoding='utf - 8')
+    fin = codecs.open(filename, mode='r', encoding='utf-8')
     s = set(line.strip() for line in fin)
     print('Init: % s(keys= % d)' % (filename, len(s)))
     return s
