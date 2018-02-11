@@ -24,19 +24,21 @@ __author__ = 'Jose Coves'
 
 class EntityVectorTest(unittest.TestCase):
     def setUp(self):
-        self.text = "Lincoln lives in New York City NY with Jinho Choi a professor in Emory University but wants to see the Lincoln Bridge".split(' ')
+        self.text = "Donald Trump New York City NY Michael Jordan Emory University 07 stanley cup final African American".split(' ')
         self.filepath = "/mnt/ainos-research/emorynlp/lexica/named_entity_gazetteers"
         self.names = []
 
     def test_entity_vectors(self):
         entityTree = NamedEntityTree(self.filepath)
-        for i, filename in enumerate(sorted(self.filepath)):
+        for i, filename in enumerate(sorted(os.listdir(self.filepath))):
             self.names.append(filename)
         vectors = entityTree.get_entity_vectors(self.text)
+        print('text = ', self.text)
         for i, vector in enumerate(vectors):
             print(self.text[i])
             for j, val in enumerate(vector):
-                print(self.names[i], "=", val)
+                if val > 0.0:
+                    print(self.names[j], "=", val)
         print("done")
 
 if __name__ == '__main__':

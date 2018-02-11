@@ -17,6 +17,7 @@ import abc
 import codecs
 import logging
 import marisa_trie
+import os
 
 import numpy as np
 from fasttext import fasttext
@@ -154,11 +155,16 @@ class NamedEntityTree:
         :param filepath: the path to the resource files (e.g., resources/nament/english).
         :type filepath: str
         """
-        self.num_labels = len(filepath)
+        self.num_labels = len(os.listdir(filepath))
         keys, values = [], []
-        for i, filename in enumerate(sorted(filepath)):
-            fin = codecs.open(filename, mode='r', encoding='utf-8')
-            l = [''+u' '.join(line.split()) for line in fin]
+        for i, filename in enumerate(sorted(os.listdir(filepath))):
+            if filename == 'known_places.txt': # TODO: fix file
+                continue
+            print('path = ', os.path.join(filepath, filename))
+            with open(os.path.join(filepath, filename)) as file:
+                l = [line.strip('\n') for line in file.readlines()]
+            # fin = codecs.open(os.path.join(filepath, filename), mode='r', encoding='utf-8')
+            # l = [''+u' '.join(line.split()) for line in fin]
             logging.info('Init: %s (%d)' % (filename, len(l)))
             keys.extend(l)
             values.extend([[i]]*len(l))
@@ -206,18 +212,22 @@ class NamedEntityTree:
         entity_vectors = [np.zeros(self.num_labels) for _ in words]
 
         for i, word in enumerate(words):
-            entity = u''
+            entity = ''
             components = []
             for j in range(i, len(words)):
-                entity += u' ' + words[j]
+                if j > i:
+                    entity += ' '
+                entity += words[j]
                 components.append(j)
                 if entity not in self.trie:
                     break
                 for label in self.trie[entity]:
+                    print('entitiy = ', entity)
                     for component in components:
                         entity_vectors[component][label] += (j+1-i)*(j+1-i)  # = 1
-        for vector in entity_vectors:
-            normalize(vector)
+
+        entity_vectors = [normalize(vector) for vector in entity_vectors]
+
         return entity_vectors
 
     # def get_list(self, words):
@@ -228,7 +238,7 @@ class NamedEntityTree:
 
 
 def normalize(v):
-    norm = np.linalg.norm(v)
+    norm = sum(v)
     if norm == 0:
         return v
     return v / norm
