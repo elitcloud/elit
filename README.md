@@ -1,4 +1,5 @@
-# The ELIT Project [![Build Status](https://travis-ci.org/elitcloud/elit.svg?branch=master)](https://travis-ci.org/elitcloud/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit)
+# The ELIT Project [![Build Status](https://travis-ci.org/elitcloud/elit.svg?branch=master)](https://travis-ci.org/elitcloud/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit) [![Documentation Status](https://readthedocs.org/projects/elit/badge/?version=latest)](http://elit.readthedocs.io/en/latest/?badge=latest)
+
 
 The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**anguage and **I**nformation **T**echnology (ELIT) project provides:
 
