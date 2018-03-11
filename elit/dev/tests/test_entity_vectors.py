@@ -32,14 +32,15 @@ class EntityVectorTest(unittest.TestCase):
         entityTree = NamedEntityTree(self.filepath)
         for i, filename in enumerate(sorted(os.listdir(self.filepath))):
             self.names.append(filename)
-        vectors = entityTree.get_entity_vectors(self.text)
+        # vectors = entityTree.get_entity_vectors(self.text)
+        vectors = entityTree.get_expanded_entity_vectors(self.text)
         print('text = ', self.text)
         for i, vector in enumerate(vectors):
-            print(self.text[i])
+            print('\n', self.text[i], ":")
             for j, val in enumerate(vector):
                 if val > 0.0:
-                    print(self.names[j], "=", val)
-        print("done")
+                    print(self.names[j] if len(vector) == len(os.listdir(self.filepath)) else self.names[int(j/3)], "=", val)
+        print("\n__Done__")
 
 if __name__ == '__main__':
     unittest.main()

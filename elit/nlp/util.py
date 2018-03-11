@@ -32,7 +32,7 @@ X_LST = np.array([0, 1]).astype('float32')  # the last word
 X_ANY = np.array([0, 0]).astype('float32')  # any other word
 
 
-def get_loc_embeddings(document):
+def get_loc_embeddings(document, key=TOKEN):
     """
     :return: the position embedding of the (self.tok_id + window)'th word.
     :rtype: numpy.array

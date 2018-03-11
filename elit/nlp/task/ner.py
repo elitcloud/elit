@@ -25,9 +25,9 @@ import time
 from mxnet import gluon, nd
 
 from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln
-from elit.nlp.lexicon import LabelMap, FastText, Word2Vec
+from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec
 from elit.nlp.metric import F1
-from elit.nlp.structure import TOKEN, NER
+from elit.nlp.structure import TOKEN, NER, POS
 from elit.nlp.util import x_extract, get_embeddings, get_loc_embeddings, X_ANY, read_tsv
 from elit.util.component import BILOU
 
@@ -46,7 +46,23 @@ class NERState(ForwardState):
         super().__init__(document, params.label_map, params.zero_output, NER)
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
+        # self.netree = NamedEntityTree(params.gaze_vsm)
+        # self.ne_vectors = [params.gaze_vsm.get_entity_vectors(sentence) for sentence in document]
+
         if params.name_vsm: self.embs.append(get_embeddings(params.name_vsm, document))
+        if params.gaze_vsm: self.embs.append(get_embeddings(params.gaze_vsm, document))
+        #print('label map', params.label_map)
+
+        #print('s[TOKEN] = ', document[0][TOKEN])
+        #print('s[NER] = ', document[0][NER])
+        #print('s[POS] = ', document[0][POS])
+        if params.p2v_vsm: self.embs.append(get_embeddings(params.p2v_vsm, document, POS))
+
+        # print('type of word', type(get_embeddings(params.word_vsm, document)[0][0][0]))
+        # print('type of gaze', type(get_embeddings(params.gaze_vsm, document)[0][0][0]))
+
+        # embeddings = [params.gaze_vsm.get_entity_vectors(sentence) for sentence in document]
+        # if params.gaze_vsm: self.embs.append(embeddings)
         self.embs.append((self.output, self.zero_output))
 
     def eval(self, metric):
@@ -88,8 +104,10 @@ class NERModel(CNN2DModel):
         loc_dim = len(X_ANY)
         word_dim = params.word_vsm.dim
         name_dim = params.name_vsm.dim if params.name_vsm else 0
+        gaze_dim = params.gaze_vsm.dim if params.gaze_vsm else 0
+        p2v_dim = params.p2v_vsm.dim if params.p2v_vsm else 0
 
-        input_col = loc_dim + word_dim + name_dim + params.num_class
+        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + params.num_class
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
@@ -112,7 +130,7 @@ class NERModelLR(gluon.Block):
         return x
 
 class NERecognizer(NLPComponent):
-    def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
+    def __init__(self, ctx, word_vsm, name_vsm=None, gaze_vsm=None, p2v_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
                  ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
         """
         :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -121,6 +139,7 @@ class NERecognizer(NLPComponent):
         :type word_vsm: elit.nlp.lexicon.VectorSpaceModel
         :param name_vsm: the vector space model for ambiguity classes.
         :type name_vsm: elit.nlp.lexicon.VectorSpaceModel
+        :param gaze_vsm: #TODO
         :param num_class: the total number of classes to predict.
         :type num_class: int
         :param windows: the contextual windows for feature extraction.
@@ -143,7 +162,7 @@ class NERecognizer(NLPComponent):
             dropout = pickle.load(f)
             f.close()
 
-        self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
+        self.params = self.create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, num_class, windows, ngram_filters, dropout, label_map)
         super().__init__(ctx, NERModel(self.params))
 
         if model_path:
@@ -167,10 +186,12 @@ class NERecognizer(NLPComponent):
         return NERState(document, self.params)
 
     @staticmethod
-    def create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map):
+    def create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, num_class, windows, ngram_filters, dropout, label_map):
         return SimpleNamespace(
             word_vsm=word_vsm,
             name_vsm=name_vsm,
+            gaze_vsm=gaze_vsm,
+            p2v_vsm=p2v_vsm,
             label_map=label_map or LabelMap(),
             num_class=num_class,
             windows=windows,
@@ -196,11 +217,15 @@ def train_args():
     parser.add_argument('-d', '--dev_path', type=str, metavar='filepath', help='path to the development data (input)')
     parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None, help='path to the model data (output)')
     parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0, help='the column index of tokens in TSV')
-    parser.add_argument('-vp', '--tsv_ner', type=int, metavar='int', default=4, help='the column index of pos-tags in TSV')
+    parser.add_argument('-vp', '--tsv_pos', type=int, metavar='int', default=2, help='the column index of pos-tags in TSV')
+    parser.add_argument('-vn', '--tsv_ner', type=int, metavar='int', default=4, help='the column index of ner-label in TSV')
 
     # lexicon
     parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath', help='vector space model for word embeddings')
     parser.add_argument('-nv', '--name_vsm', type=str, metavar='filepath', default=None, help='vector space model for named entity gazetteers')
+    parser.add_argument('-gd', '--gaze_vsm', type=str, metavar='filepath', default=None, help='directory for entity gazetteers')
+    parser.add_argument('-pv', '--p2v_vsm', type=str, metavar='dim', default=None, help='dimension for pos2vec')
+
 
     # configuration
     parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50, help='number of classes')
@@ -209,7 +234,7 @@ def train_args():
     parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2, help='dropout')
 
     parser.add_argument('-cx', '--ctx', type=context, metavar='[cg]\d', default=0, help='device context')
-    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50, help='number of epochs')
+    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=100, help='number of epochs')
     parser.add_argument('-tb', '--trn_batch', type=int, metavar='int', default=64, help='batch size for training')
     parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=1024, help='batch size for evaluation')
     parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01, help='learning rate')
@@ -237,10 +262,12 @@ def train():
     args = train_args()
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
-    comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
+    gaze_vsm = NamedEntityTree(args.gaze_vsm) if args.gaze_vsm else None
+    p2v_vsm = Pos2Vec(int(args.p2v_vsm)) if args.p2v_vsm else None
+    comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
 
     # states
-    cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner}
+    cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner, POS: args.tsv_pos}
     trn_states = read_tsv(args.trn_path, cols, comp.create_state)
     dev_states = read_tsv(args.dev_path, cols, comp.create_state)
 
