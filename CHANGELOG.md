@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+### Changed
+### Removed
+
+## [0.1.15]
+### Added
 - Deep Biaffine Attention Neural Dependency Paser by @hankcs
 ### Changed
 - NER
@@ -21,4 +26,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - It is first released.
 
 
-[Unreleased]: https://github.com/elitcloud/elit/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/elitcloud/elit/compare/v0.1.5...HEAD
