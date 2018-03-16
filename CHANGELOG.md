@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - NER
 - NLPState and NLPModel
-- lexicon
+- Lexicon
+    - Add marisa_trie into dependency
 - Configuration: sentiment model is not loaded by default
 ### Removed
 

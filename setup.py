@@ -131,6 +131,7 @@ def setup_package():
             'keras',
             'tensorflow',
             'ujson',
+            'marisa_trie'
         ],
         tests_require=[
             'pytest',
