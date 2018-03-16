@@ -360,7 +360,7 @@ class EnglishTokenizer(Tokenizer):
 def read_word_set(filename):
     fin = codecs.open(filename, mode='r', encoding='utf-8')
     s = set(line.strip() for line in fin)
-    print('Init: % s(keys= % d)' % (filename, len(s)))
+    print('Init: %s(keys=%d)' % (filename, len(s)))
     return s
 
 
@@ -374,7 +374,7 @@ def read_concat_word_dict(filename):
 
     fin = codecs.open(filename, mode='r', encoding='utf-8')
     d = dict(key_value(line.strip()) for line in fin)
-    print('Init: %s (keys = %d)' % (filename, len(d)))
+    print('Init: %s(keys=%d)' % (filename, len(d)))
     return d
 
 

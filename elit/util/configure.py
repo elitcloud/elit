@@ -36,7 +36,7 @@ class Configuration:
                  input_format=INPUT_FORMAT_RAW,
                  tokenize=True,
                  segment=True,
-                 sentiment=(SENTIMENT_MOVIE, SENTIMENT_TWITTER)):
+                 sentiment=()):
         self.language = language
         self.input_format = input_format
         self.tokenize = tokenize
