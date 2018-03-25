@@ -19,13 +19,14 @@ import random
 from types import SimpleNamespace
 
 import pickle
+import os
 import numpy as np
 import mxnet as mx
 import time
 from mxnet import gluon, nd
 
 from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln
-from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec
+from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec, Cluster2Vec
 from elit.nlp.metric import F1
 from elit.nlp.structure import TOKEN, NER, POS
 from elit.nlp.util import x_extract, get_embeddings, get_loc_embeddings, X_ANY, read_tsv
@@ -46,24 +47,14 @@ class NERState(ForwardState):
         super().__init__(document, params.label_map, params.zero_output, NER)
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
-        # self.netree = NamedEntityTree(params.gaze_vsm)
-        # self.ne_vectors = [params.gaze_vsm.get_entity_vectors(sentence) for sentence in document]
 
         if params.name_vsm: self.embs.append(get_embeddings(params.name_vsm, document))
         if params.gaze_vsm: self.embs.append(get_embeddings(params.gaze_vsm, document))
-        #print('label map', params.label_map)
-
-        #print('s[TOKEN] = ', document[0][TOKEN])
-        #print('s[NER] = ', document[0][NER])
-        #print('s[POS] = ', document[0][POS])
         if params.p2v_vsm: self.embs.append(get_embeddings(params.p2v_vsm, document, POS))
+        if params.c2v_vsm: self.embs.append(get_embeddings(params.c2v_vsm, document))
 
-        # print('type of word', type(get_embeddings(params.word_vsm, document)[0][0][0]))
-        # print('type of gaze', type(get_embeddings(params.gaze_vsm, document)[0][0][0]))
-
-        # embeddings = [params.gaze_vsm.get_entity_vectors(sentence) for sentence in document]
-        # if params.gaze_vsm: self.embs.append(embeddings)
-        self.embs.append((self.output, self.zero_output))
+        # self.output = [[self.zero_output] * len(s) for s in document]  # null previous prediction
+        self.embs.append((self.output, self.zero_output))  # add previous prediction
 
     def eval(self, metric):
         """
@@ -106,8 +97,9 @@ class NERModel(CNN2DModel):
         name_dim = params.name_vsm.dim if params.name_vsm else 0
         gaze_dim = params.gaze_vsm.dim if params.gaze_vsm else 0
         p2v_dim = params.p2v_vsm.dim if params.p2v_vsm else 0
+        c2v_dim = params.c2v_vsm.dim if params.c2v_vsm else 0
 
-        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + params.num_class
+        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + c2v_dim + params.num_class
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
@@ -130,7 +122,7 @@ class NERModelLR(gluon.Block):
         return x
 
 class NERecognizer(NLPComponent):
-    def __init__(self, ctx, word_vsm, name_vsm=None, gaze_vsm=None, p2v_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
+    def __init__(self, ctx, word_vsm, name_vsm=None, gaze_vsm=None, p2v_vsm=None, c2v_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
                  ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
         """
         :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -153,8 +145,9 @@ class NERecognizer(NLPComponent):
         :param model_path: if not None, this component is initialized by objects saved in the model_path.
         :type model_path: str
         """
-        if model_path:
+        if model_path and os.path.isfile(pkl(model_path)):
             f = open(pkl(model_path), 'rb')
+            # f = open(model_path, 'rb')
             label_map = pickle.load(f)
             num_class = pickle.load(f)
             windows = pickle.load(f)
@@ -162,12 +155,14 @@ class NERecognizer(NLPComponent):
             dropout = pickle.load(f)
             f.close()
 
-        self.params = self.create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, num_class, windows, ngram_filters, dropout, label_map)
+        self.params = self.create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, num_class, windows, ngram_filters, dropout, label_map)
         super().__init__(ctx, NERModel(self.params))
 
-        if model_path:
+        if model_path and os.path.isfile(gln(model_path)):
             self.model.load_params(gln(model_path), ctx=ctx)
+            logging.info('Load model = %s' % model_path)
         else:
+            # print('no load:', model_path)
             ini = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
             self.model.collect_params().initialize(ini, ctx=ctx)
 
@@ -186,12 +181,13 @@ class NERecognizer(NLPComponent):
         return NERState(document, self.params)
 
     @staticmethod
-    def create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, num_class, windows, ngram_filters, dropout, label_map):
+    def create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, num_class, windows, ngram_filters, dropout, label_map):
         return SimpleNamespace(
             word_vsm=word_vsm,
             name_vsm=name_vsm,
             gaze_vsm=gaze_vsm,
             p2v_vsm=p2v_vsm,
+            c2v_vsm=c2v_vsm,
             label_map=label_map or LabelMap(),
             num_class=num_class,
             windows=windows,
@@ -215,6 +211,7 @@ def train_args():
     # data
     parser.add_argument('-t', '--trn_path', type=str, metavar='filepath', help='path to the training data (input)')
     parser.add_argument('-d', '--dev_path', type=str, metavar='filepath', help='path to the development data (input)')
+    parser.add_argument('-ts', '--tst_path', type=str, metavar='filepath', default=None, help='path to the test data (input)')
     parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None, help='path to the model data (output)')
     parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0, help='the column index of tokens in TSV')
     parser.add_argument('-vp', '--tsv_pos', type=int, metavar='int', default=2, help='the column index of pos-tags in TSV')
@@ -224,7 +221,9 @@ def train_args():
     parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath', help='vector space model for word embeddings')
     parser.add_argument('-nv', '--name_vsm', type=str, metavar='filepath', default=None, help='vector space model for named entity gazetteers')
     parser.add_argument('-gd', '--gaze_vsm', type=str, metavar='filepath', default=None, help='directory for entity gazetteers')
-    parser.add_argument('-pv', '--p2v_vsm', type=str, metavar='dim', default=None, help='dimension for pos2vec')
+    parser.add_argument('-go', '--gaze_option', type=int, metavar='int', default=1, help='vector representation option for entity gazetteer')
+    parser.add_argument('-pv', '--p2v_vsm', type=int, metavar='int', default=0, help='dimension for pos2vec')
+    parser.add_argument('-cv', '--c2v_vsm', type=str, metavar='filepath', default=None, help='cluster vector embeddings')
 
 
     # configuration
@@ -262,14 +261,16 @@ def train():
     args = train_args()
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
-    gaze_vsm = NamedEntityTree(args.gaze_vsm) if args.gaze_vsm else None
-    p2v_vsm = Pos2Vec(int(args.p2v_vsm)) if args.p2v_vsm else None
-    comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
+    gaze_vsm = NamedEntityTree(args.gaze_vsm, args.gaze_option) if args.gaze_vsm else None
+    p2v_vsm = Pos2Vec(args.p2v_vsm) if args.p2v_vsm > 0 else None
+    c2v_vsm = Cluster2Vec(args.c2v_vsm) if args.c2v_vsm else None
+    comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout, model_path=args.mod_path)
 
     # states
     cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner, POS: args.tsv_pos}
     trn_states = read_tsv(args.trn_path, cols, comp.create_state)
     dev_states = read_tsv(args.dev_path, cols, comp.create_state)
+    tst_states = read_tsv(args.tst_path, cols, comp.create_state) if args.tst_path else None
 
     # optimizer
     loss_func = gluon.loss.SoftmaxCrossEntropyLoss()
@@ -279,24 +280,34 @@ def train():
     best_e, best_eval = -1, -1
     trn_metric = F1()
     dev_metric = F1()
+    tst_metric = F1()
+
+    if 'tst' in args.dev_path and False:
+        dev_metric.reset()
+        dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
+        logging.info('Initial dev-f1 = %5.2f' % dev_eval[0])
 
     for e in range(args.epoch):
         trn_metric.reset()
         dev_metric.reset()
+        tst_metric.reset()
 
         st = time.time()
         trn_eval = comp.train(trn_states, args.trn_batch, trainer, loss_func, trn_metric)
         mt = time.time()
         dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
         et = time.time()
+        tst_eval = comp.evaluate(tst_states, args.dev_batch, tst_metric) if args.tst_path else None
 
         if best_eval < dev_eval[0]:
             best_e, best_eval = e, dev_eval[0]
-            if args.mod_path: comp.save(args.mod_path+'.'+str(e))
+            if args.mod_path:
+                comp.save(args.mod_path+'.'+str(e))
 
         logging.info(
-            '%4d: trn-time: %d, dev-time: %d, trn-f1: %5.2f, dev-f1: %5.2f, num-class: %d, best-acc: %5.2f @%4d' %
-            (e, mt-st, et-mt, trn_eval[0], dev_eval[0], len(comp.params.label_map), best_eval, best_e))
+            '%4d: trn-time: %d, dev-time: %d, trn-f1: %5.2f, dev-f1: %5.2f,%s num-class: %d, best-acc: %5.2f @%4d' %
+            (e, mt-st, et-mt, trn_eval[0], dev_eval[0], (' tst-f1: %5.2f,' % tst_eval[0] if args.tst_path else ''),
+             len(comp.params.label_map), best_eval, best_e))
 
 
 if __name__ == '__main__':

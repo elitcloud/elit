@@ -165,42 +165,60 @@ class Pos2Vec(VectorSpaceModel):
     def _get(self, word, index=0, sentence=None):
         return self.model[self.label_map[word]]
 
-class NamedEntityTree(VectorSpaceModel):
+
+class Cluster2Vec(VectorSpaceModel):
     def __init__(self, filepath):
+        self.vocab = 0
+        self.dim = 0
+        self.read_txt(filepath)
+        super(Cluster2Vec, self).__init__(self.model, self.dim)
+        logging.info('Init: Cluster2Vec (vocab = %d, dim = %d)' % (self.vocab, self.dim))
+
+    def read_txt(self, filepath):
+
+        keys, values = [], []
+        with codecs.open(os.path.join(filepath, filepath), mode='r') as fin:
+            for i,line in enumerate(fin):
+                vector, word, _ = line.split()
+                self.dim = max(self.dim, len(vector))
+                vector = int(vector, base=2)
+                keys.append(u''+word)
+                values.append([vector])
+        self.model = marisa_trie.RecordTrie("l", zip(keys, values))
+        self.vocab = len(self.model)
+
+    def _get(self, word, index=0, sentence=None):
+        return np.array([float(x) for x in bin((self.model[word][0][0]) if word in self.model else 0)[2:].zfill(self.dim)])
+
+
+class NamedEntityTree(VectorSpaceModel):
+    def __init__(self, filepath, option=1, savepath='/home/jcoves/data', savename='gaze.p'):
         """
         :param filepath: the path to the resource files (e.g., resources/nament/english).
         :type filepath: str
         """
-        savepath = '/home/jcoves/data'
-        savename = 'gaze.p'
         self.num_labels = len(os.listdir(filepath))
-        dim = self.num_labels  # * 3
+        if option < 1 or option > 5: option = 1
+        self.option = option
+        dim = self.num_labels * option
         if savename not in os.listdir(savepath):
             keys, values = [], []
             for i, filename in enumerate(sorted(os.listdir(filepath))):
                 # if filename == 'known_places.txt': continue
                 print('path = ', os.path.join(filepath, filename))
-                # with open(os.path.join(filepath, filename)) as file:
-                #    l = [line.strip('\n') for line in file.readlines()]
-                # fin = codecs.open(os.path.join(filepath, filename), mode='r', encoding='latin-1')
                 with codecs.open(os.path.join(filepath, filename), mode='r', encoding='latin-1') as fin:
                     l = ['' + u' '.join(line.split()) for line in fin]
                 logging.info('Init: %s (%d)' % (filename, len(l)))
                 keys.extend(l)
                 values.extend([[i]] * len(l))
-
+            print('gaze list:', keys[:4], values[:4])
             self.trie = marisa_trie.RecordTrie("h", zip(keys, values))
             pickle.dump(self.trie, open(savepath+'/'+savename, 'wb'))
         else:
             self.trie = pickle.load(open(savepath+'/'+savename, 'rb'))
-
         model = self.trie
-        # model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm')
-        # else KeyedVectors.load_word2vec_format(filepath, binary=True)
-        # dim = model.syn0.shape[1]
-
-        super(NamedEntityTree, self).__init__(None, dim)
-        logging.info('Init: %s (NE-vocab = %d, NE-labels = %d)' % (filepath, len(self.trie.keys()), dim))
+        super(NamedEntityTree, self).__init__(model, dim)
+        logging.info('Init: %s (NE-vocab = %d, NE-labels = %d, option = %d)' % (filepath, len(self.trie.keys()), dim, self.option))
 
     def _get(self, word, index=0, sentence=None):
         print('ERROR - should not be called')
@@ -214,12 +232,48 @@ class NamedEntityTree(VectorSpaceModel):
         :return: the list of embeddings for the corresponding words.
         :rtype: list of mxnet.nd.array
         """
-        return self.get_entity_vectors(words) if self.dim == self.num_labels else self.get_expanded_entity_vectors(words)
+        original = False
+        if original:
+            return self.get_entity_vectors(words) if self.option == 1 else self.get_expanded_entity_vectors(words)
+        else:
+            return self.get_vectors(words)
 
-        # return flat list of vectors
-        # return [item for sublist in vectors for item in sublist]
-        # return [vectors[i] for i in range(len(words))]
-        # return [self.get(word) for word in words]
+    def get_vectors(self, words):
+        """
+        :param words
+        :return: entity vector for each word
+        """
+        entity_vectors = [np.zeros(self.dim) for _ in words]
+        for i, word in enumerate(words):
+            entity = ''
+            components = []
+            for j in range(i, len(words)):
+                if j > i:
+                    entity += ' '
+                entity += words[j]
+                components.append(j)
+                if entity not in self.trie:
+                    if not self.trie.keys(entity):  # subtrie is empty
+                        break
+                    else:
+                        continue
+                for label in self.trie[entity]:
+                    for ind in components:
+                        if self.option == 1:
+                            entity_vectors[ind][label] += (j + 1 - i) * (j + 1 - i)
+                        else:
+                            if ind == i:  # first
+                                entity_vectors[ind][self.option * label[0]] += (j + 1 - i) * (j + 1 - i)
+                            elif ind == j:  # last
+                                entity_vectors[ind][self.option * label[0] + 1] += (j + 1 - i) * (j + 1 - i)
+                            if self.option > 2 and i == j:  # unique
+                                entity_vectors[ind][self.option * label[0] + 2] += 1
+                            if self.option > 3 and ind != i and ind != j:  # middle
+                                entity_vectors[ind][self.option * label[0] + 3] += (j + 1 - i) * (j + 1 - i)
+                            if self.option > 4:
+                                entity_vectors[ind][self.option * label[0] + 4] += (j + 1 - i) * (j + 1 - i)
+        entity_vectors = [normalize(vector) for vector in entity_vectors]
+        return entity_vectors
 
     def get_entity_vectors(self, words):
         """
@@ -274,7 +328,7 @@ class NamedEntityTree(VectorSpaceModel):
                         # print(label[0], entity_vectors[ind][label])
                         if ind == i: entity_vectors[ind][3*label[0]] += (j+1-i)*(j+1-i)
                         elif ind == j: entity_vectors[ind][3*label[0] + 1] += (j+1-i)*(j+1-i)
-                        else: entity_vectors[ind][3*label[0] + 2] += (j+1-i)*(j+1-i)
+                        entity_vectors[ind][3*label[0] + 2] += (j+1-i)*(j+1-i)
         entity_vectors = [normalize(vector) for vector in entity_vectors]
         return entity_vectors
 
