@@ -17,12 +17,11 @@ import abc
 import json
 import os
 
-from elit.component.segment import EnglishSegmenter
-from elit.component.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
-from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.nlp.task.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnalyzer
+from elit.nlp.task.tokenize import SpaceTokenizer, EnglishTokenizer, EnglishSegmenter
+from elit.nlp.structure import TOKEN, OFFSET, SENTIMENT
+from elit.nlp.lexicon import Word2VecTmp
 from elit.util.configure import *
-from elit.util.lexicon import Word2Vec
-from elit.util.structure import KEY_TOKENS, KEY_OFFSETS, KEY_SENTIMENT
 
 __author__ = 'Jinho D. Choi'
 
@@ -103,19 +102,19 @@ class Decoder:
         errors = []
 
         # input text
-        input_text = params.get('text', '')
+        input_text = params.score()
 
         if not input_text:
             errors.append('input text is missing')
 
         # input format
-        input_format = params.get('input_format', INPUT_FORMAT_RAW)
+        input_format = params.score()
 
         if not is_valid_input_format(input_format):
             errors.append('invalid input format: '+input_format)
 
         # tokenize
-        tokenize = params.get('tokenize', '1')
+        tokenize = params.score()
 
         if tokenize not in {'0', '1'}:
             errors.append('invalid tokenize: '+tokenize)
@@ -123,7 +122,7 @@ class Decoder:
         tokenize = False if tokenize == '0' else True
 
         # segment
-        segment = params.get('segment', '1')
+        segment = params.score()
 
         if segment not in {'0', '1'}:
             errors.append('invalid segment: '+segment)
@@ -131,7 +130,7 @@ class Decoder:
         segment = False if segment == '0' else True
 
         # sentiment
-        sentiment = list(filter(None, params.get('sentiment', '').split(',')))
+        sentiment = list(filter(None, params.score().split(',')))
 
         if not all(is_valid_sentiment(s) for s in sentiment):
             errors.append('invalid sentiment: '+','.join(sentiment))
@@ -156,13 +155,13 @@ class EnglishDecoder(Decoder):
 
         # init sentiment analyzer: twitter
         if SENTIMENT_TWITTER in config.sentiment:
-            emb_model = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
+            emb_model = Word2VecTmp(os.path.join(resource_dir, 'embedding/w2v-400-twitter.gnsm'))
             model_file = os.path.join(resource_dir, 'sentiment/sentiment-semeval17-400-v2')
             self.sentiment_twit = TwitterSentimentAnalyzer(emb_model, model_file)
 
         # init sentiment analyzer: movie review
         if SENTIMENT_MOVIE in config.sentiment:
-            emb_model = Word2Vec(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
+            emb_model = Word2VecTmp(os.path.join(resource_dir, 'embedding/w2v-400-amazon-review.gnsm'))
             model_file = os.path.join(resource_dir, 'sentiment/sentiment-sst-400-v2')
             self.sentiment_mov = MovieSentimentAnalyzer(emb_model, model_file)
 
@@ -175,7 +174,7 @@ class EnglishDecoder(Decoder):
 
         # segmentation
         sentences = self.segmenter.decode(tokens, offsets) if config.segment \
-                    else [{KEY_TOKENS: tokens, KEY_OFFSETS: offsets}]
+                    else [{TOKEN: tokens, OFFSET: offsets}]
 
         # sentiment analysis
         if config.sentiment:
@@ -198,9 +197,9 @@ class EnglishDecoder(Decoder):
 
         for s in config.sentiment:
             analyzer, att, key = get_analyzer(s)
-            sens = [d[KEY_TOKENS] for d in sentences]
+            sens = [d[TOKEN] for d in sentences]
             y, att = analyzer.decode(sens, att=att)
 
             for i, sentence in enumerate(sentences):
-                sentence[KEY_SENTIMENT + '-' + key] = y[i].tolist()
-                if att: sentence[KEY_SENTIMENT + '-' + key + '-att'] = att[i].tolist()
+                sentence[SENTIMENT + '-' + key] = y[i].tolist()
+                if att: sentence[SENTIMENT + '-' + key + '-att'] = att[i].tolist()

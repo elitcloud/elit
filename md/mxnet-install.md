@@ -1,6 +1,6 @@
-# MXNet Installation on AWS
+# ELIT Installation on AWS
 
-## Launch an Amazon Machine Image (AMI)
+## Launch an EC2 Instance
 
 * Step 1: Ubuntu Server 16.04 LTS (HVM), SSD Volume Type.
 * Step 2: GPU compute, `p2.xlarge`.
@@ -9,46 +9,73 @@
 * Step 5: default.
 * Step 6: default.
 
-## Login to AMI
+## Login to EC2
 
 ```
 ssh -i my_key_pair.pem ubuntu@ec2-xxx-xxx-xxx-xxx.compute-x.amazonaws.com
 ```
 
-## CUDA 8.x
-
-Source: https://developer.nvidia.com/cuda-toolkit
+## Install Packages
 
 ```
-CUDA=cuda-repo-ubuntu1604_8.0.61-1_amd64.deb
-wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/$CUDA
-sudo dpkg -i $CUDA
+# python 3.6
+sudo add-apt-repository ppa:jonathonf/python-3.6
 sudo apt-get update
-sudo apt-get install cuda
+sudo apt-get install python3.6 python3.6-dev python3-setuptools
+
+# libfortran
+sudo apt-get install libgfortran3
+
+# cuda
+https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1604&target_type=deblocal
+
+# virtual environment
+sudo apt-get install python-pip python-dev python-virtualenv
+virtualenv --python=/usr/bin/python3.6 ~/.elit
+source ~/.elit/bin/activate
+
+# mxnet
+pip install --upgrade pip
+pip install mxnet==0.12.1
+pip install mxnet-cu90==0.12.1
+
+# fasttext
+pip install Cython
+pip install fasttext
+
+# gensim
+pip install gensim
+
+# trie
+pip install marisa_trie
+
+# lexicon
+mkdir lexicon
+cd lexicon
+wget https://s3.amazonaws.com/elit-public/resources/embedding/fasttext-200-wikipedia-nytimes-amazon-friends.bin
+wget https://s3.amazonaws.com/elit-public/resources/embedding/ambiguity-50-wikipedia-nytimes.bin
+cd ..
 ```
 
-## cuDNN 5.x
-
-Source: https://developer.nvidia.com/cudnn
+## Jupyter
 
 ```
-CUDNN=cudnn-8.0-linux-x64-v5.1.tgz
-wget https://dl.dropboxusercontent.com/u/15060914/opt/$CUDNN
-tar xvzf $CUDNN
-sudo cp -P cuda/include/cudnn.h /usr/local/cuda/include
-sudo cp -P cuda/lib64/libcudnn* /usr/local/cuda/lib64
-sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
-sudo ldconfig
+http://docs.aws.amazon.com/mxnet/latest/dg/setup-jupyter-configure-server.html
+```
+
+## Add Path
+
+```
+export MXNET_CUDNN_AUTOTUNE_DEFAULT=0
+export PYTHONPATH=$PYTHONPATH:$HOME/elit-dev
 ```
 
 ## Python 3.6
 
 ```
-sudo add-apt-repository ppa:jonathonf/python-3.6
-sudo apt-get update
-sudo apt-get install python3.6
-sudo apt-get install python3.6-dev
-sudo apt-get install python3-setuptools
+
+sudo apt-get install libgfortran3
+sudo apt-get -y install python3-pip
 ```
 
 ## Virtual Environment

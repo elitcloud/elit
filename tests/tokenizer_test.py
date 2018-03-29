@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component.tokenize import SpaceTokenizer, EnglishTokenizer
 import unittest
+
+from elit.nlp.task.tokenize import SpaceTokenizer, EnglishTokenizer
 
 __author__ = 'Jinho D. Choi'
 

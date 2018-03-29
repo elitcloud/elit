@@ -165,3 +165,8 @@ tmp/
 resources/*
 
 .python-version
+
+# Ignore large files.
+data/*
+result/*
+elit/dat/*

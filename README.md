@@ -1,4 +1,5 @@
-# The ELIT Project [![Build Status](https://travis-ci.org/elitcloud/elit.svg?branch=master)](https://travis-ci.org/elitcloud/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit)
+# The ELIT Project [![Build Status](https://travis-ci.org/elitcloud/elit.svg?branch=master)](https://travis-ci.org/elitcloud/elit) [![PyPI version](https://badge.fury.io/py/elit.svg)](https://badge.fury.io/py/elit) [![Documentation Status](https://readthedocs.org/projects/elit/badge/?version=latest)](http://elit.readthedocs.io/en/latest/?badge=latest)
+
 
 The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**anguage and **I**nformation **T**echnology (ELIT) project provides:
 
@@ -7,7 +8,7 @@ The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**
 
 The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.emory.edu) research group. It is under the [Apache 2](http://www.apache.org/licenses/LICENSE-2.0) license. Please join our group to get notifications about updates and send us your feedback.
 
-## Installation 
+## Installation
 
 The machine should satisfy the requirements below before installing elit. If you installed the requirements below, you can skip next part of setup machine environment.  
 
@@ -15,7 +16,7 @@ The machine should satisfy the requirements below before installing elit. If you
 
 ### Setup machine environment
 
-In this section, all the installation command execute 
+In this section, all the installation command execute
 
 #### Ubuntu
 
@@ -30,7 +31,7 @@ On Mac OS, please install [homebrew](https://brew.sh/) first.
 
 ```
 brew update
-brew install python3 
+brew install python3
 ```
 
 
@@ -44,7 +45,7 @@ First of all, update your pip of python 3 to latest version:
 pip3 install --upgrade pip
 ```
 
-Create an virtualenv with python 3. `env` is your environment name, you can change it as you want. However, for simplicity, I use `env` in the rest of part. For much more usage, please check the [document](https://virtualenv.pypa.io/en/stable/userguide/). 
+Create an virtualenv with python 3. `env` is your environment name, you can change it as you want. However, for simplicity, I use `env` in the rest of part. For much more usage, please check the [document](https://virtualenv.pypa.io/en/stable/userguide/).
 
 ```
 virtualenv -p python3 env
@@ -66,7 +67,7 @@ Because of [fasttext](https://github.com/facebookresearch/fastText), cython are 
 
 ```
 pip install cython
-``` 
+```
 
 Now, we can install elit!
 
@@ -74,6 +75,6 @@ Now, we can install elit!
 pip install elit
 ```
 
-If you have any question or want to report bugs, please let us know on [github issues](https://github.com/emorynlp/elit/issues).
+If you have any question or want to report bugs, please let us know on [github issues](https://github.com/elitcloud/elit/issues).
 
-Thank you. 
+Thank you.

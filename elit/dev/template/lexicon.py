@@ -69,7 +69,7 @@ class NLPEmbedding:
         emb = None
 
         if isinstance(self.vsm, KeyedVectors):
-            vocab = self.vsm.vocab.get(f, None)
+            vocab = self.vsm.vocab.score()
             emb = self.zero if vocab is None else self.vsm.syn0[vocab.index]
         elif isinstance(self.vsm, WordVectorModel):
             emb = np.array(self.vsm[f]).astype('float32')

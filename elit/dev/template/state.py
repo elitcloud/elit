@@ -39,7 +39,7 @@ class NLPState(metaclass=ABCMeta):
     @abstractmethod
     def gold(self) -> str:
         """
-        :return: the gold label for the current state if exists; otherwise, None.
+        :return: the gold y for the current state if exists; otherwise, None.
         """
 
     @abstractmethod
@@ -54,9 +54,9 @@ class NLPState(metaclass=ABCMeta):
     @abstractmethod
     def process(self, label: str, scores: np.array=None):
         """
-        :param label: the label given the current state.
-        :param scores: prediction scores.
-          Apply the label to the current state and move onto the next state.
+        :param label: the y given the current state.
+        :param scores: prediction output.
+          Apply the y to the current state and move onto the next state.
         """
 
     @abstractmethod

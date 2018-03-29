@@ -32,8 +32,8 @@ Operating System :: MacOS
 
 MAJOR = 0
 MINOR = 1
-MICRO = 14
-ISRELEASED = False
+MICRO = 15
+ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 EXCLUDE_FROM_PACKAGES = ['']
@@ -115,8 +115,8 @@ def setup_package():
 
     metadata = dict(
         name='elit',
-        url='https://github.com/emorynlp/elit',
-        download_url='https://github.com/emorynlp/elit/tree/master',
+        url='https://github.com/elitcloud/elit',
+        download_url='https://github.com/elitcloud/elit/tree/master',
         author='Jinho D. Choi',
         author_email='choi@mathcs.emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
@@ -131,6 +131,7 @@ def setup_package():
             'keras',
             'tensorflow',
             'ujson',
+            'marisa_trie'
         ],
         tests_require=[
             'pytest',
