@@ -8,10 +8,10 @@ from os.path import isfile
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import rnn
 
-from elit.dev.biaffineparser.common import orthonormal_initializer, bilinear, Tarjan, Vocabulary, CoNLLSentence, eprint, \
-    Config, DataSet
+from elit.dev.biaffineparser.common import bilinear, Tarjan, Vocabulary, CoNLLSentence, birnn, leaky_relu, linear, \
+    DataSet, Config, eprint
+from elit.dev.biaffineparser.common.lstm_cell import LSTMCell
 
 __author__ = 'Han He'
 
@@ -24,11 +24,11 @@ class BiaffineParser(object):
     def __init__(self, vocab,
                  word_dims,
                  tag_dims,
-                 dropout_dim,
+                 mlp_keep_prob,
                  lstm_layers,
                  lstm_hiddens,
-                 dropout_lstm_input,
-                 dropout_lstm_hidden,
+                 ff_keep_prob,
+                 recur_keep_prob,
                  mlp_arc_size,
                  mlp_rel_size,
                  dropout_mlp,
@@ -45,13 +45,13 @@ class BiaffineParser(object):
         :param vocab: vocabulary
         :param word_dims: word embedding dimension
         :param tag_dims: pos-tag embedding dimension
-        :param dropout_dim: word dropout, not implemented yet
+        :param mlp_keep_prob: multi-layer perceptron dropout
         :param lstm_layers: layers of rnn
         :param lstm_hiddens: hidden size of rnn
-        :param dropout_lstm_input: dropout for lstm input
-        :param dropout_lstm_hidden: dropout for lstm hidden, not correctly implemented yet.
-                                    Need to read A Theoretically Grounded Application of Dropout in
-                                    Recurrent Neural Networks
+        :param ff_keep_prob: dropout for feed forward connections
+        :param recur_keep_prob: dropout for recurrent connections.
+                                    Read "A Theoretically Grounded Application of Dropout in
+                                    Recurrent Neural Networks" for more details
         :param mlp_arc_size: MLP_arc size
         :param mlp_rel_size: MLP_rel size
         :param dropout_mlp: word dropout of inputs to MLP
@@ -60,7 +60,7 @@ class BiaffineParser(object):
         :param beta_2: Adam optimizer beta_2
         :param epsilon: Adam optimizer epsilon
         :param model_output: where to save model
-        :param debug: debug mode, will use some simple tricks to save time
+        :param debug: debug mode, will use some simple tricks to save cold start time
         """
         self._vocab = vocab
         self.model_output = model_output
@@ -75,16 +75,12 @@ class BiaffineParser(object):
         self.batch_size = tf.placeholder(dtype=tf.int32, name="batch_size")
         self.max_seq_len = tf.placeholder(dtype=tf.int32, name="seq_len")
         self.is_training = tf.placeholder_with_default(True, [], name='is_training')
-
-        def get_dropout(dropout, name):
-            return tf.cond(self.is_training, lambda: tf.constant(dropout, tf.float32, name=name),
-                           lambda: tf.constant(1.0, tf.float32, name=name))
-
-        self.dropout_lstm_input = get_dropout(dropout_lstm_input, 'dropout_lstm_input')
-        self.dropout_lstm_hidden = get_dropout(dropout_lstm_hidden, 'dropout_lstm_hidden')
-        self.dropout_mlp = get_dropout(dropout_mlp, 'dropout_mlp')
+        self.dropout_lstm_input = self.get_dropout(ff_keep_prob, 'dropout_lstm_input')
+        self.dropout_lstm_hidden = self.get_dropout(recur_keep_prob, 'dropout_lstm_hidden')
+        self.dropout_mlp = self.get_dropout(dropout_mlp, 'dropout_mlp')
 
         mask = tf.greater(self.word_inputs, tf.constant(self._vocab.ROOT, tf.int32))
+        self.sequence_lengths = tf.reduce_sum(tf.cast(mask, tf.int32), axis=1)
 
         with tf.variable_scope('Embedding'):
             def add_embeddings(initial_lookup_table, input_holder, trainable, name):
@@ -98,50 +94,21 @@ class BiaffineParser(object):
             word_embs = add_embeddings(vocab.get_word_embs(word_dims), word_unked, True, 'word_embs')
             pret_word_embs = add_embeddings(vocab.get_pret_embs(), self.word_inputs, False, 'pret_word_embs')
             tag_embs = add_embeddings(vocab.get_tag_embs(tag_dims), self.tag_inputs, True, 'tag_embs')
-            emb_inputs = tf.concat([word_embs + pret_word_embs, tag_embs], axis=-1)
+            embed = tf.concat([word_embs + pret_word_embs, tag_embs], axis=-1)
 
-        with tf.variable_scope('RNN'):
-            def lstm_cell(keep_prob):
-                cell = rnn.LSTMCell(lstm_hiddens, reuse=tf.get_variable_scope().reuse)
-                return rnn.DropoutWrapper(cell, output_keep_prob=keep_prob)
-
-            # The dropout_lstm_input and dropout_lstm_hidden are not correctly implemented, need to
-            # modify bidirectional_dynamic_rnn
-            multi_lstm_cell_fw = tf.contrib.rnn.MultiRNNCell(
-                [lstm_cell(self.dropout_lstm_input)] + [lstm_cell(self.dropout_lstm_hidden)
-                                                        for _ in range(lstm_layers - 1)], state_is_tuple=True)
-            multi_lstm_cell_bw = tf.contrib.rnn.MultiRNNCell(
-                [lstm_cell(self.dropout_lstm_input)] + [lstm_cell(self.dropout_lstm_hidden)
-                                                        for _ in range(lstm_layers - 1)], state_is_tuple=True)
-            # self.debug = tf.shape(emb_inputs)
-            # (batch_size, max_time, output_size)
-            (output_fw, output_bw), _ = tf.nn.bidirectional_dynamic_rnn(multi_lstm_cell_fw, multi_lstm_cell_bw,
-                                                                        inputs=emb_inputs, dtype=tf.float32)
-            # (batch_size, max_time, 2 * output_size)
-            top_recur = tf.concat([output_fw, output_bw], axis=-1, name='top_recur_concat')
-            top_recur = tf.reshape(top_recur, [self.batch_size * self.max_seq_len, 2 * lstm_hiddens],
-                                   name='reshape_top_recur')
+        top_recur = embed
+        for i in range(lstm_layers):
+            with tf.variable_scope('RNN%d' % i):
+                top_recur, _ = self.RNN(top_recur, lstm_hiddens, ff_keep_prob, recur_keep_prob)
 
         with tf.variable_scope('MLP'):
-            mlp_size = mlp_arc_size + mlp_rel_size
-            W = orthonormal_initializer(2 * lstm_hiddens, mlp_size, debug)
-            mlp_dep_W = tf.Variable(W)
-            mlp_head_W = tf.Variable(W)
-            mlp_dep_b = tf.Variable(tf.constant(0., shape=[mlp_size]), dtype=tf.float32)
-            mlp_head_b = tf.Variable(tf.constant(0., shape=[mlp_size]), dtype=tf.float32)
-            arc_W = tf.Variable(tf.constant(0., shape=(mlp_arc_size, mlp_arc_size + 1)), dtype=tf.float32)
-            rel_W = tf.Variable(tf.constant(0., shape=(vocab.rel_size * (mlp_rel_size + 1), mlp_rel_size + 1)),
-                                dtype=tf.float32)
-            dep = tf.nn.relu(tf.matmul(top_recur, mlp_dep_W) + mlp_dep_b)
-            dep = tf.reshape(dep, [self.batch_size, self.max_seq_len, mlp_size], name='reshape_dep')
-            head = tf.nn.relu(tf.matmul(top_recur, mlp_head_W) + mlp_head_b)
-            head = tf.reshape(head, [self.batch_size, self.max_seq_len, mlp_size], name='reshape_head')
-            dep_arc, dep_rel = dep[:, :, :mlp_arc_size], dep[:, :, mlp_arc_size:]
-            head_arc, head_rel = head[:, :, :mlp_arc_size], head[:, :, mlp_arc_size:]
+            dep_mlp, head_mlp = self.MLP(top_recur, mlp_arc_size + mlp_rel_size, keep_prob=mlp_keep_prob, n_splits=2)
+            arc_dep_mlp, rel_dep_mlp = tf.split(dep_mlp, [mlp_arc_size, mlp_rel_size], axis=2)
+            arc_head_mlp, rel_head_mlp = tf.split(head_mlp, [mlp_arc_size, mlp_rel_size], axis=2)
 
         with tf.variable_scope('Arc'):
             # (n x b x d) * (d x 1 x d) * (n x b x d).T -> (n x b x b)
-            arc_logits = self.bilinear(dep_arc, arc_W, head_arc, output_size=1, add_bias1=True, add_bias2=False)
+            arc_logits = self.bilinear(arc_dep_mlp, arc_head_mlp, 1, add_bias2=False)
             # (n x b x b)
             self.arc_probs = tf.nn.softmax(arc_logits)
             # (n x b)
@@ -155,11 +122,9 @@ class BiaffineParser(object):
 
         with tf.variable_scope('Rel'):
             # (n x b x d) * (d x r x d) * (n x b x d).T -> (n x b x r x b)
-            rel_logits = self.bilinear(dep_rel, rel_W, head_rel, output_size=self._vocab.rel_size,
-                                       add_bias1=True, add_bias2=True)
-            # self.debug = rel_logits
+            rel_logits = self.bilinear(rel_dep_mlp, rel_head_mlp, self._vocab.rel_size)
             # (n x b x r x b)
-            self.rel_probs = tf.nn.softmax(rel_logits, dim=2)
+            self.rel_probs = tf.nn.softmax(rel_logits, axis=2)
             # (n x b x b)
             one_hot = tf.one_hot(tf.where(self.is_training, self.arc_targets, arc_preds), self.max_seq_len)
             # (n x b x b) -> (n x b x b x 1)
@@ -204,21 +169,14 @@ class BiaffineParser(object):
         """Closes the session"""
         self.sess.close()
 
-    def bilinear(self, inputs1, weights, inputs2, output_size, add_bias1=True, add_bias2=True):
-        """
-        Perform inputs1 x weights x inputs2, (n x b x d) * (d x r x d) * (n x b x d).T -> (n x b x r x b)
-        where n is batch size, b is max sequence length, (d x r x d) is the shape of tensor weights, r is output size
+    def get_dropout(self, dropout, name):
+        return tf.cond(self.is_training, lambda: tf.constant(dropout, tf.float32, name=name),
+                       lambda: tf.constant(1.0, tf.float32, name=name))
 
-        Adopted from Timothy Dozat https://github.com/tdozat, with some modifications
+    def bilinear(self, inputs1, inputs2, output_size, keep_prob=None, n_splits=1, add_bias1=True, add_bias2=True,
+                 initializer=tf.zeros_initializer()):
+        """"""
 
-        :param inputs1:
-        :param weights:
-        :param inputs2:
-        :param output_size:
-        :param add_bias1:
-        :param add_bias2:
-        :return:
-        """
         if isinstance(inputs1, (list, tuple)):
             n_dims1 = len(inputs1[0].get_shape().as_list())
             inputs1 = tf.concat(inputs1, n_dims1 - 1)
@@ -245,7 +203,11 @@ class BiaffineParser(object):
         inputs1 = tf.cond(self.is_training, lambda: add_noise(inputs1, inputs1_size, n_dims1), lambda: inputs1)
         inputs2 = tf.cond(self.is_training, lambda: add_noise(inputs2, inputs2_size, n_dims2), lambda: inputs2)
 
-        bilin = bilinear(inputs1, weights, inputs2, output_size, add_bias1=add_bias1, add_bias2=add_bias2)
+        bilin = bilinear(inputs1, inputs2, output_size,
+                         n_splits,
+                         add_bias1=add_bias1,
+                         add_bias2=add_bias2,
+                         initializer=initializer)
 
         if output_size == 1:
             if isinstance(bilin, list):
@@ -471,6 +433,18 @@ class BiaffineParser(object):
             b_rel_preds[idx, :] = rel_preds
         return b_arc_preds, b_rel_preds, b_tokens_to_keep
 
+    def parse_batch_to_conll_list(self, word_inputs, tag_inputs):
+        results = []
+        b_arc_preds, b_rel_preds, b_tokens_to_keep = self.parse_batch(word_inputs, tag_inputs)
+        for words, tags, arc_preds, rel_preds, length in zip(word_inputs, tag_inputs, b_arc_preds, b_rel_preds,
+                                                             b_tokens_to_keep.sum(axis=1)):
+            arc_preds, rel_preds = arc_preds[1:length], rel_preds[1:length]
+            conll = CoNLLSentence([self._vocab.id2word(w) for w in words], [self._vocab.id2tag(t) for t in tags],
+                                  arc_preds.tolist(),
+                                  self._vocab.id2rel(rel_preds.tolist()))
+            results.append(conll)
+        return results
+
     def parse(self, sentence):
         """
         Parse raw sentence.
@@ -488,7 +462,29 @@ class BiaffineParser(object):
                               self._vocab.id2rel(rel_preds.tolist()))
         return conll
 
-    def evaluate_batch(self, word_inputs, tag_inputs, arc_targets, rel_targets):
+    def parse_file(self, input_file, output_file):
+        """
+        Parse sentences in file, and outputs trees in CoNLL format to file
+        :param input_file:
+        :param output_file:
+        """
+        sent = []
+        with open(input_file) as src, open(output_file, 'w') as out:
+            for line in src:
+                info = line.strip().split()
+                if info:
+                    assert (len(info) == 10), 'Illegal line: %s' % line
+                    word, tag = info[1], info[3]
+                    sent.append((word, tag))
+                else:
+                    conll = self.parse([(word.lower(), tag) for (word, tag) in sent])
+                    for line, (word, tag) in zip(conll.array, sent):
+                        line[1] = word
+                    out.write(conll.__str__())
+                    out.write('\n\n')
+                    sent = []
+
+    def evaluate_batch(self, word_inputs, tag_inputs, arc_targets, rel_targets, output_file=None):
         """
         Perform evaluation on a single batch.
 
@@ -498,14 +494,25 @@ class BiaffineParser(object):
         :param rel_targets:
         :return: arc_correct, rel_correct, length of sentences in batch
         """
-        arc_preds, rel_preds, tokens_to_keep = self.parse_batch(word_inputs, tag_inputs)
-        arc_equal = np.equal(arc_preds, arc_targets) * tokens_to_keep
+        b_arc_preds, b_rel_preds, b_tokens_to_keep = self.parse_batch(word_inputs, tag_inputs)
+        if output_file:
+            for words, tags, arc_preds, rel_preds, length in zip(word_inputs, tag_inputs, b_arc_preds, b_rel_preds,
+                                                                 b_tokens_to_keep.sum(axis=1)):
+                words, tags, arc_preds, rel_preds = words[1:length], tags[1:length], \
+                                                    arc_preds[1:length], rel_preds[1:length]
+                conll = CoNLLSentence([self._vocab.id2word(w) for w in words], [self._vocab.id2tag(t) for t in tags],
+                                      arc_preds.tolist(),
+                                      self._vocab.id2rel(rel_preds.tolist()))
+                output_file.write(conll.__str__())
+                output_file.write('\n\n')
+
+        arc_equal = np.equal(b_arc_preds, arc_targets) * b_tokens_to_keep
         arc_correct = np.sum(arc_equal)
-        rel_correct = np.sum(arc_equal * np.equal(rel_preds, rel_targets))
-        length = np.sum(tokens_to_keep)
+        rel_correct = np.sum(arc_equal * np.equal(b_rel_preds, rel_targets))
+        length = np.sum(b_tokens_to_keep)
         return arc_correct, rel_correct, length
 
-    def evaluate(self, dataset, batch_size=128):
+    def evaluate(self, dataset, batch_size=128, output_file=None):
         """
         Perform evaluation on whole dataset
 
@@ -516,33 +523,117 @@ class BiaffineParser(object):
         total_tokens = 0
         total_arc_cor = 0
         total_rel_cor = 0
+        if output_file:
+            output_file = open(output_file, 'w')
         for words, tags, arcs, rels in dataset.get_batches(batch_size=batch_size, shuffle=False):
-            arc_correct, rel_correct, length = self.evaluate_batch(words, tags, arcs, rels)
+            arc_correct, rel_correct, length = self.evaluate_batch(words, tags, arcs, rels, output_file)
             total_arc_cor += arc_correct
             total_rel_cor += rel_correct
             total_tokens += length
+        if output_file:
+            output_file.close()
         UAS = total_arc_cor / total_tokens * 100
         LAS = total_rel_cor / total_tokens * 100
         # print('UAS:%.2f%% LAS:%.2f%%' % (UAS, LAS))
         return UAS, LAS
 
+    def RNN(self, inputs, output_size, ff_keep_prob=0.67, recur_keep_prob=0.67):
+        """
+        RNN feature extractor
+        :param inputs: b x d
+        :param output_size:
+        :param ff_keep_prob:
+        :param recur_keep_prob:
+        :return:
+        """
+        input_size = inputs.get_shape().as_list()[-1]
+        cell = LSTMCell(input_size, output_size)
+
+        ff_keep_prob = self.get_dropout(ff_keep_prob, 'ff_keep_prob')
+        recur_keep_prob = self.get_dropout(recur_keep_prob, 'recur_keep_prob')
+
+        top_recur, end_state = birnn(cell, inputs, self.sequence_lengths,
+                                     ff_keep_prob=ff_keep_prob,
+                                     recur_keep_prob=recur_keep_prob)
+        return top_recur, end_state
+
+    def MLP(self, inputs, output_size=None, keep_prob=0.67, n_splits=1, add_bias=True):
+
+        """
+        multi-layer perceptron, outputs = inputs x W + b
+
+        :param inputs:
+        :param output_size:
+        :param keep_prob:
+        :param n_splits:
+        :param add_bias:
+        :return:
+        """
+        linear = self.linear(inputs, output_size, keep_prob=keep_prob, n_splits=n_splits, add_bias=add_bias,
+                             initializer=None)
+
+        if isinstance(linear, list):
+            return [leaky_relu(lin) for lin in linear]
+        else:
+            return leaky_relu(linear)
+
+    def linear(self, inputs, output_size, keep_prob=None, n_splits=1, add_bias=True,
+               initializer=tf.zeros_initializer()):
+        """
+        y = Wx + b
+        :param inputs:
+        :param output_size:
+        :param keep_prob:
+        :param n_splits:
+        :param add_bias:
+        :param initializer:
+        :return:
+        """
+        if isinstance(inputs, (list, tuple)):
+            n_dims = len(inputs[0].get_shape().as_list())
+            inputs = tf.concat(inputs, n_dims - 1)
+        else:
+            n_dims = len(inputs.get_shape().as_list())
+        input_size = inputs.get_shape().as_list()[-1]
+
+        def dropout_inputs(inputs):
+            noise_shape = tf.stack([self.batch_size] + [1] * (n_dims - 2) + [input_size])
+            inputs = tf.nn.dropout(inputs, keep_prob, noise_shape=noise_shape)
+            return inputs
+
+        keep_prob = self.get_dropout(keep_prob, 'keep_prob')
+        inputs = tf.cond(keep_prob < 1, lambda: dropout_inputs(inputs), lambda: inputs)
+
+        lin = linear(inputs,
+                     output_size,
+                     n_splits=n_splits,
+                     add_bias=add_bias,
+                     initializer=initializer)
+
+        if output_size == 1:
+            if isinstance(lin, list):
+                lin = [tf.squeeze(x, axis=(n_dims - 1)) for x in lin]
+            else:
+                lin = tf.squeeze(lin, axis=(n_dims - 1))
+        return lin
+
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--config_file', default='configs/ptb-debug.ini', help="Configuration file of model")
+    arg_parser.add_argument('--config_file', default='configs/ptb.ini', help="Configuration file of model")
     args, extra_args = arg_parser.parse_known_args()
     if not isfile(args.config_file):
         eprint('%s not exist' % args.config_file)
         exit(1)
     config = Config(args.config_file, extra_args)
 
-    if isfile('config.save_vocab_path'):
+    if isfile(config.save_vocab_path):
         vocab = pickle.load(open(config.save_vocab_path, 'rb'))
     else:
         vocab = Vocabulary(config.train_file, config.pretrained_embeddings_file, config.min_occur_count)
         pickle.dump(vocab, open(config.save_vocab_path, 'wb'))
-    parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb, config.lstm_layers,
-                            config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
+    parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.mlp_keep_prob, config.lstm_layers,
+                            config.lstm_hiddens, config.ff_keep_prob, config.recur_keep_prob,
                             config.mlp_arc_size, config.mlp_rel_size, config.dropout_mlp, config.learning_rate,
                             config.beta_1, config.beta_2, config.epsilon, config.save_model_path, config.debug)
     train = DataSet(config.train_file, config.num_buckets_train, vocab)
@@ -550,8 +641,9 @@ if __name__ == '__main__':
     parser.train(train, dev, config.train_batch_size, config.test_batch_size, config.train_iters)
     parser.load()
 
-    # print(parser.parse([('Is', 'VBZ'), ('this', 'DT'), ('the', 'DT'), ('future', 'NN'), ('of', 'IN'),
-    #                     ('chamber', 'NN'), ('music', 'NN'), ('?', '.')]))
-    test = DataSet(config.test_file, config.num_buckets_test, vocab)
-    UAS, LAS = parser.evaluate(test, batch_size=config.test_batch_size)
-    print('Test) UAS:%.2f%% LAS:%.2f%%                          ' % (UAS, LAS))
+    print(parser.parse([('Is', 'VBZ'), ('this', 'DT'), ('the', 'DT'), ('future', 'NN'), ('of', 'IN'), ('chamber', 'NN'),
+                        ('music', 'NN'), ('?', '.')]))
+    parser.parse_file(config.test_file, 'result/ptb/testout.conllx')
+    # test = DataSet(config.test_file, config.num_buckets_test, vocab)
+    # UAS, LAS = parser.evaluate(test, batch_size=config.test_batch_size, output_file='result/ptb/testout.conllx')
+    # print('Test) UAS:%.2f%% LAS:%.2f%%                          ' % (UAS, LAS))

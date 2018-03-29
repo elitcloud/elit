@@ -141,6 +141,11 @@ class Vocabulary(object):
             return [self._id2word[x] for x in xs]
         return self._id2word[xs]
 
+    def id2tag(self, xs):
+        if isinstance(xs, list):
+            return [self._id2tag[x] for x in xs]
+        return self._id2tag[xs]
+
     def rel2id(self, xs):
         if isinstance(xs, list):
             return [self._rel2id[x] for x in xs]
