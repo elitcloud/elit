@@ -190,6 +190,58 @@ class Cluster2Vec(VectorSpaceModel):
     def _get(self, word, index=0, sentence=None):
         return np.array([float(x) for x in bin((self.model[word][0][0]) if word in self.model else 0)[2:].zfill(self.dim)])
 
+class Char2Vec(VectorSpaceModel):
+    def __init__(self):
+
+        self.char_dim = 25
+        self.extra_dim = 0
+        self.dim = self.char_dim + self.extra_dim
+        self.lookup = {'3':1, '+':2, '/':3, 'd':4, '[':5, 'E':6, 'R':7, '1':8, 'g':9, '-':10, 'Y':11, '=':12, 'p':13,
+                       '8':14, 'a':15, 'V':16, 'l':17, 'j':18, 't':19, 'U':20, 'J':21, 'r':22, 'B':23, 'W':24, '`':25,
+                       'o':26, '?':27, 'O':28, '&':29, 'w':30, '#':31, 'z':32, 'K':33, 'S':34, 'M':35, 'm':36, 'k':37,
+                       '2':38, '"':39, 'F':40, '7':41, 'L':42, 'Z':43, '@':44, 'I':45, '\'':46, '4':47, '%':48, 'i':49,
+                       ')':50, '!':51, '9':52, 'c':53, 's':54, '0':55, 'e':56, 'H':57, '*':58, '.':59, 'G':60, 'h':61,
+                       'n':62, 'v':63, '(':64, 'x':65, 'D':66, 'b':67, 'f':68, 'u':69, '6':70, ',':71, '$':72, 'X':73,
+                       'Q':74, 'y':75, ';':76, '5':77, 'C':78, 'A':79, ']':80, 'P':81, 'N':82, 'T':83, 'q':84, ':':85}
+        self.model = [np.random.rand(self.char_dim) for _ in range(len(self.lookup)+1)]
+        self.padding = self.model[0]
+        super(Char2Vec, self).__init__(self.model, self.dim)
+
+    def get_list(self, words):
+        """
+        :param words: a list of words.
+        :type words: list of str
+        :return: the list of embeddings for the corresponding words.
+        :rtype: list of mxnet.nd.array
+        """
+        return [self.getVec(word) for word in words]
+
+    def getVec(self, word):
+        x = [self.model[self.lookup[char]] for char in word]
+        x.insert(0, self.padding)
+        x.append(self.padding)
+        return x
+
+    def _get(self, word, index=0, sentence=None):
+        print('Error, should not be called')
+        return self.padding
+
+    def allCaps(self, word):
+        return word.isupper()
+
+    def upperInitial(self, word):
+        return word[0].isupper()
+
+    def lowercase(self, word):
+        return word.islower()
+
+    def mixedCaps(self, word):
+        return (not word.isupper()) and (not word.islower())
+
+    def isNum(self, word):
+        return word.isdigit()
+
+
 
 class NamedEntityTree(VectorSpaceModel):
     def __init__(self, filepath, option=1, savepath='/home/jcoves/data', savename='gaze.p'):

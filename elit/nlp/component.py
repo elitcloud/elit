@@ -207,6 +207,63 @@ class CNN2DModel(gluon.Block):
         return x
 
 
+class CNN2DModel(gluon.Block):
+    def __init__(self, input_col, num_class, ngram_conv, dropout, **kwargs):
+        """
+        :param kwargs: parameters to initialize gluon.Block.
+        :type kwargs: dict
+        """
+        super().__init__(**kwargs)
+        self.ngram_conv = []
+
+        with self.name_scope():
+            for i, n in enumerate(ngram_conv):
+                cconv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col), strides=(1, input_col), activation=n.activation)
+                wconv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col),
+                                       strides=(1, input_col), activation=n.activation)
+                name = 'conv_' + str(i)
+                self.ngram_conv.append(conv)
+                setattr(self, name, conv)
+
+            self.dropout = gluon.nn.Dropout(dropout)
+            self.out = gluon.nn.Dense(num_class)
+
+    def forward(self, x):
+        # prepare for 2D convolution
+        x = x.reshape((0, 1, x.shape[1], x.shape[2]))
+
+        # n-gram convolutions
+        t = [conv(x).reshape((0, -1)) for conv in self.ngram_conv]
+        x = nd.concat(*t, dim=1)
+        x = self.dropout(x)
+
+        # output layer
+        x = self.out(x)
+        return x
+
+
+
+class LSTMModel(gluon.Block):
+    def __init__(self, input_col, num_class, n_hidden, dropout, **kwargs):
+        """
+        :param kwargs: parameters to initialize gluon.Block.
+        :type kwargs: dict
+        """
+        bi = True
+        super().__init__(**kwargs)
+        self.model = gluon.rnn.LSTM(n_hidden, input_size=input_col, bidirectional=bi)
+        with self.name_scope():
+            self.dropout = gluon.nn.Dropout(dropout)
+            self.out = gluon.nn.Dense(num_class)
+        print('Init Model: LSTM, bidirectional = %r' % bi)
+
+    def forward(self, x):
+        x = self.model(x)
+        x = self.dropout(x)
+        # output layer
+        x = self.out(x)
+        return x
+
 # ======================================== Component ========================================
 
 def pkl(filepath): return filepath+'.pkl'
@@ -214,7 +271,7 @@ def gln(filepath): return filepath+'.gln'
 
 
 class NLPComponent(metaclass=abc.ABCMeta):
-    def __init__(self, ctx, model):
+    def __init__(self, ctx, model, model2=None):
         """
         NLPComponent gives a template to implement a machine learning-based component.
         :param ctx: the context (e.g., CPU or GPU) to process this component.

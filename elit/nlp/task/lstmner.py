@@ -25,8 +25,8 @@ import mxnet as mx
 import time
 from mxnet import gluon, nd
 
-from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln
-from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec, Cluster2Vec, Char2Vec
+from elit.nlp.component import LSTMModel, NLPComponent, pkl, ForwardState, gln
+from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec, Cluster2Vec
 from elit.nlp.metric import F1
 from elit.nlp.structure import TOKEN, NER, POS
 from elit.nlp.util import x_extract, get_embeddings, get_loc_embeddings, X_ANY, read_tsv
@@ -52,7 +52,6 @@ class NERState(ForwardState):
         if params.gaze_vsm: self.embs.append(get_embeddings(params.gaze_vsm, document))
         if params.p2v_vsm: self.embs.append(get_embeddings(params.p2v_vsm, document, POS))
         if params.c2v_vsm: self.embs.append(get_embeddings(params.c2v_vsm, document))
-        if params.c2v_vsm: self.embs.append(get_embeddings(params.ch_vsm, document))
 
         # self.output = [[self.zero_output] * len(s) for s in document]  # null previous prediction
         self.embs.append((self.output, self.zero_output))  # add previous prediction
@@ -85,7 +84,7 @@ class NERState(ForwardState):
         return np.column_stack(l)
 
 
-class NERModel(CNN2DModel):
+class NERModel(LSTMModel):
     def __init__(self, params, **kwargs):
         """
         :param params: parameters to initialize POSModel.
@@ -99,11 +98,11 @@ class NERModel(CNN2DModel):
         gaze_dim = params.gaze_vsm.dim if params.gaze_vsm else 0
         p2v_dim = params.p2v_vsm.dim if params.p2v_vsm else 0
         c2v_dim = params.c2v_vsm.dim if params.c2v_vsm else 0
-        ch2v_dim = params.ch2v_vsm.dim if params.ch2v_vsm else 0
 
-        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + c2v_dim + ch2v_dim + params.num_class
-        ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
-        super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
+        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + c2v_dim + params.num_class
+        n_hidden = 128
+        # ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
+        super().__init__(input_col, params.num_class, n_hidden, params.dropout, **kwargs)
 
 
 class NERModelLR(gluon.Block):
@@ -124,7 +123,7 @@ class NERModelLR(gluon.Block):
         return x
 
 class NERecognizer(NLPComponent):
-    def __init__(self, ctx, word_vsm, name_vsm=None, gaze_vsm=None, p2v_vsm=None, c2v_vsm=None, ch2v_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
+    def __init__(self, ctx, word_vsm, name_vsm=None, gaze_vsm=None, p2v_vsm=None, c2v_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
                  ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
         """
         :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -157,7 +156,7 @@ class NERecognizer(NLPComponent):
             dropout = pickle.load(f)
             f.close()
 
-        self.params = self.create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, ch2v_vsm, num_class, windows, ngram_filters, dropout, label_map)
+        self.params = self.create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, num_class, windows, ngram_filters, dropout, label_map)
         super().__init__(ctx, NERModel(self.params))
 
         if model_path and os.path.isfile(gln(model_path)):
@@ -183,14 +182,13 @@ class NERecognizer(NLPComponent):
         return NERState(document, self.params)
 
     @staticmethod
-    def create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, ch_vsm, num_class, windows, ngram_filters, dropout, label_map):
+    def create_params(word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, num_class, windows, ngram_filters, dropout, label_map):
         return SimpleNamespace(
             word_vsm=word_vsm,
             name_vsm=name_vsm,
             gaze_vsm=gaze_vsm,
             p2v_vsm=p2v_vsm,
             c2v_vsm=c2v_vsm,
-            ch_vsm=ch_vsm,
             label_map=label_map or LabelMap(),
             num_class=num_class,
             windows=windows,
@@ -227,7 +225,6 @@ def train_args():
     parser.add_argument('-go', '--gaze_option', type=int, metavar='int', default=1, help='vector representation option for entity gazetteer')
     parser.add_argument('-pv', '--p2v_vsm', type=int, metavar='int', default=0, help='dimension for pos2vec')
     parser.add_argument('-cv', '--c2v_vsm', type=str, metavar='filepath', default=None, help='cluster vector embeddings')
-    parser.add_argument('-ch', '--ch_vsm', type=str, metavar='int', default=0, help='char vectors')
 
 
     # configuration
@@ -268,8 +265,7 @@ def train():
     gaze_vsm = NamedEntityTree(args.gaze_vsm, args.gaze_option) if args.gaze_vsm else None
     p2v_vsm = Pos2Vec(args.p2v_vsm) if args.p2v_vsm > 0 else None
     c2v_vsm = Cluster2Vec(args.c2v_vsm) if args.c2v_vsm else None
-    ch_vsm = Char2Vec() if args.ch_vsm > 0 else None
-    comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, ch_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout, model_path=args.mod_path)
+    comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout, model_path=args.mod_path)
 
     # states
     cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner, POS: args.tsv_pos}
