@@ -191,8 +191,8 @@ class Cluster2Vec(VectorSpaceModel):
         return np.array([float(x) for x in bin((self.model[word][0][0]) if word in self.model else 0)[2:].zfill(self.dim)])
 
 class Char2Vec(VectorSpaceModel):
-    def __init__(self):
-
+    def __init__(self, out_dim = 30):
+        self.out_dim = out_dim
         self.char_dim = 25
         self.extra_dim = 0
         self.dim = self.char_dim + self.extra_dim
@@ -205,6 +205,7 @@ class Char2Vec(VectorSpaceModel):
                        'Q':74, 'y':75, ';':76, '5':77, 'C':78, 'A':79, ']':80, 'P':81, 'N':82, 'T':83, 'q':84, ':':85}
         self.model = [np.random.rand(self.char_dim) for _ in range(len(self.lookup)+1)]
         self.padding = self.model[0]
+        logging.info('Init: Char2Vec (vocab = %d, dim = %d)' % (len(self.lookup), self.dim))
         super(Char2Vec, self).__init__(self.model, self.dim)
 
     def get_list(self, words):
@@ -214,7 +215,8 @@ class Char2Vec(VectorSpaceModel):
         :return: the list of embeddings for the corresponding words.
         :rtype: list of mxnet.nd.array
         """
-        return [self.getVec(word) for word in words]
+        return [item for sublist in [self.getVec(word) for word in words] for item in sublist]  # flat list
+        # return [self.getVec(word) for word in words]
 
     def getVec(self, word):
         x = [self.model[self.lookup[char]] for char in word]

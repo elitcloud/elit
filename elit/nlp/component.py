@@ -18,6 +18,7 @@ import random
 
 import numpy as np
 from mxnet import nd, gluon, autograd
+import sys
 
 from elit.nlp.structure import OUT
 
@@ -182,7 +183,6 @@ class CNN2DModel(gluon.Block):
         """
         super().__init__(**kwargs)
         self.ngram_conv = []
-
         with self.name_scope():
             for i, n in enumerate(ngram_conv):
                 conv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col), strides=(1, input_col), activation=n.activation)
@@ -195,45 +195,106 @@ class CNN2DModel(gluon.Block):
 
     def forward(self, x):
         # prepare for 2D convolution
+        #print('len(x)', x.shape)
+        #print(x[0][0][0])
+        #print('before', x)
         x = x.reshape((0, 1, x.shape[1], x.shape[2]))
-
+        #print('len(x)', x.shape)
+        #print(x[0][0][0][0])
+        #print('after', x)
         # n-gram convolutions
         t = [conv(x).reshape((0, -1)) for conv in self.ngram_conv]
+        #print('len(t)', len(t))
+        #print('shape(t[0])', t[0].shape)
+        #print(t[0][0][0])
+        #print('t[0]', t[0])
         x = nd.concat(*t, dim=1)
+        #print('len(x)', x.shape)
+        #print('x', x)
         x = self.dropout(x)
+        #print('len(x)', x.shape)
+        #print('x', x)
 
         # output layer
         x = self.out(x)
+        #print('len(x)', x.shape)
+        #print('x', x)
+
         return x
 
 
-class CNN2DModel(gluon.Block):
-    def __init__(self, input_col, num_class, ngram_conv, dropout, **kwargs):
+class CNNcharModel(gluon.Block):
+    def __init__(self, char_in, char_out, input_col, num_class, ngram_cconv, ngram_wconv, dropout, **kwargs):
         """
         :param kwargs: parameters to initialize gluon.Block.
         :type kwargs: dict
         """
         super().__init__(**kwargs)
-        self.ngram_conv = []
-
+        self.char_in = char_in
+        self.char_out = char_out
+        self.input_col = input_col
+        print('char_in, char_out, input_col')
+        print(char_in, char_out, input_col)
+        self.ngram_cconv = []
+        self.ngram_wconv = []
+        window_len = 5
         with self.name_scope():
-            for i, n in enumerate(ngram_conv):
-                cconv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col), strides=(1, input_col), activation=n.activation)
+            for i, n in enumerate(ngram_cconv):
+                cconv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, char_in),
+                                        strides=(1, char_in), activation=n.activation)
+                name = 'cconv_' + str(i)
+                self.ngram_cconv.append(cconv)
+                setattr(self, name, cconv)
+
+            for i, n in enumerate(ngram_wconv):
                 wconv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col),
-                                       strides=(1, input_col), activation=n.activation)
-                name = 'conv_' + str(i)
-                self.ngram_conv.append(conv)
-                setattr(self, name, conv)
+                                        strides=(1, input_col), activation=n.activation)
+                name = 'wconv_' + str(i)
+                self.ngram_wconv.append(wconv)
+                setattr(self, name, wconv)
 
             self.dropout = gluon.nn.Dropout(dropout)
+            self.char_dense = gluon.nn.Dense(window_len * self.char_out)
             self.out = gluon.nn.Dense(num_class)
 
     def forward(self, x):
+        dim = self.input_col - self.char_in
+        original = x[:, :, :dim] # all - char
+
+        # char conv
+        x = x[:, :, -self.char_in:] # char
+        #print('x[0][0][0]', x[0][0][0])
         # prepare for 2D convolution
+        #print(0, x.shape)
         x = x.reshape((0, 1, x.shape[1], x.shape[2]))
+        #print(1, x.shape)
+        # n-gram convolutions
+        #print('before convo 1', len(x[0][0][0]), x[0][0][0][0])
+        t = [conv(x).reshape((0, -1)) for conv in self.ngram_cconv]
+        x = nd.concat(*t, dim=1)
+        x = self.dropout(x)
+        # output layer
+        char = self.char_dense(x) # 64 x 150
+        char = char.reshape((original.shape[0], original.shape[1], self.char_out)) # batch x window x 30
+        """
+        1. dense((5,30))
+        2. dense(5*30)
+        """
+        # word conv
+        #print('ori', original.shape)
+        #print('x[0][0][0]', original[0][0][0])
+        #print('char', char.shape)
+        #print('x[0][0][0]', char[0][0][0])
+        # x = np.dstack((original, char))  # join original and char
+        x = nd.concat(original, char, dim=2)
+        # prepare for 2D convolution
+        #print(2, x.shape)
+        x = x.reshape((0, 1, x.shape[1], x.shape[2]))
+        #print(3, x.shape)
 
         # n-gram convolutions
-        t = [conv(x).reshape((0, -1)) for conv in self.ngram_conv]
+        # print('before convo 2', len(x[0][0][0]))
+        t = [conv(x).reshape((0, -1)) for conv in self.ngram_wconv]
         x = nd.concat(*t, dim=1)
         x = self.dropout(x)
 

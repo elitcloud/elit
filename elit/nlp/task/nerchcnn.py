@@ -25,7 +25,7 @@ import mxnet as mx
 import time
 from mxnet import gluon, nd
 
-from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln
+from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln, CNNcharModel
 from elit.nlp.lexicon import LabelMap, FastText, Word2Vec, NamedEntityTree, Pos2Vec, Cluster2Vec, Char2Vec
 from elit.nlp.metric import F1
 from elit.nlp.structure import TOKEN, NER, POS
@@ -52,10 +52,11 @@ class NERState(ForwardState):
         if params.gaze_vsm: self.embs.append(get_embeddings(params.gaze_vsm, document))
         if params.p2v_vsm: self.embs.append(get_embeddings(params.p2v_vsm, document, POS))
         if params.c2v_vsm: self.embs.append(get_embeddings(params.c2v_vsm, document))
-        if params.ch2v_vsm: self.embs.append(get_embeddings(params.ch2v_vsm, document))
 
-        self.output = [[self.zero_output] * len(s) for s in document]  # null previous prediction
+        # self.output = [[self.zero_output] * len(s) for s in document]  # null previous prediction
         self.embs.append((self.output, self.zero_output))  # add previous prediction
+
+        if params.ch2v_vsm: self.embs.append(get_embeddings(params.ch2v_vsm, document))
 
     def eval(self, metric):
         """
@@ -85,7 +86,7 @@ class NERState(ForwardState):
         return np.column_stack(l)
 
 
-class NERModel(CNN2DModel):
+class NERModel(CNNcharModel):
     def __init__(self, params, **kwargs):
         """
         :param params: parameters to initialize POSModel.
@@ -99,11 +100,16 @@ class NERModel(CNN2DModel):
         gaze_dim = params.gaze_vsm.dim if params.gaze_vsm else 0
         p2v_dim = params.p2v_vsm.dim if params.p2v_vsm else 0
         c2v_dim = params.c2v_vsm.dim if params.c2v_vsm else 0
-        ch2v_dim = params.ch2v_vsm.dim if params.ch2v_vsm else 0
 
-        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + c2v_dim + ch2v_dim + params.num_class
-        ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
-        super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
+        char_in = params.ch2v_vsm.dim if params.ch2v_vsm else 0
+        char_out = params.ch2v_vsm.out_dim if params.ch2v_vsm else 0
+
+        input_col = loc_dim + word_dim + name_dim + gaze_dim + p2v_dim + c2v_dim + char_out + params.num_class
+        ngram_cconv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in
+                       enumerate(params.ngram_filters, 1)]
+        ngram_wconv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in
+                       enumerate(params.ngram_filters, 1)]
+        super().__init__(char_in, char_out, input_col, params.num_class, ngram_cconv, ngram_wconv, params.dropout, **kwargs)
 
 
 class NERModelLR(gluon.Block):
@@ -268,7 +274,7 @@ def train():
     gaze_vsm = NamedEntityTree(args.gaze_vsm, args.gaze_option) if args.gaze_vsm else None
     p2v_vsm = Pos2Vec(args.p2v_vsm) if args.p2v_vsm > 0 else None
     c2v_vsm = Cluster2Vec(args.c2v_vsm) if args.c2v_vsm else None
-    ch2v_vsm = Char2Vec() if args.ch2v_vsm > 0 else None
+    ch2v_vsm = Char2Vec(args.ch2v_vsm) if args.ch2v_vsm > 0 else None
     comp = NERecognizer(args.ctx, word_vsm, name_vsm, gaze_vsm, p2v_vsm, c2v_vsm, ch2v_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout, model_path=args.mod_path)
 
     # states
@@ -285,6 +291,11 @@ def train():
     trn_metric = F1()
     dev_metric = F1()
     tst_metric = F1()
+
+    if 'tst' in args.dev_path and False:
+        dev_metric.reset()
+        dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
+        logging.info('Initial dev-f1 = %5.2f' % dev_eval[0])
 
     for e in range(args.epoch):
         trn_metric.reset()
@@ -311,6 +322,3 @@ def train():
 
 if __name__ == '__main__':
     train()
-
-# Ontonotes
-# nohup bash -c "time time python3 /home/jcoves/elit/elit/nlp/task/ner.py -nc 73 -vt 1 -vn 9 -wv /home/yche463/dat/corpus.friends+nyt+wiki+amazon.fasttext.skip.d200.bin -cx g1 -t /home/jcoves/data/ontonotes/trn.txt -d /home/jcoves/data/ontonotes/dev.txt -ts /home/jcoves/data/ontonotes/tst.txt -gd /mnt/ainos-research/emorynlp/lexica/named_entity_gazetteers -go 4" &> w2v-gaze.out &
