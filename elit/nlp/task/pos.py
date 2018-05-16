@@ -22,7 +22,6 @@ import random
 import time
 from types import SimpleNamespace
 
-
 import mxnet as mx
 import numpy as np
 from mxnet import gluon
@@ -210,7 +209,7 @@ def train_args():
 
 
 def train():
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.basicConfig(filename='cnn_logs.log', format='%(message)s', level=logging.INFO)
     mx.random.seed(11)
     random.seed(11)
 
