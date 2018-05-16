@@ -19,9 +19,9 @@ import logging
 import marisa_trie
 
 import numpy as np
-from fasttext import fasttext
 from gensim.models import KeyedVectors
-
+import fastText
+# import fasttext
 __author__ = 'Jinho D. Choi'
 
 
@@ -123,13 +123,13 @@ class FastText(VectorSpaceModel):
         :param filepath: the path to the file containing word embeddings.
         :type filepath: str
         """
-        model = fasttext.load_model(filepath)
-        dim = model.dim
+        model = fastText.load_model(filepath)
+        dim = model.get_dimension()
         super(FastText, self).__init__(model, dim)
-        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.words), dim))
+        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.get_words()), dim))
 
     def _get(self, word):
-        return np.array(self.model[word]).astype('float32')
+        return np.array(self.model.get_word_vector(word)).astype('float32')
 
 
 class Word2Vec(VectorSpaceModel):

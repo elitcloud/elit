@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import sys
+sys.path.append("/home/zyang68/elit/")
 import argparse
 import logging
 import pickle
 import random
 import time
 from types import SimpleNamespace
+
 
 import mxnet as mx
 import numpy as np
@@ -46,7 +49,7 @@ class POSState(ForwardState):
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
         if params.ambi_vsm: self.embs.append(get_embeddings(params.ambi_vsm, document))
-        self.embs.append((self.output, self.zero_output))
+        # self.embs.append((self.output, self.zero_output))
 
     def eval(self, metric):
         """
@@ -66,6 +69,7 @@ class POSState(ForwardState):
         :return: the n x d matrix where n = # of windows and d = word_emb.dim + ambi_emb.dim + num_class + 2
         """
         t = len(self.document[self.sen_id])
+        # l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.windows] for emb, zero in self.embs)
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.windows] for emb, zero in self.embs)
         return np.column_stack(l)
 
@@ -82,13 +86,14 @@ class POSModel(CNN2DModel):
         word_dim = params.word_vsm.dim
         ambi_dim = params.ambi_vsm.dim if params.ambi_vsm else 0
 
-        input_col = loc_dim + word_dim + ambi_dim + params.num_class
+        # input_col = loc_dim + word_dim + ambi_dim + params.num_class
+        input_col = loc_dim + word_dim + ambi_dim
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
 
 class POSTagger(NLPComponent):
-    def __init__(self, ctx, word_vsm, ambi_vsm=None, num_class=50, windows=(-2, -1, 0, 1, 2),
+    def __init__(self, ctx, word_vsm, ambi_vsm=None, num_class=50, windows=(-3, -2, -1, 0, 1, 2, 3),
                  ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
         """
         :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -180,7 +185,7 @@ def train_args():
 
     # configuration
     parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50, help='number of classes')
-    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*', default=(-2, -1, 0, 1, 2), help='contextual windows for feature extraction')
+    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*', default=(-3, -2, -1, 0, 1, 2, 3), help='contextual windows for feature extraction')
     parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*', default=(128,128,128,128,128), help='number of filters for n-gram convolutions')
     parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2, help='dropout')
 
