@@ -7,10 +7,10 @@ Welcome to elit's documentation!
 ================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-
+   apidocs
 
 Indices and tables
 ==================

@@ -131,13 +131,12 @@ def setup_package():
             'numpy',
             'keras',
             'tensorflow',
-            'ujson',
-            'marisa_trie'
+            'ujson'
         ],
         tests_require=[
             'pytest',
         ],
-        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
+        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f]
     )
     metadata['version'] = get_version_info()[0]
 
