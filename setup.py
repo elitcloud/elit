@@ -33,7 +33,7 @@ Operating System :: MacOS
 MAJOR = 0
 MINOR = 1
 MICRO = 15
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 EXCLUDE_FROM_PACKAGES = ['']
@@ -123,10 +123,10 @@ def setup_package():
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         install_requires=[
-            'cython',
+            'elitsdk',
             'argparse',
+            'yafasttext',
             'gensim',
-            'fasttext',
             'numpy',
             'keras',
             'tensorflow',
