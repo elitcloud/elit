@@ -21,6 +21,7 @@ import pickle
 import random
 import time
 from types import SimpleNamespace
+import datetime
 
 import mxnet as mx
 import numpy as np
@@ -175,6 +176,8 @@ def train_args():
     parser.add_argument('-t', '--trn_path', type=str, metavar='filepath', help='path to the training data (input)')
     parser.add_argument('-d', '--dev_path', type=str, metavar='filepath', help='path to the development data (input)')
     parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None, help='path to the model data (output)')
+    parser.add_argument('-l', '--log_path', type=str, metavar='filepath', default='logs', help='path to the log data (output)')
+
     parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0, help='the column index of tokens in TSV')
     parser.add_argument('-vp', '--tsv_pos', type=int, metavar='int', default=1, help='the column index of pos-tags in TSV')
 
@@ -196,6 +199,16 @@ def train_args():
 
     args = parser.parse_args()
 
+    return args
+
+
+def train():
+    # processor
+    # logging.basicConfig(filename='cnn_experiment_logs_test.log', format='%(message)s', level=logging.INFO)
+    # print(args.log_path+".log")
+    args = train_args()
+    logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s', level=logging.INFO)
+
     log = ['Configuration',
            '- train batch    : %d' % args.trn_batch,
            '- learning rate  : %f' % args.learning_rate,
@@ -205,16 +218,8 @@ def train_args():
            '- windows        : %s' % str(args.windows)]
 
     logging.info('\n'.join(log))
-    return args
-
-
-def train():
-    logging.basicConfig(filename='cnn_logs.log', format='%(message)s', level=logging.INFO)
-    mx.random.seed(11)
-    random.seed(11)
-
-    # processor
-    args = train_args()
+    # mx.random.seed(11)
+    # random.seed(11)
     word_vsm = FastText(args.word_vsm)
     ambi_vsm = Word2Vec(args.ambi_vsm) if args.ambi_vsm else None
     comp = POSTagger(args.ctx, word_vsm, ambi_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
@@ -245,7 +250,8 @@ def train():
 
         if best_eval < dev_eval:
             best_e, best_eval = e, dev_eval
-            if args.mod_path: comp.save(args.mod_path+'.'+str(e))
+            # if args.mod_path: comp.save(args.mod_path+'.'+str(e))
+            if args.mod_path: comp.save(args.mod_path)
 
         logging.info(
             '%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f (%d), dev-acc: %5.2f (%d), num-class: %d, best-acc: %5.2f @%4d' %

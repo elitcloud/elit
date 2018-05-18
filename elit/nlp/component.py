@@ -227,25 +227,6 @@ class LSTMModel(gluon.Block):
         x = self.out(x)
         return x
 
-class LRModel(gluon.Block):
-    def __init__(self, num_class, dropout, **kwargs):
-        """
-        :param kwargs: parameters to initialize gluon.Block.
-        :type kwargs: dict
-        """
-        super().__init__(**kwargs)
-        with self.name_scope():
-            self.dropout = gluon.nn.Dropout(dropout)
-            self.out = gluon.nn.Dense(num_class)
-        print('Init Model: Logistic Regression with output class= %d' % num_class)
-
-
-    def forward(self, x):
-        x = self.dropout(x)
-        x = self.out(x)
-        return x
-
-
 # ======================================== Component ========================================
 
 def pkl(filepath): return filepath+'.pkl'
