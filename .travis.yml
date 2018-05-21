@@ -15,9 +15,7 @@ before_install:
 - aws s3 cp s3://elit-public/resources/tokenize /home/travis/build/elitcloud/resources/tokenize
   --recursive
 install:
-- pip install cython
 - pip install .
-- python setup.py build
 deploy:
   provider: pypi
   user: emorynlp
