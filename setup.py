@@ -125,6 +125,7 @@ def setup_package():
         install_requires=[
             'elitsdk',
             'argparse',
+            'pybind11',
             'yafasttext',
             'gensim',
             'numpy',
