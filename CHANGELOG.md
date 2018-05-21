@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 ### Removed
 
-## [0.1.16]
+## [0.1.16] - 2018-5-21
 ### Added
 ### Changed
 - Replace fasttext with yafasttext
 ### Removed
 
-## [0.1.15]
+## [0.1.15] - 2018-03-15
 ### Added
 - Deep Biaffine Attention Neural Dependency Paser by @hankcs
 ### Changed
@@ -33,3 +33,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 [Unreleased]: https://github.com/elitcloud/elit/compare/0.1.6...HEAD
+[0.1.5]: https://github.com/elitcloud/elit/compare/0.1.5...0.1.6
+[0.1.4]: https://github.com/elitcloud/elit/compare/0.1.4...0.1.5
