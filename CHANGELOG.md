@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 ### Changed
+### Removed
+
+## [0.1.16]
+### Added
+### Changed
 - Replace fasttext with yafasttext
 ### Removed
 
@@ -27,4 +32,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - It is first released.
 
 
-[Unreleased]: https://github.com/elitcloud/elit/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/elitcloud/elit/compare/0.1.6...HEAD
