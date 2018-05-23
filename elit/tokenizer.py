@@ -176,7 +176,8 @@ class EnglishTokenizer(Tokenizer):
         """
         hello.World
         """
-        self.RE_FINAL_MARK_IN_BETWEEN = re.compile(r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
+        self.RE_FINAL_MARK_IN_BETWEEN = re.compile(
+            r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
 
     def load(self, model_path, *args, **kwargs):
         self.SET_ABBREVIATION_PERIOD = self.read_word_set(
@@ -206,20 +207,25 @@ class EnglishTokenizer(Tokenizer):
         # search for in-between spaces
         for end, c in enumerate(input_data[begin + 1:last], begin + 1):
             if c.isspace():
-                self.tokenize_aux(tokens, offsets, input_data, begin, end, offset)
+                self.tokenize_aux(tokens, offsets, input_data,
+                                  begin, end, offset)
                 begin = end + 1
 
         self.tokenize_aux(tokens, offsets, input_data, begin, last, offset)
         return tokens, offsets
 
     def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
-        if begin >= end or end > len(text): return False
+        if begin >= end or end > len(text):
+            return False
         token = text[begin:end]
 
         # handle special cases
-        if self.tokenize_trivial(tokens, offsets, token, begin, end, offset): return True
-        if self.tokenize_regex(tokens, offsets, text, begin, end, offset, token): return True
-        if self.tokenize_symbol(tokens, offsets, text, begin, end, offset, token): return True
+        if self.tokenize_trivial(tokens, offsets, token, begin, end, offset):
+            return True
+        if self.tokenize_regex(tokens, offsets, text, begin, end, offset, token):
+            return True
+        if self.tokenize_symbol(tokens, offsets, text, begin, end, offset, token):
+            return True
 
         # add the token as it is
         self.add_token(tokens, offsets, token, begin, end, offset)
@@ -251,8 +257,10 @@ class EnglishTokenizer(Tokenizer):
             if m:
                 if m.start() > 0:
                     idx = begin + m.start()
-                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
-                    self.add_token(tokens, offsets, token[m.start():], idx, end, offset)
+                    self.tokenize_aux(tokens, offsets, text,
+                                      begin, idx, offset)
+                    self.add_token(tokens, offsets,
+                                   token[m.start():], idx, end, offset)
                 else:
                     self.add_token(tokens, offsets, token, begin, end, offset)
                 return True
@@ -280,7 +288,8 @@ class EnglishTokenizer(Tokenizer):
 
             for j, d in enumerate(token[i + 1:], i + 1):
                 if final_mark:
-                    if not is_final_mark(d): return j
+                    if not is_final_mark(d):
+                        return j
                 elif c != d:
                     return j
 
@@ -296,10 +305,12 @@ class EnglishTokenizer(Tokenizer):
                                                                      i + 4) and not self.is_digit(
                     token, i + 4)
             if c == ':':
-                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1)  # 1:2
-            if is_single_quote(c): return self.is_digit(token, i + 1, i + 3) and not self.is_digit(
-                token,
-                i + 3)  # '97
+                # 1:2
+                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1)
+            if is_single_quote(c):
+                return self.is_digit(token, i + 1, i + 3) and not self.is_digit(
+                    token,
+                    i + 3)  # '97
             return False
 
         def split(i, c, p0, p1):
@@ -310,8 +321,10 @@ class EnglishTokenizer(Tokenizer):
                     idx = begin + i
                     lst = begin + j
 
-                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
-                    self.add_token(tokens, offsets, token[i:j], idx, lst, offset)
+                    self.tokenize_aux(tokens, offsets, text,
+                                      begin, idx, offset)
+                    self.add_token(tokens, offsets,
+                                   token[i:j], idx, lst, offset)
                     self.tokenize_aux(tokens, offsets, text, lst, end, offset)
                     return True
 
@@ -319,7 +332,8 @@ class EnglishTokenizer(Tokenizer):
 
         def separator_0(c):
             return c in {',', ';', ':', '~', '&', '|', '/'} or \
-                   is_bracket(c) or is_arrow(c) or is_double_quote(c) or is_hyphen(c)
+                is_bracket(c) or is_arrow(
+                    c) or is_double_quote(c) or is_hyphen(c)
 
         def edge_symbol_0(c):
             return is_single_quote(c) or is_final_mark(c)
@@ -357,11 +371,11 @@ class EnglishTokenizer(Tokenizer):
 
         def abbreviation(prev, curr):
             return curr == '.' and (
-                    self.RE_ABBREVIATION.match(prev) or prev in self.SET_ABBREVIATION_PERIOD)
+                self.RE_ABBREVIATION.match(prev) or prev in self.SET_ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
             return len(curr) == 1 and curr in {'&', '|', '/'} and (
-                    len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
+                len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
 
         def hyphenated(prev, curr, next):
             p = len(prev)
@@ -376,7 +390,7 @@ class EnglishTokenizer(Tokenizer):
                     # p-u-s-h
                     return True
                 return (prev in self.SET_HYPHEN_PREFIX and next.isalnum()) or (
-                        next in self.SET_HYPHEN_SUFFIX and prev.isalnum())
+                    next in self.SET_HYPHEN_SUFFIX and prev.isalnum())
 
             return False
 
@@ -420,8 +434,10 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_UNIT.search(token)
             if m:
                 idx = begin + m.start(2)
-                self.add_token_aux(tokens, offsets, token[:m.start(2)], begin, idx, offset)
-                self.add_token_aux(tokens, offsets, m.group(2), idx, end, offset)
+                self.add_token_aux(
+                    tokens, offsets, token[:m.start(2)], begin, idx, offset)
+                self.add_token_aux(
+                    tokens, offsets, m.group(2), idx, end, offset)
                 return True
             return False
 
@@ -430,7 +446,8 @@ class EnglishTokenizer(Tokenizer):
             if t:
                 i = 0
                 for j in t:
-                    self.add_token_aux(tokens, offsets, token[i:j], begin + i, begin + j, offset)
+                    self.add_token_aux(
+                        tokens, offsets, token[i:j], begin + i, begin + j, offset)
                     i = j
                 return True
             return False
@@ -475,8 +492,10 @@ class EnglishTokenizer(Tokenizer):
     @staticmethod
     def is_digit(token, i, j=None):
         if 0 <= i < len(token):
-            if j is None: return token[i].isdigit()
-            if i < j <= len(token): return token[i:j].isdigit()
+            if j is None:
+                return token[i].isdigit()
+            if i < j <= len(token):
+                return token[i:j].isdigit()
         return False
 
 
