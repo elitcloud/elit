@@ -15,7 +15,7 @@
 # ========================================================================
 import unittest
 
-from elit.nlp.task.tokenize import SpaceTokenizer, EnglishTokenizer
+from elit.tokenizer import SpaceTokenizer, EnglishTokenizer, EnglishSegmenter
 
 __author__ = 'Jinho D. Choi'
 
@@ -26,15 +26,23 @@ class TestSpaceTokenizer(unittest.TestCase):
         self.tok = SpaceTokenizer()
 
     def test_space_tokenizer(self):
-        # hello world
         tokenizer_helper(self, '  Hello\t\r, world  !\n\n', ['Hello', ',', 'world', '!'],
                          [(2, 7), (9, 10), (11, 16), (18, 19)])
+        tokenizer_helper(self, '  Hello\t\r, world  !\n\n', ['Hello', ',', 'world', '!'],
+                         [(3, 8), (10, 11), (12, 17), (19, 20)], offset=1)
 
 
 class TestEnglishTokenizer(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestEnglishTokenizer, self).__init__(*args, **kwargs)
-        self.tok = EnglishTokenizer('../resources/tokenize')
+        self.tok = EnglishTokenizer()
+        self.seg = EnglishSegmenter()
+
+    def test_load_model(self):
+        self.assertEqual(len(self.tok.SET_ABBREVIATION_PERIOD), 159)
+        self.assertEqual(len(self.tok.SET_APOSTROPHE_FRONT), 7)
+        self.assertEqual(len(self.tok.SET_HYPHEN_PREFIX), 156)
+        self.assertEqual(len(self.tok.SET_HYPHEN_SUFFIX), 39)
 
     def test_space(self):
         # empty string
@@ -170,12 +178,12 @@ class TestEnglishTokenizer(unittest.TestCase):
         tokenizer_helper(self, 'Hello, world!', ['Hello', ',', 'world', '!'],
                          [(5, 10), (10, 11), (12, 17), (17, 18)], 5)
 
-        # def test_segment(self):
-        #     tokens, offsets = self.tok.tokenize('. "1st sentence." 2nd sentence? "3rd sentence!"')
-        #     self.assertEqual(self.tok.segment(tokens, offsets),
-        #     [{'tokens': ['.', '"', '1st', 'sentence', '.', '"'], 'offsets': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]},
-        #      {'tokens': ['2nd', 'sentence', '?'], 'offsets': [(18, 21), (22, 30), (30, 31)]},
-        #      {'tokens': ['"', '3rd', 'sentence', '!', '"'], 'offsets': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]}])
+    def test_segment(self):
+        tokens, offsets = self.tok.decode('. "1st sentence." 2nd sentence? "3rd sentence!"')
+        self.assertEqual(self.seg.decode(tokens, offsets),
+        [{'token': ['.', '"', '1st', 'sentence', '.', '"'], 'offset': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]},
+         {'token': ['2nd', 'sentence', '?'], 'offset': [(18, 21), (22, 30), (30, 31)]},
+         {'token': ['"', '3rd', 'sentence', '!', '"'], 'offset': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]}])
 
 
 # Change to tokenizer_helper because function name with test cause test framework confused.

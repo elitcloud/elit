@@ -33,7 +33,7 @@ Operating System :: MacOS
 MAJOR = 0
 MINOR = 1
 MICRO = 16
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 EXCLUDE_FROM_PACKAGES = ['']
@@ -122,6 +122,7 @@ def setup_package():
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
+        package_data={'': ['*.txt']},
         install_requires=[
             'elitsdk',
             'argparse',
@@ -131,13 +132,12 @@ def setup_package():
             'numpy',
             'keras',
             'tensorflow',
-            'ujson',
-            'marisa_trie'
+            'ujson'
         ],
         tests_require=[
             'pytest',
         ],
-        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
+        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f]
     )
     metadata['version'] = get_version_info()[0]
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 ### Changed
+- Refactor tokenizer
+- Refartor tokenizer test
 ### Removed
 
 ## [0.1.16] - 2018-5-21

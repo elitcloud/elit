@@ -170,3 +170,4 @@ resources/*
 data/*
 result/*
 elit/dat/*
+/.pytest_cache/

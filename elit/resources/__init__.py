@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2016 Emory University
+# Copyright 2018 Emory University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,5 +14,4 @@
 # limitations under the License.
 # ========================================================================
 
-__author__ = 'Jinho D. Choi'
-
+__author__ = "Gary Lai"
