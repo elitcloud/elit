@@ -20,6 +20,8 @@ import marisa_trie
 
 import numpy as np
 from gensim.models import KeyedVectors
+from gensim.test.utils import datapath, get_tmpfile
+from gensim.scripts.glove2word2vec import glove2word2vec
 import fastText
 # import fasttext
 __author__ = 'Jinho D. Choi'
@@ -138,7 +140,11 @@ class Word2Vec(VectorSpaceModel):
         :param filepath: the path to the file containing word embeddings.
         :type filepath: str
         """
-        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
+        txt_file = datapath(filepath)
+        tmp_file = get_tmpfile("test_word2vec.txt")
+        glove2word2vec(txt_file, tmp_file)
+        # model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
+        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(tmp_file)
         dim = model.syn0.shape[1]
         super(Word2Vec, self).__init__(model, dim)
         logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import sys
+sys.path.append("/home/zyang68/elit/")
 import argparse
 import logging
 import random
@@ -195,6 +197,8 @@ def train_args():
     parser.add_argument('-t', '--trn_path', type=str, metavar='filepath', help='path to the training data (input)')
     parser.add_argument('-d', '--dev_path', type=str, metavar='filepath', help='path to the development data (input)')
     parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None, help='path to the model data (output)')
+    parser.add_argument('-l', '--log_path', type=str, metavar='filepath', default='logs', help='path to the log data (output)')
+
     parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0, help='the column index of tokens in TSV')
     parser.add_argument('-vp', '--tsv_ner', type=int, metavar='int', default=4, help='the column index of pos-tags in TSV')
 
@@ -215,6 +219,12 @@ def train_args():
     parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01, help='learning rate')
 
     args = parser.parse_args()
+    return args
+
+
+def train():
+    args = train_args()
+    logging.basicConfig(filename=args.log_path + '.log', format='%(message)s', level=logging.INFO)
 
     log = ['Configuration',
            '- train batch    : %d' % args.trn_batch,
@@ -225,16 +235,10 @@ def train_args():
            '- windows        : %s' % str(args.windows)]
 
     logging.info('\n'.join(log))
-    return args
-
-
-def train():
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
-    mx.random.seed(11)
-    random.seed(11)
-
+    # mx.random.seed(11)
+    # random.seed(11)
     # processor
-    args = train_args()
+
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
     comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)

@@ -21,13 +21,12 @@ import pickle
 import random
 import time
 from types import SimpleNamespace
-import datetime
 
 import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from elit.nlp.component import ForwardState, NLPComponent, CNN2DModel, pkl, gln
+from elit.nlp.component import ForwardState, NLPComponent, CNN2DModel, LSTMModel, pkl, gln
 from elit.nlp.lexicon import LabelMap, FastText, Word2Vec
 from elit.nlp.metric import Accuracy
 from elit.nlp.structure import TOKEN, POS
@@ -49,7 +48,7 @@ class POSState(ForwardState):
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
         if params.ambi_vsm: self.embs.append(get_embeddings(params.ambi_vsm, document))
-        # self.embs.append((self.output, self.zero_output))
+        self.embs.append((self.output, self.zero_output))
 
     def eval(self, metric):
         """
@@ -86,10 +85,28 @@ class POSModel(CNN2DModel):
         word_dim = params.word_vsm.dim
         ambi_dim = params.ambi_vsm.dim if params.ambi_vsm else 0
 
-        # input_col = loc_dim + word_dim + ambi_dim + params.num_class
-        input_col = loc_dim + word_dim + ambi_dim
+        input_col = loc_dim + word_dim + ambi_dim + params.num_class
+        # input_col = loc_dim + word_dim + ambi_dim
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
+
+class POSModel_LSTM(LSTMModel):
+    def __init__(self, params, **kwargs):
+        """
+        :param params: parameters to initialize POSModel.
+        :type params: SimpleNamespace
+        :param kwargs: parameters to initialize gluon.Block.
+        :type kwargs: dict
+        """
+        loc_dim = len(X_ANY)
+        word_dim = params.word_vsm.dim
+        ambi_dim = params.ambi_vsm.dim if params.ambi_vsm else 0
+
+        # input_col = loc_dim + word_dim + ambi_dim + params.num_class
+        input_col = loc_dim + word_dim + ambi_dim
+        n_hidden = 128
+        # ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
+        super().__init__(input_col, params.num_class, n_hidden, params.dropout, **kwargs)
 
 
 class POSTagger(NLPComponent):
@@ -126,6 +143,7 @@ class POSTagger(NLPComponent):
 
         self.params = self.create_params(word_vsm, ambi_vsm, num_class, windows, ngram_filters, dropout, label_map)
         super().__init__(ctx, POSModel(self.params))
+        # super().__init__(ctx, POSModel_LSTM(self.params))
 
         if model_path:
             self.model.load_params(gln(model_path), ctx=ctx)
@@ -220,6 +238,7 @@ def train():
     logging.info('\n'.join(log))
     # mx.random.seed(11)
     # random.seed(11)
+
     word_vsm = FastText(args.word_vsm)
     ambi_vsm = Word2Vec(args.ambi_vsm) if args.ambi_vsm else None
     comp = POSTagger(args.ctx, word_vsm, ambi_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
