@@ -206,6 +206,7 @@ class CNN2DModel(gluon.Block):
         x = self.out(x)
         return x
 
+
 class LSTMModel(gluon.Block):
     def __init__(self, input_col, num_class, n_hidden, dropout, **kwargs):
         """

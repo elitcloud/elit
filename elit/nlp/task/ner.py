@@ -26,7 +26,7 @@ import mxnet as mx
 import time
 from mxnet import gluon, nd
 
-from elit.nlp.component import CNN2DModel, NLPComponent, pkl, ForwardState, gln
+from elit.nlp.component import CNN2DModel, LSTMModel, NLPComponent, pkl, ForwardState, gln
 from elit.nlp.lexicon import LabelMap, FastText, Word2Vec
 from elit.nlp.metric import F1
 from elit.nlp.structure import TOKEN, NER
@@ -92,9 +92,28 @@ class NERModel(CNN2DModel):
         name_dim = params.name_vsm.dim if params.name_vsm else 0
 
         input_col = loc_dim + word_dim + name_dim + params.num_class
+        # input_col = loc_dim + word_dim + name_dim
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
+
+class NERModelLSTM(LSTMModel):
+    def __init__(self, params, **kwargs):
+        """
+        :param params: parameters to initialize POSModel.
+        :type params: SimpleNamespace
+        :param kwargs: parameters to initialize gluon.Block.
+        :type kwargs: dict
+        """
+        loc_dim = len(X_ANY)
+        word_dim = params.word_vsm.dim
+        name_dim = params.name_vsm.dim if params.name_vsm else 0
+
+        # input_col = loc_dim + word_dim + name_dim + params.num_class
+        input_col = loc_dim + word_dim + name_dim
+        n_hidden = 128
+        # ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
+        super().__init__(input_col, params.num_class, n_hidden, params.dropout, **kwargs)
 
 class NERModelLR(gluon.Block):
     def __init__(self, params, **kwargs):
@@ -208,7 +227,7 @@ def train_args():
 
     # configuration
     parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50, help='number of classes')
-    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*', default=(-2, -1, 0, 1, 2), help='contextual windows for feature extraction')
+    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*', default=(-3, -2, -1, 0, 1, 2, 3), help='contextual windows for feature extraction')
     parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*', default=(128,128,128,128,128), help='number of filters for n-gram convolutions')
     parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2, help='dropout')
 
@@ -224,7 +243,11 @@ def train_args():
 
 def train():
     args = train_args()
-    logging.basicConfig(filename=args.log_path + '.log', format='%(message)s', level=logging.INFO)
+    if not args.trn_path:
+        predict(args)
+        return
+
+    logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s', level=logging.INFO)
 
     log = ['Configuration',
            '- train batch    : %d' % args.trn_batch,
@@ -269,11 +292,27 @@ def train():
 
         if best_eval < dev_eval[0]:
             best_e, best_eval = e, dev_eval[0]
-            if args.mod_path: comp.save(args.mod_path+'.'+str(e))
+            # if args.mod_path: comp.save(args.mod_path+'.'+str(e))
+            if args.mod_path: comp.save(args.mod_path)
 
         logging.info(
             '%4d: trn-time: %d, dev-time: %d, trn-f1: %5.2f, dev-f1: %5.2f, num-class: %d, best-acc: %5.2f @%4d' %
             (e, mt-st, et-mt, trn_eval[0], dev_eval[0], len(comp.params.label_map), best_eval, best_e))
+
+
+def predict(args):
+    word_vsm = FastText(args.word_vsm)
+    name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
+    comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout,
+                        model_path=args.mod_path)
+    cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner}
+    dev_states = read_tsv(args.dev_path, cols, comp.create_state)
+    # train
+    # best_e, best_eval = -1, -1
+    # trn_metric = Accuracy()
+    dev_metric = F1()
+    dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
+    print("Test accuracy for %s is %5.2f" % (args.mod_path, dev_eval))
 
 
 if __name__ == '__main__':

@@ -225,6 +225,10 @@ def train():
     # logging.basicConfig(filename='cnn_experiment_logs_test.log', format='%(message)s', level=logging.INFO)
     # print(args.log_path+".log")
     args = train_args()
+    if not args.trn_path:
+        predict(args)
+        return
+
     logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s', level=logging.INFO)
 
     log = ['Configuration',
@@ -275,6 +279,21 @@ def train():
         logging.info(
             '%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f (%d), dev-acc: %5.2f (%d), num-class: %d, best-acc: %5.2f @%4d' %
             (e, mt-st, et-mt, trn_eval, trn_metric.total, dev_eval, dev_metric.total, len(comp.params.label_map), best_eval, best_e))
+
+
+def predict(args):
+    word_vsm = FastText(args.word_vsm)
+    ambi_vsm = Word2Vec(args.ambi_vsm) if args.ambi_vsm else None
+    comp = POSTagger(args.ctx, word_vsm, ambi_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout,
+                     model_path=args.mod_path)
+    cols = {TOKEN: args.tsv_tok, POS: args.tsv_pos}
+    dev_states = read_tsv(args.dev_path, cols, comp.create_state)
+    # train
+    # best_e, best_eval = -1, -1
+    # trn_metric = Accuracy()
+    dev_metric = Accuracy()
+    dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
+    print("Test accuracy for %s is %5.2f" % (args.mod_path, dev_eval))
 
 
 if __name__ == '__main__':
