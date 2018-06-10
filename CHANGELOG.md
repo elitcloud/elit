@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 ### Changed
-- Refactor tokenizer
-- Refartor tokenizer test
+### Removed
+
+## [0.1.18] - 2018-06-10
+### Added
+### Changed
 - Change result format. 'token' -> 'tok'. Add 'sid' field
 - Update elitsdk to 0.0.6
+### Removed
+
+## [0.1.17] - 2018-05-23
+### Added
+### Changed
+- Refactor tokenizer
+- Refartor tokenizer test
 ### Removed
 
 ## [0.1.16] - 2018-5-21
