@@ -181,9 +181,9 @@ class TestEnglishTokenizer(unittest.TestCase):
     def test_segment(self):
         tokens, offsets = self.tok.decode('. "1st sentence." 2nd sentence? "3rd sentence!"')
         self.assertEqual(self.seg.decode(tokens, offsets),
-        [{'token': ['.', '"', '1st', 'sentence', '.', '"'], 'offset': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]},
-         {'token': ['2nd', 'sentence', '?'], 'offset': [(18, 21), (22, 30), (30, 31)]},
-         {'token': ['"', '3rd', 'sentence', '!', '"'], 'offset': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]}])
+        [{'sid': 0, 'tok': ['.', '"', '1st', 'sentence', '.', '"'], 'offset': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]},
+         {'sid': 1, 'tok': ['2nd', 'sentence', '?'], 'offset': [(18, 21), (22, 30), (30, 31)]},
+         {'sid': 2, 'tok': ['"', '3rd', 'sentence', '!', '"'], 'offset': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]}])
 
 
 # Change to tokenizer_helper because function name with test cause test framework confused.
