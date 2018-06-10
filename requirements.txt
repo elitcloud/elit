@@ -1,2 +1,2 @@
-elitsdk==0.0.5
+elitsdk==0.0.6
 elit==0.1.16

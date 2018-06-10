@@ -19,7 +19,7 @@ import os
 import re
 
 from elit.util.string import *
-from elit.nlp.structure import TOKEN, OFFSET
+from elit.nlp.structure import SENTENCE_ID, TOKEN, OFFSET
 from elitsdk.sdk import Component
 from pkg_resources import resource_filename
 
@@ -516,11 +516,16 @@ class Segmenter(Component):
 
 class EnglishSegmenter(Segmenter):
     def decode(self, input_data, offsets=0, **kwargs):
-        def sentence(begin, end):
-            return {TOKEN: input_data[begin:end], OFFSET: offsets[begin:end]}
+        def sentence(sid, begin, end):
+            return {
+                SENTENCE_ID: sid,
+                TOKEN: input_data[begin:end],
+                OFFSET: offsets[begin:end]
+            }
 
         sentences = []
         begin = 0
+        sid = 0
         right_quote = True
 
         for i, token in enumerate(input_data):
@@ -535,10 +540,12 @@ class EnglishSegmenter(Segmenter):
                     d[OFFSET].append(offsets[i])
                     begin = i + 1
             elif all(is_final_mark(c) for c in token):
-                sentences.append(sentence(begin, i + 1))
+                sentences.append(sentence(sid, begin, i + 1))
+                sid += 1
                 begin = i + 1
 
         if begin < len(input_data):
             sentences.append(sentence(begin, len(input_data)))
+            sid += 1
 
         return sentences

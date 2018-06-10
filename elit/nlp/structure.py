@@ -16,8 +16,9 @@
 
 __author__ = 'Jinho D. Choi'
 
+SENTENCE_ID = 'sid'
 
-TOKEN = 'token'
+TOKEN = 'tok'
 LEMMA = 'lemma'
 OFFSET = 'offset'
 
@@ -29,6 +30,7 @@ SENTIMENT = 'sentiment'
 
 OUT = '-out'
 
+
 class Sentence(dict):
     def __init__(self, d=None):
         """
@@ -36,7 +38,8 @@ class Sentence(dict):
         :type d: dict
         """
         super().__init__()
-        if d is not None: self.update(d)
+        if d is not None:
+            self.update(d)
 
     def __len__(self):
         return len(self[TOKEN])
@@ -49,6 +52,7 @@ class Document(list):
         :type l: list of Sentence
         """
         super().__init__()
-        if l is not None: self.extend(l)
+        if l is not None:
+            self.extend(l)
 
 
