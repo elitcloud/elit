@@ -112,7 +112,7 @@ class SpaceTokenizer(Tokenizer):
         :param kwargs:
         :return:
         """
-        tokens = input_data.split(
+        tokens = input_data.split()
 
         return {
             TOKEN: tokens,
@@ -124,15 +124,15 @@ class EnglishTokenizer(Tokenizer):
 
     def __init__(self):
         super(EnglishTokenizer, self).__init__()
-        self.SET_ABBREVIATION_PERIOD = self.read_word_set(
+        self.ABBREVIATION_PERIOD = self.read_word_set(
             resource_filename('elit.resources.tokenizer', 'english_abbreviation_period.txt'))
-        self.SET_APOSTROPHE_FRONT = self.read_word_set(
+        self.APOSTROPHE_FRONT = self.read_word_set(
             resource_filename('elit.resources.tokenizer', 'english_apostrophe_front.txt'))
         self.MAP_CONCAT_WORD = self.read_concat_word_dict(
             resource_filename('elit.resources.tokenizer', 'english_concat_words.txt'))
-        self.SET_HYPHEN_PREFIX = self.read_word_set(
+        self.HYPHEN_PREFIX = self.read_word_set(
             resource_filename('elit.resources.tokenizer', 'english_hyphen_prefix.txt'))
-        self.SET_HYPHEN_SUFFIX = self.read_word_set(
+        self.HYPHEN_SUFFIX = self.read_word_set(
             resource_filename('elit.resources.tokenizer', 'english_hyphen_suffix.txt'))
         # regular expressions
         self.RE_NETWORK_PROTOCOL = re.compile(
@@ -184,24 +184,27 @@ class EnglishTokenizer(Tokenizer):
             r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
 
     def load(self, model_path, *args, **kwargs):
-        self.SET_ABBREVIATION_PERIOD = self.read_word_set(
+        self.ABBREVIATION_PERIOD = self.read_word_set(
             os.path.join(model_path, 'english_abbreviation_period.txt'))
-        self.SET_APOSTROPHE_FRONT = self.read_word_set(
+        self.APOSTROPHE_FRONT = self.read_word_set(
             os.path.join(model_path, 'english_apostrophe_front.txt'))
         self.MAP_CONCAT_WORD = self.read_concat_word_dict(
             os.path.join(model_path, 'english_concat_words.txt'))
-        self.SET_HYPHEN_PREFIX = self.read_word_set(
+        self.HYPHEN_PREFIX = self.read_word_set(
             os.path.join(model_path, 'english_hyphen_prefix.txt'))
-        self.SET_HYPHEN_SUFFIX = self.read_word_set(
+        self.HYPHEN_SUFFIX = self.read_word_set(
             os.path.join(model_path, 'english_hyphen_suffix.txt'))
 
     def decode(self, input_data, offset=0, **kwargs):
         tokens = []
         offsets = []
-
+        result = {
+            TOKEN: tokens,
+            OFFSET: offsets
+        }
         # no valid token in the input text
         if not input_data or input_data.isspace():
-            return tokens, offsets
+            return result
 
         # skip beginning and ending spaces
         begin = next(i for i, c in enumerate(input_data) if not c.isspace())
@@ -216,10 +219,7 @@ class EnglishTokenizer(Tokenizer):
                 begin = end + 1
 
         self.tokenize_aux(tokens, offsets, input_data, begin, last, offset)
-        return {
-            TOKEN: tokens,
-            OFFSET: self.offsets(input_data, tokens, offset)
-        }
+        return result
 
     def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
         if begin >= end or end > len(text):
@@ -374,11 +374,11 @@ class EnglishTokenizer(Tokenizer):
 
     def concat_token(self, tokens, offsets, token, end):
         def apostrophe_front(prev, curr):
-            return len(prev) == 1 and is_single_quote(prev) and curr in self.SET_APOSTROPHE_FRONT
+            return len(prev) == 1 and is_single_quote(prev) and curr in self.APOSTROPHE_FRONT
 
         def abbreviation(prev, curr):
             return curr == '.' and (
-                self.RE_ABBREVIATION.match(prev) or prev in self.SET_ABBREVIATION_PERIOD)
+                self.RE_ABBREVIATION.match(prev) or prev in self.ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
             return len(curr) == 1 and curr in {'&', '|', '/'} and (
@@ -396,8 +396,8 @@ class EnglishTokenizer(Tokenizer):
                         next) == 1 and next.isalnum():
                     # p-u-s-h
                     return True
-                return (prev in self.SET_HYPHEN_PREFIX and next.isalnum()) or (
-                    next in self.SET_HYPHEN_SUFFIX and prev.isalnum())
+                return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (
+                    next in self.HYPHEN_SUFFIX and prev.isalnum())
 
             return False
 
