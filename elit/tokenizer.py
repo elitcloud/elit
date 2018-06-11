@@ -112,8 +112,12 @@ class SpaceTokenizer(Tokenizer):
         :param kwargs:
         :return:
         """
-        tokens = input_data.split()
-        return tokens, self.offsets(input_data, tokens, offset)
+        tokens = input_data.split(
+
+        return {
+            TOKEN: tokens,
+            OFFSET: self.offsets(input_data, tokens, offset)
+        }
 
 
 class EnglishTokenizer(Tokenizer):
@@ -212,7 +216,10 @@ class EnglishTokenizer(Tokenizer):
                 begin = end + 1
 
         self.tokenize_aux(tokens, offsets, input_data, begin, last, offset)
-        return tokens, offsets
+        return {
+            TOKEN: tokens,
+            OFFSET: self.offsets(input_data, tokens, offset)
+        }
 
     def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
         if begin >= end or end > len(text):
