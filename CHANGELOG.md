@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 ### Removed
 
+## [0.1.19] - 2018-06-15
+### Added
+### Changed
+- add filed name: tok and offset to SpaceTokenizer and EnglishTokenizer
+- update tokenizer tests
+### Removed
+
 ## [0.1.18] - 2018-06-10
 ### Added
 ### Changed
