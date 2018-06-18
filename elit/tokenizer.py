@@ -19,7 +19,7 @@ import os
 import re
 
 from elit.util.string import *
-from elit.nlp.structure import SENTENCE_ID, TOKEN, OFFSET
+from elit.nlp.structure import TOKEN, OFFSET
 from elitsdk.sdk import Component
 from pkg_resources import resource_filename
 
@@ -505,54 +505,3 @@ class EnglishTokenizer(Tokenizer):
                 return token[i:j].isdigit()
         return False
 
-
-class Segmenter(Component):
-    @abc.abstractmethod
-    def decode(self, input_data, offsets=0, **kwargs):
-        pass
-
-    def load(self, model_path, *args, **kwargs):
-        pass
-
-    def train(self, trn_data, dev_data, *args, **kwargs):
-        pass
-
-    def save(self, model_path, *args, **kwargs):
-        pass
-
-
-class EnglishSegmenter(Segmenter):
-    def decode(self, input_data, offsets=0, **kwargs):
-        def sentence(sid, begin, end):
-            return {
-                SENTENCE_ID: sid,
-                TOKEN: input_data[begin:end],
-                OFFSET: offsets[begin:end]
-            }
-
-        sentences = []
-        begin = 0
-        sid = 0
-        right_quote = True
-
-        for i, token in enumerate(input_data):
-            t = token[0]
-            if t == '"':
-                right_quote = not right_quote
-
-            if begin == i:
-                if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
-                    d = sentences[-1]
-                    d[TOKEN].append(token)
-                    d[OFFSET].append(offsets[i])
-                    begin = i + 1
-            elif all(is_final_mark(c) for c in token):
-                sentences.append(sentence(sid, begin, i + 1))
-                sid += 1
-                begin = i + 1
-
-        if begin < len(input_data):
-            sentences.append(sentence(begin, len(input_data)))
-            sid += 1
-
-        return sentences

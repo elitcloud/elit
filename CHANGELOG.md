@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Segmenter test
 ### Changed
+- Fix Segmenter
+- Seperate Segmenter out form Tokenizer
 ### Removed
 
 ## [0.1.19] - 2018-06-15

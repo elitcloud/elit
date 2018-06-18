@@ -218,11 +218,18 @@ def test_eng_tokenizer_split(eng_tok, input, expected):
 
 @pytest.fixture(scope="module")
 def eng_seg():
-    from elit.tokenizer import EnglishSegmenter
+    from elit.segmenter import EnglishSegmenter
     return EnglishSegmenter()
 
 
 @pytest.mark.parametrize('input, expected', [
+    ('hello world',
+     [{
+         'sid': 0,
+         'tok': ['hello', 'world'],
+         'offset': [(0, 5), (6, 11)]
+     }]
+    ),
     # unit
     ('. "1st sentence." 2nd sentence? "3rd sentence!"',
      [{
