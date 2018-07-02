@@ -69,6 +69,7 @@ class NERState(ForwardState):
             metric.p_total += len(gold)
             metric.r_total += len(auto)
 
+
     @property
     def x(self):
         """
@@ -133,28 +134,35 @@ class NERModelLR(gluon.Block):
         return x
 
 class NERecognizer(NLPComponent):
-    def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
-                 ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
-        """
-        :param ctx: the context (e.g., CPU or GPU) to process this component.
-        :type ctx: mxnet.context.Context
-        :param word_vsm: the vector space model for word embeddings.
-        :type word_vsm: elit.nlp.lexicon.VectorSpaceModel
-        :param name_vsm: the vector space model for ambiguity classes.
-        :type name_vsm: elit.nlp.lexicon.VectorSpaceModel
-        :param num_class: the total number of classes to predict.
-        :type num_class: int
-        :param windows: the contextual windows for feature extraction.
-        :type windows: tuple of int
-        :param ngram_filters: the number of filters for n-gram convolutions.
-        :type ngram_filters: tuple of int
-        :param dropout: the dropout ratio.
-        :type dropout: float
-        :param label_map: the mapping between class labels and their unique IDs.
-        :type label_map: elit.nlp.lexicon.LabelMap
-        :param model_path: if not None, this component is initialized by objects saved in the model_path.
-        :type model_path: str
-        """
+    # def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
+    #              ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
+    """
+    :param ctx: the context (e.g., CPU or GPU) to process this component.
+    :type ctx: mxnet.context.Context
+    :param word_vsm: the vector space model for word embeddings.
+    :type word_vsm: elit.nlp.lexicon.VectorSpaceModel
+    :param name_vsm: the vector space model for ambiguity classes.
+    :type name_vsm: elit.nlp.lexicon.VectorSpaceModel
+    :param num_class: the total number of classes to predict.
+    :type num_class: int
+    :param windows: the contextual windows for feature extraction.
+    :type windows: tuple of int
+    :param ngram_filters: the number of filters for n-gram convolutions.
+    :type ngram_filters: tuple of int
+    :param dropout: the dropout ratio.
+    :type dropout: float
+    :param label_map: the mapping between class labels and their unique IDs.
+    :type label_map: elit.nlp.lexicon.LabelMap
+    :param model_path: if not None, this component is initialized by objects saved in the model_path.
+    :type model_path: str
+    """
+    # self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
+    # super().__init__(ctx, NERModel(self.params))
+
+    # override
+    def load(self, model_path, *args, **kwargs):
+        ctx, word_vsm, name_vsm, num_class, windows, ngram_filters, dropout = args
+        label_map = None
         if model_path:
             f = open(pkl(model_path), 'rb')
             label_map = pickle.load(f)
@@ -165,15 +173,16 @@ class NERecognizer(NLPComponent):
             f.close()
 
         self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
-        super().__init__(ctx, NERModel(self.params))
+        super().__init__(ctx=ctx, model=NERModel(self.params))
 
         if model_path:
-            self.model.load_params(gln(model_path), ctx=ctx)
+            self.model.load_params(gln(model_path), ctx=self.ctx)
         else:
             ini = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
-            self.model.collect_params().initialize(ini, ctx=ctx)
+            self.model.collect_params().initialize(ini, ctx=self.ctx)
 
-    def save(self, filepath):
+    # override
+    def save(self, filepath, *args, **kwargs):
         f = open(pkl(filepath), 'wb')
         pickle.dump(self.params.label_map, f)
         pickle.dump(self.params.num_class, f)
@@ -264,7 +273,10 @@ def train():
 
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
-    comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
+    # comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
+    comp = NERecognizer()
+    comp.load(args.mod_path, args.ctx, word_vsm, name_vsm, args.num_class, args.windows,
+              args.ngram_filters, args.dropout)
 
     # states
     cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner}
@@ -284,11 +296,16 @@ def train():
         trn_metric.reset()
         dev_metric.reset()
 
-        st = time.time()
-        trn_eval = comp.train(trn_states, args.trn_batch, trainer, loss_func, trn_metric)
-        mt = time.time()
-        dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
-        et = time.time()
+        # call the overridden method instead
+
+        # st = time.time()
+        # trn_eval = comp.train(trn_states, args.trn_batch, trainer, loss_func, trn_metric)
+        # mt = time.time()
+        # dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
+        # et = time.time()
+
+        st, mt, et, trn_eval, dev_eval = comp.train(trn_states, dev_states, args.trn_batch, trainer, loss_func, trn_metric,
+                                        args.dev_batch, dev_metric)
 
         if best_eval < dev_eval[0]:
             best_e, best_eval = e, dev_eval[0]
@@ -303,8 +320,9 @@ def train():
 def predict(args):
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
-    comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout,
-                        model_path=args.mod_path)
+    comp = NERecognizer()
+    comp.load(args.mod_path, args.ctx, word_vsm, name_vsm, args.num_class, args.windows,
+              args.ngram_filters, args.dropout)
     cols = {TOKEN: args.tsv_tok, NER: args.tsv_ner}
     dev_states = read_tsv(args.dev_path, cols, comp.create_state)
     # train
