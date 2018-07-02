@@ -15,6 +15,8 @@
 # ========================================================================
 import abc
 import random
+import time
+from elitsdk import Component
 
 import numpy as np
 from mxnet import nd, gluon, autograd
@@ -234,8 +236,8 @@ def pkl(filepath): return filepath+'.pkl'
 def gln(filepath): return filepath+'.gln'
 
 
-class NLPComponent(metaclass=abc.ABCMeta):
-    def __init__(self, ctx, model):
+class NLPComponent(Component):
+    def __init__(self, ctx=None, model=None):
         """
         NLPComponent gives a template to implement a machine learning-based component.
         :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -246,14 +248,14 @@ class NLPComponent(metaclass=abc.ABCMeta):
         self.ctx = ctx
         self.model = model
 
-    @abc.abstractmethod
-    def save(self, filepath):
-        """
-        Saves this component to the filepath.
-        :param filepath: the path to the file to be saved.
-        :type filepath: str
-        """
-        pass
+    # @abc.abstractmethod
+    # def save(self, filepath):
+    #     """
+    #     Saves this component to the filepath.
+    #     :param filepath: the path to the file to be saved.
+    #     :type filepath: str
+    #     """
+    #     pass
 
     @abc.abstractmethod
     def create_state(self, document):
@@ -265,7 +267,9 @@ class NLPComponent(metaclass=abc.ABCMeta):
         """
         return
 
-    def decode(self, states, batch_size, reset=False):
+    # override
+    # take in input_data (states), args: batch_size kwargs: reset(bool)
+    def decode(self, states, *args, **kwargs):
         """
         Makes predictions for all states and saves them to the corresponding documents.
         :param states: the input states.
@@ -275,11 +279,16 @@ class NLPComponent(metaclass=abc.ABCMeta):
         :param reset: if True, reset all states to their initial stages.
         :type reset: bool
         """
+        batch_size = args[0]
+        reset = kwargs['reset']
         self._decode(states, batch_size)
 
         for state in states:
             state.supply()
             if reset: state.reset()
+
+        return {state: state.labels for state in states}
+
 
     def evaluate(self, states, batch_size, metric, reset=True):
         """
@@ -303,7 +312,18 @@ class NLPComponent(metaclass=abc.ABCMeta):
 
         return metric.get()
 
-    def train(self, states, batch_size, trainer, loss_func, metric=None, reset=True):
+    # override
+    def train(self, trn_states, dev_states, *args, **kwargs):
+        trn_batch, trainer, loss_func, trn_metric, dev_batch, dev_metric = args
+        st = time.time()
+        trn_eval = self._train(trn_states, trn_batch, trainer, loss_func, trn_metric)
+        mt = time.time()
+        dev_eval = self.evaluate(dev_states, dev_batch, dev_metric)
+        et = time.time()
+
+        return st, mt, et, trn_eval, dev_eval
+
+    def _train(self, states, batch_size, trainer, loss_func, metric=None, reset=True):
         """
         :param states: the input states.
         :type states: list of elit.nlp.component.NLPState
