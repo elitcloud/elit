@@ -304,8 +304,8 @@ def train():
         # dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
         # et = time.time()
 
-        st, mt, et, trn_eval, dev_eval = comp.train(trn_states, dev_states, args.trn_batch, trainer, loss_func, trn_metric,
-                                        args.dev_batch, dev_metric)
+        st, mt, et, trn_eval, dev_eval = comp.train(trn_states, dev_states, args.trn_batch, trainer,
+                                                    loss_func, trn_metric, args.dev_batch, dev_metric)
 
         if best_eval < dev_eval[0]:
             best_e, best_eval = e, dev_eval[0]
