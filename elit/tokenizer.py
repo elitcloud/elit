@@ -17,11 +17,12 @@ import abc
 import codecs
 import os
 import re
+from pkg_resources import resource_filename
 
 from elit.util.string import *
-from elit.nlp.structure import TOKEN, OFFSET
+from elit.structure import TOKEN, OFFSET
 from elitsdk.sdk import Component
-from pkg_resources import resource_filename
+
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
