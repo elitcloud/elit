@@ -13,19 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import bisect
-import glob
-import logging
-import time
-from random import shuffle
 
 import numpy as np
-from mxnet import gluon, autograd
-
-from elit.nlp.structure import DEPREL, TOKEN, Sentence, Document
+from elit.nlp.structure import TOKEN
 
 __author__ = 'Jinho D. Choi'
-
 
 X_FST = np.array([1, 0]).astype('float32')  # the first word
 X_LST = np.array([0, 1]).astype('float32')  # the last word
@@ -37,9 +29,10 @@ def get_loc_embeddings(document):
     :return: the position embedding of the (self.tok_id + window)'th word.
     :rtype: numpy.array
     """
+
     def aux(sentence):
         size = len(sentence)
-        return [X_FST if i == 0 else X_LST if i+1 == size else X_ANY for i in range(size)]
+        return [X_FST if i == 0 else X_LST if i + 1 == size else X_ANY for i in range(size)]
 
     return [aux(s) for s in document], X_ANY
 
