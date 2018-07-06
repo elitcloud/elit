@@ -62,6 +62,7 @@ class NLPState(abc.ABC):
         """
         return
 
+    @property
     @abc.abstractmethod
     def labels(self):
         """
@@ -85,6 +86,7 @@ class NLPState(abc.ABC):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def x(self):
         """
@@ -93,6 +95,7 @@ class NLPState(abc.ABC):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def y(self):
         """
@@ -145,6 +148,7 @@ class ForwardState(NLPState):
     def has_next(self):
         return 0 <= self.sen_id < len(self.document)
 
+    @property
     def labels(self):
         """
         :rtype: list of (list of str)
@@ -169,9 +173,11 @@ class ForwardState(NLPState):
     def eval(self, metric):
         pass
 
+    @property
     def x(self):
         pass
 
+    @property
     def y(self):
         label = self.document[self.sen_id][self.key][self.tok_id]
         return self.label_map.add(label)
