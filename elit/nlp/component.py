@@ -232,9 +232,6 @@ class LSTMModel(gluon.Block):
 
 # ======================================== Component ========================================
 
-def pkl(filepath): return filepath+'.pkl'
-def gln(filepath): return filepath+'.gln'
-
 
 class NLPComponent(Component):
     def __init__(self, ctx=None, model=None):
