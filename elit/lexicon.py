@@ -23,7 +23,7 @@ from gensim.models import KeyedVectors
 from gensim.test.utils import datapath, get_tmpfile
 from gensim.scripts.glove2word2vec import glove2word2vec
 import fastText
-# import fasttext
+
 __author__ = 'Jinho D. Choi'
 
 
