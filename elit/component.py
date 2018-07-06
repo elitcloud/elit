@@ -21,14 +21,14 @@ from elitsdk import Component
 import numpy as np
 from mxnet import nd, gluon, autograd
 
-from elit.nlp.structure import OUT
+from elit.structure import OUT
 
 __author__ = 'Jinho D. Choi'
 
 
 # ======================================== State ========================================
 
-class NLPState(metaclass=abc.ABCMeta):
+class NLPState(abc.ABC):
     def __init__(self, document):
         """
         NLPState defines a decoding strategy to process the input document.
@@ -62,7 +62,6 @@ class NLPState(metaclass=abc.ABCMeta):
         """
         return
 
-    @property
     @abc.abstractmethod
     def labels(self):
         """
@@ -86,26 +85,25 @@ class NLPState(metaclass=abc.ABCMeta):
         """
         pass
 
-    @property
     @abc.abstractmethod
     def x(self):
         """
         :return: the feature vector (or matrix) for the current state.
         :rtype: numpy.array
         """
-        return
+        pass
 
-    @property
     @abc.abstractmethod
     def y(self):
         """
         :return: the ID of the gold-standard label for the current state.
         :rtype: int
         """
-        return
+        pass
 
 
-class ForwardState(NLPState, metaclass=abc.ABCMeta):
+class ForwardState(NLPState):
+
     def __init__(self, document, label_map, zero_output, key):
         """
         ForwardState defines the one-pass, left-to-right decoding strategy.
@@ -123,7 +121,7 @@ class ForwardState(NLPState, metaclass=abc.ABCMeta):
         self.zero_output = zero_output
 
         self.key = key
-        self.key_out = key+OUT
+        self.key_out = key + OUT
 
         self.sen_id = 0
         self.tok_id = 0
@@ -147,11 +145,11 @@ class ForwardState(NLPState, metaclass=abc.ABCMeta):
     def has_next(self):
         return 0 <= self.sen_id < len(self.document)
 
-    @property
     def labels(self):
         """
         :rtype: list of (list of str)
         """
+
         def aux(scores):
             if size < len(scores): scores = scores[:size]
             return self.label_map.get(np.argmax(scores))
@@ -168,7 +166,12 @@ class ForwardState(NLPState, metaclass=abc.ABCMeta):
             d[self.key] = labels
             d[self.key_out] = self.output[i]
 
-    @property
+    def eval(self, metric):
+        pass
+
+    def x(self):
+        pass
+
     def y(self):
         label = self.document[self.sen_id][self.key][self.tok_id]
         return self.label_map.add(label)
@@ -187,7 +190,8 @@ class CNN2DModel(gluon.Block):
 
         with self.name_scope():
             for i, n in enumerate(ngram_conv):
-                conv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col), strides=(1, input_col), activation=n.activation)
+                conv = gluon.nn.Conv2D(channels=n.filters, kernel_size=(n.kernel_row, input_col),
+                                       strides=(1, input_col), activation=n.activation)
                 name = 'conv_' + str(i)
                 self.ngram_conv.append(conv)
                 setattr(self, name, conv)
@@ -230,6 +234,7 @@ class LSTMModel(gluon.Block):
         x = self.out(x)
         return x
 
+
 # ======================================== Component ========================================
 
 
@@ -244,15 +249,6 @@ class NLPComponent(Component):
         """
         self.ctx = ctx
         self.model = model
-
-    # @abc.abstractmethod
-    # def save(self, filepath):
-    #     """
-    #     Saves this component to the filepath.
-    #     :param filepath: the path to the file to be saved.
-    #     :type filepath: str
-    #     """
-    #     pass
 
     @abc.abstractmethod
     def create_state(self, document):
@@ -282,10 +278,10 @@ class NLPComponent(Component):
 
         for state in states:
             state.supply()
-            if reset: state.reset()
+            if reset:
+                state.reset()
 
         return {state: state.labels for state in states}
-
 
     def evaluate(self, states, batch_size, metric, reset=True):
         """
@@ -359,8 +355,10 @@ class NLPComponent(Component):
             tmp = [state for state in tmp if state.has_next()]
 
         for state in states:
-            if metric: state.eval(metric)
-            if reset: state.reset()
+            if metric:
+                state.eval(metric)
+            if reset:
+                state.reset()
 
         return metric.get() if metric else 0
 
@@ -369,7 +367,7 @@ class NLPComponent(Component):
         size = len(output)
 
         for i in range(size):
-            states[begin+i].process(output[i].asnumpy())
+            states[begin + i].process(output[i].asnumpy())
 
         return size
 
