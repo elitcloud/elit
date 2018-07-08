@@ -133,7 +133,7 @@ def setup_package():
             'keras',
             'tensorflow',
             'ujson',
-            'mxnet'
+            'mxnet',
         ],
         tests_require=[
             'pytest',
