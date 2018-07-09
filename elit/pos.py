@@ -188,18 +188,6 @@ class POSTagger(NLPComponent):
     def create_state(self, document):
         return POSState(document, self.params)
 
-    @staticmethod
-    def create_params(word_vsm, ambi_vsm, num_class, windows, ngram_filters, dropout, label_map):
-        return SimpleNamespace(
-            word_vsm=word_vsm,
-            ambi_vsm=ambi_vsm,
-            label_map=label_map or LabelMap(),
-            num_class=num_class,
-            windows=windows,
-            ngram_filters=ngram_filters,
-            dropout=dropout,
-            zero_output=np.zeros(num_class).astype('float32'))
-
 
 # ======================================== Train ========================================
 

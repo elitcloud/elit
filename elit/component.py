@@ -16,11 +16,14 @@
 import abc
 import random
 import time
+from types import SimpleNamespace
+
 from elitsdk import Component
 
 import numpy as np
 from mxnet import nd, gluon, autograd
 
+from elit.lexicon import LabelMap
 from elit.structure import OUT
 
 __author__ = 'Jinho D. Choi'
@@ -265,6 +268,18 @@ class NLPComponent(Component):
         :rtype: NLPState
         """
         return
+
+    @staticmethod
+    def create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map):
+        return SimpleNamespace(
+            word_vsm=word_vsm,
+            name_vsm=name_vsm,
+            label_map=label_map or LabelMap(),
+            num_class=num_class,
+            windows=windows,
+            ngram_filters=ngram_filters,
+            dropout=dropout,
+            zero_output=np.zeros(num_class).astype('float32'))
 
     # override
     # take in input_data (states), args: batch_size kwargs: reset(bool)
