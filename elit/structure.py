@@ -92,7 +92,8 @@ def group_states(sentences, create_state=None, max_len=-1):
     states = []
     document = Document()
     wc = max_len - aux(-1)
-    if create_state is None: create_state = dummy
+    if create_state is None:
+        create_state = dummy
 
     while keys:
         idx = bisect.bisect_left(keys, wc)

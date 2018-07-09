@@ -13,25 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import sys
-sys.path.append("/home/zyang68/elit/")
 import argparse
 import logging
-import random
+import pickle
 from types import SimpleNamespace
 
-import pickle
-import numpy as np
 import mxnet as mx
-import time
-from mxnet import gluon, nd
+import numpy as np
+from mxnet import gluon
 
-from elit.nlp.component import CNN2DModel, LSTMModel, NLPComponent, pkl, ForwardState, gln
-from elit.nlp.lexicon import LabelMap, FastText, Word2Vec
-from elit.nlp.metric import F1
-from elit.nlp.structure import TOKEN, NER
-from elit.nlp.util import x_extract, get_embeddings, get_loc_embeddings, X_ANY, read_tsv
-from elit.util.component import BILOU
+from elit.component import CNN2DModel, LSTMModel, NLPComponent, ForwardState
+from elit.structure import TOKEN, NER
+from elit.lexicon import LabelMap, FastText, Word2Vec
+from elit.util.metric import F1
+from elit.util.bilou import BILOU
+from elit.util.file import pkl, gln, read_tsv
+from elit.util.embeddings import X_ANY, x_extract, get_embeddings, get_loc_embeddings
 
 __author__ = 'Jinho D. Choi'
 
@@ -48,7 +45,8 @@ class NERState(ForwardState):
         super().__init__(document, params.label_map, params.zero_output, NER)
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
-        if params.name_vsm: self.embs.append(get_embeddings(params.name_vsm, document))
+        if params.name_vsm:
+            self.embs.append(get_embeddings(params.name_vsm, document))
         self.embs.append((self.output, self.zero_output))
 
     def eval(self, metric):
@@ -60,7 +58,6 @@ class NERState(ForwardState):
         for i, sentence in enumerate(self.document):
             gold = sentence[NER]
             pred = preds[i]
-            # BILOU.quick_fix(pred)
 
             gold = BILOU.collect(gold)
             auto = BILOU.collect(pred)
@@ -69,14 +66,14 @@ class NERState(ForwardState):
             metric.p_total += len(gold)
             metric.r_total += len(auto)
 
-
     @property
     def x(self):
         """
         :return: the n x d matrix where n = # of windows and d = 2 + word_emb.dim + name_emb.dim + num_class
         """
         t = len(self.document[self.sen_id])
-        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.windows] for emb, zero in self.embs)
+        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.windows] for
+             emb, zero in self.embs)
         return np.column_stack(l)
 
 
@@ -93,8 +90,8 @@ class NERModel(CNN2DModel):
         name_dim = params.name_vsm.dim if params.name_vsm else 0
 
         input_col = loc_dim + word_dim + name_dim + params.num_class
-        # input_col = loc_dim + word_dim + name_dim
-        ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
+        ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in
+                      enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
 
@@ -110,11 +107,10 @@ class NERModelLSTM(LSTMModel):
         word_dim = params.word_vsm.dim
         name_dim = params.name_vsm.dim if params.name_vsm else 0
 
-        # input_col = loc_dim + word_dim + name_dim + params.num_class
         input_col = loc_dim + word_dim + name_dim
         n_hidden = 128
-        # ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in enumerate(params.ngram_filters, 1)]
         super().__init__(input_col, params.num_class, n_hidden, params.dropout, **kwargs)
+
 
 class NERModelLR(gluon.Block):
     def __init__(self, params, **kwargs):
@@ -132,6 +128,7 @@ class NERModelLR(gluon.Block):
         x = self.dropout(x)
         x = self.out(x)
         return x
+
 
 class NERecognizer(NLPComponent):
     # def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
@@ -156,6 +153,7 @@ class NERecognizer(NLPComponent):
     :param model_path: if not None, this component is initialized by objects saved in the model_path.
     :type model_path: str
     """
+
     # self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
     # super().__init__(ctx, NERModel(self.params))
 
@@ -164,15 +162,15 @@ class NERecognizer(NLPComponent):
         ctx, word_vsm, name_vsm, num_class, windows, ngram_filters, dropout = args
         label_map = None
         if model_path:
-            f = open(pkl(model_path), 'rb')
-            label_map = pickle.load(f)
-            num_class = pickle.load(f)
-            windows = pickle.load(f)
-            ngram_filters = pickle.load(f)
-            dropout = pickle.load(f)
-            f.close()
+            with open(pkl(model_path), 'rb') as f:
+                label_map = pickle.load(f)
+                num_class = pickle.load(f)
+                windows = pickle.load(f)
+                ngram_filters = pickle.load(f)
+                dropout = pickle.load(f)
 
-        self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
+        self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters,
+                                         dropout, label_map)
         super().__init__(ctx=ctx, model=NERModel(self.params))
 
         if model_path:
@@ -183,13 +181,12 @@ class NERecognizer(NLPComponent):
 
     # override
     def save(self, filepath, *args, **kwargs):
-        f = open(pkl(filepath), 'wb')
-        pickle.dump(self.params.label_map, f)
-        pickle.dump(self.params.num_class, f)
-        pickle.dump(self.params.windows, f)
-        pickle.dump(self.params.ngram_filters, f)
-        pickle.dump(self.params.dropout, f)
-        f.close()
+        with open(pkl(filepath), 'wb') as f:
+            pickle.dump(self.params.label_map, f)
+            pickle.dump(self.params.num_class, f)
+            pickle.dump(self.params.windows, f)
+            pickle.dump(self.params.ngram_filters, f)
+            pickle.dump(self.params.dropout, f)
 
         self.model.save_params(gln(filepath))
 
@@ -211,29 +208,48 @@ def train_args():
     parser = argparse.ArgumentParser('Train: named entity recognition')
 
     # data
-    parser.add_argument('-t', '--trn_path', type=str, metavar='filepath', help='path to the training data (input)')
-    parser.add_argument('-d', '--dev_path', type=str, metavar='filepath', help='path to the development data (input)')
-    parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None, help='path to the model data (output)')
-    parser.add_argument('-l', '--log_path', type=str, metavar='filepath', default='logs', help='path to the log data (output)')
+    parser.add_argument('-t', '--trn_path', type=str, metavar='filepath',
+                        help='path to the training data (input)')
+    parser.add_argument('-d', '--dev_path', type=str, metavar='filepath',
+                        help='path to the development data (input)')
+    parser.add_argument('-m', '--mod_path', type=str, metavar='filepath', default=None,
+                        help='path to the model data (output)')
+    parser.add_argument('-l', '--log_path', type=str, metavar='filepath', default='logs',
+                        help='path to the log data (output)')
 
-    parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0, help='the column index of tokens in TSV')
-    parser.add_argument('-vp', '--tsv_ner', type=int, metavar='int', default=4, help='the column index of pos-tags in TSV')
+    parser.add_argument('-vt', '--tsv_tok', type=int, metavar='int', default=0,
+                        help='the column index of tokens in TSV')
+    parser.add_argument('-vp', '--tsv_ner', type=int, metavar='int', default=4,
+                        help='the column index of pos-tags in TSV')
 
     # lexicon
-    parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath', help='vector space model for word embeddings')
-    parser.add_argument('-nv', '--name_vsm', type=str, metavar='filepath', default=None, help='vector space model for named entity gazetteers')
+    parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath',
+                        help='vector space model for word embeddings')
+    parser.add_argument('-nv', '--name_vsm', type=str, metavar='filepath', default=None,
+                        help='vector space model for named entity gazetteers')
 
     # configuration
-    parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50, help='number of classes')
-    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*', default=(-3, -2, -1, 0, 1, 2, 3), help='contextual windows for feature extraction')
-    parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*', default=(128,128,128,128,128), help='number of filters for n-gram convolutions')
-    parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2, help='dropout')
+    parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50,
+                        help='number of classes')
+    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*',
+                        default=(-3, -2, -1, 0, 1, 2, 3),
+                        help='contextual windows for feature extraction')
+    parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*',
+                        default=(128, 128, 128, 128, 128),
+                        help='number of filters for n-gram convolutions')
+    parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2,
+                        help='dropout')
 
-    parser.add_argument('-cx', '--ctx', type=context, metavar='[cg]\d', default=0, help='device context')
-    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50, help='number of epochs')
-    parser.add_argument('-tb', '--trn_batch', type=int, metavar='int', default=64, help='batch size for training')
-    parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=1024, help='batch size for evaluation')
-    parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01, help='learning rate')
+    parser.add_argument('-cx', '--ctx', type=context, metavar='[cg]\d', default=0,
+                        help='device context')
+    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50,
+                        help='number of epochs')
+    parser.add_argument('-tb', '--trn_batch', type=int, metavar='int', default=64,
+                        help='batch size for training')
+    parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=1024,
+                        help='batch size for evaluation')
+    parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01,
+                        help='learning rate')
 
     args = parser.parse_args()
     return args
@@ -245,7 +261,8 @@ def train():
         predict(args)
         return
 
-    logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s', level=logging.INFO)
+    logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s',
+                        level=logging.INFO)
 
     log = ['Configuration',
            '- train batch    : %d' % args.trn_batch,
@@ -274,7 +291,8 @@ def train():
 
     # optimizer
     loss_func = gluon.loss.SoftmaxCrossEntropyLoss()
-    trainer = gluon.Trainer(comp.model.collect_params(), 'adagrad', {'learning_rate': args.learning_rate})
+    trainer = gluon.Trainer(comp.model.collect_params(), 'adagrad',
+                            {'learning_rate': args.learning_rate})
 
     # train
     best_e, best_eval = -1, -1
@@ -294,7 +312,8 @@ def train():
         # et = time.time()
 
         st, mt, et, trn_eval, dev_eval = comp.train(trn_states, dev_states, args.trn_batch, trainer,
-                                                    loss_func, trn_metric, args.dev_batch, dev_metric)
+                                                    loss_func, trn_metric, args.dev_batch,
+                                                    dev_metric)
 
         if best_eval < dev_eval[0]:
             best_e, best_eval = e, dev_eval[0]
@@ -303,7 +322,8 @@ def train():
 
         logging.info(
             '%4d: trn-time: %d, dev-time: %d, trn-f1: %5.2f, dev-f1: %5.2f, num-class: %d, best-acc: %5.2f @%4d' %
-            (e, mt-st, et-mt, trn_eval[0], dev_eval[0], len(comp.params.label_map), best_eval, best_e))
+            (e, mt - st, et - mt, trn_eval[0], dev_eval[0], len(comp.params.label_map), best_eval,
+             best_e))
 
 
 def predict(args):
