@@ -18,7 +18,7 @@ import abc
 __author__ = 'Jinho D. Choi'
 
 
-class Metric(metaclass=abc.ABCMeta):
+class Metric(abc.ABC):
     @abc.abstractmethod
     def reset(self):
         """
@@ -36,6 +36,7 @@ class Metric(metaclass=abc.ABCMeta):
 
 class Accuracy(Metric):
     def __init__(self):
+        super(Accuracy, self).__init__()
         self.correct = 0
         self.total = 0
 
@@ -52,6 +53,7 @@ class Accuracy(Metric):
 
 class F1(Metric):
     def __init__(self):
+        super(F1, self).__init__()
         self.correct = 0
         self.p_total = 0
         self.r_total = 0
