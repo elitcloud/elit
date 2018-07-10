@@ -27,7 +27,7 @@ import fastText
 __author__ = 'Jinho D. Choi'
 
 
-class LabelMap:
+class LabelMap(object):
     """
     LabelMap gives the mapping between class labels and their unique IDs.
     """
@@ -154,7 +154,7 @@ class Word2Vec(VectorSpaceModel):
         return self.model.syn0[vocab.index] if vocab else self.zero
 
 
-class NamedEntityTree:
+class NamedEntityTree(object):
     def __init__(self, filenames):
         """
         :param filepath: the path to the resource files (e.g., resources/nament/english).
