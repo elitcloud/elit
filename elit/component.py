@@ -270,7 +270,7 @@ class NLPComponent(Component):
         return
 
     @staticmethod
-    def create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map):
+    def create_params(word_vsm, name_vsm, label_map, num_class, windows, ngram_filters, dropout):
         return SimpleNamespace(
             word_vsm=word_vsm,
             name_vsm=name_vsm,
@@ -304,7 +304,7 @@ class NLPComponent(Component):
 
         return {state: state.labels for state in states}
 
-    def evaluate(self, states, batch_size, metric, reset=True):
+    def _evaluate(self, states, batch_size, metric, reset=True):
         """
         Makes predictions for all states and evaluates the results using the metric.
         :param states: the input states.
@@ -322,20 +322,21 @@ class NLPComponent(Component):
 
         for state in states:
             state.eval(metric)
-            if reset: state.reset()
+            if reset:
+                state.reset()
 
         return metric.get()
 
-    # override
-    def train(self, trn_states, dev_states, *args, **kwargs):
-        trn_batch, trainer, loss_func, trn_metric, dev_batch, dev_metric = args
-        st = time.time()
-        trn_eval = self._train(trn_states, trn_batch, trainer, loss_func, trn_metric)
-        mt = time.time()
-        dev_eval = self.evaluate(dev_states, dev_batch, dev_metric)
-        et = time.time()
-
-        return st, mt, et, trn_eval, dev_eval
+    # # override
+    # def train(self, trn_states, dev_states, *args, **kwargs):
+    #     trn_batch, trainer, loss_func, trn_metric, dev_batch, dev_metric = args
+    #     st = time.time()
+    #     trn_eval = self._train(trn_states, trn_batch, trainer, loss_func, trn_metric)
+    #     mt = time.time()
+    #     dev_eval = self.evaluate(dev_states, dev_batch, dev_metric)
+    #     et = time.time()
+    #
+    #     return st, mt, et, trn_eval, dev_eval
 
     def _train(self, states, batch_size, trainer, loss_func, metric=None, reset=True):
         """

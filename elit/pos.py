@@ -16,6 +16,7 @@
 import argparse
 import logging
 import pickle
+import time
 from types import SimpleNamespace
 
 import mxnet as mx
@@ -23,11 +24,11 @@ import numpy as np
 from mxnet import gluon
 
 from elit.component import ForwardState, NLPComponent, CNN2DModel, LSTMModel
+from elit.lexicon import FastText, Word2Vec
 from elit.structure import TOKEN, POS
-from elit.lexicon import LabelMap, FastText, Word2Vec
-from elit.util.metric import Accuracy
-from elit.util.file import pkl, gln, read_tsv
 from elit.util.embeddings import X_ANY, x_extract, get_embeddings, get_loc_embeddings
+from elit.util.file import pkl, gln, read_tsv
+from elit.util.metric import Accuracy
 
 __author__ = 'Jinho D. Choi'
 
@@ -44,7 +45,8 @@ class POSState(ForwardState):
         super().__init__(document, params.label_map, params.zero_output, POS)
         self.windows = params.windows
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
-        if params.ambi_vsm: self.embs.append(get_embeddings(params.ambi_vsm, document))
+        if params.ambi_vsm:
+            self.embs.append(get_embeddings(params.ambi_vsm, document))
         self.embs.append((self.output, self.zero_output))
 
     def eval(self, metric):
@@ -87,7 +89,7 @@ class POSModel(CNN2DModel):
         super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
 
 
-class POSModel_LSTM(LSTMModel):
+class POSModelLSTM(LSTMModel):
     def __init__(self, params, **kwargs):
         """
         :param params: parameters to initialize POSModel.
@@ -106,40 +108,104 @@ class POSModel_LSTM(LSTMModel):
 
 class POSTagger(NLPComponent):
 
+    def __init__(self, log_path=None):
+        super(POSTagger, self).__init__()
+        self.params = SimpleNamespace()
+        if log_path:
+            logging.basicConfig(filename=log_path + '.log', filemode='w', format='%(message)s',
+                                level=logging.INFO)
+
     # override
-    def load(self, model_path, *args, **kwargs):
-        ctx, word_vsm, name_vsm, num_class, windows, ngram_filters, dropout = args
-        label_map = None
-        if model_path:
-            f = open(pkl(model_path), 'rb')
+    def load(self, model_path, ctx=0, word_vsm=None, ambi_vsm=None, *args, **kwargs):
+        """
+        :param model_path: if not None, this component is initialized by objects saved
+        in the model_path.
+        :type model_path: str
+        :param ctx: the context (e.g., CPU or GPU) to process this component.
+        :type ctx: mxnet.context.Context
+        :param word_vsm:
+        :param ambi_vsm:
+        """
+        assert word_vsm is not None
+        with open(pkl(model_path), 'rb') as f:
             label_map = pickle.load(f)
             num_class = pickle.load(f)
             windows = pickle.load(f)
             ngram_filters = pickle.load(f)
             dropout = pickle.load(f)
-            f.close()
-
-        self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters,
+        self.params = self.create_params(word_vsm, ambi_vsm, num_class, windows, ngram_filters,
                                          dropout, label_map)
-        super().__init__(ctx=ctx, model=POSModel(self.params))
-
-        if model_path:
-            self.model.load_params(gln(model_path), ctx=self.ctx)
-        else:
-            ini = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
-            self.model.collect_params().initialize(ini, ctx=self.ctx)
+        self.ctx = ctx
+        self.model = POSModel(self.params)
+        self.model.load_params(gln(model_path), ctx=ctx)
 
     # override
-    def save(self, filepath, *args, **kwargs):
-        f = open(pkl(filepath), 'wb')
-        pickle.dump(self.params.label_map, f)
-        pickle.dump(self.params.num_class, f)
-        pickle.dump(self.params.windows, f)
-        pickle.dump(self.params.ngram_filters, f)
-        pickle.dump(self.params.dropout, f)
-        f.close()
+    def train(self, trn_data, dev_data, model_path=".", ctx=0, tsv_tok=0, tsv_pos=1,
+              word_vsm=None, ambi_vsm=None, num_class=0,
+              windows=(-3, -2, -1, 0, 1, 2, 3), ngram_filters=(128, 128, 128, 128, 128),
+              dropout=0.2, epoch=50, trn_batch=64, dev_batch=1024, learning_rate=0.01,
+              *args, **kwargs):
 
-        self.model.save_params(gln(filepath))
+        log = ['Configuration',
+               '- num of classes : %d' % num_class,
+               '- windows        : %s' % str(windows),
+               '- n-gram filters : %s' % str(ngram_filters),
+               '- dropout ratio  : %f' % dropout,
+               '- epoch          : %f' % epoch,
+               '- train batch    : %d' % trn_batch,
+               '- dev batch      : %d' % dev_batch,
+               '- learning rate  : %f' % learning_rate,
+               ]
+        logging.info('\n'.join(log))
+
+        self.ctx = ctx
+        label_map = None
+        word_vsm = FastText(word_vsm)
+        ambi_vsm = Word2Vec(ambi_vsm) if ambi_vsm else None
+        self.params = self.create_params(word_vsm, ambi_vsm, num_class, windows, ngram_filters,
+                                         dropout, label_map)
+
+        cols = {TOKEN: tsv_tok, POS: tsv_pos}
+        trn_states = read_tsv(trn_data, cols, self.create_state)
+        dev_states = read_tsv(dev_data, cols, self.create_state)
+
+        # optimizer
+        loss_func = gluon.loss.SoftmaxCrossEntropyLoss()
+        trainer = gluon.Trainer(self.model.collect_params(), 'adagrad',
+                                {'learning_rate': learning_rate})
+        # train
+        best_e, best_eval = -1, -1
+        trn_metric = Accuracy()
+        dev_metric = Accuracy()
+
+        for e in range(epoch):
+            trn_metric.reset()
+            dev_metric.reset()
+
+            st = time.time()
+            trn_eval = self._train(trn_states, trn_batch, trainer, loss_func, trn_metric)
+            mt = time.time()
+            dev_eval = self._evaluate(dev_states, dev_batch, dev_metric)
+            et = time.time()
+            if best_eval < dev_eval:
+                best_e, best_eval = e, dev_eval
+                self.save(model_path=model_path)
+
+            logging.info(
+                '%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f (%d), dev-acc: %5.2f (%d), '
+                'num-class: %d, best-acc: %5.2f @%4d' %
+                (e, mt - st, et - mt, trn_eval, trn_metric.total, dev_eval, dev_metric.total,
+                 len(self.params.label_map), best_eval, best_e))
+
+    # override
+    def save(self, model_path, *args, **kwargs):
+        with open(pkl(model_path), 'wb') as f:
+            pickle.dump(self.params.label_map, f)
+            pickle.dump(self.params.num_class, f)
+            pickle.dump(self.params.windows, f)
+            pickle.dump(self.params.ngram_filters, f)
+            pickle.dump(self.params.dropout, f)
+        self.model.save_params(gln(model_path))
 
     def create_state(self, document):
         return POSState(document, self.params)
@@ -213,9 +279,6 @@ def train():
         predict(args)
         return
 
-    logging.basicConfig(filename=args.log_path + '.log', filemode='w', format='%(message)s',
-                        level=logging.INFO)
-
     log = ['Configuration',
            '- train batch    : %d' % args.trn_batch,
            '- learning rate  : %f' % args.learning_rate,
@@ -271,12 +334,9 @@ def predict(args):
     word_vsm = FastText(args.word_vsm)
     ambi_vsm = Word2Vec(args.ambi_vsm) if args.ambi_vsm else None
     comp = POSTagger()
-    comp.load(args.mod_path, args.ctx, word_vsm, ambi_vsm, args.num_class, args.windows,
-              args.ngram_filters, args.dropout)
+    comp.load(args.mod_path, args.ctx, )
     cols = {TOKEN: args.tsv_tok, POS: args.tsv_pos}
     dev_states = read_tsv(args.dev_path, cols, comp.create_state)
     dev_metric = Accuracy()
     dev_eval = comp.evaluate(dev_states, args.dev_batch, dev_metric)
     print("Test accuracy for %s is %5.2f" % (args.mod_path, dev_eval))
-
-
