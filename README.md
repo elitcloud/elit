@@ -31,24 +31,27 @@ On Mac OS, please install [homebrew](https://brew.sh/) first.
 
 ```
 brew update
-brew install python3
+brew install python
 ```
 
+#### Pyenv 
+
+If you're familiar with [pyenv](https://github.com/pyenv/pyenv), you can use it to install python on either Linux or Mac machine.
 
 ### Install Elit
 
-There are many ways to start a python and install python package. To keep it simple, I use [virtualenv](https://github.com/pypa/virtualenv) to initialize a environment come with python 3 and use pip as my python package management tools.  
+There are many ways to start a python and install python package. To keep it simple, you can use [virtualenv](https://github.com/pypa/virtualenv) to initialize a environment come with Python 3 and use pip as the python package management tools.  
 
-First of all, update your pip of python 3 to latest version:
+First of all, update your pip to latest version:
 
 ```
-pip3 install --upgrade pip
+pip install --upgrade pip
 ```
 
 Create an virtualenv with python 3. `env` is your environment name, you can change it as you want. However, for simplicity, I use `env` in the rest of part. For much more usage, please check the [document](https://virtualenv.pypa.io/en/stable/userguide/).
 
 ```
-virtualenv -p python3 env
+virtualenv -p python env
 ```
 
 Activate your virtualenv
@@ -61,18 +64,10 @@ After you activate your virtualenv, you should your environment name in the star
 (env) $
 ```
 
-Let's assume your are running your python in the virtualenv, so I don't put the prefix `env` anymore.
-
-Because of [fasttext](https://github.com/facebookresearch/fastText), cython are required and installed before we install elit. Since we're running python 3 in the virtualenv, we can just use pip instead of pip3.  
-
-```
-pip install cython
-```
-
 Now, we can install elit!
 
 ```
-pip install elit
+(env) $ pip install elit
 ```
 
 If you have any question or want to report bugs, please let us know on [github issues](https://github.com/elitcloud/elit/issues).
