@@ -30,97 +30,6 @@ from elit.util import pkl, gln
 __author__ = 'Jinho D. Choi'
 
 
-# ======================================== Models ========================================
-
-class FFNNModel(gluon.Block):
-    def __init__(self, input_config, output_config, conv2d_config=None, hidden_config=None, **kwargs):
-        """
-        Feed-Forward Neural Network including either convolution layer or hidden layers or both.
-        :param input_config: (dim, dropout); configuration for the input layer.
-        :type input_config: SimpleNamespace(int, float)
-        :param output_config: (dim); configuration for the output layer.
-        :type output_config: SimpleNamespace(int)
-        :param conv2d_config: (ngram, filters, activation, dropout); configuration for the 2D convolution layer.
-        :type conv2d_config: list of SimpleNamespace(int, int, str, float)
-        :param hidden_config: (dim, activation, dropout); configuration for the hidden layers.
-        :type hidden_config: list of SimpleNamespace(int, str, float)
-        :param kwargs: parameters for the initialization of mxnet.gluon.Block.
-        :type kwargs: dict
-        """
-        super().__init__(**kwargs)
-
-        if conv2d_config:
-            self.conv2d = [SimpleNamespace(
-                conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
-                dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
-        else:
-            self.conv2d = None
-
-        if hidden_config:
-            self.hidden = [SimpleNamespace(
-                dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
-                dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
-        else:
-            self.hidden = None
-
-        with self.name_scope():
-            self.input_dropout = mx.gluon.nn.Dropout(input_config.dropout)
-            self.output = mx.gluon.nn.Dense(output_config.dim)
-
-            if self.conv2d:
-                for i, c in enumerate(self.conv2d, 1):
-                    setattr(self, 'conv_'+str(i), c.conv)
-                    setattr(self, 'conv_dropout_'+str(i), c.dropout)
-
-            if self.hidden:
-                for i, h in enumerate(self.hidden, 1):
-                    setattr(self, 'hidden_' + str(i), h.dense)
-                    setattr(self, 'hidden_dropout_' + str(i), h.dropout)
-
-    def forward(self, x):
-        # input layer
-        x = self.input_dropout(x)
-
-        # convolution layer
-        if self.conv2d:
-            x = x.reshape((0, 1, x.shape[1], x.shape[2]))
-            t = [c.dropout(c.conv(x).reshape((0, -1))) for c in self.conv2d]
-            x = nd.concat(*t, dim=1)
-
-        # hidden layers
-        if self.hidden:
-            for h in self.hidden:
-                x = h.dense(x)
-                x = h.dropout(x)
-
-        # output layer
-        x = self.output(x)
-        return x
-
-
-# TODO: LSTMModel needs to be reimplemented
-class LSTMModel(gluon.Block):
-    def __init__(self, input_col, num_class, n_hidden, dropout, **kwargs):
-        """
-        :param kwargs: parameters to initialize gluon.Block.
-        :type kwargs: dict
-        """
-        bi = True
-        super().__init__(**kwargs)
-        with self.name_scope():
-            self.model = gluon.rnn.LSTM(n_hidden, input_size=input_col, bidirectional=bi)
-            self.dropout = gluon.nn.Dropout(dropout)
-            self.out = gluon.nn.Dense(num_class)
-        print('Init Model: LSTM, bidirectional = %r' % bi)
-
-    def forward(self, x):
-        x = self.model(x)
-        x = self.dropout(x)
-        # output layer
-        x = self.out(x)
-        return x
-
-
 # ======================================== States ========================================
 
 class NLPState(abc.ABC):
@@ -226,6 +135,15 @@ class ForwardState(NLPState):
         self.tok_id = 0
         self.reset()
 
+    @abc.abstractmethod
+    def eval(self, metric):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def x(self):
+        pass
+
     def reset(self):
         self.output = [[self.zero_output] * len(s) for s in self.document]
         self.sen_id = 0
@@ -253,10 +171,6 @@ class ForwardState(NLPState):
             d[self.key] = labels
             d[self.key_out] = self.output[i]
 
-    @abc.abstractmethod
-    def eval(self, metric):
-        pass
-
     @property
     def labels(self):
         """
@@ -270,14 +184,100 @@ class ForwardState(NLPState):
         return [[aux(o) for o in output] for output in self.output]
 
     @property
-    @abc.abstractmethod
-    def x(self):
-        pass
-
-    @property
     def y(self):
         label = self.document[self.sen_id][self.key][self.tok_id]
         return self.label_map.add(label)
+
+
+# ======================================== Models ========================================
+
+class FFNNModel(gluon.Block):
+    def __init__(self, input_config, output_config, conv2d_config=None, hidden_config=None, **kwargs):
+        """
+        Feed-Forward Neural Network including either convolution layer or hidden layers or both.
+        :param input_config: (dim, dropout); configuration for the input layer.
+        :type input_config: SimpleNamespace(int, float)
+        :param output_config: (dim); configuration for the output layer.
+        :type output_config: SimpleNamespace(int)
+        :param conv2d_config: (ngram, filters, activation, dropout); configuration for the 2D convolution layer.
+        :type conv2d_config: list of SimpleNamespace(int, int, str, float)
+        :param hidden_config: (dim, activation, dropout); configuration for the hidden layers.
+        :type hidden_config: list of SimpleNamespace(int, str, float)
+        :param kwargs: parameters for the initialization of mxnet.gluon.Block.
+        :type kwargs: dict
+        """
+        super().__init__(**kwargs)
+
+        if conv2d_config:
+            self.conv2d = [SimpleNamespace(
+                conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
+                dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
+        else:
+            self.conv2d = None
+
+        if hidden_config:
+            self.hidden = [SimpleNamespace(
+                dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
+                dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
+        else:
+            self.hidden = None
+
+        with self.name_scope():
+            self.input_dropout = mx.gluon.nn.Dropout(input_config.dropout)
+            self.output = mx.gluon.nn.Dense(output_config.dim)
+
+            if self.conv2d:
+                for i, c in enumerate(self.conv2d, 1):
+                    setattr(self, 'conv_'+str(i), c.conv)
+                    setattr(self, 'conv_dropout_'+str(i), c.dropout)
+
+            if self.hidden:
+                for i, h in enumerate(self.hidden, 1):
+                    setattr(self, 'hidden_' + str(i), h.dense)
+                    setattr(self, 'hidden_dropout_' + str(i), h.dropout)
+
+    def forward(self, x):
+        # input layer
+        x = self.input_dropout(x)
+
+        # convolution layer
+        if self.conv2d:
+            x = x.reshape((0, 1, x.shape[1], x.shape[2]))
+            t = [c.dropout(c.conv(x).reshape((0, -1))) for c in self.conv2d]
+            x = nd.concat(*t, dim=1)
+
+        # hidden layers
+        if self.hidden:
+            for h in self.hidden:
+                x = h.dense(x)
+                x = h.dropout(x)
+
+        # output layer
+        x = self.output(x)
+        return x
+
+
+# TODO: LSTMModel needs to be reimplemented
+class LSTMModel(gluon.Block):
+    def __init__(self, input_col, num_class, n_hidden, dropout, **kwargs):
+        """
+        :param kwargs: parameters to initialize gluon.Block.
+        :type kwargs: dict
+        """
+        bi = True
+        super().__init__(**kwargs)
+        with self.name_scope():
+            self.model = gluon.rnn.LSTM(n_hidden, input_size=input_col, bidirectional=bi)
+            self.dropout = gluon.nn.Dropout(dropout)
+            self.out = gluon.nn.Dense(num_class)
+        print('Init Model: LSTM, bidirectional = %r' % bi)
+
+    def forward(self, x):
+        x = self.model(x)
+        x = self.dropout(x)
+        # output layer
+        x = self.out(x)
+        return x
 
 
 # ======================================== Component ========================================
@@ -307,16 +307,34 @@ class NLPComponent(Component):
         """
         return
 
-    # override
-    def decode(self, input_data, reader, batch_size=2048):
+    @abc.abstractmethod
+    def eval_metric(self):
         """
-        Makes predictions for all states and saves them to the corresponding documents.
+        :return: the evaluation metric for this component.
+        :rtype: elit.util.Accuracy
         """
-        states = reader(input_data, self.create_state)
-        self._decode(states, batch_size)
-        for state in states: state.finalize()
+        return
 
-        return {state: state.labels for state in states}
+    def _decode(self, states, batch_size):
+        """
+        :param states: input states.
+        :type states: list of NLPState
+        :param batch_size: the maximum size of each batch.
+        :type batch_size: int
+        """
+        tmp = list(states)
+
+        while tmp:
+            begin = 0
+            xs = nd.array([state.x for state in tmp])
+            batches = gluon.data.DataLoader(xs, batch_size=batch_size)
+
+            for x in batches:
+                x = x.as_in_context(self.ctx)
+                outputs = self.model(x)
+                begin += self._process(tmp, outputs, begin)
+
+            tmp = [state for state in tmp if state.has_next()]
 
     def _evaluate(self, states, batch_size, metric, reset=True):
         """
@@ -384,27 +402,6 @@ class NLPComponent(Component):
 
         return metric.get() if metric else 0
 
-    def _decode(self, states, batch_size):
-        """
-        :param states: input states.
-        :type states: list of NLPState
-        :param batch_size: the maximum size of each batch.
-        :type batch_size: int
-        """
-        tmp = list(states)
-
-        while tmp:
-            begin = 0
-            xs = nd.array([state.x for state in tmp])
-            batches = gluon.data.DataLoader(xs, batch_size=batch_size)
-
-            for x in batches:
-                x = x.as_in_context(self.ctx)
-                outputs = self.model(x)
-                begin += self._process(tmp, outputs, begin)
-
-            tmp = [state for state in tmp if state.has_next()]
-
     @staticmethod
     def _process(states, outputs, begin):
         """
@@ -453,6 +450,14 @@ class TokenTagger(NLPComponent):
              '- conv2d configure : %s' % str(self.conv2d_config).replace('namespace', ''),
              '- hidden configure : %s' % str(self.hidden_config).replace('namespace', ''))
         return '\n'.join(s)
+
+    @abc.abstractmethod
+    def create_state(self, document):
+        pass
+
+    @abc.abstractmethod
+    def eval_metric(self):
+        pass
 
     # override
     def init(self,
@@ -536,19 +541,32 @@ class TokenTagger(NLPComponent):
         self.model.save_parameters(gln(model_path))
 
     # override
-    def train(self, trn_data, dev_data, model_path, reader,
-              epoch=50, trn_batch=64, dev_batch=2048, optimizer='adagrad', learning_rate=0.01, weight_decay=0.0):
+    def decode(self, input_docs, batch_size=2048):
+        """
+        Makes predictions for all states and saves them to the corresponding documents.
+        """
+        if isinstance(input_data, str) and reader is not None:
+
+
+        states = reader(input_data, self.create_state)
+        self._decode(states, batch_size)
+        for state in states: state.finalize()
+
+    # override
+    def train(self, trn_docs, dev_docs, model_path,
+              trn_batch=64, dev_batch=2048, epoch=50, optimizer='adagrad', learning_rate=0.01, weight_decay=0.0):
         log = ('Training',
-               '- epoch         : %f' % epoch,
                '- train batch   : %d' % trn_batch,
                '- develop batch : %d' % dev_batch,
+               '- epoch         : %d' % epoch,
                '- optimizer     : %s' % optimizer,
                '- learning rate : %f' % learning_rate,
                '- weight decay  : %f' % weight_decay)
         print('\n'.join(log))
 
-        trn_states = reader(trn_data, self.create_state)
-        dev_states = reader(dev_data, self.create_state)
+        # TODO:
+        trn_states = []
+        dev_states = []
 
         # optimizer
         loss_func = gluon.loss.SoftmaxCrossEntropyLoss()
@@ -575,10 +593,4 @@ class TokenTagger(NLPComponent):
             print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f (%d), dev-acc: %5.2f (%d), num-class: %d, best-acc: %5.2f @%4d' %
                   (e, mt - st, et - mt, trn_eval, trn_metric.total, dev_eval, dev_metric.total, len(self.label_map), best_eval, best_e))
 
-    @abc.abstractmethod
-    def eval_metric(self):
-        """
-        :return: the evaluation metric for this component.
-        :rtype: elit.util.Accuracy
-        """
-        return
+

@@ -98,6 +98,11 @@ def tsv_reader(filepath, create_state):
 
 def train():
     # processor
+    trn_states = reader(trn_data, self.create_state)
+    dev_states = reader(dev_data, self.create_state)
+
+
+
     args = train_args()
     if not args.trn_path:
         predict(args)
