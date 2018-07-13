@@ -14,20 +14,18 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import codecs
 import logging
-import marisa_trie
 
+import fastText
 import numpy as np
 from gensim.models import KeyedVectors
-from gensim.test.utils import datapath, get_tmpfile
-from gensim.scripts.glove2word2vec import glove2word2vec
-import fastText
 
 __author__ = 'Jinho D. Choi'
 
 
-class LabelMap(object):
+# ======================================== Labels ========================================
+
+class LabelMap:
     """
     LabelMap gives the mapping between class labels and their unique IDs.
     """
@@ -43,16 +41,16 @@ class LabelMap(object):
 
     def index(self, label):
         """
-        :param label: the class label.
+        :param label: a string label.
         :type label: str
-        :return: the ID of the class label if exists; otherwise, -1.
+        :return: the class ID of the label if exists; otherwise, -1.
         :rtype: int
         """
-        return self.index_map[label] if label in self.index_map else -1
+        return self.index_map.get(label, -1)
 
     def get(self, index):
         """
-        :param index: the ID of the class label.
+        :param index: the class ID of the label.
         :type index: int
         :return: the index'th class label.
         :rtype: str
@@ -64,7 +62,7 @@ class LabelMap(object):
         Adds the class label to this map if not already exist.
         :param label: the class label.
         :type label: str
-        :return: the ID of the class label.
+        :return: the class ID of the label.
         :rtype int
         """
         idx = self.index(label)
@@ -75,12 +73,14 @@ class LabelMap(object):
         return idx
 
 
-class VectorSpaceModel(object):
+# ======================================== Vector Space Models ========================================
+
+class VectorSpaceModel(abc.ABC):
     def __init__(self, model, dim):
         """
-        :param model: the word embedding model.
+        :param model: a (pre-trained) vector space model (e.g., Word2Vec, FastText, GloVe).
         :type model: Union[KeyedVectors]
-        :param dim: the dimension of each word embedding.
+        :param dim: the dimension of each embedding.
         :type dim: int
         """
         self.model = model
@@ -90,132 +90,166 @@ class VectorSpaceModel(object):
         self.zero = np.zeros(dim).astype('float32')
 
     @abc.abstractmethod
-    def _get(self, word):
+    def _get(self, key):
         """
-        This is an auxiliary function for #get().
-        :param word: a word form (must not be None).
-        :type word: str
-        :return: the embedding of the word.
+        Auxiliary function for #get().
+        :param key: a key.
+        :type key: str
+        :return: the embedding of the key.
         :rtype: numpy.array
         """
         return
 
-    def get(self, word=None):
+    def get(self, key=None):
         """
-        :param word: a word form.
-        :type word: Union[str, None]
-        :return: the embedding of the word; if word is None, the zero embedding.
+        :param key: a key.
+        :type key: Union[str, None]
+        :return: the embedding of the key if not None; otherwise, the zero embedding.
         :rtype: numpy.array
         """
-        return self.zero if word is None else self._get(word)
+        return self.zero if key is None else self._get(key)
 
-    def get_list(self, words):
+    def get_list(self, keys):
         """
-        :param words: a list of words.
-        :type words: list of str
-        :return: the list of embeddings for the corresponding words.
-        :rtype: list of mxnet.nd.array
+        :param keys: a list of keys.
+        :type keys: list of str
+        :return: the list of embeddings for the corresponding keys.
+        :rtype: list of numpy.array
         """
-        return [self.get(word) for word in words]
+        return [self.get(word) for word in keys]
 
 
 class FastText(VectorSpaceModel):
     def __init__(self, filepath):
         """
-        :param filepath: the path to the file containing word embeddings.
+        :param filepath: the path to the binary file containing word embeddings.
         :type filepath: str
         """
         model = fastText.load_model(filepath)
         dim = model.get_dimension()
         super(FastText, self).__init__(model, dim)
-        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.get_words()), dim))
+        print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.get_words()), dim))
 
-    def _get(self, word):
-        return np.array(self.model.get_word_vector(word)).astype('float32')
+    def _get(self, key):
+        return self.model.get_word_vector(key)
 
 
 class Word2Vec(VectorSpaceModel):
     def __init__(self, filepath):
         """
-        :param filepath: the path to the file containing word embeddings.
+        :param filepath: the path to the binary file containing word embeddings.
         :type filepath: str
         """
-        txt_file = datapath(filepath)
-        tmp_file = get_tmpfile("test_word2vec.txt")
-        glove2word2vec(txt_file, tmp_file)
-        # model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
-        model = KeyedVectors.load(filepath) if filepath.endswith('.gnsm') else KeyedVectors.load_word2vec_format(tmp_file)
+        model = KeyedVectors.load(filepath) if filepath.lower().endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
         dim = model.syn0.shape[1]
         super(Word2Vec, self).__init__(model, dim)
-        logging.info('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
+        print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
-    def _get(self, word):
-        vocab = self.model.vocab.get(word, None)
+    def _get(self, key):
+        vocab = self.model.vocab.get(key, None)
         return self.model.syn0[vocab.index] if vocab else self.zero
 
 
-class NamedEntityTree(object):
-    def __init__(self, filenames):
-        """
-        :param filepath: the path to the resource files (e.g., resources/nament/english).
-        :type filepath: str
-        """
-        keys, values = [], []
-        for i, filename in enumerate(sorted(filenames)):
-            fin = codecs.open(filename, mode='r', encoding='utf-8')
-            l = [''+u' '.join(line.split()) for line in fin]
-            logging.info('Init: %s (%d)' % (filename, len(l)))
-            keys.extend(l)
-            values.extend([[i]]*len(l))
-
-        self.trie = marisa_trie.RecordTrie("h", zip(keys, values))
-
-    # def get_list(self, words):
-    #     for i, word in enumerate(words):
-    #         for j in range(i+1, len(words)):
-    #             w = u' '.join(words[i:j])
-    #             if w not in
-
-
-class Word2VecTmp:
+class GloVe(VectorSpaceModel):
     def __init__(self, filepath):
         """
-        :param filepath: the path to the file containing word embeddings.
+        :param filepath: the path to the binary file containing word embeddings.
+        :type filepath: str
         """
-        self.model = None
+        # TODO: to be completed
+        super(GloVe, self).__init__(None, 0)
+        pass
 
-        if filepath.endswith('.gnsm'):
-            self.model = KeyedVectors.load(filepath)
-        elif filepath.endswith('.bin'):
-            self.model = KeyedVectors.load_word2vec_format(filepath, binary=True)
-        else:
-            raise ValueError('Unknown type: ' + filepath)
+    def _get(self, key):
+        # TODO: to be completed
+        return
 
-        self.dim = self.model.syn0.shape[1]
-        self.pad = np.zeros((self.dim,)).astype('float32')
-        print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(self.model.vocab), self.dim))
 
-    def doc_to_emb(self, document, maxlen):
-        """
-        :param document: the document comprising tokens to retrieve word embeddings for.
-        :param maxlen: the maximum length of the document (# of tokens).
-        :return: the list of word embeddings corresponding to the tokens in the document.
-        """
-        def emb(token_index):
-            if token_index >= len(document): return self.pad
-            vocab = self.model.vocab.get(document[token_index], None)
-            return self.model.syn0[vocab.index] if vocab else self.pad
+# class Word2VecTmp:
+#     def __init__(self, filepath):
+#         """
+#         :param filepath: the path to the file containing word embeddings.
+#         """
+#         self.model = None
+#
+#         if filepath.endswith('.gnsm'):
+#             self.model = KeyedVectors.load(filepath)
+#         elif filepath.endswith('.bin'):
+#             self.model = KeyedVectors.load_word2vec_format(filepath, binary=True)
+#         else:
+#             raise ValueError('Unknown type: ' + filepath)
+#
+#         self.dim = self.model.syn0.shape[1]
+#         self.pad = np.zeros((self.dim,)).astype('float32')
+#         print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(self.model.vocab), self.dim))
+#
+#     def doc_to_emb(self, document, maxlen):
+#         """
+#         :param document: the document comprising tokens to retrieve word embeddings for.
+#         :param maxlen: the maximum length of the document (# of tokens).
+#         :return: the list of word embeddings corresponding to the tokens in the document.
+#         """
+#         def emb(token_index):
+#             if token_index >= len(document): return self.pad
+#             vocab = self.model.vocab.get(document[token_index], None)
+#             return self.model.syn0[vocab.index] if vocab else self.pad
+#
+#         return np.array([emb(i) for i in range(maxlen)])
+#         # TODO: the following 3 lines should be replaced by the above return statement
+#         # l = [self.model.syn0[0] for _ in range(maxlen-len(document))]
+#         # l.extend([emb(i) for i in range(min(maxlen, len(document)))])
+#         # return np.array(l)
+#
+#     def docs_to_emb(self, documents, maxlen):
+#         """
+#         :param documents: a list of documents.
+#         :param maxlen:
+#         :return:
+#         """
+#         return np.array([self.doc_to_emb(document, maxlen) for document in documents])
 
-        return np.array([emb(i) for i in range(maxlen)])
-        # TODO: the following 3 lines should be replaced by the above return statement
-        # l = [self.model.syn0[0] for _ in range(maxlen-len(document))]
-        # l.extend([emb(i) for i in range(min(maxlen, len(document)))])
-        # return np.array(l)
 
-    def docs_to_emb(self, documents, maxlen):
-        """
-        :param documents: a list of documents.
-        :param maxlen:
-        :return:
-        """
-        return np.array([self.doc_to_emb(document, maxlen) for document in documents])
+# ======================================== Embeddings ========================================
+
+X_FST = np.array([1, 0]).astype('float32')  # the first word
+X_LST = np.array([0, 1]).astype('float32')  # the last word
+X_ANY = np.array([0, 0]).astype('float32')  # any other word
+
+
+def get_loc_embeddings(document):
+    """
+    :return: the position embedding of the (self.tok_id + window)'th word.
+    :rtype: numpy.array
+    """
+    def aux(sentence):
+        size = len(sentence)
+        return [X_FST if i == 0 else X_LST if i + 1 == size else X_ANY for i in range(size)]
+
+    return [aux(s) for s in document], X_ANY
+
+
+def get_embeddings(vsm, document, key=TOKEN):
+    """
+    :param vsm: a vector space model.
+    :type vsm: elit.nlp.lexicon.VectorSpaceModel
+    :param document: a document.
+    :type document: elit.nlp.structure.Document
+    :param key: the key to each sentence.
+    :type key: str
+    :return:
+    """
+    return [vsm.get_list(s[key]) for s in document], vsm.zero
+
+
+def x_extract(tok_id, window, size, emb, zero):
+    """
+    :param window: the context window.
+    :type window: int
+    :param emb: the list of embeddings.
+    :type emb: numpy.array
+    :param zero: the vector for zero-padding.
+    :type zero: numpy.array
+    :return: the (self.tok_id + window)'th embedding if exists; otherwise, the zero-padded embedding.
+    """
+    i = tok_id + window
+    return emb[i] if 0 <= i < size else zero

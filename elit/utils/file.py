@@ -16,17 +16,9 @@
 import glob
 import logging
 
-from elit.structure import DEPREL, TOKEN, Sentence, group_states
+from elit.util import DEPREL, TOK, Sentence, group_states
 
 __author__ = "Gary Lai"
-
-
-def pkl(filepath):
-    return filepath + '.pkl'
-
-
-def gln(filepath):
-    return filepath + '.gln'
 
 
 def tsv(filepath):
@@ -61,7 +53,7 @@ def read_tsv(filepath, cols, create_state=None):
                     # (head ID, deprel)
                     f = (int(l[v[0]]) - 1, l[v[1]]) if k == DEPREL else l[v]
                     d[k].append(f)
-            elif d[TOKEN]:
+            elif d[TOK]:
                 sentences.append(Sentence(d))
                 wc += len(sentences[-1])
                 d = create_dict()

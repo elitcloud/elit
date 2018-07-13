@@ -207,7 +207,7 @@ class NLPModel(metaclass=ABCMeta):
                 self.mxmod.forward(batch)
 
                 # extract pooled layer feature vector.
-                # [0] index output is softmax layer output
+                # [0] index output is softmax layer output_config
                 temp_symbol_1 = self.mxmod.get_outputs()[1]
                 fea = temp_symbol_1.asnumpy()
 

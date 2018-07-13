@@ -22,13 +22,12 @@ import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from elit.component import CNN2DModel, LSTMModel, NLPComponent, ForwardState
-from elit.structure import TOKEN, NER
-from elit.lexicon import LabelMap, FastText, Word2Vec
-from elit.util.metric import F1
-from elit.util.bilou import BILOU
-from elit.util.file import pkl, gln, read_tsv
-from elit.util.embeddings import X_ANY, x_extract, get_embeddings, get_loc_embeddings
+from elit.component import FFNNModel, LSTMModel, NLPComponent, ForwardState
+from elit.utils import TOKEN, NER, F1
+from elit.lexicon import LabelMap, FastText, Word2Vec, X_ANY, get_loc_embeddings, get_embeddings, x_extract
+from elit.utils.bilou import BILOU
+from elit.utils.file import read_tsv
+from elit.util import pkl, gln
 
 __author__ = 'Jinho D. Choi'
 
@@ -77,11 +76,9 @@ class NERState(ForwardState):
         return np.column_stack(l)
 
 
-class NERModel(CNN2DModel):
-    def __init__(self, params, **kwargs):
+class NERModel(FFNNModel):
+    def __init__(self, num_class, input_size):
         """
-        :param params: parameters to initialize POSModel.
-        :type params: SimpleNamespace
         :param kwargs: parameters to initialize gluon.Block.
         :type kwargs: dict
         """
@@ -92,7 +89,7 @@ class NERModel(CNN2DModel):
         input_col = loc_dim + word_dim + name_dim + params.num_class
         ngram_conv = [SimpleNamespace(filters=f, kernel_row=i, activation='relu') for i, f in
                       enumerate(params.ngram_filters, 1)]
-        super().__init__(input_col, params.num_class, ngram_conv, params.dropout, **kwargs)
+        super().__init__(params.num_class, input_col, ngram_conv, params.dropout, **kwargs)
 
 
 class NERModelLSTM(LSTMModel):
@@ -144,7 +141,7 @@ class NERecognizer(NLPComponent):
     :type num_class: int
     :param windows: the contextual windows for feature extraction.
     :type windows: tuple of int
-    :param ngram_filters: the number of filters for n-gram convolutions.
+    :param ngram_filters: the number of filters for n-gram conv2d.
     :type ngram_filters: tuple of int
     :param dropout: the dropout ratio.
     :type dropout: float
@@ -171,7 +168,7 @@ class NERecognizer(NLPComponent):
 
         self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters,
                                          dropout, label_map)
-        super().__init__(ctx=ctx, model=NERModel(self.params))
+        super().__init__(ctx=ctx, model=NERModel(, self.params,)
 
         if model_path:
             self.model.load_params(gln(model_path), ctx=self.ctx)
@@ -236,7 +233,7 @@ def train_args():
                         help='contextual windows for feature extraction')
     parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*',
                         default=(128, 128, 128, 128, 128),
-                        help='number of filters for n-gram convolutions')
+                        help='number of filters for n-gram conv2d')
     parser.add_argument('-do', '--dropout', type=float, metavar='float', default=0.2,
                         help='dropout')
 

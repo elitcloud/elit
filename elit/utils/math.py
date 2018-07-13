@@ -34,7 +34,7 @@ def softmax(array):
 def transition_probs(sentences, num_class, getter):
     """
     :param sentences: the input sentences.
-    :type sentences: list of elit.util.structure.Sentence
+    :type sentences: list of elit.utils.structure.Sentence
     :param num_class: the total number of classes.
     :type num_class: int
     :return: the transition probability matrix.

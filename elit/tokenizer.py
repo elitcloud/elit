@@ -19,8 +19,8 @@ import os
 import re
 from pkg_resources import resource_filename
 
-from elit.util.string import *
-from elit.structure import TOKEN, OFFSET
+from elit.utils.string import *
+from elit.utils import TOKEN, OFFSET
 from elitsdk.sdk import Component
 
 

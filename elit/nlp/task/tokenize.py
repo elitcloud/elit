@@ -19,8 +19,8 @@ import os
 import re
 
 from elit.nlp.structure import TOKEN, OFFSET
-from elit.util.string import *
-from elit.util.string import is_right_bracket, is_final_mark
+from elit.utils.string import *
+from elit.utils.string import is_right_bracket, is_final_mark
 
 __author__ = 'Jinho D. Choi'
 

@@ -17,7 +17,7 @@
 from io import StringIO
 
 from elit.decode import EnglishDecoder, DOC_DELIM
-from elit.util.configure import Configuration, SENTIMENT_TWITTER, SENTIMENT_MOVIE, INPUT_FORMAT_RAW, INPUT_FORMAT_LINE
+from elit.utils.configure import Configuration, SENTIMENT_TWITTER, SENTIMENT_MOVIE, INPUT_FORMAT_RAW, INPUT_FORMAT_LINE
 
 __author__ = 'Jinho D. Choi'
 
@@ -61,5 +61,5 @@ docs = elit.decode(config, StringIO(input_text))
 print(docs)
 
 config.sentiment = (SENTIMENT_MOVIE, SENTIMENT_TWITTER)
-with open('out.json', 'w') as fout:
+with open('output_layer.json', 'w') as fout:
     elit.decode(config, StringIO(input_text), fout)

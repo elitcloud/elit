@@ -21,7 +21,7 @@ from elit.nlp.task.sentiment import TwitterSentimentAnalyzer, MovieSentimentAnal
 from elit.nlp.task.tokenize import SpaceTokenizer, EnglishTokenizer, EnglishSegmenter
 from elit.nlp.structure import TOKEN, OFFSET, SENTIMENT
 from elit.lexicon import Word2VecTmp
-from elit.util.configure import *
+from elit.utils.configure import *
 
 __author__ = 'Jinho D. Choi'
 

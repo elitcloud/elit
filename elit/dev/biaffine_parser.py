@@ -293,7 +293,7 @@ class BiaffineParser(object):
         global_step = 0
         best_UAS = 0
         for epoch in range(num_epochs):
-            print("Epoch {:} out of {:}".format(epoch + 1, num_epochs))
+            print("Epoch {:} output_layer of {:}".format(epoch + 1, num_epochs))
             for words, tags, arcs, rels in train.get_batches(batch_size=train_batch_size, shuffle=False):
                 arc_accuracy, rel_accuracy, train_loss = self.train_batch(words, tags, arcs, rels)
                 print("Batch #%d: UAS: %.2f, LAS: %.2f, loss %.3f\r" % (
@@ -309,7 +309,7 @@ class BiaffineParser(object):
 
     def arc_argmax(self, arc_probs, tokens_to_keep):
         """
-        Build a tree out of arc probabilities
+        Build a tree output_layer of arc probabilities
         Adopted from Timothy Dozat https://github.com/tdozat, with some modifications
 
         :param arc_probs: (b x b)

@@ -15,7 +15,7 @@
 # ========================================================================
 import abc
 from elitsdk import Component
-from elit.util.string import *
+from elit.utils.string import *
 from elit.nlp.structure import SENTENCE_ID, TOKEN, OFFSET
 
 __author__ = "Gary Lai"

@@ -19,7 +19,7 @@ import os
 from typing import List, Tuple, Callable
 
 import mxnet as mx
-from elit.structure import NLPGraph
+from elit.utils import NLPGraph
 
 from elit.dev.reader import TSVReader
 
