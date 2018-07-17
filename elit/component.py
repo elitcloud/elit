@@ -88,7 +88,7 @@ class NLPState(abc.ABC):
         :return: the feature vector (or matrix) extracted from the current state.
         :rtype: numpy.array
         """
-        pass
+        return
 
     @property
     @abc.abstractmethod
@@ -97,7 +97,7 @@ class NLPState(abc.ABC):
         :return: the class ID of the gold-standard label for the current state (used for training only).
         :rtype: int
         """
-        pass
+        return
 
 
 class ForwardState(NLPState):
@@ -135,7 +135,7 @@ class ForwardState(NLPState):
     @property
     @abc.abstractmethod
     def x(self):
-        pass
+        return
 
     def reset(self):
         self.output = [[self.zero_output] * len(s) for s in self.document]
@@ -207,19 +207,13 @@ class FFNNModel(gluon.Block):
         """
         super().__init__(**kwargs)
 
-        if conv2d_config:
-            self.conv2d = [SimpleNamespace(
-                conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
-                dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
-        else:
-            self.conv2d = None
+        self.conv2d = [SimpleNamespace(
+            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
+            dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
 
-        if hidden_config:
-            self.hidden = [SimpleNamespace(
-                dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
-                dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
-        else:
-            self.hidden = None
+        self.hidden = [SimpleNamespace(
+            dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
+            dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
 
         with self.name_scope():
             self.input_dropout = mx.gluon.nn.Dropout(input_config.dropout)
@@ -228,7 +222,7 @@ class FFNNModel(gluon.Block):
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
                     setattr(self, 'conv_'+str(i), c.conv)
-                    setattr(self, 'conv_dropout_'+str(i), c.dropout)
+                    setattr(self, 'conv_dropout_' + str(i), c.dropout)
 
             if self.hidden:
                 for i, h in enumerate(self.hidden, 1):
@@ -460,7 +454,7 @@ class TokenTagger(NLPComponent):
              feature_windows=tuple(range(-3, 4)),
              num_class=50,
              input_dropout=0.0,
-             conv2d_config=(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.2) for i in range(1, 5)),
+             conv2d_config=None,
              hidden_config=None,
              **kwargs):
         """
@@ -497,6 +491,7 @@ class TokenTagger(NLPComponent):
 
         # model
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        self.model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=self.ctx)
         self.zero_output = np.zeros(self.output_config.dim).astype('float32')
         print(self.__str__())
         return self
@@ -521,8 +516,8 @@ class TokenTagger(NLPComponent):
             self.hidden_config = pickle.load(f)
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
-        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
         self.model.load_parameters(gln(model_path), ctx=self.ctx)
+        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
         print(self.__str__())
         return self
 
@@ -577,7 +572,7 @@ class TokenTagger(NLPComponent):
         # train
         best_e, best_eval = -1, -1
 
-        for e in range(epoch):
+        for e in range(1, epoch+1):
             st = time.time()
             trn_metric = self._train(trn_states, trainer, loss_func, trn_batch)
             mt = time.time()
@@ -589,3 +584,5 @@ class TokenTagger(NLPComponent):
 
             print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-acc: %5.2f, num-class: %d, best-acc: %5.2f @%4d' %
                   (e, mt - st, et - mt, trn_metric.get(), dev_metric.get(), len(self.label_map), best_eval, best_e))
+
+        return trn_states, dev_states

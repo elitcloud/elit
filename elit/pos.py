@@ -17,10 +17,11 @@ import argparse
 from types import SimpleNamespace
 
 import numpy as np
+from mxnet import autograd
 
 from elit.component import ForwardState, TokenTagger
 from elit.lexicon import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
-from elit.util import TOK, Accuracy, POS, tsv_reader, json_reader
+from elit.util import TOK, Accuracy, POS, tsv_reader, json_reader, group_states
 
 __author__ = 'Jinho D. Choi'
 
@@ -63,13 +64,15 @@ class POSState(ForwardState):
             metric.correct += len([1 for g, p in zip(gold, auto) if g == p])
             metric.total += len(gold)
 
+    @property
     def x(self):
         """
         :return: the n * d matrix where n = # of feature_windows and d = sum(vsm_list) + position emb + label emb
         """
         t = len(self.document.get_sentence(self.sen_id))
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.feature_windows] for emb, zero in self.embs)
-        return np.column_stack(l)
+        n = np.column_stack(l)
+        return n
 
 
 class POSTagger(TokenTagger):
@@ -123,7 +126,7 @@ def train_args():
             c = config.split(':')
             return SimpleNamespace(ngram=int(c[0]), filters=int(c[1]), activation=c[2], dropout=float(c[3]))
 
-        return [create(config) for config in s.split(';')]
+        return (create(config) for config in s.split(';')) if s != 'None' else None
 
     def hidden_config(s):
         """
@@ -134,7 +137,7 @@ def train_args():
             c = config.split(':')
             return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
 
-        return [create(config) for config in s.split(';')]
+        return (create(config) for config in s.split(';'))
 
     parser = argparse.ArgumentParser('Train: part-of-speech tagging')
 
@@ -155,7 +158,7 @@ def train_args():
                         help='vector space model for ambiguity classes')
 
     # configuration
-    parser.add_argument('-le', '--label_embedding', type=bool, metavar='boolean', default=True,
+    parser.add_argument('-le', '--label_embedding', type=bool, metavar='boolean', default=False,
                         help='if set, use label embeddings as features')
     parser.add_argument('-fw', '--feature_windows', type=int_tuple, metavar='int[,int]*', default=tuple(range(-3, 4)),
                         help='contextual windows for feature extraction')
@@ -165,10 +168,10 @@ def train_args():
                         help='dropout rate applied to the input layer')
     parser.add_argument('-cc', '--conv2d_config', type=conv2d_config,
                         metavar='(ngram:filters:activation:dropout)(;#1)*',
-                        default=(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.2) for i in range(1, 5)),
+                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.2) for i in range(1, 5)),
                         help='configuration for the convolution layer')
     parser.add_argument('-hc', '--hidden_config', type=hidden_config, metavar='(dim:activation:dropout)(;#1)*', default=None,
-                        help='configuration for the convolution layer')
+                        help='configuration for the hidden layer')
 
     # training
     parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\d', default='c0',
@@ -211,5 +214,36 @@ def train():
     comp.train(trn_data, dev_data, args.model_path, args.trn_batch, args.dev_batch, args.epoch, args.optimizer, args.learning_rate, args.weight_decay)
 
 
+def evaluate():
+    # cml arguments
+    args = train_args()
+
+    # vector space models
+    vsm_list = [FastText(args.word_vsm)]
+    if args.ambi_vsm: vsm_list.append(Word2Vec(args.ambi_vsm))
+
+    # component
+    comp = POSTagger(args.ctx, vsm_list)
+    comp.load(args.model_path)
+
+    # data
+    reader, reader_args = args.reader
+    trn_data = reader(args.trn_path, reader_args)
+    dev_data = reader(args.dev_path, reader_args)
+
+    # decode
+    states = group_states(trn_data, comp.create_state)
+    eval = comp._evaluate(states, reset=True)
+    print('TRN: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
+
+    states = group_states(dev_data, comp.create_state)
+    eval = comp._evaluate(states, reset=True)
+    print('DEV: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
+
+
+
 if __name__ == '__main__':
     train()
+    evaluate()
+
+

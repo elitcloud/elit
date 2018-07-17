@@ -66,7 +66,7 @@ class Document(dict):
         self._iter += 1
         if self._iter >= len(self.sentences):
             raise StopIteration
-        return self._iter
+        return self._sentences[self._iter]
 
     @property
     def sentences(self):
@@ -99,6 +99,8 @@ class Sentence(dict):
         :param kwargs: additional fields to be added; if keys already exist; the values are overwritten with these.
         """
         super().__init__()
+        self._iter = -1
+
         if d is not None: self.update(d)
         self.update(kwargs)
         self._tokens = self.setdefault(TOK, [])
@@ -108,6 +110,16 @@ class Sentence(dict):
         :return: the number of tokens in the sentence.
         """
         return len(self.tokens)
+
+    def __iter__(self):
+        self._iter = -1
+        return self
+
+    def __next__(self):
+        self._iter += 1
+        if self._iter >= len(self.tokens):
+            raise StopIteration
+        return self._tokens[self._iter]
 
     @property
     def tokens(self):

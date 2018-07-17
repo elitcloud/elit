@@ -33,12 +33,20 @@ sudo apt-get autoremove
 sudo apt-get autoclean
 sudo rm -rf /usr/local/cuda*
 
-# https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1604&target_type=deblocal
-wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.2.148-1_amd64.deb
+wget http://us.download.nvidia.com/tesla/396.37/nvidia-diag-driver-local-repo-ubuntu1604-396.37_1.0-1_amd64.deb
 sudo dpkg -i cuda-repo-ubuntu1604_9.2.148-1_amd64.deb
 sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
 sudo apt-get update
 sudo apt-get install cuda
+
+# cuda: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/install-nvidia-driver.html
+sudo apt-get upgrade -y linux-aws
+sudo reboot
+sudo apt-get install -y gcc make linux-headers-$(uname -r)
+wget http://us.download.nvidia.com/tesla/xxx.xxx/NVIDIA-Linux-x86_64-xxx.xxx.run
+sudo /bin/sh ./NVIDIA-Linux-x86_64*.run
+sudo reboot
+nvidia-smi -q | head
 
 # AWS
 sudo apt install awscli
@@ -56,6 +64,7 @@ pip install pybind11
 pip install yafasttext
 pip install gensim
 #pip install numpy
+pip install elitsdk==0.0.7
 
 # lexicon
 mkdir lexicon
