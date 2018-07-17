@@ -124,7 +124,7 @@ def setup_package():
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         package_data={'': ['*.txt']},
         install_requires=[
-            'elitsdk==0.0.7',
+            'elitsdk==0.0.8',
             'argparse',
             'pybind11',
             'yafasttext',
