@@ -138,7 +138,12 @@ class ForwardState(NLPState):
         return
 
     def reset(self):
-        self.output = [[self.zero_output] * len(s) for s in self.document]
+        if self.output is None:
+            self.output = [[self.zero_output] * len(s) for s in self.document]
+        else:
+            for out in self.output:
+                for o in out: o.fill(0.0)
+
         self.sen_id = 0
         self.tok_id = 0
 

@@ -27,7 +27,7 @@ __author__ = 'Jinho D. Choi'
 
 
 class POSState(ForwardState):
-    def __init__(self, document, vsm_list, label_map, label_emb, feature_windows, zero_output):
+    def __init__(self, document, vsm_list, label_map, label_embedding, feature_windows, zero_output):
         """
         POSState inherits the one-pass, left-to-right decoding strategy from ForwardState.
         :param document: an input document.
@@ -36,8 +36,8 @@ class POSState(ForwardState):
         :type vsm_list: list of elit.lexicon.VectorSpaceModel
         :param label_map: the mapping between class labels and their unique IDs.
         :type label_map: elit.lexicon.LabelMap
-        :param label_emb: True if label embeddings are used as features; otherwise, False.
-        :type label_emb: bool
+        :param label_embedding: True if label embeddings are used as features; otherwise, False.
+        :type label_embedding: bool
         :param feature_windows: contextual feature_windows for feature extraction.
         :type feature_windows: tuple of int
         :param zero_output: a zero vector of size `num_class`; used to zero-pad label embeddings.
@@ -48,8 +48,8 @@ class POSState(ForwardState):
 
         # initialize embeddings
         self.embs = [get_vsm_embeddings(vsm, document, TOK) for vsm in vsm_list]
-        if label_emb: self.embs.append(self._get_label_embeddings())
         self.embs.append(get_loc_embeddings(document))
+        if label_embedding: self.embs.append(self._get_label_embeddings())
 
     def eval(self, metric):
         """
@@ -228,17 +228,18 @@ def evaluate():
 
     # data
     reader, reader_args = args.reader
-    trn_data = reader(args.trn_path, reader_args)
     dev_data = reader(args.dev_path, reader_args)
 
     # decode
-    states = group_states(trn_data, comp.create_state)
-    eval = comp._evaluate(states, reset=True)
-    print('TRN: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
-
     states = group_states(dev_data, comp.create_state)
-    eval = comp._evaluate(states, reset=True)
-    print('DEV: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
+    e = comp._evaluate(states, reset=True)
+    print('DEV: %5.2f (%d/%d)' % (e.get(), e.correct, e.total))
+
+    # trn_data = reader(args.trn_path, reader_args)
+    # states = group_states(trn_data, comp.create_state)
+    # eval = comp._evaluate(states, reset=True)
+    # print('TRN: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
+
 
 
 
