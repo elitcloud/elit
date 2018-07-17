@@ -14,18 +14,18 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import random
 import pickle
+import random
+import time
 from types import SimpleNamespace
 
 import mxnet as mx
 import numpy as np
-import time
 from elitsdk import Component
 from mxnet import nd, gluon, autograd
 
 from elit.lexicon import LabelMap, X_ANY
-from elit.util import pkl, gln
+from elit.util import pkl, gln, group_states
 
 __author__ = 'Jinho D. Choi'
 
@@ -33,15 +33,6 @@ __author__ = 'Jinho D. Choi'
 # ======================================== States ========================================
 
 class NLPState(abc.ABC):
-    def __init__(self, document):
-        """
-        NLPState defines a decoding strategy to process the input document.
-        :param document: the input document.
-        :type document: elit.util.Document
-        """
-        self.document = document
-        self.output = None
-
     @abc.abstractmethod
     def reset(self):
         """
@@ -117,14 +108,16 @@ class ForwardState(NLPState):
         :type document: elit.util.Document
         :param label_map: the mapping between class labels and their unique IDs.
         :type label_map: elit.lexicon.LabelMap
-        :param zero_output: a vector of size `num_class` where all values are 0; used to zero-pad label embeddings.
+        :param zero_output: a zero vector of size `num_class`; used to zero-pad label embeddings.
         :type zero_output: numpy.array
         :param key: the key in the sentence dictionary where the predicated labels are stored in.
         :type key: str
         :param key_out: the key in the sentence dictionary where the predicted outputs (output layers) are stored in.
         :type key_out: str
         """
-        super().__init__(document)
+        self.document = document
+        self.output = None
+
         self.label_map = label_map
         self.zero_output = zero_output
 
@@ -155,7 +148,7 @@ class ForwardState(NLPState):
 
         # move onto the next state
         self.tok_id += 1
-        if self.tok_id == len(self.document[self.sen_id]):
+        if self.tok_id == len(self.document.get_sentence(self.sen_id)):
             self.sen_id += 1
             self.tok_id = 0
 
@@ -167,7 +160,7 @@ class ForwardState(NLPState):
         Finalizes the predicted labels and the prediction scores for all tokens in the input document.
         """
         for i, labels in enumerate(self.labels):
-            d = self.document[i]
+            d = self.document.get_sentence(i)
             d[self.key] = labels
             d[self.key_out] = self.output[i]
 
@@ -185,8 +178,14 @@ class ForwardState(NLPState):
 
     @property
     def y(self):
-        label = self.document[self.sen_id][self.key][self.tok_id]
+        label = self.document.get_sentence(self.sen_id)[self.key][self.tok_id]
         return self.label_map.add(label)
+
+    def _get_label_embeddings(self):
+        """
+        :return: (self.output, self.zero_output)
+        """
+        return self.output, self.zero_output
 
 
 # ======================================== Models ========================================
@@ -285,7 +284,7 @@ class LSTMModel(gluon.Block):
 class NLPComponent(Component):
     def __init__(self, ctx=None):
         """
-        This class provides a generic template to implement an NLP component.
+        NLPComponent provides a generic template to implement an NLP component.
         :param ctx: "[cg]\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         """
@@ -311,11 +310,11 @@ class NLPComponent(Component):
     def eval_metric(self):
         """
         :return: the evaluation metric for this component.
-        :rtype: elit.util.Accuracy
+        :rtype: elit.util.EvalMetric
         """
         return
 
-    def _decode(self, states, batch_size):
+    def _decode(self, states, batch_size=2048):
         """
         :param states: input states.
         :type states: list of NLPState
@@ -336,43 +335,40 @@ class NLPComponent(Component):
 
             tmp = [state for state in tmp if state.has_next()]
 
-    def _evaluate(self, states, batch_size, metric, reset=True):
+    def _evaluate(self, states, batch_size=2048, reset=True):
         """
-        Makes predictions for all states and evaluates the results using the metric.
         :param states: input states.
         :type states: list of NLPState
-        :param metric: the evaluation metric.
-        :type metric: elit.util.EvalMetric
         :param batch_size: the maximum size of each batch.
         :type batch_size: int
         :param reset: if True, reset all states to their initial stages.
         :type reset: bool
-        :return: the overall evaluation score.
-        :rtype: float or tuple of float
+        :return: the evaluation metric.
+        :rtype: elit.util.EvalMetric
         """
         self._decode(states, batch_size)
+        metric = self.eval_metric()
 
         for state in states:
             state.eval(metric)
             if reset: state.reset()
 
-        return metric.get()
+        return metric
 
-    def _train(self, states, batch_size, trainer, loss_func, metric=None):
+    def _train(self, states, trainer, loss_func, batch_size=64):
         """
         :param states: input states.
         :type states: list of NLPState
-        :param batch_size: the maximum size of each batch.
-        :type batch_size: int
         :param trainer: the trainer including the optimizer.
         :type trainer: mxnet.gluon.Trainer
         :param loss_func: the loss function for the optimizer.
         :type loss_func: mxnet.gluon.loss.Loss
-        :param metric: the evaluation metric
-        :type metric: elit.util.EvalMetric
-        :param reset: if True, reset all states to their initial stages.
-        :type reset: bool
+        :param batch_size: the maximum size of each batch.
+        :type batch_size: int
+        :return: the evaluation metric.
+        :rtype: elit.util.EvalMetric
         """
+        metric = self.eval_metric()
         tmp = list(states)
 
         while tmp:
@@ -397,10 +393,10 @@ class NLPComponent(Component):
             tmp = [state for state in tmp if state.has_next()]
 
         for state in states:
-            if metric: state.eval(metric)
+            state.eval(metric)
             state.reset()
 
-        return metric.get() if metric else 0
+        return metric
 
     @staticmethod
     def _process(states, outputs, begin):
@@ -423,7 +419,7 @@ class NLPComponent(Component):
 class TokenTagger(NLPComponent):
     def __init__(self, ctx, vsm_list):
         """
-        This class provides a generic template to implement a token-based tagger using FFNNModel.
+        TokenTagger provides a generic template to implement a component that predicts a tag for every token.
         :param ctx: "[cg]\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         :param vsm_list: a list of vector space models (must include at least one).
@@ -431,10 +427,11 @@ class TokenTagger(NLPComponent):
         """
         super().__init__(ctx)
         self.vsm_list = vsm_list
+        self.zero_output = None
 
         # to be initialized
         self.label_map = None
-        self.label_emb = None
+        self.label_embedding = None
         self.feature_windows = None
         self.input_config = None
         self.output_config = None
@@ -443,25 +440,23 @@ class TokenTagger(NLPComponent):
 
     def __str__(self):
         s = ('Configuration',
-             '- label embedding  : %r' % self.label_emb,
-             '- feature windows  : %s' % str(self.feature_windows),
-             '- input configure  : %s' % str(self.input_config).replace('namespace', ''),
-             '- output configure : %s' % str(self.output_config).replace('namespace', ''),
-             '- conv2d configure : %s' % str(self.conv2d_config).replace('namespace', ''),
-             '- hidden configure : %s' % str(self.hidden_config).replace('namespace', ''))
+             '- label embedding: %r' % self.label_embedding,
+             '- feature windows: %s' % str(self.feature_windows),
+             '- input layer    : %s' % str(self.input_config).replace('namespace', ''),
+             '- output layer   : %s' % str(self.output_config).replace('namespace', ''),
+             '- conv2d layer   : %s' % str(self.conv2d_config).replace('namespace', ''),
+             '- hidden layer   : %s' % str(self.hidden_config).replace('namespace', ''))
         return '\n'.join(s)
 
     @abc.abstractmethod
-    def create_state(self, document):
-        pass
+    def create_state(self, document): return
 
     @abc.abstractmethod
-    def eval_metric(self):
-        pass
+    def eval_metric(self): return
 
     # override
     def init(self,
-             label_emb=True,
+             label_embedding=True,
              feature_windows=tuple(range(-3, 4)),
              num_class=50,
              input_dropout=0.0,
@@ -469,13 +464,13 @@ class TokenTagger(NLPComponent):
              hidden_config=None,
              **kwargs):
         """
-        :param label_emb: True if label embeddings are used as features; otherwise, False.
-        :type label_emb: bool
+        :param label_embedding: True if label embeddings are used as features; otherwise, False.
+        :type label_embedding: bool
         :param feature_windows: contextual windows for feature extraction.
         :type feature_windows: tuple of int
-        :param num_class: number of classes (part-of-speech tags).
+        :param num_class: the number of classes (part-of-speech tags).
         :type num_class: int
-        :param input_dropout: dropout rate to be applied to the input layer.
+        :param input_dropout: a dropout rate to be applied to the input layer.
         :type input_dropout: float
         :param conv2d_config: configuration for n-gram 2D convolutions.
         :type conv2d_config: list of SimpleNamespace
@@ -487,12 +482,12 @@ class TokenTagger(NLPComponent):
         :rtype: NLPComponent
         """
         self.label_map = LabelMap()
-        self.label_emb = label_emb
+        self.label_embedding = label_embedding
         self.feature_windows = feature_windows
 
         # input dimension
         input_dim = len(X_ANY) + sum([vsm.dim for vsm in self.vsm_list])
-        if self.label_emb: input_dim += num_class
+        if self.label_embedding: input_dim += num_class
 
         # network configuration
         self.input_config = SimpleNamespace(dim=input_dim, dropout=input_dropout)
@@ -502,12 +497,14 @@ class TokenTagger(NLPComponent):
 
         # model
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
+        print(self.__str__())
         return self
 
     # override
     def load(self, model_path, **kwargs):
         """
-        :param model_path: path to a pre-trained model.
+        :param model_path: the path to a pre-trained model to be loaded.
         :type model_path: str
         :param kwargs: parameters for the initialization of gluon.Block.
         :type kwargs: dict
@@ -516,7 +513,7 @@ class TokenTagger(NLPComponent):
         """
         with open(pkl(model_path), 'rb') as f:
             self.label_map = pickle.load(f)
-            self.label_emb = pickle.load(f)
+            self.label_embedding = pickle.load(f)
             self.feature_windows = pickle.load(f)
             self.input_config = pickle.load(f)
             self.output_config = pickle.load(f)
@@ -524,14 +521,20 @@ class TokenTagger(NLPComponent):
             self.hidden_config = pickle.load(f)
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
         self.model.load_parameters(gln(model_path), ctx=self.ctx)
+        print(self.__str__())
         return self
 
     # override
     def save(self, model_path, **kwargs):
+        """
+        :param model_path: the filepath where the model is saved.
+        :type model_path: str
+        """
         with open(pkl(model_path), 'wb') as f:
             pickle.dump(self.label_map, f)
-            pickle.dump(self.label_emb, f)
+            pickle.dump(self.label_embedding, f)
             pickle.dump(self.feature_windows, f)
             pickle.dump(self.input_config, f)
             pickle.dump(self.output_config, f)
@@ -541,20 +544,20 @@ class TokenTagger(NLPComponent):
         self.model.save_parameters(gln(model_path))
 
     # override
-    def decode(self, input_docs, batch_size=2048):
+    def decode(self, input_data, batch_size=2048, **kwargs):
         """
-        Makes predictions for all states and saves them to the corresponding documents.
+        :param input_data: a list of documents or sentences.
+        :type input_data: list of elit.util.Document or list of elit.util.Sentence
+        :param batch_size: the maximum size of each batch.
+        :type batch_size: int
         """
-        if isinstance(input_data, str) and reader is not None:
-
-
-        states = reader(input_data, self.create_state)
+        states = group_states(input_data, self.create_state)
         self._decode(states, batch_size)
         for state in states: state.finalize()
 
     # override
-    def train(self, trn_docs, dev_docs, model_path,
-              trn_batch=64, dev_batch=2048, epoch=50, optimizer='adagrad', learning_rate=0.01, weight_decay=0.0):
+    def train(self, trn_data, dev_data, model_path,
+              trn_batch=64, dev_batch=2048, epoch=50, optimizer='adagrad', learning_rate=0.01, weight_decay=0.0, **kwargs):
         log = ('Training',
                '- train batch   : %d' % trn_batch,
                '- develop batch : %d' % dev_batch,
@@ -564,9 +567,8 @@ class TokenTagger(NLPComponent):
                '- weight decay  : %f' % weight_decay)
         print('\n'.join(log))
 
-        # TODO:
-        trn_states = []
-        dev_states = []
+        trn_states = group_states(trn_data, self.create_state)
+        dev_states = group_states(dev_data, self.create_state)
 
         # optimizer
         loss_func = gluon.loss.SoftmaxCrossEntropyLoss()
@@ -574,23 +576,16 @@ class TokenTagger(NLPComponent):
 
         # train
         best_e, best_eval = -1, -1
-        trn_metric = self.eval_metric()
-        dev_metric = self.eval_metric()
 
         for e in range(epoch):
-            trn_metric.reset()
-            dev_metric.reset()
-
             st = time.time()
-            trn_eval = self._train(trn_states, trn_batch, trainer, loss_func, trn_metric)
+            trn_metric = self._train(trn_states, trainer, loss_func, trn_batch)
             mt = time.time()
-            dev_eval = self._evaluate(dev_states, dev_batch, dev_metric)
+            dev_metric = self._evaluate(dev_states, dev_batch)
             et = time.time()
-            if best_eval < dev_eval:
-                best_e, best_eval = e, dev_eval
-                self.save(model_path=model_path)
+            if best_eval < dev_metric.get():
+                best_e, best_eval = e, dev_metric.get()
+                self.save(model_path)
 
-            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f (%d), dev-acc: %5.2f (%d), num-class: %d, best-acc: %5.2f @%4d' %
-                  (e, mt - st, et - mt, trn_eval, trn_metric.total, dev_eval, dev_metric.total, len(self.label_map), best_eval, best_e))
-
-
+            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-acc: %5.2f, num-class: %d, best-acc: %5.2f @%4d' %
+                  (e, mt - st, et - mt, trn_metric.get(), dev_metric.get(), len(self.label_map), best_eval, best_e))

@@ -16,7 +16,7 @@
 
 from io import StringIO
 
-from elit.decode import EnglishDecoder, DOC_DELIM
+from elit.nlp.decode import EnglishDecoder, DOC_DELIM
 from elit.utils.configure import Configuration, SENTIMENT_TWITTER, SENTIMENT_MOVIE, INPUT_FORMAT_RAW, INPUT_FORMAT_LINE
 
 __author__ = 'Jinho D. Choi'

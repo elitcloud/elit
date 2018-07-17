@@ -14,11 +14,12 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import logging
 
 import fastText
 import numpy as np
 from gensim.models import KeyedVectors
+
+from elit.util import TOK
 
 __author__ = 'Jinho D. Choi'
 
@@ -116,7 +117,7 @@ class VectorSpaceModel(abc.ABC):
         :return: the list of embeddings for the corresponding keys.
         :rtype: list of numpy.array
         """
-        return [self.get(word) for word in keys]
+        return [self.get(key) for key in keys]
 
 
 class FastText(VectorSpaceModel):
@@ -218,38 +219,40 @@ X_ANY = np.array([0, 0]).astype('float32')  # any other word
 
 def get_loc_embeddings(document):
     """
-    :return: the position embedding of the (self.tok_id + window)'th word.
-    :rtype: numpy.array
+    :param document: a document.
+    :type document: elit.util.Document
+    :return: (the position embeddings of all tokens in the document, default embedding).
+    :rtype: tuple of (list of numpy.array, numpy.array)
     """
     def aux(sentence):
         size = len(sentence)
         return [X_FST if i == 0 else X_LST if i + 1 == size else X_ANY for i in range(size)]
 
-    return [aux(s) for s in document], X_ANY
+    return [aux(s) for s in document.sentences], X_ANY
 
 
-def get_embeddings(vsm, document, key=TOKEN):
+def get_vsm_embeddings(vsm, document, key=TOK):
     """
     :param vsm: a vector space model.
-    :type vsm: elit.nlp.lexicon.VectorSpaceModel
+    :type vsm: VectorSpaceModel
     :param document: a document.
-    :type document: elit.nlp.structure.Document
-    :param key: the key to each sentence.
+    :type document: elit.util.Document
+    :param key: the key to the fields to be retrieved in each sentence.
     :type key: str
-    :return:
+    :return: (the list of embeddings, zero embedding).
+    :rtype: tuple of (list of numpy.array, numpy.array)
     """
-    return [vsm.get_list(s[key]) for s in document], vsm.zero
+    return [vsm.get_list(s[key]) for s in document.sentences], vsm.zero
 
 
 def x_extract(tok_id, window, size, emb, zero):
     """
-    :param window: the context window.
-    :type window: int
-    :param emb: the list of embeddings.
-    :type emb: numpy.array
-    :param zero: the vector for zero-padding.
-    :type zero: numpy.array
-    :return: the (self.tok_id + window)'th embedding if exists; otherwise, the zero-padded embedding.
+    :param tok_id:
+    :param window:
+    :param size:
+    :param emb:
+    :param zero:
+    :return:
     """
     i = tok_id + window
     return emb[i] if 0 <= i < size else zero

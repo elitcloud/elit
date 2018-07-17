@@ -68,7 +68,7 @@ class NERState(ForwardState):
     @property
     def x(self):
         """
-        :return: the n x d matrix where n = # of windows and d = 2 + word_emb.dim + name_emb.dim + num_class
+        :return: the n x d matrix where n = # of feature_windows and d = 2 + word_emb.dim + name_emb.dim + num_class
         """
         t = len(self.document[self.sen_id])
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.windows] for
@@ -128,7 +128,7 @@ class NERModelLR(gluon.Block):
 
 
 class NERecognizer(NLPComponent):
-    # def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, windows=(-2, -1, 0, 1, 2),
+    # def __init__(self, ctx, word_vsm, name_vsm=None, num_class=17, feature_windows=(-2, -1, 0, 1, 2),
     #              ngram_filters=(128, 128, 128, 128, 128), dropout=0.2, label_map=None, model_path=None):
     """
     :param ctx: the context (e.g., CPU or GPU) to process this component.
@@ -139,8 +139,8 @@ class NERecognizer(NLPComponent):
     :type name_vsm: elit.nlp.lexicon.VectorSpaceModel
     :param num_class: the total number of classes to predict.
     :type num_class: int
-    :param windows: the contextual windows for feature extraction.
-    :type windows: tuple of int
+    :param feature_windows: the contextual feature_windows for feature extraction.
+    :type feature_windows: tuple of int
     :param ngram_filters: the number of filters for n-gram conv2d.
     :type ngram_filters: tuple of int
     :param dropout: the dropout ratio.
@@ -151,7 +151,7 @@ class NERecognizer(NLPComponent):
     :type model_path: str
     """
 
-    # self.params = self.create_params(word_vsm, name_vsm, num_class, windows, ngram_filters, dropout, label_map)
+    # self.params = self.create_params(word_vsm, name_vsm, num_class, feature_windows, ngram_filters, dropout, label_map)
     # super().__init__(ctx, NERModel(self.params))
 
     # override
@@ -228,9 +228,9 @@ def train_args():
     # configuration
     parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50,
                         help='number of classes')
-    parser.add_argument('-cw', '--windows', type=int_tuple, metavar='int[,int]*',
+    parser.add_argument('-cw', '--feature_windows', type=int_tuple, metavar='int[,int]*',
                         default=(-3, -2, -1, 0, 1, 2, 3),
-                        help='contextual windows for feature extraction')
+                        help='contextual feature_windows for feature extraction')
     parser.add_argument('-nf', '--ngram_filters', type=int_tuple, metavar='int[,int]*',
                         default=(128, 128, 128, 128, 128),
                         help='number of filters for n-gram conv2d')
@@ -267,7 +267,7 @@ def train():
            '- dropout ratio  : %f' % args.dropout,
            '- n-gram filters : %s' % str(args.ngram_filters),
            '- num of classes : %d' % args.num_class,
-           '- windows        : %s' % str(args.windows)]
+           '- feature_windows        : %s' % str(args.windows)]
 
     logging.info('\n'.join(log))
     # mx.random.seed(11)
@@ -276,7 +276,7 @@ def train():
 
     word_vsm = FastText(args.word_vsm)
     name_vsm = Word2Vec(args.name_vsm) if args.name_vsm else None
-    # comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.windows, args.ngram_filters, args.dropout)
+    # comp = NERecognizer(args.ctx, word_vsm, name_vsm, args.num_class, args.feature_windows, args.ngram_filters, args.dropout)
     comp = NERecognizer()
     comp.load(args.mod_path, args.ctx, word_vsm, name_vsm, args.num_class, args.windows,
               args.ngram_filters, args.dropout)
