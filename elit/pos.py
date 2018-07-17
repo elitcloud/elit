@@ -14,12 +14,9 @@
 # limitations under the License.
 # ========================================================================
 import argparse
-import logging
 from types import SimpleNamespace
 
 import numpy as np
-from elit.utils.file import read_tsv
-from mxnet import gluon
 
 from elit.component import ForwardState, TokenTagger
 from elit.lexicon import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
@@ -212,3 +209,7 @@ def train():
 
     # train
     comp.train(trn_data, dev_data, args.model_path, args.trn_batch, args.dev_batch, args.epoch, args.optimizer, args.learning_rate, args.weight_decay)
+
+
+if __name__ == '__main__':
+    train()

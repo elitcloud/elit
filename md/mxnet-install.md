@@ -27,7 +27,21 @@ sudo apt-get install python3.6 python3.6-dev python3-setuptools
 sudo apt-get install libgfortran3
 
 # cuda
-https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1604&target_type=deblocal
+# remove previous version
+sudo apt-get purge nvidia*
+sudo apt-get autoremove
+sudo apt-get autoclean
+sudo rm -rf /usr/local/cuda*
+
+# https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1604&target_type=deblocal
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.2.148-1_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu1604_9.2.148-1_amd64.deb
+sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+sudo apt-get update
+sudo apt-get install cuda
+
+# AWS
+sudo apt install awscli
 
 # virtual environment
 sudo apt-get install python-pip python-dev python-virtualenv
@@ -35,19 +49,13 @@ virtualenv --python=/usr/bin/python3.6 ~/.elit
 source ~/.elit/bin/activate
 
 # mxnet
-pip install --upgrade pip
-pip install mxnet==0.12.1
-pip install mxnet-cu90==0.12.1
-
-# fasttext
-pip install Cython
-pip install fasttext
-
-# gensim
+# pip install --upgrade pip
+pip install mxnet-cu92
+pip install argparse
+pip install pybind11
+pip install yafasttext
 pip install gensim
-
-# trie
-pip install marisa_trie
+#pip install numpy
 
 # lexicon
 mkdir lexicon
@@ -67,7 +75,7 @@ http://docs.aws.amazon.com/mxnet/latest/dg/setup-jupyter-configure-server.html
 
 ```
 export MXNET_CUDNN_AUTOTUNE_DEFAULT=0
-export PYTHONPATH=$PYTHONPATH:$HOME/elit-dev
+export PYTHONPATH=$PYTHONPATH:$HOME/elit
 ```
 
 ## Python 3.6

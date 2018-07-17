@@ -118,7 +118,7 @@ def setup_package():
         url='https://github.com/elitcloud/elit',
         download_url='https://github.com/elitcloud/elit/tree/master',
         author='Jinho D. Choi',
-        author_email='choi@mathcs.emory.edu',
+        author_email='jinho.choi@emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
