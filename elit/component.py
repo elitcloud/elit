@@ -21,7 +21,7 @@ from types import SimpleNamespace
 
 import mxnet as mx
 import numpy as np
-from elitsdk import Component
+from elitsdk.sdk import Component
 from mxnet import nd, gluon, autograd
 
 from elit.lexicon import LabelMap, X_ANY

@@ -14,35 +14,41 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from elitsdk import Component
+from elitsdk.sdk import Component
+
+from elit.util import SEN_ID, TOK, OFF
 from elit.utils.string import *
-from elit.nlp.structure import SENTENCE_ID, TOKEN, OFFSET
+
 
 __author__ = "Gary Lai"
 
 
 class Segmenter(Component):
+
+    def init(self):
+        pass
+
     @abc.abstractmethod
-    def decode(self, input_data, offsets, **kwargs):
+    def decode(self, input_data, offsets=0, **kwargs):
         pass
 
-    def load(self, model_path, *args, **kwargs):
+    def load(self, model_path, **kwargs):
         pass
 
-    def train(self, trn_data, dev_data, *args, **kwargs):
+    def train(self, trn_data, dev_data, model_path, **kwargs):
         pass
 
-    def save(self, model_path, *args, **kwargs):
+    def save(self, model_path, **kwargs):
         pass
 
 
 class EnglishSegmenter(Segmenter):
-    def decode(self, input_data, offsets, **kwargs):
+    def decode(self, input_data, offsets=0, **kwargs):
         def sentence(sid, begin, end):
             return {
-                SENTENCE_ID: sid,
-                TOKEN: input_data[begin:end],
-                OFFSET: offsets[begin:end]
+                SEN_ID: sid,
+                TOK: input_data[begin:end],
+                OFF: offsets[begin:end]
             }
 
         sentences = []
@@ -58,8 +64,8 @@ class EnglishSegmenter(Segmenter):
             if begin == i:
                 if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
                     d = sentences[-1]
-                    d[TOKEN].append(token)
-                    d[OFFSET].append(offsets[i])
+                    d[TOK].append(token)
+                    d[OFF].append(offsets[i])
                     begin = i + 1
             elif all(is_final_mark(c) for c in token):
                 sentences.append(sentence(sid, begin, i + 1))

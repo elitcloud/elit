@@ -17,10 +17,11 @@ import abc
 import codecs
 import os
 import re
+
 from pkg_resources import resource_filename
 
+from elit.util import TOK, OFF
 from elit.utils.string import *
-from elit.utils import TOKEN, OFFSET
 from elitsdk.sdk import Component
 
 
@@ -30,6 +31,9 @@ __author__ = "Jinho D. Choi, Gary Lai"
 class Tokenizer(Component):
     def __init__(self):
         super(Tokenizer, self).__init__()
+        pass
+
+    def init(self):
         pass
 
     @abc.abstractmethod
@@ -116,8 +120,8 @@ class SpaceTokenizer(Tokenizer):
         tokens = input_data.split()
 
         return {
-            TOKEN: tokens,
-            OFFSET: self.offsets(input_data, tokens, offset)
+            TOK: tokens,
+            OFF: self.offsets(input_data, tokens, offset)
         }
 
 
@@ -200,8 +204,8 @@ class EnglishTokenizer(Tokenizer):
         tokens = []
         offsets = []
         result = {
-            TOKEN: tokens,
-            OFFSET: offsets
+            TOK: tokens,
+            OFF: offsets
         }
         # no valid token in the input text
         if not input_data or input_data.isspace():
