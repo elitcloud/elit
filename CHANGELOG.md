@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] 
+### Added
+### Changed
+### Removed
+
+## [0.1.21] - 2018-7-17
+### Added
+- Add mxnet to deps
+### Changed
+- Inherited component from elit sdk
+- Flatten structure
+- Update POS tagger
+### Removed
+
+## [0.1.20] - 2018-6-18
 ### Added
 - Segmenter test
 ### Changed
@@ -15,8 +29,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.1.19] - 2018-06-15
 ### Added
 ### Changed
-- add filed name: tok and offset to SpaceTokenizer and EnglishTokenizer
-- update tokenizer tests
+- Add filed name: tok and offset to SpaceTokenizer and EnglishTokenizer
+- Update tokenizer tests
 ### Removed
 
 ## [0.1.18] - 2018-06-10
