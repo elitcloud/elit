@@ -19,7 +19,7 @@ from types import SimpleNamespace
 import numpy as np
 from mxnet import autograd
 
-from elit.component import OPLRState, TokenTagger
+from elit.component import OPLRState, SequenceTagger
 from elit.lexicon import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
 from elit.util import Accuracy, tsv_reader, json_reader, group_states
 from elit.structure import TOK, POS
@@ -76,7 +76,7 @@ class POSState(OPLRState):
         return n
 
 
-class POSTagger(TokenTagger):
+class POSTagger(SequenceTagger):
     def __init__(self, ctx, vsm_list):
         """
         A part-of-speech tagger.
@@ -169,7 +169,7 @@ def train_args():
                         help='dropout rate applied to the input layer')
     parser.add_argument('-cc', '--conv2d_config', type=conv2d_config,
                         metavar='(ngram:filters:activation:dropout)(;#1)*',
-                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.2) for i in range(1, 5)),
+                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.3) for i in range(1, 5)),
                         help='configuration for the convolution layer')
     parser.add_argument('-hc', '--hidden_config', type=hidden_config, metavar='(dim:activation:dropout)(;#1)*', default=None,
                         help='configuration for the hidden layer')
@@ -177,7 +177,7 @@ def train_args():
     # training
     parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\d', default='c0',
                         help='device context')
-    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50,
+    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=100,
                         help='number of epochs')
     parser.add_argument('-tb', '--trn_batch', type=int, metavar='int', default=64,
                         help='batch size for training')
@@ -245,6 +245,6 @@ def evaluate():
 
 
 if __name__ == '__main__':
-    # train()
+    train()
     evaluate()
 

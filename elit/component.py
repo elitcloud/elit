@@ -423,7 +423,7 @@ class NLPComponent(Component):
         return size
 
 
-class TokenTagger(NLPComponent):
+class SequenceTagger(NLPComponent):
     def __init__(self, ctx, vsm_list):
         """
         TokenTagger provides a generic template to implement a component that predicts a tag for every token.
