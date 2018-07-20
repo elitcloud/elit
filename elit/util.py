@@ -18,132 +18,19 @@ import bisect
 import glob
 import inspect
 
+from elit.struct import Document, Sentence
+
 __author__ = 'Jinho D. Choi'
 
 
 # ======================================== Structure ========================================
-
-DOC_ID = 'doc_id'   # document ID
-SEN = 'sen'       # sentences
-
-SEN_ID = 'sen_id'   # sentence ID
-TOK = 'tok'
-OFF = 'off'
-LEM = 'lem'
-POS = 'pos'
-NER = 'ner'
-DEP = 'dep'
-COREF = 'coref'
-SENTI = 'senti'
-
-
-class Document(dict):
-    def __init__(self, d=None, **kwargs):
-        """
-        :param d: a dictionary, if not None, all of whose fields are added to this document.
-        :type d: dict
-        :param kwargs: additional fields to be added; if keys already exist; the values are overwritten with these.
-        """
-        super().__init__()
-        self._iter = -1
-
-        if d is not None: self.update(d)
-        self.update(kwargs)
-        self._sentences = self.setdefault(SEN, [])
-
-    def __len__(self):
-        """
-        :return: the number of sentences in the document.
-        :rtype: int
-        """
-        return len(self.sentences)
-
-    def __iter__(self):
-        self._iter = -1
-        return self
-
-    def __next__(self):
-        self._iter += 1
-        if self._iter >= len(self.sentences):
-            raise StopIteration
-        return self._sentences[self._iter]
-
-    @property
-    def sentences(self):
-        """
-        :return: the list of sentences in the document.
-        :rtype: list of Sentence
-        """
-        return self._sentences
-
-    def add_sentence(self, sentence):
-        """
-        :param sentence: a sentence to be added.
-        :type sentence: Sentence
-        """
-        self.sentences.append(sentence)
-
-    def get_sentence(self, index):
-        """
-        :return: the index'th sentence.
-        :rtype: Sentence
-        """
-        return self.sentences[index]
-
-
-class Sentence(dict):
-    def __init__(self, d=None, **kwargs):
-        """
-        :param d: a dictionary, if not None, all of whose fields are added to this sentence.
-        :type d: dict
-        :param kwargs: additional fields to be added; if keys already exist; the values are overwritten with these.
-        """
-        super().__init__()
-        self._iter = -1
-
-        if d is not None: self.update(d)
-        self.update(kwargs)
-        self._tokens = self.setdefault(TOK, [])
-
-    def __len__(self):
-        """
-        :return: the number of tokens in the sentence.
-        """
-        return len(self.tokens)
-
-    def __iter__(self):
-        self._iter = -1
-        return self
-
-    def __next__(self):
-        self._iter += 1
-        if self._iter >= len(self.tokens):
-            raise StopIteration
-        return self._tokens[self._iter]
-
-    @property
-    def tokens(self):
-        """
-        :return: the list of tokens in the sentence.
-        :rtype: list of str
-        """
-        return self._tokens
-
-    @property
-    def part_of_speech_tags(self):
-        """
-        :return: the list of part-of-speech tags corresponding to the tokens in this sentence.
-        :rtype: list of str
-        """
-        return self[POS]
-
 
 def group_states(data, create_state, max_len=-1):
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.
     :param data: a list of documents.
-    :type data: list of Document
+    :type data: list of elit.struct.Document
     :param create_state: a function that takes a document and returns a state.
     :type create_state: Document -> elit.nlp.component.NLPState
     :param max_len: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.

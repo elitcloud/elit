@@ -19,7 +19,7 @@ import fastText
 import numpy as np
 from gensim.models import KeyedVectors
 
-from elit.util import TOK
+from elit.struct import TOK
 
 __author__ = 'Jinho D. Choi'
 
@@ -220,7 +220,7 @@ X_ANY = np.array([0, 0]).astype('float32')  # any other word
 def get_loc_embeddings(document):
     """
     :param document: a document.
-    :type document: elit.util.Document
+    :type document: elit.struct.Document
     :return: (the position embeddings of all tokens in the document, default embedding).
     :rtype: tuple of (list of numpy.array, numpy.array)
     """
@@ -236,7 +236,7 @@ def get_vsm_embeddings(vsm, document, key=TOK):
     :param vsm: a vector space model.
     :type vsm: VectorSpaceModel
     :param document: a document.
-    :type document: elit.util.Document
+    :type document: elit.struct.Document
     :param key: the key to the fields to be retrieved in each sentence.
     :type key: str
     :return: (the list of embeddings, zero embedding).

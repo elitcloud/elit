@@ -33,6 +33,15 @@ __author__ = 'Jinho D. Choi'
 # ======================================== States ========================================
 
 class NLPState(abc.ABC):
+    def __init__(self, document):
+        """
+        NLPState provides a generic template to define a decoding strategy.
+        :param document: an input document.
+        :type document: elit.struct.Document
+        """
+        self.document = document
+        self.outputs = None
+
     @abc.abstractmethod
     def reset(self):
         """
@@ -43,8 +52,8 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def process(self, output):
         """
-        Applies the prediction output to the current state, and moves onto the next state.
-        :param output: the prediction output of the current state, that is the output_config layer of the network.
+        Applies predicted output to the current state, and moves onto the next state.
+        :param output: the predicted output (e.g., the output layer of a neural network).
         :type output: numpy.array
         """
         pass
@@ -52,7 +61,7 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def has_next(self):
         """
-        :return: True if there exists the next state to be processed; otherwise, False.
+        :return: True if a next state can be processed; otherwise, False.
         :rtype: bool
         """
         return
@@ -60,14 +69,14 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def finalize(self):
         """
-        Finalizes the predictions for the input document.
+        Saves all predicted outputs (self.outputs) and inferred labels (self.labels) to the input document (self.document).
         """
         pass
 
     @abc.abstractmethod
     def eval(self, metric):
         """
-        Updates the evaluation metric by comparing the gold-standard labels and the predicted labels from `self.labels`.
+        Updates the evaluation metric by comparing the gold-standard labels and the inferred labels (self.labels).
         :param metric: the evaluation metric.
         :type metric: elit.util.EvalMetric
         """
@@ -77,7 +86,7 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def labels(self):
         """
-        :return: the predicted labels for the input document inferred by `self.output`.
+        :return: the labels for the input document inferred from `self.outputs`.
         """
         return
 
@@ -94,29 +103,28 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def y(self):
         """
-        :return: the class ID of the gold-standard label for the current state (used for training only).
+        :return: the class ID of the gold-standard label for the current state (training only).
         :rtype: int
         """
         return
 
 
-class ForwardState(NLPState):
+class OPLRState(NLPState):
     def __init__(self, document, label_map, zero_output, key, key_out=None):
         """
-        ForwardState defines the one-pass, left-to-right decoding strategy.
-        :param document: the input document.
-        :type document: elit.util.Document
-        :param label_map: the mapping between class labels and their unique IDs.
+        LR1PState defines the one-pass left-to-right (OPLR) decoding strategy.
+        :param document: an input document.
+        :type document: elit.struct.Document
+        :param label_map: collects class labels during training and maps them to unique IDs.
         :type label_map: elit.lexicon.LabelMap
-        :param zero_output: a zero vector of size `num_class`; used to zero-pad label embeddings.
+        :param zero_output: a vector whose dimension is the number of class labels, where all values are 0.
         :type zero_output: numpy.array
-        :param key: the key in the sentence dictionary where the predicated labels are stored in.
+        :param key: the key to each sentence in the input document where the inferred labels (self.labels) are saved.
         :type key: str
-        :param key_out: the key in the sentence dictionary where the predicted outputs (output layers) are stored in.
+        :param key_out: the key to each sentence in the input document where the predicted outputs (self.outputs) are saved.
         :type key_out: str
         """
-        self.document = document
-        self.output = None
+        super().__init__(document)
 
         self.label_map = label_map
         self.zero_output = zero_output
@@ -124,8 +132,8 @@ class ForwardState(NLPState):
         self.key = key
         self.key_out = key_out if key_out else key + '-out'
 
-        self.sen_id = 0
-        self.tok_id = 0
+        self.sen_id = 0    # sentence ID
+        self.tok_id = 0    # token ID
         self.reset()
 
     @abc.abstractmethod
@@ -138,18 +146,18 @@ class ForwardState(NLPState):
         return
 
     def reset(self):
-        if self.output is None:
-            self.output = [[self.zero_output] * len(s) for s in self.document]
+        if self.outputs is None:
+            self.outputs = [[self.zero_output] * len(s) for s in self.document]
         else:
-            for out in self.output:
-                for o in out: o.fill(0.0)
+            for i, s in enumerate(self.document):
+                self.outputs[i] = [self.zero_output] * len(s)
 
         self.sen_id = 0
         self.tok_id = 0
 
     def process(self, output):
         # apply the output to the current state
-        self.output[self.sen_id][self.tok_id] = output
+        self.outputs[self.sen_id][self.tok_id] = output
 
         # move onto the next state
         self.tok_id += 1
@@ -162,12 +170,12 @@ class ForwardState(NLPState):
 
     def finalize(self):
         """
-        Finalizes the predicted labels and the prediction scores for all tokens in the input document.
+        Saves the predicted outputs (self.outputs) and the inferred labels (self.labels) to the input document after decoding.
         """
         for i, labels in enumerate(self.labels):
             d = self.document.get_sentence(i)
             d[self.key] = labels
-            d[self.key_out] = self.output[i]
+            d[self.key_out] = self.outputs[i]
 
     @property
     def labels(self):
@@ -179,7 +187,7 @@ class ForwardState(NLPState):
             return self.label_map.get(np.argmax(scores))
 
         size = len(self.label_map)
-        return [[aux(o) for o in output] for output in self.output]
+        return [[aux(o) for o in output] for output in self.outputs]
 
     @property
     def y(self):
@@ -190,7 +198,7 @@ class ForwardState(NLPState):
         """
         :return: (self.output, self.zero_output)
         """
-        return self.output, self.zero_output
+        return self.outputs, self.zero_output
 
 
 # ======================================== Models ========================================
@@ -299,7 +307,7 @@ class NLPComponent(Component):
     def create_state(self, document):
         """
         :param document: the input document.
-        :type document: elit.util.Document
+        :type document: elit.struct.Document
         :return: the state containing the input document for this component.
         :rtype: NLPState
         """
@@ -547,7 +555,7 @@ class TokenTagger(NLPComponent):
     def decode(self, input_data, batch_size=2048, **kwargs):
         """
         :param input_data: a list of documents or sentences.
-        :type input_data: list of elit.util.Document or list of elit.util.Sentence
+        :type input_data: list of elit.struct.Document or list of elit.struct.Sentence
         :param batch_size: the maximum size of each batch.
         :type batch_size: int
         """

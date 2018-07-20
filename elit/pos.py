@@ -19,19 +19,20 @@ from types import SimpleNamespace
 import numpy as np
 from mxnet import autograd
 
-from elit.component import ForwardState, TokenTagger
+from elit.component import OPLRState, TokenTagger
 from elit.lexicon import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
-from elit.util import TOK, Accuracy, POS, tsv_reader, json_reader, group_states
+from elit.util import Accuracy, tsv_reader, json_reader, group_states
+from elit.struct import TOK, POS
 
 __author__ = 'Jinho D. Choi'
 
 
-class POSState(ForwardState):
+class POSState(OPLRState):
     def __init__(self, document, vsm_list, label_map, label_embedding, feature_windows, zero_output):
         """
-        POSState inherits the one-pass, left-to-right decoding strategy from ForwardState.
+        POSState inherits the left-to-right one-pass (LR1P) decoding strategy from ForwardState.
         :param document: an input document.
-        :type document: elit.util.Document
+        :type document: elit.struct.Document
         :param vsm_list: a list of vector space models.
         :type vsm_list: list of elit.lexicon.VectorSpaceModel
         :param label_map: the mapping between class labels and their unique IDs.

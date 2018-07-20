@@ -16,7 +16,7 @@
 import abc
 from elitsdk.sdk import Component
 
-from elit.util import SEN_ID, TOK, OFF
+from elit.struct import SEN_ID, TOK, OFF
 from elit.utils.string import *
 
 

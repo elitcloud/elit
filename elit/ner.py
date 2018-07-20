@@ -22,7 +22,7 @@ import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from elit.component import FFNNModel, LSTMModel, NLPComponent, ForwardState
+from elit.component import FFNNModel, LSTMModel, NLPComponent, OPLRState
 from elit.utils import TOKEN, NER, F1
 from elit.lexicon import LabelMap, FastText, Word2Vec, X_ANY, get_loc_embeddings, get_embeddings, x_extract
 from elit.utils.bilou import BILOU
@@ -32,7 +32,7 @@ from elit.util import pkl, gln
 __author__ = 'Jinho D. Choi'
 
 
-class NERState(ForwardState):
+class NERState(OPLRState):
     def __init__(self, document, params):
         """
         NERState inherits the one-pass, left-to-right tagging strategy from ForwardState.
@@ -46,7 +46,7 @@ class NERState(ForwardState):
         self.embs = [get_loc_embeddings(document), get_embeddings(params.word_vsm, document)]
         if params.name_vsm:
             self.embs.append(get_embeddings(params.name_vsm, document))
-        self.embs.append((self.output, self.zero_output))
+        self.embs.append((self.outputs, self.zero_output))
 
     def eval(self, metric):
         """

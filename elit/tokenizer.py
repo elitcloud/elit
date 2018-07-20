@@ -20,7 +20,7 @@ import re
 
 from pkg_resources import resource_filename
 
-from elit.util import TOK, OFF
+from elit.struct import TOK, OFF
 from elit.utils.string import *
 from elitsdk.sdk import Component
 
