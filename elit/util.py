@@ -18,7 +18,7 @@ import bisect
 import glob
 import inspect
 
-from elit.struct import Document, Sentence
+from elit.structure import Document, Sentence
 
 __author__ = 'Jinho D. Choi'
 
@@ -30,7 +30,7 @@ def group_states(data, create_state, max_len=-1):
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.
     :param data: a list of documents.
-    :type data: list of elit.struct.Document
+    :type data: list of elit.structure.Document
     :param create_state: a function that takes a document and returns a state.
     :type create_state: Document -> elit.nlp.component.NLPState
     :param max_len: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.

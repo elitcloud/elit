@@ -22,7 +22,7 @@ from mxnet import autograd
 from elit.component import OPLRState, TokenTagger
 from elit.lexicon import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
 from elit.util import Accuracy, tsv_reader, json_reader, group_states
-from elit.struct import TOK, POS
+from elit.structure import TOK, POS
 
 __author__ = 'Jinho D. Choi'
 
@@ -32,7 +32,7 @@ class POSState(OPLRState):
         """
         POSState inherits the left-to-right one-pass (LR1P) decoding strategy from ForwardState.
         :param document: an input document.
-        :type document: elit.struct.Document
+        :type document: elit.structure.Document
         :param vsm_list: a list of vector space models.
         :type vsm_list: list of elit.lexicon.VectorSpaceModel
         :param label_map: the mapping between class labels and their unique IDs.
@@ -245,7 +245,6 @@ def evaluate():
 
 
 if __name__ == '__main__':
-    train()
+    # train()
     evaluate()
-
 

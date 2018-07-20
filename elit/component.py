@@ -37,7 +37,7 @@ class NLPState(abc.ABC):
         """
         NLPState provides a generic template to define a decoding strategy.
         :param document: an input document.
-        :type document: elit.struct.Document
+        :type document: elit.structure.Document
         """
         self.document = document
         self.outputs = None
@@ -114,7 +114,7 @@ class OPLRState(NLPState):
         """
         LR1PState defines the one-pass left-to-right (OPLR) decoding strategy.
         :param document: an input document.
-        :type document: elit.struct.Document
+        :type document: elit.structure.Document
         :param label_map: collects class labels during training and maps them to unique IDs.
         :type label_map: elit.lexicon.LabelMap
         :param zero_output: a vector whose dimension is the number of class labels, where all values are 0.
@@ -292,7 +292,7 @@ class NLPComponent(Component):
     def __init__(self, ctx=None):
         """
         NLPComponent provides a generic template to implement an NLP component.
-        :param ctx: "[cg]\d*"; the context (e.g., CPU or GPU) to process.
+        :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         """
         if ctx:
@@ -307,7 +307,7 @@ class NLPComponent(Component):
     def create_state(self, document):
         """
         :param document: the input document.
-        :type document: elit.struct.Document
+        :type document: elit.structure.Document
         :return: the state containing the input document for this component.
         :rtype: NLPState
         """
@@ -427,7 +427,7 @@ class TokenTagger(NLPComponent):
     def __init__(self, ctx, vsm_list):
         """
         TokenTagger provides a generic template to implement a component that predicts a tag for every token.
-        :param ctx: "[cg]\d*"; the context (e.g., CPU or GPU) to process.
+        :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         :param vsm_list: a list of vector space models (must include at least one).
         :type vsm_list: list of elit.lexicon.VectorSpaceModel
@@ -555,7 +555,7 @@ class TokenTagger(NLPComponent):
     def decode(self, input_data, batch_size=2048, **kwargs):
         """
         :param input_data: a list of documents or sentences.
-        :type input_data: list of elit.struct.Document or list of elit.struct.Sentence
+        :type input_data: list of elit.structure.Document or list of elit.structure.Sentence
         :param batch_size: the maximum size of each batch.
         :type batch_size: int
         """
