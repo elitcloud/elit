@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 from elit.component import NLPState
+from elit.structure import POS
 
 __author__ = 'Jinho D. Choi'
 

@@ -33,7 +33,7 @@ Operating System :: MacOS
 MAJOR = 0
 MINOR = 1
 MICRO = 21
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 EXCLUDE_FROM_PACKAGES = ['']
