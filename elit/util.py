@@ -29,6 +29,7 @@ def group_states(data, create_state, max_len=-1):
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.
+
     :param data: a list of documents.
     :type data: list of elit.structure.Document
     :param create_state: a function that takes a document and returns a state.
@@ -78,7 +79,7 @@ def group_states(data, create_state, max_len=-1):
     return states
 
 
-# ======================================== Evaluation Metric ========================================
+# ======================================= Evaluation Metric ========================================
 
 class EvalMetric(abc.ABC):
     @abc.abstractmethod

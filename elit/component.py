@@ -138,14 +138,24 @@ class OPLRState(NLPState):
 
     @abc.abstractmethod
     def eval(self, metric):
+        """
+        :param metric:
+        :return:
+        """
         pass
 
     @property
     @abc.abstractmethod
     def x(self):
+        """
+        :return:
+        """
         return
 
     def reset(self):
+        """
+        :return:
+        """
         if self.outputs is None:
             self.outputs = [[self.zero_output] * len(s) for s in self.document]
         else:
@@ -156,6 +166,10 @@ class OPLRState(NLPState):
         self.tok_id = 0
 
     def process(self, output):
+        """
+        :param output:
+        :return:
+        """
         # apply the output to the current state
         self.outputs[self.sen_id][self.tok_id] = output
 
@@ -166,6 +180,9 @@ class OPLRState(NLPState):
             self.tok_id = 0
 
     def has_next(self):
+        """
+        :return:
+        """
         return 0 <= self.sen_id < len(self.document)
 
     def finalize(self):
@@ -191,6 +208,9 @@ class OPLRState(NLPState):
 
     @property
     def y(self):
+        """
+        :return:
+        """
         label = self.document.get_sentence(self.sen_id)[self.key][self.tok_id]
         return self.label_map.add(label)
 
@@ -207,6 +227,7 @@ class FFNNModel(gluon.Block):
     def __init__(self, input_config, output_config, conv2d_config=None, hidden_config=None, **kwargs):
         """
         Feed-Forward Neural Network including either convolution layer or hidden layers or both.
+
         :param input_config: (dim, dropout); configuration for the input layer.
         :type input_config: SimpleNamespace(int, float)
         :param output_config: (dim); configuration for the output layer.
@@ -243,6 +264,10 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
     def forward(self, x):
+        """
+        :param x:
+        :return:
+        """
         # input layer
         x = self.input_dropout(x)
 
@@ -279,6 +304,10 @@ class LSTMModel(gluon.Block):
         print('Init Model: LSTM, bidirectional = %r' % bi)
 
     def forward(self, x):
+        """
+        :param x:
+        :return:
+        """
         x = self.model(x)
         x = self.dropout(x)
         # output layer
@@ -292,6 +321,7 @@ class NLPComponent(Component):
     def __init__(self, ctx=None):
         """
         NLPComponent provides a generic template to implement an NLP component.
+
         :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         """
@@ -427,6 +457,7 @@ class SequenceTagger(NLPComponent):
     def __init__(self, ctx, vsm_list):
         """
         TokenTagger provides a generic template to implement a component that predicts a tag for every token.
+
         :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         :param vsm_list: a list of vector space models (must include at least one).

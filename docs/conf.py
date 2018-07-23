@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'elit'
+project = 'Elit'
 copyright = '2018, Gary Lai'
 author = 'Gary Lai'
 
@@ -55,8 +55,11 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_parsers = {
+   '.md': 'recommonmark.parser.CommonMarkParser',
+}
+source_suffix = ['.rst', '.md']
+# source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'index'
@@ -196,3 +199,17 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 autodoc_member_order = 'bysource'
+
+
+# def run_apidoc(_):
+#     from sphinx.apidoc import main
+#     import os
+#     import sys
+#     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+#     cur_dir = os.path.abspath(os.path.dirname(__file__))
+#     module = os.path.join(cur_dir, "..", project)
+#     main(['-e', '-o', cur_dir, module, '--force'])
+#
+#
+# def setup(app):
+#     app.connect('builder-inited', run_apidoc)

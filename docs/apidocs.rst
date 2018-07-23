@@ -1,17 +1,50 @@
-API documentation
+Documentation
 =================
 
-Tokenizer
+SDK
 ---------
 
-.. automodule:: elit.tokenizer
+.. automodule:: elit.sdk
     :members:
     :undoc-members:
     :show-inheritance:
 
-Submodules
-----------
+Benchmark
+---------
 
-.. toctree::
-   :glob:
+.. automodule:: elit.benchmark
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
+Structure
+---------
+
+.. automodule:: elit.structure
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Component
+---------
+
+.. automodule:: elit.component
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Lexicon
+---------
+
+.. automodule:: elit.lexicon
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Util
+---------
+
+.. automodule:: elit.util
+    :members:
+    :undoc-members:
+    :show-inheritance:
