@@ -41,7 +41,7 @@ class POSState(OPLRState):
         :type label_embedding: bool
         :param feature_windows: contextual feature_windows for feature extraction.
         :type feature_windows: tuple of int
-        :param zero_output: a zero vector of size `num_class`; used to zero-pad label embeddings.
+        :param zero_output: a zero vector of size `num_class`; used to pad-pad label embeddings.
         :type zero_output: numpy.array
         """
         super().__init__(document, label_map, zero_output, POS)

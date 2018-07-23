@@ -80,7 +80,6 @@ class VectorSpaceModel(abc.ABC):
     def __init__(self, model, dim):
         """
         :param model: a (pre-trained) vector space model (e.g., Word2Vec, FastText, GloVe).
-        :type model: Union[KeyedVectors]
         :param dim: the dimension of each embedding.
         :type dim: int
         """
@@ -88,36 +87,48 @@ class VectorSpaceModel(abc.ABC):
         self.dim = dim
 
         # for zero padding
-        self.zero = np.zeros(dim).astype('float32')
+        self.pad = np.zeros(dim).astype('float32')
 
     @abc.abstractmethod
-    def _get(self, key):
+    def _emb(self, key):
         """
-        Auxiliary function for #get().
-        :param key: a key.
+        Auxiliary function for #embedding().
+        :param key: a key (e.g., word, part-of-speech tag).
         :type key: str
         :return: the embedding of the key.
         :rtype: numpy.array
         """
         return
 
-    def get(self, key=None):
+    def embedding(self, key=None):
         """
-        :param key: a key.
-        :type key: Union[str, None]
-        :return: the embedding of the key if not None; otherwise, the zero embedding.
+        :param key: a key (e.g., word, part-of-speech tag).
+        :type key: str
+        :return: the embedding of the key if not None; otherwise, the zero embedding (self.pad).
         :rtype: numpy.array
         """
-        return self.zero if key is None else self._get(key)
+        return self._emb(key) if key is not None else self.pad
 
-    def get_list(self, keys):
+    def embedding_list(self, keys, maxlen=None):
         """
         :param keys: a list of keys.
         :type keys: list of str
+        :param maxlen: the maximum length of the output list. If this is not None, the output list is padded with zero embeddings up to the max-length.
+        :type maxlen: int
         :return: the list of embeddings for the corresponding keys.
         :rtype: list of numpy.array
         """
-        return [self.get(key) for key in keys]
+        size = len(keys)
+        return [self.embedding(keys[i]) if i < size else self.pad for i in range(maxlen)]
+
+    def document_matrix(self, doc, maxlen):
+        """
+        :param doc: an input document.
+        :type doc: elit.structure.Document
+        :return: a matrix where each row is the word embedding of the corresponding token.
+        :rtype: numpy.array
+        """
+        return np.array(self.embedding_list(doc[TOK], maxlen))
 
 
 class FastText(VectorSpaceModel):
@@ -131,7 +142,7 @@ class FastText(VectorSpaceModel):
         super(FastText, self).__init__(model, dim)
         print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.get_words()), dim))
 
-    def _get(self, key):
+    def _emb(self, key):
         return self.model.get_word_vector(key)
 
 
@@ -146,9 +157,9 @@ class Word2Vec(VectorSpaceModel):
         super(Word2Vec, self).__init__(model, dim)
         print('Init: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
-    def _get(self, key):
+    def _emb(self, key):
         vocab = self.model.vocab.get(key, None)
-        return self.model.syn0[vocab.index] if vocab else self.zero
+        return self.model.syn0[vocab.index] if vocab else self.pad
 
 
 class GloVe(VectorSpaceModel):
@@ -161,7 +172,7 @@ class GloVe(VectorSpaceModel):
         super(GloVe, self).__init__(None, 0)
         pass
 
-    def _get(self, key):
+    def _emb(self, key):
         # TODO: to be completed
         return
 
@@ -242,7 +253,7 @@ def get_vsm_embeddings(vsm, document, key=TOK):
     :return: (the list of embeddings, zero embedding).
     :rtype: tuple of (list of numpy.array, numpy.array)
     """
-    return [vsm.get_list(s[key]) for s in document.sentences], vsm.zero
+    return [vsm.embedding_list(s[key]) for s in document.sentences], vsm.pad
 
 
 def x_extract(tok_id, window, size, emb, zero):

@@ -61,7 +61,7 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def has_next(self):
         """
-        :return: True if a next state can be processed; otherwise, False.
+        :return: True if there exists a next state to be processed; otherwise, False.
         :rtype: bool
         """
         return
@@ -76,7 +76,7 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def eval(self, metric):
         """
-        Updates the evaluation metric by comparing the gold-standard labels and the inferred labels (self.labels).
+        Updates the evaluation metric by comparing the gold-standard labels (if available) and the inferred labels (self.labels).
         :param metric: the evaluation metric.
         :type metric: elit.util.EvalMetric
         """
