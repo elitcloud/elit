@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2017 Emory University
+# Copyright 2018 Emory University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,5 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import pytest
 
-__author__ = 'Jinho D. Choi'
+from ..util import Accuracy, F1
+
+__author__ = "Gary Lai"
+
+
+@pytest.fixture()
+def accuracy():
+    return Accuracy()
+
+
+@pytest.fixture()
+def f1():
+    return F1()
