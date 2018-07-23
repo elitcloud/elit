@@ -243,5 +243,4 @@ def evaluate():
 import sys
 import pickle
 if __name__ == '__main__':
-    # train()
     evaluate()
