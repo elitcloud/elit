@@ -24,8 +24,8 @@ import numpy as np
 from elitsdk.sdk import Component
 from mxnet import nd, gluon, autograd
 
-from elit.lexicon import LabelMap, X_ANY
 from elit.util import pkl, gln, group_states
+from elit.vsm import LabelMap, X_ANY
 
 __author__ = 'Jinho D. Choi'
 
@@ -110,15 +110,15 @@ class NLPState(abc.ABC):
 
 
 class OPLRState(NLPState):
-    def __init__(self, document, label_map, zero_output, key, key_out=None):
+    def __init__(self, document, label_map, padout, key, key_out=None):
         """
         LR1PState defines the one-pass left-to-right (OPLR) decoding strategy.
         :param document: an input document.
         :type document: elit.structure.Document
         :param label_map: collects class labels during training and maps them to unique IDs.
-        :type label_map: elit.lexicon.LabelMap
-        :param zero_output: a vector whose dimension is the number of class labels, where all values are 0.
-        :type zero_output: numpy.array
+        :type label_map: elit.vsm.LabelMap
+        :param padout: a vector whose dimension is the number of class labels, where all values are 0.
+        :type padout: numpy.array
         :param key: the key to each sentence in the input document where the inferred labels (self.labels) are saved.
         :type key: str
         :param key_out: the key to each sentence in the input document where the predicted outputs (self.outputs) are saved.
@@ -127,7 +127,7 @@ class OPLRState(NLPState):
         super().__init__(document)
 
         self.label_map = label_map
-        self.zero_output = zero_output
+        self.padout = padout
 
         self.key = key
         self.key_out = key_out if key_out else key + '-out'
@@ -157,10 +157,10 @@ class OPLRState(NLPState):
         :return:
         """
         if self.outputs is None:
-            self.outputs = [[self.zero_output] * len(s) for s in self.document]
+            self.outputs = [[self.padout] * len(s) for s in self.document]
         else:
             for i, s in enumerate(self.document):
-                self.outputs[i] = [self.zero_output] * len(s)
+                self.outputs[i] = [self.padout] * len(s)
 
         self.sen_id = 0
         self.tok_id = 0
@@ -216,9 +216,9 @@ class OPLRState(NLPState):
 
     def _get_label_embeddings(self):
         """
-        :return: (self.output, self.zero_output)
+        :return: (self.output, self.padout)
         """
-        return self.outputs, self.zero_output
+        return self.outputs, self.padout
 
 
 # ======================================== Models ========================================
@@ -461,11 +461,11 @@ class SequenceTagger(NLPComponent):
         :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
         :type ctx: str
         :param vsm_list: a list of vector space models (must include at least one).
-        :type vsm_list: list of elit.lexicon.VectorSpaceModel
+        :type vsm_list: list of elit.vsm.VectorSpaceModel
         """
         super().__init__(ctx)
         self.vsm_list = vsm_list
-        self.zero_output = None
+        self.padout = None
 
         # to be initialized
         self.label_map = None
@@ -536,7 +536,7 @@ class SequenceTagger(NLPComponent):
         # model
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=self.ctx)
-        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
+        self.padout = np.zeros(self.output_config.dim).astype('float32') if self.label_embedding else None
         print(self.__str__())
         return self
 
@@ -561,7 +561,7 @@ class SequenceTagger(NLPComponent):
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.load_parameters(gln(model_path), ctx=self.ctx)
-        self.zero_output = np.zeros(self.output_config.dim).astype('float32')
+        self.padout = np.zeros(self.output_config.dim).astype('float32') if self.label_embedding else None
         print(self.__str__())
         return self
 

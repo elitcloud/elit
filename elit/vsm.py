@@ -109,26 +109,28 @@ class VectorSpaceModel(abc.ABC):
         """
         return self._emb(key) if key is not None else self.pad
 
-    def embedding_list(self, keys, maxlen=None):
+    def embedding_list(self, keys):
         """
         :param keys: a list of keys.
         :type keys: list of str
-        :param maxlen: the maximum length of the output list. If this is not None, the output list is padded with zero embeddings up to the max-length.
-        :type maxlen: int
+
         :return: the list of embeddings for the corresponding keys.
         :rtype: list of numpy.array
         """
-        size = len(keys)
-        return [self.embedding(keys[i]) if i < size else self.pad for i in range(maxlen)]
+        return [self.embedding(key) for key in keys]
 
-    def document_matrix(self, doc, maxlen):
+    def document_matrix(self, tokens, maxlen):
         """
-        :param doc: an input document.
-        :type doc: elit.structure.Document
+        :param tokens: a list of tokens.
+        :type tokens: list of str
+        :param maxlen: the maximum length of the output list. If this is greater than the size of the input document
+        (# of sentences), the bottom part of the matrix is padded with zero embeddings.
+        :type maxlen: int
         :return: a matrix where each row is the word embedding of the corresponding token.
         :rtype: numpy.array
         """
-        return np.array(self.embedding_list(doc[TOK], maxlen))
+        size = len(tokens)
+        return [self.embedding(tokens[i]) if i < size else self.pad for i in range(maxlen)]
 
 
 class FastText(VectorSpaceModel):
@@ -256,14 +258,14 @@ def get_vsm_embeddings(vsm, document, key=TOK):
     return [vsm.embedding_list(s[key]) for s in document.sentences], vsm.pad
 
 
-def x_extract(tok_id, window, size, emb, zero):
+def x_extract(tok_id, window, size, emb, pad):
     """
     :param tok_id:
     :param window:
     :param size:
     :param emb:
-    :param zero:
+    :param pad:
     :return:
     """
     i = tok_id + window
-    return emb[i] if 0 <= i < size else zero
+    return emb[i] if 0 <= i < size else pad

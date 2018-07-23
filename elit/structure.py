@@ -69,6 +69,17 @@ class Document(dict):
         """
         return self._sentences
 
+    @property
+    def tokens(self):
+        """
+        :return: list of tokens across all sentences.
+        :return list of str
+        """
+        tokens = []
+        for sentence in self.sentences:
+            tokens.extend(sentence[TOK])
+        return tokens
+
     def add_sentence(self, sentence):
         """
         :param sentence: a sentence to be added.
