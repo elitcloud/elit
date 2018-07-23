@@ -4,16 +4,6 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
-env:
-  global:
-  - AWS_S3_REGION="us-east-1"
-  - AWS_S3_BUCKET="elit-public"
-  - secure: oYpsqiUOqYgJ7VxGbv+C6ExRCKWOPdoCKiEANffK+r2lcMCciEwNwXLKIenOSBChdPeqW6KPyfHuzjqmj7hM7GWSKczbNS5T5B/E60FAnijQv52+RvBMnS7OPjUaRwQwiXwDlev0DauhvwPKCC0KOTnjWRfT0VNjZ/BvkAWXGY+YCrgKRRBaTx3do6kFEeBkat4uxG2CjHH7pojUIDkZ9j6g2WCmoDUtCz/KTnWx3k9U/1DOW3x4rbq/JemJ3zBiV5juV7d/+/VhYsGexcuIUySRpRlG8OENVInlpXks9db3M366CKcf20E63eMPs8VsnMpGHYUUifwYnXrY0YoL5I3kfKMx4z0vHPpSqFBirU+Nwl8MLx7X14m+bxwsIgW6+xOAp6ptc68s+FQfTb/Vknu7kQ0IAAr7wu8W9iMENBNmRgXS75eHfPOFw+jk+rARbx97XRg6lAdW2o1QVu0L/yFYc4HiL288id9xa0LDjy0Hm1ShW8wv660bMkL5ApzP0Hns1nZNC7GfP3J3VbO6kUDp06VIT8In/IFxiOhI+1XVu9XDbsmHHBgnGJ7Iq/IUM8ViL8s0IUBmTcYKM5BFfLp0jg45EYFgAWWLY6B/TS0VpwDL+H2Ao7Enmj19cMflzS/TV8EAeuXh2KijFQMtjx6lyIHvQffhSnd6e9oNXjc=
-before_install:
-- pip install awscli
-- export PATH=$PATH:$HOME/.local/bin
-- aws s3 cp s3://elit-public/resources/tokenize /home/travis/build/elitcloud/resources/tokenize
-  --recursive
 install:
 - pip install .
 deploy:
