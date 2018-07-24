@@ -22,7 +22,8 @@ import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from elit.component import FFNNModel, LSTMModel, NLPComponent, OPLRState
+from elit.component import FFNNModel, LSTMModel, NLPComponent
+from elit.state import OPLRState
 from elit.utils import TOKEN, NER, F1
 from elit.vsm import LabelMap, FastText, Word2Vec, X_ANY, get_loc_embeddings, get_embeddings, x_extract
 from elit.utils.bilou import BILOU

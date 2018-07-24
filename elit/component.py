@@ -24,269 +24,12 @@ import numpy as np
 from elitsdk.sdk import Component
 from mxnet import nd, gluon, autograd
 
+from elit.model import FFNNModel, output_namespace, input_namespace
 from elit.util import pkl, gln, group_states
 from elit.vsm import LabelMap, X_ANY
 
 __author__ = 'Jinho D. Choi'
 
-
-# ======================================== States ========================================
-
-class NLPState(abc.ABC):
-    def __init__(self, document):
-        """
-        NLPState provides a generic template to define a decoding strategy.
-        :param document: an input document.
-        :type document: elit.structure.Document
-        """
-        self.document = document
-        self.outputs = None
-
-    @abc.abstractmethod
-    def reset(self):
-        """
-        Resets to the initial state.
-        """
-        pass
-
-    @abc.abstractmethod
-    def process(self, output):
-        """
-        Applies predicted output to the current state, and moves onto the next state.
-        :param output: the predicted output (e.g., the output layer of a neural network).
-        :type output: numpy.array
-        """
-        pass
-
-    @abc.abstractmethod
-    def has_next(self):
-        """
-        :return: True if there exists a next state to be processed; otherwise, False.
-        :rtype: bool
-        """
-        return
-
-    @abc.abstractmethod
-    def finalize(self):
-        """
-        Saves all predicted outputs (self.outputs) and inferred labels (self.labels) to the input document (self.document).
-        """
-        pass
-
-    @abc.abstractmethod
-    def eval(self, metric):
-        """
-        Updates the evaluation metric by comparing the gold-standard labels (if available) and the inferred labels (self.labels).
-        :param metric: the evaluation metric.
-        :type metric: elit.util.EvalMetric
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def labels(self):
-        """
-        :return: the labels for the input document inferred from `self.outputs`.
-        """
-        return
-
-    @property
-    @abc.abstractmethod
-    def x(self):
-        """
-        :return: the feature vector (or matrix) extracted from the current state.
-        :rtype: numpy.array
-        """
-        return
-
-    @property
-    @abc.abstractmethod
-    def y(self):
-        """
-        :return: the class ID of the gold-standard label for the current state (training only).
-        :rtype: int
-        """
-        return
-
-
-class OPLRState(NLPState):
-    def __init__(self, document, label_map, padout, key, key_out=None):
-        """
-        LR1PState defines the one-pass left-to-right (OPLR) decoding strategy.
-        :param document: an input document.
-        :type document: elit.structure.Document
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :type label_map: elit.vsm.LabelMap
-        :param padout: a vector whose dimension is the number of class labels, where all values are 0.
-        :type padout: numpy.array
-        :param key: the key to each sentence in the input document where the inferred labels (self.labels) are saved.
-        :type key: str
-        :param key_out: the key to each sentence in the input document where the predicted outputs (self.outputs) are saved.
-        :type key_out: str
-        """
-        super().__init__(document)
-
-        self.label_map = label_map
-        self.padout = padout
-
-        self.key = key
-        self.key_out = key_out if key_out else key + '-out'
-
-        self.sen_id = 0    # sentence ID
-        self.tok_id = 0    # token ID
-        self.reset()
-
-    @abc.abstractmethod
-    def eval(self, metric):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def x(self):
-        return
-
-    def reset(self):
-        if self.outputs is None:
-            self.outputs = [[self.padout] * len(s) for s in self.document]
-        else:
-            for i, s in enumerate(self.document):
-                self.outputs[i] = [self.padout] * len(s)
-
-        self.sen_id = 0
-        self.tok_id = 0
-
-    def process(self, output):
-        # apply the output to the current state
-        self.outputs[self.sen_id][self.tok_id] = output
-
-        # move onto the next state
-        self.tok_id += 1
-        if self.tok_id == len(self.document.get_sentence(self.sen_id)):
-            self.sen_id += 1
-            self.tok_id = 0
-
-    def has_next(self):
-        return 0 <= self.sen_id < len(self.document)
-
-    def finalize(self):
-        """
-        Saves the predicted outputs (self.outputs) and the inferred labels (self.labels) to the input document after decoding.
-        """
-        for i, labels in enumerate(self.labels):
-            d = self.document.get_sentence(i)
-            d[self.key] = labels
-            d[self.key_out] = self.outputs[i]
-
-    @property
-    def labels(self):
-        """
-        :rtype: list of (list of str)
-        """
-        def aux(scores):
-            if size < len(scores): scores = scores[:size]
-            return self.label_map.get(np.argmax(scores))
-
-        size = len(self.label_map)
-        return [[aux(o) for o in output] for output in self.outputs]
-
-    @property
-    def y(self):
-        label = self.document.get_sentence(self.sen_id)[self.key][self.tok_id]
-        return self.label_map.add(label)
-
-    def _get_label_embeddings(self):
-        """
-        :return: (self.output, self.padout)
-        """
-        return self.outputs, self.padout
-
-
-# ======================================== Models ========================================
-
-class FFNNModel(gluon.Block):
-    def __init__(self, input_config, output_config, conv2d_config=None, hidden_config=None, **kwargs):
-        """
-        Feed-Forward Neural Network including either convolution layer or hidden layers or both.
-        :param input_config: (dim, dropout); configuration for the input layer.
-        :type input_config: SimpleNamespace(int, float)
-        :param output_config: (dim); configuration for the output layer.
-        :type output_config: SimpleNamespace(int)
-        :param conv2d_config: (ngram, filters, activation, dropout); configuration for the 2D convolution layer.
-        :type conv2d_config: list of SimpleNamespace(int, int, str, float)
-        :param hidden_config: (dim, activation, dropout); configuration for the hidden layers.
-        :type hidden_config: list of SimpleNamespace(int, str, float)
-        :param kwargs: parameters for the initialization of mxnet.gluon.Block.
-        :type kwargs: dict
-        """
-        super().__init__(**kwargs)
-
-        self.conv2d = [SimpleNamespace(
-            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
-            dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
-
-        self.hidden = [SimpleNamespace(
-            dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
-            dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
-
-        with self.name_scope():
-            self.input_dropout = mx.gluon.nn.Dropout(input_config.dropout)
-            self.output = mx.gluon.nn.Dense(output_config.dim)
-
-            if self.conv2d:
-                for i, c in enumerate(self.conv2d, 1):
-                    setattr(self, 'conv_'+str(i), c.conv)
-                    setattr(self, 'conv_dropout_' + str(i), c.dropout)
-
-            if self.hidden:
-                for i, h in enumerate(self.hidden, 1):
-                    setattr(self, 'hidden_' + str(i), h.dense)
-                    setattr(self, 'hidden_dropout_' + str(i), h.dropout)
-
-    def forward(self, x):
-        # input layer
-        x = self.input_dropout(x)
-
-        # convolution layer
-        if self.conv2d:
-            x = x.reshape((0, 1, x.shape[1], x.shape[2]))
-            t = [c.dropout(c.conv(x).reshape((0, -1))) for c in self.conv2d]
-            x = nd.concat(*t, dim=1)
-
-        # hidden layers
-        if self.hidden:
-            for h in self.hidden:
-                x = h.dense(x)
-                x = h.dropout(x)
-
-        # output layer
-        x = self.output(x)
-        return x
-
-
-# TODO: LSTMModel needs to be reimplemented
-class LSTMModel(gluon.Block):
-    def __init__(self, input_col, num_class, n_hidden, dropout, **kwargs):
-        """
-        :param kwargs: parameters to initialize gluon.Block.
-        :type kwargs: dict
-        """
-        bi = True
-        super().__init__(**kwargs)
-        with self.name_scope():
-            self.model = gluon.rnn.LSTM(n_hidden, input_size=input_col, bidirectional=bi)
-            self.dropout = gluon.nn.Dropout(dropout)
-            self.out = gluon.nn.Dense(num_class)
-        print('Init Model: LSTM, bidirectional = %r' % bi)
-
-    def forward(self, x):
-        x = self.model(x)
-        x = self.dropout(x)
-        # output layer
-        x = self.out(x)
-        return x
-
-
-# ======================================== Component ========================================
 
 class NLPComponent(Component):
     def __init__(self, ctx=None):
@@ -309,7 +52,7 @@ class NLPComponent(Component):
         :param document: the input document.
         :type document: elit.structure.Document
         :return: the state containing the input document for this component.
-        :rtype: NLPState
+        :rtype: elit.state.NLPState
         """
         return
 
@@ -324,7 +67,7 @@ class NLPComponent(Component):
     def _decode(self, states, batch_size=2048):
         """
         :param states: input states.
-        :type states: list of NLPState
+        :type states: list of elit.state.NLPState
         :param batch_size: the maximum size of each batch.
         :type batch_size: int
         """
@@ -345,7 +88,7 @@ class NLPComponent(Component):
     def _evaluate(self, states, batch_size=2048, reset=True):
         """
         :param states: input states.
-        :type states: list of NLPState
+        :type states: list of elit.state.NLPState
         :param batch_size: the maximum size of each batch.
         :type batch_size: int
         :param reset: if True, reset all states to their initial stages.
@@ -365,7 +108,7 @@ class NLPComponent(Component):
     def _train(self, states, trainer, loss_func, batch_size=64):
         """
         :param states: input states.
-        :type states: list of NLPState
+        :type states: list of elit.state.NLPState
         :param trainer: the trainer including the optimizer.
         :type trainer: mxnet.gluon.Trainer
         :param loss_func: the loss function for the optimizer.
@@ -409,7 +152,7 @@ class NLPComponent(Component):
     def _process(states, outputs, begin):
         """
         :param states: input states.
-        :type states: list of NLPState
+        :type states: list of elit.state.NLPState
         :param outputs: the prediction outputs (output layers).
         :param begin: list of numpy.array
         :return: the number of processed states.
@@ -497,8 +240,8 @@ class SequenceTagger(NLPComponent):
         if self.label_embedding: input_dim += num_class
 
         # network configuration
-        self.input_config = SimpleNamespace(dim=input_dim, dropout=input_dropout)
-        self.output_config = SimpleNamespace(dim=num_class)
+        self.input_config = input_namespace(input_dim, maxlen=len(feature_windows), dropout=input_dropout)
+        self.output_config = output_namespace(num_class)
         self.conv2d_config = conv2d_config
         self.hidden_config = hidden_config
 

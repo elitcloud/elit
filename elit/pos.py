@@ -18,7 +18,9 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from elit.component import OPLRState, SequenceTagger
+from elit.component import SequenceTagger
+from elit.state import OPLRState
+from elit.model import conv2d_args, hidden_args
 from elit.structure import TOK, POS
 from elit.util import Accuracy, tsv_reader, json_reader, group_states
 from elit.vsm import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract, LabelMap
@@ -115,28 +117,6 @@ def train_args():
         """
         return tuple(map(int, s.split(',')))
 
-    def conv2d_config(s):
-        """
-        :param s: (ngram:filters:activation:dropout)(;#1)*
-        :return: list of SimpleNamespace
-        """
-        def create(config):
-            c = config.split(':')
-            return SimpleNamespace(ngram=int(c[0]), filters=int(c[1]), activation=c[2], dropout=float(c[3]))
-
-        return (create(config) for config in s.split(';')) if s != 'None' else None
-
-    def hidden_config(s):
-        """
-        :param s: (dim:activation:dropout)(;#1)*
-        :return: list of SimpleNamespace
-        """
-        def create(config):
-            c = config.split(':')
-            return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
-
-        return (create(config) for config in s.split(';'))
-
     parser = argparse.ArgumentParser('Train: part-of-speech tagging')
 
     # data
@@ -164,11 +144,11 @@ def train_args():
                         help='number of classes (part-of-speech tags)')
     parser.add_argument('-ir', '--input_dropout', type=float, metavar='float', default=0.0,
                         help='dropout rate applied to the input layer')
-    parser.add_argument('-cc', '--conv2d_config', type=conv2d_config,
-                        metavar='(ngram:filters:activation:dropout)(;#1)*',
-                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', dropout=0.2) for i in range(1, 5)),
+    parser.add_argument('-cc', '--conv2d_config', type=conv2d_args,
+                        metavar='(ngram:filters:activation:pool:dropout)(;#1)*',
+                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', pool='avg', dropout=0.2) for i in range(1, 5)),
                         help='configuration for the convolution layer')
-    parser.add_argument('-hc', '--hidden_config', type=hidden_config, metavar='(dim:activation:dropout)(;#1)*', default=None,
+    parser.add_argument('-hc', '--hidden_config', type=hidden_args, metavar='(dim:activation:dropout)(;#1)*', default=None,
                         help='configuration for the hidden layer')
 
     # training
@@ -233,14 +213,7 @@ def evaluate():
     e = comp._evaluate(states, reset=True)
     print('DEV: %5.2f (%d/%d)' % (e.get(), e.correct, e.total))
 
-    # trn_data = reader(args.trn_path, reader_args)
-    # states = group_states(trn_data, comp.create_state)
-    # eval = comp._evaluate(states, reset=True)
-    # print('TRN: %5.2f (%d/%d)' % (eval.get(), eval.correct, eval.total))
 
-
-
-import sys
-import pickle
 if __name__ == '__main__':
+    train()
     evaluate()

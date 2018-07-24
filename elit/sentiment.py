@@ -13,12 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.component import NLPState
+from types import SimpleNamespace
+
+import mxnet as mx
+from mxnet import gluon
+
+from elit.component import NLPComponent
+from elit.state import NLPState
 from elit.structure import POS
 
 __author__ = 'Jinho D. Choi'
 
-class SentiState(NLPState):
+class SentenceBasedSentimentState(NLPState):
     def __init__(self, document, vsm, label_map, maxlen):
         """
         POSState inherits the left-to-right one-pass (LR1P) decoding strategy from ForwardState.
@@ -64,3 +70,36 @@ class SentiState(NLPState):
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.feature_windows] for emb, zero in self.embs)
         n = np.column_stack(l)
         return n
+
+
+class DocumentClassificationCNNModel(gluon.Block):
+    def __init__(self, input_config, output_config, conv2d_config, **kwargs):
+        super().__init__(**kwargs)
+
+
+
+
+        def pool(c):
+            if c.pool is None: return None
+            p = mx.gluon.nn.MaxPool2D if c.pool == 'max' else mx.gluon.nn.AvgPool2D
+            return mx.gluon.nn.MaxPool2D(pool_size=(input_config.row - c.ngram + 1, 1))
+
+
+
+
+        self.conv2d = [SimpleNamespace(
+            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
+            dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
+
+
+
+
+
+
+class SentimentAnalyzer(NLPComponent):
+    def __init__(self, ctx, vsm):
+        super().__init__(ctx)
+        self.vsm = vsm
+
+        # to be initialized
+        self.label_map = None
