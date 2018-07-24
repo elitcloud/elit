@@ -73,7 +73,7 @@ class Document(dict):
     def tokens(self):
         """
         :return: list of tokens across all sentences.
-        :return list of str
+        :rtype: list of str
         """
         tokens = []
         for sentence in self.sentences:

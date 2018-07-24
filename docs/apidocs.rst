@@ -33,10 +33,18 @@ Component
     :undoc-members:
     :show-inheritance:
 
-Lexicon
+State
 ---------
 
-.. automodule:: elit.lexicon
+.. automodule:: elit.state
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Model
+---------
+
+.. automodule:: elit.model
     :members:
     :undoc-members:
     :show-inheritance:

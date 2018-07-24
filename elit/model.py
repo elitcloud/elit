@@ -69,6 +69,11 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
     def forward(self, x):
+        """
+
+        :param x:
+        :return:
+        """
         # input layer
         x = self.input_dropout(x)
 
