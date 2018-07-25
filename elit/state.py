@@ -158,7 +158,7 @@ class OPLRState(NLPState):
 
     def finalize(self):
         """
-        Saves the predicted outputs (self.outputs) and the inferred labels (self.labels) to the input document after decoding.
+        Saves the predicted outputs (self.outputs) and the inferred labels (self.labels) to the input document once decoding is done.
         """
         for i, labels in enumerate(self.labels):
             d = self.document.get_sentence(i)

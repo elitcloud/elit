@@ -39,7 +39,7 @@ class FFNNModel(gluon.Block):
         super().__init__(**kwargs)
 
         def pool(c):
-            if c.pool is None: return lambda x: x
+            if c.pool is None: return None
             p = mx.gluon.nn.MaxPool2D if c.pool == 'max' else mx.gluon.nn.AvgPool2D
             n = input_config.maxlen - c.ngram + 1
             return p(pool_size=(n, 1), strides=(n, 1))
@@ -60,8 +60,8 @@ class FFNNModel(gluon.Block):
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
                     setattr(self, 'conv_'+str(i), c.conv)
-                    setattr(self, 'conv_pool_'+str(i), c.pool)
                     setattr(self, 'conv_dropout_' + str(i), c.dropout)
+                    if c.pool: setattr(self, 'conv_pool_'+str(i), c.pool)
 
             if self.hidden:
                 for i, h in enumerate(self.hidden, 1):
@@ -69,11 +69,9 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
     def forward(self, x):
-        """
+        def conv(c):
+            return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
 
-        :param x:
-        :return:
-        """
         # input layer
         x = self.input_dropout(x)
 
@@ -85,7 +83,7 @@ class FFNNModel(gluon.Block):
             # conv: [(batches, filters, maxlen - ngram + 1, 1) for ngram in ngrams]
             # pool: [(batches, filters, 1, 1) for ngram in ngrams]
             # reshape: [(batches, filters * x * y) for ngram in ngrams]
-            t = [c.dropout(c.pool(c.conv(x))) for c in self.conv2d]
+            t = [conv(c) for c in self.conv2d]
             x = nd.concat(*t, dim=1)
 
         if self.hidden:
@@ -117,9 +115,10 @@ def conv2d_args(s):
     """
     def create(config):
         c = config.split(':')
-        return conv2d_namespace(ngram=int(c[0]), filters=int(c[1]), activation=c[2], pool=c[3], dropout=float(c[4]))
+        pool = c[3] if c[3].lower() != 'none' else None
+        return conv2d_namespace(ngram=int(c[0]), filters=int(c[1]), activation=c[2], pool=pool, dropout=float(c[4]))
 
-    return (create(config) for config in s.split(';')) if s != 'None' else None
+    return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None
 
 
 def hidden_namespace(dim, activation, dropout):
@@ -135,4 +134,4 @@ def hidden_args(s):
         c = config.split(':')
         return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
 
-    return (create(config) for config in s.split(';')) if s != 'None' else None
+    return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None

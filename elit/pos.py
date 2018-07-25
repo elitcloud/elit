@@ -148,8 +148,7 @@ def train_args():
                         help='dropout rate applied to the input layer')
     parser.add_argument('-cc', '--conv2d_config', type=conv2d_args,
                         metavar='(ngram:filters:activation:pool:dropout)(;#1)*',
-                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu',
-                                                      pool='avg', dropout=0.2) for i in range(1, 5)),
+                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', pool=None, dropout=0.2) for i in range(1, 5)),
                         help='configuration for the convolution layer')
     parser.add_argument('-hc', '--hidden_config', type=hidden_args, metavar='(dim:activation:dropout)(;#1)*', default=None,
                         help='configuration for the hidden layer')
@@ -198,25 +197,26 @@ def train():
 def evaluate():
     # cml arguments
     args = train_args()
+    print(args.hidden_config)
 
-    # vector space models
-    vsm_list = [FastText(args.word_vsm)]
-    if args.ambi_vsm: vsm_list.append(Word2Vec(args.ambi_vsm))
-
-    # component
-    comp = POSTagger(args.ctx, vsm_list)
-    comp.load(args.model_path)
-
-    # data
-    reader, reader_args = args.reader
-    dev_data = reader(args.dev_path, reader_args)
-
-    # decode
-    states = group_states(dev_data, comp.create_state)
-    e = comp._evaluate(states, reset=True)
-    print('DEV: %5.2f (%d/%d)' % (e.get(), e.correct, e.total))
+    # # vector space models
+    # vsm_list = [FastText(args.word_vsm)]
+    # if args.ambi_vsm: vsm_list.append(Word2Vec(args.ambi_vsm))
+    #
+    # # component
+    # comp = POSTagger(args.ctx, vsm_list)
+    # comp.load(args.model_path)
+    #
+    # # data
+    # reader, reader_args = args.reader
+    # dev_data = reader(args.dev_path, reader_args)
+    #
+    # # decode
+    # states = group_states(dev_data, comp.create_state)
+    # e = comp._evaluate(states, reset=True)
+    # print('DEV: %5.2f (%d/%d)' % (e.get(), e.correct, e.total))
 
 
 if __name__ == '__main__':
     train()
-    evaluate()
+    # evaluate()

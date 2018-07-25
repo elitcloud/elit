@@ -292,7 +292,7 @@ class SequenceTagger(NLPComponent):
             pickle.dump(self.conv2d_config, f)
             pickle.dump(self.hidden_config, f)
 
-        self.model.save_parameters(gln(model_path))
+        # self.model.save_parameters(gln(model_path))
 
     # override
     def decode(self, input_data, batch_size=2048, **kwargs):

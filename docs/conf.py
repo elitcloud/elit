@@ -18,9 +18,9 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Elit'
-copyright = '2018, Gary Lai'
-author = 'Gary Lai'
+project = 'ELIT'
+copyright = '2018, Emory NLP'
+author = 'Jinho D. Choi, Gary Lai'
 
 # The short X.Y version
 version = ''
