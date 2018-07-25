@@ -126,7 +126,8 @@ def train_args():
                         help='path to the development data (input)')
     parser.add_argument('-m', '--model_path', type=str, metavar='filepath', default=None,
                         help='path to the model data (output)')
-    parser.add_argument('-r', '--reader', type=reader, metavar='(tsv|json)(;\d:\d)*', default=(tsv_reader, SimpleNamespace(tok=0, pos=1)),
+    parser.add_argument('-r', '--reader', type=reader, metavar='(tsv|json)(;\d:\d)*',
+                        default=(tsv_reader, SimpleNamespace(tok=0, pos=1)),
                         help='reader configuration')
 
     # lexicon
@@ -138,7 +139,8 @@ def train_args():
     # configuration
     parser.add_argument('-le', '--label_embedding', type=bool, metavar='boolean', default=False,
                         help='if set, use label embeddings as features')
-    parser.add_argument('-fw', '--feature_windows', type=int_tuple, metavar='int[,int]*', default=tuple(range(-3, 4)),
+    parser.add_argument('-fw', '--feature_windows', type=int_tuple, metavar='int[,int]*',
+                        default=tuple(range(-3, 4)),
                         help='contextual windows for feature extraction')
     parser.add_argument('-nc', '--num_class', type=int, metavar='int', default=50,
                         help='number of classes (part-of-speech tags)')
@@ -146,7 +148,8 @@ def train_args():
                         help='dropout rate applied to the input layer')
     parser.add_argument('-cc', '--conv2d_config', type=conv2d_args,
                         metavar='(ngram:filters:activation:pool:dropout)(;#1)*',
-                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', pool='avg', dropout=0.2) for i in range(1, 5)),
+                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu',
+                                                      pool='avg', dropout=0.2) for i in range(1, 5)),
                         help='configuration for the convolution layer')
     parser.add_argument('-hc', '--hidden_config', type=hidden_args, metavar='(dim:activation:dropout)(;#1)*', default=None,
                         help='configuration for the hidden layer')

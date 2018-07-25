@@ -63,7 +63,8 @@ def setup_package():
         tests_require=[
             'pytest',
         ],
-        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f]
+        classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
+        scripts=['bin/elit'],
     )
     metadata['version'] = get_version_info(filename=VERSION_PY)[0]
 
