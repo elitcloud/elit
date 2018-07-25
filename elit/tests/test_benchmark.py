@@ -13,28 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import pytest
-from ..tokenizer import Tokenizer, SpaceTokenizer
-from ..util import Accuracy, F1
+from ..benchmark import Timer
 
 __author__ = "Gary Lai"
 
 
-@pytest.fixture()
-def tokenizer():
-    return Tokenizer()
+def test_benchmark(space_tokenizer):
+    with Timer() as time1:
+        space_tokenizer.decode("Hello, world")
+    with Timer() as time2:
+        space_tokenizer.decode("This module implements specialized container datatypes providing alternatives to Python’s general purpose built-in containers.")
 
-
-@pytest.fixture()
-def space_tokenizer():
-    return SpaceTokenizer()
-
-
-@pytest.fixture()
-def accuracy():
-    return Accuracy()
-
-
-@pytest.fixture()
-def f1():
-    return F1()
+    assert isinstance(time1.runtime, float)
+    assert isinstance(time2.runtime, float)
+    assert time1.runtime > 0.0
+    assert time2.runtime > 0.0
