@@ -92,20 +92,20 @@ class Config(object):
         return self._config.getint('Network', 'tag_dims')
 
     @property
-    def dropout_emb(self):
-        return self._config.getfloat('Network', 'dropout_emb')
+    def mlp_keep_prob(self):
+        return self._config.getfloat('Network', 'mlp_keep_prob')
 
     @property
     def lstm_hiddens(self):
         return self._config.getint('Network', 'lstm_hiddens')
 
     @property
-    def dropout_lstm_input(self):
-        return self._config.getfloat('Network', 'dropout_lstm_input')
+    def ff_keep_prob(self):
+        return self._config.getfloat('Network', 'ff_keep_prob')
 
     @property
-    def dropout_lstm_hidden(self):
-        return self._config.getfloat('Network', 'dropout_lstm_hidden')
+    def recur_keep_prob(self):
+        return self._config.getfloat('Network', 'recur_keep_prob')
 
     @property
     def mlp_arc_size(self):

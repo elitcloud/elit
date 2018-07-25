@@ -83,10 +83,10 @@ vocab = pickle.load(open(config.save_vocab_path, 'rb'))
 Use the information inside the config file:
 
 ```
-parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb, config.lstm_layers,
-                        config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
-                        config.mlp_arc_size, config.mlp_rel_size, config.dropout_mlp, config.learning_rate,
-                        config.beta_1, config.beta_2, config.epsilon, config.save_model_path, config.debug)
+    parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.mlp_keep_prob, config.lstm_layers,
+                            config.lstm_hiddens, config.ff_keep_prob, config.recur_keep_prob,
+                            config.mlp_arc_size, config.mlp_rel_size, config.dropout_mlp, config.learning_rate,
+                            config.beta_1, config.beta_2, config.epsilon, config.save_model_path, config.debug)
 ```
 
 ### 4.Parse raw sentence
@@ -114,12 +114,22 @@ The output is a a CoNLLSentence object, you can print it out:
 You can also check more documentation at `elit.dev.biaffineparser.common.data.CoNLLSentence`. 
 
 
-## Known Issues & Future Works
+## Performance
 
-Some tricks are not implemented yet:
+All tricks are implemented now:
 
-* [ ] Word dropout
-* [ ] Dropout across time-steps in RNN cell
-* [ ] Orthonormal initialization of RNN weights
-* [ ] Learning rate decay
+* [x] Word dropout
+* [x] Dropout across time-steps in RNN cell
+* [x] Orthonormal initialization of RNN weights
+* [x] Learning rate decay
+
+Now the performance is:
+
+|  | UAS | LAS |
+| --- | --- | --- |
+| PTB-SD | 95.55 % | 94.48 % |
+
+* Reported by the CoNLL 2006 official evaluation scripts `eval.pl`.
+* The training script also reports unlabeled and labeled attachment accuracy in console, but it calculates punctuation differently from what is standard. You should instead use the perl script for test score. You can use `parser.parse_file(config.test_file, 'testout.conllx')` to produce test outputs.
+
 
