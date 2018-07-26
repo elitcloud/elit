@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 from types import SimpleNamespace
+from typing import Optional, Tuple
 
 import mxnet as mx
 from mxnet import gluon, nd
@@ -22,23 +23,27 @@ __author__ = 'Jinho D. Choi'
 
 
 class FFNNModel(gluon.Block):
-    def __init__(self, input_config, output_config, conv2d_config=None, hidden_config=None, **kwargs):
+    def __init__(self,
+                 input_config: SimpleNamespace,
+                 output_config: SimpleNamespace,
+                 conv2d_config: Optional[Tuple[SimpleNamespace]] = None,
+                 hidden_config: Optional[Tuple[SimpleNamespace]] = None,
+                 **kwargs):
         """
-        Feed-Forward Neural Network that includes n-gram convolution or/and hidden layers.
-        :param input_config: (row, col, dropout); configuration for the input layer.
-        :type input_config: SimpleNamespace(int, float)
-        :param output_config: (dim); configuration for the output layer.
-        :type output_config: SimpleNamespace(int)
-        :param conv2d_config: (ngram, filters, activation, dropout); configuration for the 2D convolution layer.
-        :type conv2d_config: list of SimpleNamespace(int, int, str, float)
-        :param hidden_config: (dim, activation, dropout); configuration for the hidden layers.
-        :type hidden_config: list of SimpleNamespace(int, str, float)
+        Feed-Forward Neural Network (FFNN) that includes n-gram convolutions or/and hidden layers.
+        :param input_config: configuration for the input layer -> elit.model.input_namespace();
+                             {row: int, col: int, dropout: float}.
+        :param output_config: configuration for the output layer -> elit.model.output_namespace();
+                              {dim: int}.
+        :param conv2d_config: configuration for the 2D convolution layer -> elit.model.conv2d_namespace();
+                              {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
+        :param hidden_config: configuration for the hidden layers -> elit.model.hidden_namespace();
+                              {dim: int, activation: str, dropout: float}.
         :param kwargs: parameters for the initialization of mxnet.gluon.Block.
-        :type kwargs: dict
         """
         super().__init__(**kwargs)
 
-        def pool(c):
+        def pool(c: SimpleNamespace) -> Optional[mx.gluon.nn.MaxPool2D, mx.gluon.nn.AvgPool2D]:
             if c.pool is None: return None
             p = mx.gluon.nn.MaxPool2D if c.pool == 'max' else mx.gluon.nn.AvgPool2D
             n = input_config.maxlen - c.ngram + 1
@@ -59,9 +64,9 @@ class FFNNModel(gluon.Block):
 
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
-                    setattr(self, 'conv_'+str(i), c.conv)
+                    setattr(self, 'conv_' + str(i), c.conv)
                     setattr(self, 'conv_dropout_' + str(i), c.dropout)
-                    if c.pool: setattr(self, 'conv_pool_'+str(i), c.pool)
+                    if c.pool: setattr(self, 'conv_pool_' + str(i), c.pool)
 
             if self.hidden:
                 for i, h in enumerate(self.hidden, 1):
@@ -69,7 +74,7 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
     def forward(self, x):
-        def conv(c):
+        def conv(c: SimpleNamespace):
             return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
 
         # input layer
@@ -98,30 +103,28 @@ class FFNNModel(gluon.Block):
 
 # ======================================== Configuration ========================================
 
-def input_namespace(dim, maxlen, dropout=0.0):
+def input_namespace(dim: int, maxlen: int, dropout: float = 0.0) -> SimpleNamespace:
     return SimpleNamespace(dim=dim, maxlen=maxlen, dropout=dropout)
 
 
-def output_namespace(dim):
+def output_namespace(dim: int) -> SimpleNamespace:
     return SimpleNamespace(dim=dim)
 
 
-def conv2d_namespace(ngram, filters, activation, pool=None, dropout=0.0):
+def conv2d_namespace(ngram: int, filters: int, activation: str, pool: str = None, dropout: float = 0.0) -> SimpleNamespace:
     return SimpleNamespace(ngram=ngram, filters=filters, activation=activation, pool=pool, dropout=dropout)
 
 
-def hidden_namespace(dim, activation, dropout):
+def hidden_namespace(dim: int, activation: str, dropout: float) -> SimpleNamespace:
     return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
 
 
 # ======================================== ArgumentParser ========================================
 
-def conv2d_args(s):
+def conv2d_args(s: str) -> Tuple[SimpleNamespace, ...]:
     """
     :param s: (ngram:filters:activation:pool:dropout)(;#1)*
-    :param s: str
-    :return: list of (ngram, filters, activation, pool, dropout)
-    :rtype: list of SimpleNamespace
+    :return: a tuple of conf2d_namespace()
     """
     def create(config):
         c = config.split(':')
@@ -131,12 +134,10 @@ def conv2d_args(s):
     return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None
 
 
-def hidden_args(s):
+def hidden_args(s: str) -> Tuple[SimpleNamespace, ...]:
     """
     :param s: (dim:activation:dropout)(;#1)*
-    :type s: str
-    :return: list of (dim, activation, dropout)
-    :rtype: list of SimpleNamespace
+    :return: a tuple of hidden_namespace()
     """
     def create(config):
         c = config.split(':')
@@ -145,12 +146,10 @@ def hidden_args(s):
     return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None
 
 
-def context_args(s):
+def context_args(s: str) -> mx.Context:
     """
     :param s: [cg]\\d*
-    :type s: str
     :return: a device context
-    :rtype: mxnet.Context
     """
     d = int(s[1:]) if len(s) > 1 else 0
     return mx.gpu(d) if s[0] == 'g' else mx.cpu(d)

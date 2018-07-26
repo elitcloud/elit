@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Optional
 
 import numpy as np
 
@@ -67,7 +67,7 @@ class NLPState(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def y(self) -> Union[int, None]:
+    def y(self) -> Optional[int]:
         """
         :return: the class ID of the gold-standard label for the current state if available; otherwise None.
         """
@@ -97,7 +97,7 @@ class BatchState(NLPState):
         self.init()
         return self
 
-    def __next__(self) -> Tuple[np.ndarray, Union[int, None]]:
+    def __next__(self) -> Tuple[np.ndarray, Optional[int]]:
         """
         :return: self.x, self.y
         """
@@ -144,7 +144,7 @@ class SentenceClassificationBatchState(BatchState):
                  word_vsm: VectorSpaceModel,
                  maxlen: int,
                  key: str,
-                 key_out: Union[str, None] = None,
+                 key_out: Optional[str] = None,
                  gold: bool = False):
         """
         SentenceClassificationBatchState provides an abstract class that labels each sentence in the input document
@@ -205,7 +205,7 @@ class SentenceClassificationBatchState(BatchState):
         return self.embs[self.sen_id]
 
     @property
-    def y(self) -> Union[int, None]:
+    def y(self) -> Optional[int]:
         """
         :return: the class ID of the current sentence's gold-standard label if available; otherwise, None.
         """
@@ -233,7 +233,7 @@ class DocumentClassificationBatchState(BatchState):
                  word_vsm: VectorSpaceModel,
                  maxlen: int,
                  key: str,
-                 key_out: Union[str, None] = None,
+                 key_out: Optional[str] = None,
                  gold: bool = False):
         """
         DocumentClassificationBatchState provides an abstract class that labels input document with a certain class.
@@ -293,7 +293,7 @@ class DocumentClassificationBatchState(BatchState):
         return self.emb
 
     @property
-    def y(self) -> Union[int, None]:
+    def y(self) -> Optional[int]:
         """
         :return: the class ID of the current sentence's gold-standard label if available; otherwise, None.
         """
@@ -317,8 +317,8 @@ class TokenTaggingBatchState(NLPState):
                  label_map: LabelMap,
                  token_vsm: VectorSpaceModel,
                  windows: Tuple[int, ...],
-                 padout: Union[np.ndarray, None],
-                 key: Union[str, None]):
+                 padout: Optional[np.ndarray],
+                 key: Optional[str]):
         """
         TokenTaggingState defines the one-pass left-to-right strategy for tagging individual tokens.
         This class support both batch and sequence modes.
@@ -367,7 +367,7 @@ class TokenTaggingBatchState(NLPState):
             for i, s in enumerate(self.document):
                 self.output[i] = [self.padout] * len(s)
 
-    def process(self, output: Union[np.ndarray, None] = None):
+    def process(self, output: Optional[np.ndarray] = None):
         # apply the output to the current state
         if output:
             self.output[self.sen_id][self.tok_id] = output
@@ -403,7 +403,7 @@ class TokenTaggingBatchState(NLPState):
         return begin
 
     @property
-    def _label_embeddings(self) -> Union[Tuple[List[List[np.ndarray]], np.ndarray], None]:
+    def _label_embeddings(self) -> Optional[Tuple[List[List[np.ndarray]], np.ndarray]]:
         """
         :return: (self.output, self.padout) if sequence mode; otherwise, None
         """
@@ -416,8 +416,8 @@ class TokenTaggingSequenceState(NLPState):
                  label_map: LabelMap,
                  token_vsm: VectorSpaceModel,
                  windows: Tuple[int, ...],
-                 padout: Union[np.ndarray, None],
-                 key: Union[str, None]):
+                 padout: Optional[np.ndarray],
+                 key: Optional[str]):
         """
         TokenTaggingState defines the one-pass left-to-right strategy for tagging individual tokens.
         This class support both batch and sequence modes.
@@ -466,7 +466,7 @@ class TokenTaggingSequenceState(NLPState):
             for i, s in enumerate(self.document):
                 self.output[i] = [self.padout] * len(s)
 
-    def process(self, output: Union[np.ndarray, None] = None):
+    def process(self, output: Optional[np.ndarray] = None):
         # apply the output to the current state
         if output:
             self.output[self.sen_id][self.tok_id] = output
@@ -502,7 +502,7 @@ class TokenTaggingSequenceState(NLPState):
         return begin
 
     @property
-    def _label_embeddings(self) -> Union[Tuple[List[List[np.ndarray]], np.ndarray], None]:
+    def _label_embeddings(self) -> Optional[Tuple[List[List[np.ndarray]], np.ndarray]]:
         """
         :return: (self.output, self.padout) if sequence mode; otherwise, None
         """

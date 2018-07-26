@@ -30,7 +30,7 @@ __author__ = 'Jinho D. Choi'
 
 class SentimentState(SentenceClassificationBatchState):
     def eval(self, metric: List[Accuracy, Accuracy, F1, F1, F1]):
-        eval(metric, self.gold, [s[self.key] for s in self.document])
+        eval_sentiment(metric, self.gold, [s[self.key] for s in self.document])
 
 
 class SentimentAnalyzer(NLPComponent):
@@ -47,7 +47,7 @@ class SentimentAnalyzer(NLPComponent):
         self.label_map = None
 
 
-def eval(metric: List[Accuracy, Accuracy, F1, F1, F1], gold_labels: List[str], pred_labels: List[str]):
+def eval_sentiment(metric: List[Accuracy, Accuracy, F1, F1, F1], gold_labels: List[str], pred_labels: List[str]):
     for i, gold in enumerate(gold_labels):
         pred = pred_labels[i]
 
