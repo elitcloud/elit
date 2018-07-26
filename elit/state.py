@@ -14,24 +14,30 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import Tuple, Union, List, Optional
+from typing import Tuple, Optional
 
 import numpy as np
 
 from elit.structure import Document, TOK
-from elit.util import EvalMetric
 from elit.vsm import LabelMap, VectorSpaceModel, get_vsm_embeddings, get_loc_embeddings, x_extract
 
 __author__ = 'Jinho D. Choi'
 
 
 class NLPState(abc.ABC):
-    def __init__(self, document: Document):
+    """
+    NLPState provides an abstract class to define a decoding strategy.
+    """
+
+    def __init__(self, document: Document, key: str):
         """
-        NLPState provides an abstract class to define a decoding strategy.
         :param document: an input document.
+        :param key: the key to the input document where the predicted labels are to be saved.
         """
         self.document = document
+        self.key = key
+        self.key_out = key + '-out'
+        self.key_gold = key + '-gold'
 
     @abc.abstractmethod
     def init(self, **kwargs):
@@ -73,25 +79,21 @@ class NLPState(abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
-    def eval(self, metric: Union[EvalMetric, Tuple[EvalMetric, ...]]):
-        """
-        Updates the evaluation metric by comparing the gold-standard labels (if available) and the predicted labels.
-        :param metric: an evaluation metric or a tuple of evaluation metrics.
-        """
-        pass
-
 
 class BatchState(NLPState):
-    def __init__(self, document: Document):
+    """
+    BatchState provides an abstract class to define a decoding strategy in batch mode.
+    Batch mode assumes that predictions made by earlier states do not affect predictions made by later states.
+    Thus, all predictions can be made in batch where each prediction is independent from one another.
+    BatchState is iterable (see self.__iter__() and self.__next__()).
+    """
+
+    def __init__(self, document: Document, key: str):
         """
-        BatchState provides an abstract class to define a decoding strategy in batch mode.
-        Batch mode assumes that predictions made by earlier states do not affect predictions made by later states.
-        Thus, all predictions can be made in batch where each prediction is independent from one another.
-        BatchState is iterable (see self.__iter__() and self.__next__()).
         :param document: an input document.
+        :param key: the key to the input document where the predicted labels are to be saved.
         """
-        super().__init__(document)
+        super().__init__(document, key)
 
     def __iter__(self) -> 'BatchState':
         self.init()
@@ -112,21 +114,24 @@ class BatchState(NLPState):
         Assigns the predicted output in batch to the input document.
         :param output: a matrix where each row contains prediction scores of the corresponding state.
         :param begin: the row index of the output matrix corresponding to the initial state.
-        :return: the number of outputs used by this document.
+        :return: the row index of the output matrix to be assigned by the next document.
         """
         pass
 
 
 class SequenceState(NLPState):
-    def __init__(self, document: Document):
+    """
+    SequenceState provides an abstract class to define a decoding strategy in sequence mode.
+    Sequence mode assumes that predictions made by earlier states affect predictions made by later states.
+    Thus, predictions need to be made in sequence where earlier predictions get passed onto later states.
+    """
+
+    def __init__(self, document: Document, key: str):
         """
-        SequenceState provides an abstract class to define a decoding strategy in sequence mode.
-        Sequence mode assumes that predictions made by earlier states affect predictions made by later states.
-        Thus, predictions need to be made in sequence where earlier predictions get passed onto later states.
         :param document: an input document
-        :param gold: True if gold-standard labels are provided in the input document; otherwise, False.
+        :param key: the key to the input document where the predicted labels are to be saved.
         """
-        super().__init__(document)
+        super().__init__(document, key)
 
     @abc.abstractmethod
     def process(self, output: np.ndarray):
@@ -138,49 +143,39 @@ class SequenceState(NLPState):
 
 
 class SentenceClassificationBatchState(BatchState):
+    """
+    SentenceClassificationBatchState labels each sentence in the input document with a certain class
+    (e.g., positive or negative for sentiment analysis).
+    """
+
     def __init__(self,
                  document: Document,
+                 key: str,
                  label_map: LabelMap,
                  word_vsm: VectorSpaceModel,
-                 maxlen: int,
-                 key: str,
-                 key_out: Optional[str] = None,
-                 gold: bool = False):
+                 maxlen: int):
         """
-        SentenceClassificationBatchState provides an abstract class that labels each sentence in the input document
-        with a certain class (e.g., positive or negative for sentiment analysis).
         :param document: an input document.
-        :param label_map: the mapping between class labels and their unique IDs.
+        :param key: the key to each sentence in the input document where the predicted labels are to be saved.
+        :param label_map: collects class labels during training and maps them to unique IDs.
         :param word_vsm: a vector space model for word embeddings.
         :param maxlen: the maximum length of a sentence.
-        :param key: the key to each sentence in the input document where the predicted labels are saved.
-        :param key_out: the key to each sentence in the input document where the output scores are saved;
-                        if None, the output scores are not saved in the input document.
-        :param gold: True if gold-standard labels are provided in the input document; otherwise, False.
         """
-        super().__init__(document)
+        super().__init__(document, key)
         self.label_map = label_map
-        self.embs = [word_vsm.document_matrix(sentence.tokens, maxlen) for sentence in document]
-        self.key = key
-        self.key_out = key_out
 
-        # retrieve gold-standard labels if available
-        self.gold = [sentence[key] for sentence in document] if gold else None
+        # initialize gold-standard labels if available
+        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
+
+        # initialize embeddings
+        self.embs = [word_vsm.document_matrix(s.tokens, maxlen) for s in document]
 
         # self.init()
         self.sen_id = 0
 
-    @abc.abstractmethod
-    def eval(self, metric: Union[EvalMetric, Tuple[EvalMetric, ...]]):
-        """
-        Updates the evaluation metric by comparing the gold-standard labels (if available) and the predicted labels.
-        :param metric: an evaluation metric or a tuple of evaluation metrics.
-        """
-        pass
-
     def init(self):
         """
-        Sets the pointer to the first sentence.
+        Initializes the pointer to the first sentence.
         """
         self.sen_id = 0
 
@@ -209,66 +204,54 @@ class SentenceClassificationBatchState(BatchState):
         """
         :return: the class ID of the current sentence's gold-standard label if available; otherwise, None.
         """
-        return self.label_map.add(self.gold[self.sen_id]) if self.gold is not None else None
+        return None if self.gold is None else self.label_map.add(self.gold[self.sen_id])
 
     def assign(self, output: np.ndarray, begin: int = 0) -> int:
         """
         Assigns the predicted output to the input document.
         :param output: a matrix where each row contains prediction scores of the corresponding sentence.
-        :param begin: the row index of the output matrix corresponding to the initial state.
-        :return: the number of sentences in this document.
+        :param begin: the row index of the output matrix corresponding to the first sentence in the input document.
+        :return: the row index of the output matrix to be assigned by the next document.
         """
         for i, sentence in enumerate(self.document):
-            o = output[begin + i]
-            sentence[self.key] = self.label_map.argmax(o)
-            if self.key_out: sentence[self.key_out] = o
+            sentence[self.key_out] = output[begin + i]
 
-        return len(self.document)
+        return begin + len(self.document)
 
 
 class DocumentClassificationBatchState(BatchState):
+    """
+    DocumentClassificationBatchState labels input document with a certain class.
+    """
+
     def __init__(self,
                  document: Document,
+                 key: str,
                  label_map: LabelMap,
                  word_vsm: VectorSpaceModel,
-                 maxlen: int,
-                 key: str,
-                 key_out: Optional[str] = None,
-                 gold: bool = False):
+                 maxlen: int):
         """
-        DocumentClassificationBatchState provides an abstract class that labels input document with a certain class.
         :param document: an input document.
-        :param label_map: the mapping between class labels and their unique IDs.
+        :param key: the key to the input document where the predicted labels are saved.
+        :param label_map: collects class labels during training and maps them to unique IDs.
         :param word_vsm: a vector space model for word embeddings.
         :param maxlen: the maximum length of the input document.
-        :param key: the key to the input document where the predicted labels are saved.
-        :param key_out: the key to the input document where the output scores are saved;
-                        if None, the output scores are not saved in the input document.
-        :param gold: True if gold-standard labels are provided in the input document; otherwise, False.
         """
-        super().__init__(document)
+        super().__init__(document, key)
         self.label_map = label_map
-        self.emb = word_vsm.document_matrix(document.tokens, maxlen)
-        self.key = key
-        self.key_out = key_out
 
-        # retrieve gold-standard labels if available
-        self.gold = document[key] if gold else None
+        # initialize gold-standard labels if available
+        self.gold = document.get(self.key_gold, None)
+
+        # initialize embeddings
+        self.emb = word_vsm.document_matrix(document.tokens, maxlen)
 
         # self.init()
         self.doc_id = 0
 
-    @abc.abstractmethod
-    def eval(self, metric: Union[EvalMetric, Tuple[EvalMetric, ...]]):
-        """
-        Updates the evaluation metric by comparing the gold-standard labels (if available) and the predicted labels.
-        :param metric: an evaluation metric or a tuple of evaluation metrics.
-        """
-        pass
-
     def init(self):
         """
-        Sets the pointer to the first sentence.
+        Initializes the pointer to the first sentence.
         """
         self.doc_id = 0
 
@@ -302,208 +285,189 @@ class DocumentClassificationBatchState(BatchState):
     def assign(self, output: np.ndarray, begin: int = 0) -> int:
         """
         Assigns the predicted output to the input document.
-        :param output: a matrix where the begin'th row contains prediction scores for the input document.
+        :param output: a matrix where each row contains prediction scores of the corresponding document.
         :param begin: the row index of the output matrix corresponding to this document.
-        :return: 1.
+        :return: the row index of the output matrix to be assigned by the next document.
         """
-        self.document[self.key] = self.label_map.argmax(output)
-        if self.key_out: self.document[self.key_out] = output
-        return 1
+        self.document[self.key_out] = output
+        return begin + 1
 
 
-class TokenTaggingBatchState(NLPState):
+class TokenTaggingBatchState(BatchState):
+    """
+    TokenTaggingBatchState defines the one-pass left-to-right strategy for tagging individual tokens in batch mode.
+    """
+
     def __init__(self,
                  document: Document,
+                 key: str,
                  label_map: LabelMap,
-                 token_vsm: VectorSpaceModel,
-                 windows: Tuple[int, ...],
-                 padout: Optional[np.ndarray],
-                 key: Optional[str]):
+                 word_vsm: VectorSpaceModel,
+                 windows: Tuple[int, ...]):
         """
-        TokenTaggingState defines the one-pass left-to-right strategy for tagging individual tokens.
-        This class support both batch and sequence modes.
         :param document: an input document.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param token_vsm: a vector space model to retrieve token embeddings.
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        :param padout: a zero-vector whose dimension is same as the number of class labels;
-                       if not None, it is used to zero-pad label embeddings.
         :param key: the key to each sentence in the document where predicted labels are to be saved.
+        :param label_map: collects class labels during training and maps them to unique IDs.
+        :param word_vsm: a vector space model to retrieve token embeddings.
+        :param windows: contextual windows of adjacent tokens for feature extraction.
         """
-        super().__init__(document)
+        super().__init__(document, key)
         self.label_map = label_map
         self.windows = windows
-        self.padout = padout
+
+        # initialize gold-standard labels if available
+        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
 
         # initialize embeddings
-        self.embs = [get_vsm_embeddings(token_vsm, document, TOK)]
+        self.embs = [get_vsm_embeddings(word_vsm, document, TOK)]
         self.embs.append(get_loc_embeddings(document))
-        if padout: self.embs.append(self._label_embeddings)
-
-        # initialize labels
-        self.gold = []  # gold labels
-        self.pred = []  # predicted labels
-
-        for sentence in document:
-            if key in sentence: self.gold.append(sentence[key])
-            ph = [None] * len(sentence)
-            self.pred.append(ph)
-            sentence[key] = ph
 
         # self.init()
-        self.sen_id = 0  # sentence ID
-        self.tok_id = 0  # token ID
-        if padout: self.output = [[self.padout] * len(s) for s in document]
-
-    @abc.abstractmethod
-    def eval(self, metric: EvalMetric):
-        pass
-
-    def init(self):
         self.sen_id = 0
         self.tok_id = 0
 
-        if self.padout:
-            for i, s in enumerate(self.document):
-                self.output[i] = [self.padout] * len(s)
+    def init(self):
+        """
+        Initializes the pointers to the first token in the first sentence.
+        """
+        self.sen_id = 0
+        self.tok_id = 0
 
-    def process(self, output: Optional[np.ndarray] = None):
-        # apply the output to the current state
-        if output:
-            self.output[self.sen_id][self.tok_id] = output
-            self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
-
-        # process to the next state
+    def process(self):
+        """
+        Processes to the next token.
+        """
         self.tok_id += 1
-        if self.tok_id == len(self.document.get_sentence(self.sen_id)):
+        if self.tok_id == len(self.document.sentences[self.sen_id]):
             self.sen_id += 1
             self.tok_id = 0
 
     @property
     def has_next(self) -> bool:
+        """
+        :return: False if no more token is left to be tagged; otherwise, True.
+        """
         return 0 <= self.sen_id < len(self.document)
 
     @property
     def x(self) -> np.ndarray:
-        t = len(self.document.get_sentence(self.sen_id))
+        """
+        :return: the feature matrix of the current token.
+        """
+        t = len(self.document.sentences[self.sen_id])
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], pad) for w in self.windows] for emb, pad in self.embs)
-        n = np.column_stack(l)
-        return n
+        return np.column_stack(l)
 
     @property
-    def y(self) -> np.ndarray:
+    def y(self) -> Optional[int]:
+        """
+        :return: the class ID of the current token's gold-standard label if available; otherwise, None.
+        """
         return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
 
     def assign(self, output: np.ndarray, begin: int = 0) -> int:
-        for i, sentence in enumerate(self.document):
+        """
+        Assigns the predicted output to the each token in the input document.
+        :param output: a matrix where each row contains prediction scores of the corresponding token.
+        :param begin: the row index of the output matrix corresponding to the first token in the input document.
+        :return: the row index of the output matrix to be assigned by the next document.
+        """
+        for sentence in self.document:
             end = begin + len(sentence)
-            for j in range(begin, end):
-                self.pred[i][j - begin] = self.label_map.argmax(output[j])
+            sentence[self.key_out] = output[begin:end]
             begin = end
         return begin
 
-    @property
-    def _label_embeddings(self) -> Optional[Tuple[List[List[np.ndarray]], np.ndarray]]:
-        """
-        :return: (self.output, self.padout) if sequence mode; otherwise, None
-        """
-        return self.output, self.padout if self.padout else None
 
+class TokenTaggingSequenceState(SequenceState):
+    """
+    TokenTaggingSequenceState defines the one-pass left-to-right strategy for tagging individual tokens in sequence mode.
+    In other words, predicted outputs from earlier tokens are used as features to predict later tokens.
+    """
 
-class TokenTaggingSequenceState(NLPState):
     def __init__(self,
                  document: Document,
+                 key: str,
                  label_map: LabelMap,
-                 token_vsm: VectorSpaceModel,
+                 word_vsm: VectorSpaceModel,
                  windows: Tuple[int, ...],
-                 padout: Optional[np.ndarray],
-                 key: Optional[str]):
+                 padout: np.ndarray):
         """
-        TokenTaggingState defines the one-pass left-to-right strategy for tagging individual tokens.
-        This class support both batch and sequence modes.
         :param document: an input document.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param token_vsm: a vector space model to retrieve token embeddings.
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        :param padout: a zero-vector whose dimension is same as the number of class labels;
-                       if not None, it is used to zero-pad label embeddings.
         :param key: the key to each sentence in the document where predicted labels are to be saved.
+        :param label_map: collects class labels during training and maps them to unique IDs.
+        :param word_vsm: a vector space model to retrieve token embeddings.
+        :param windows: contextual windows of adjacent tokens for feature extraction.
+        :param padout: a zero-vector whose dimension is the number of class labels, used to zero-pad label embeddings.
         """
-        super().__init__(document)
+        super().__init__(document, key)
         self.label_map = label_map
         self.windows = windows
         self.padout = padout
+        self.output = []
+
+        # initialize gold-standard labels if available
+        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
 
         # initialize embeddings
-        self.embs = [get_vsm_embeddings(token_vsm, document, TOK)]
+        self.embs = [get_vsm_embeddings(word_vsm, document, TOK)]
         self.embs.append(get_loc_embeddings(document))
-        if padout: self.embs.append(self._label_embeddings)
-
-        # initialize labels
-        self.gold = []  # gold labels
-        self.pred = []  # predicted labels
-
-        for sentence in document:
-            if key in sentence: self.gold.append(sentence[key])
-            ph = [None] * len(sentence)
-            self.pred.append(ph)
-            sentence[key] = ph
+        self.embs.append((self.output, self.padout))
 
         # self.init()
-        self.sen_id = 0  # sentence ID
-        self.tok_id = 0  # token ID
-        if padout: self.output = [[self.padout] * len(s) for s in document]
-
-    @abc.abstractmethod
-    def eval(self, metric: EvalMetric):
-        pass
-
-    def init(self):
         self.sen_id = 0
         self.tok_id = 0
 
-        if self.padout:
-            for i, s in enumerate(self.document):
-                self.output[i] = [self.padout] * len(s)
+        for s in self.document:
+            o = [self.padout] * len(s)
+            self.output.append(o)
+            s[self.key_out] = o
 
-    def process(self, output: Optional[np.ndarray] = None):
-        # apply the output to the current state
-        if output:
-            self.output[self.sen_id][self.tok_id] = output
-            self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
+    def init(self):
+        """
+        Initializes the pointers to the first otken in the first sentence and the predicted outputs and labels.
+        """
+        self.sen_id = 0
+        self.tok_id = 0
 
-        # process to the next state
+        for i, s in enumerate(self.document):
+            o = [self.padout] * len(s)
+            self.output[i] = o
+            s[self.key_out] = o
+
+    def process(self, output: np.ndarray):
+        """
+        Assigns the predicted output to the current token, then processes to the next token.
+        :param output: the predicted output of the current token.
+        """
+        # apply the output to the current token
+        self.output[self.sen_id][self.tok_id] = output
+
+        # process to the next token
         self.tok_id += 1
-        if self.tok_id == len(self.document.get_sentence(self.sen_id)):
+        if self.tok_id == len(self.document.sentences[self.sen_id]):
             self.sen_id += 1
             self.tok_id = 0
 
     @property
     def has_next(self) -> bool:
+        """
+        :return: False if no more token is left to be tagged; otherwise, True.
+        """
         return 0 <= self.sen_id < len(self.document)
 
     @property
     def x(self) -> np.ndarray:
-        t = len(self.document.get_sentence(self.sen_id))
+        """
+        :return: the feature matrix of the current token.
+        """
+        t = len(self.document.sentences[self.sen_id])
         l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], pad) for w in self.windows] for emb, pad in self.embs)
-        n = np.column_stack(l)
-        return n
+        return np.column_stack(l)
 
     @property
-    def y(self) -> np.ndarray:
+    def y(self) -> Optional[int]:
+        """
+        :return: the class ID of the current token's gold-standard label if available; otherwise, None.
+        """
         return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
-
-    def assign(self, output: np.ndarray, begin: int = 0) -> int:
-        for i, sentence in enumerate(self.document):
-            end = begin + len(sentence)
-            for j in range(begin, end):
-                self.pred[i][j - begin] = self.label_map.argmax(output[j])
-            begin = end
-        return begin
-
-    @property
-    def _label_embeddings(self) -> Optional[Tuple[List[List[np.ndarray]], np.ndarray]]:
-        """
-        :return: (self.output, self.padout) if sequence mode; otherwise, None
-        """
-        return self.output, self.padout if self.padout else None

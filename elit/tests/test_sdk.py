@@ -15,7 +15,7 @@
 # ========================================================================
 import pytest
 
-from ..sdk import Component
+from elit.component import Component
 
 __author__ = "Gary Lai"
 

@@ -153,3 +153,32 @@ def context_args(s: str) -> mx.Context:
     """
     d = int(s[1:]) if len(s) > 1 else 0
     return mx.gpu(d) if s[0] == 'g' else mx.cpu(d)
+
+
+def loss_args(s: str) -> mx.gluon.loss.Loss:
+    s = s.lower()
+
+    if s == 'softmaxcrossentropyloss':
+        return mx.gluon.loss.SoftmaxCrossEntropyLoss()
+    if s == 'sigmoidbinarycrossentropyloss':
+        return mx.gluon.loss.SigmoidBinaryCrossEntropyLoss()
+    if s == 'l2loss':
+        return mx.gluon.loss.L2Loss()
+    if s == 'l2loss':
+        return mx.gluon.loss.L1Loss()
+    if s == 'kldivloss':
+        return mx.gluon.loss.KLDivLoss()
+    if s == 'huberloss':
+        return mx.gluon.loss.HuberLoss()
+    if s == 'hingeloss':
+        return mx.gluon.loss.HingeLoss()
+    if s == 'squaredhingeloss':
+        return mx.gluon.loss.SquaredHingeLoss()
+    if s == 'logisticloss':
+        return mx.gluon.loss.LogisticLoss()
+    if s == 'tripletloss':
+        return mx.gluon.loss.TripletLoss()
+    if s == 'ctcloss':
+        return mx.gluon.loss.CTCLoss()
+
+    raise ValueError("Unsupported loss: "+s)

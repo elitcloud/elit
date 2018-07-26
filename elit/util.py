@@ -83,7 +83,7 @@ def group_states(data, create_state, max_len=-1):
 
 class EvalMetric(abc.ABC):
     @abc.abstractmethod
-    def reset(self):
+    def update(self, document: Document):
         """
         Resets all counts to 0.
         """
@@ -103,10 +103,6 @@ class Accuracy(EvalMetric):
         self.correct = 0
         self.total = 0
 
-    def reset(self):
-        self.correct = 0
-        self.total = 0
-
     def get(self):
         """
         :rtype: float
@@ -117,11 +113,6 @@ class Accuracy(EvalMetric):
 class F1(EvalMetric):
     def __init__(self):
         super(F1, self).__init__()
-        self.correct = 0
-        self.p_total = 0
-        self.r_total = 0
-
-    def reset(self):
         self.correct = 0
         self.p_total = 0
         self.r_total = 0

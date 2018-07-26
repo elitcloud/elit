@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import itertools
+from typing import List
 
 __author__ = 'Jinho D. Choi'
 
@@ -68,7 +69,7 @@ class Document(dict):
         return self._sentences[self._iter]
 
     @property
-    def sentences(self):
+    def sentences(self) -> List[Sentence]:
         """
         :return: the list of sentences in the document.
         :rtype: list of Sentence
@@ -85,20 +86,6 @@ class Document(dict):
         for sentence in self.sentences:
             tokens.extend(sentence.tokens)
         return tokens
-
-    def add_sentence(self, sentence):
-        """
-        :param sentence: a sentence to be added.
-        :type sentence: Sentence
-        """
-        self.sentences.append(sentence)
-
-    def get_sentence(self, index):
-        """
-        :return: the index'th sentence.
-        :rtype: Sentence
-        """
-        return self.sentences[index]
 
 
 class Sentence(dict):
