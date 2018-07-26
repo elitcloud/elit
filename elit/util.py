@@ -18,7 +18,7 @@ import bisect
 import glob
 import inspect
 
-from elit.structure import Document, Sentence
+from .structure import Document, Sentence
 
 __author__ = 'Jinho D. Choi'
 

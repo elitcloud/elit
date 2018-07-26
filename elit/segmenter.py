@@ -14,11 +14,10 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from elitsdk.sdk import Component
 
-from elit.structure import SEN_ID, TOK, OFF
-from elit.utils.string import *
-
+from .sdk import Component
+from .structure import SEN_ID, TOK, OFF
+from .utils.string import *
 
 __author__ = "Gary Lai"
 

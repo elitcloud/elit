@@ -18,12 +18,12 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from elit.component import SequenceTagger
-from elit.state import OPLRState
-from elit.model import conv2d_args, hidden_args
-from elit.structure import TOK, POS
-from elit.util import Accuracy, tsv_reader, json_reader, group_states
-from elit.vsm import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract, LabelMap
+from .component import SequenceTagger
+from .model import conv2d_args, hidden_args
+from .state import OPLRState
+from .structure import TOK, POS
+from .util import Accuracy, tsv_reader, json_reader
+from .vsm import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract
 
 __author__ = 'Jinho D. Choi'
 

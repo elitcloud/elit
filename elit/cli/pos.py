@@ -40,9 +40,9 @@ commands:
 
     def pos_args(self):
         from types import SimpleNamespace
-        from elit.util import tsv_reader, json_reader
-        from elit.model import conv2d_args
-        from elit.model import hidden_args
+        from ..util import tsv_reader, json_reader
+        from ..model import conv2d_args
+        from ..model import hidden_args
 
         def reader(s):
             """
@@ -124,11 +124,11 @@ commands:
         args = self.pos_args()
 
         # vector space models
-        from elit.vsm import FastText
-        from elit.pos import POSTagger
+        from ..vsm import FastText
+        from ..pos import POSTagger
         vsm_list = [FastText(args.word_vsm)]
         if args.ambi_vsm:
-            from elit.vsm import Word2Vec
+            from ..vsm import Word2Vec
             vsm_list.append(Word2Vec(args.ambi_vsm))
 
         # component
@@ -149,12 +149,12 @@ commands:
         args = self.pos_args()
 
         # vector space models
-        from elit.vsm import FastText
-        from elit.pos import POSTagger
-        from elit.util import group_states
+        from ..vsm import FastText
+        from ..pos import POSTagger
+        from ..util import group_states
         vsm_list = [FastText(args.word_vsm)]
         if args.ambi_vsm:
-            from elit.vsm import Word2Vec
+            from ..vsm import Word2Vec
             vsm_list.append(Word2Vec(args.ambi_vsm))
 
         # component
