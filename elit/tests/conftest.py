@@ -32,6 +32,16 @@ def space_tokenizer():
 
 
 @pytest.fixture()
+def english_tokenizer():
+    return EnglishTokenizer()
+
+
+@pytest.fixture()
+def english_segmenter():
+    return EnglishSegmenter()
+
+
+@pytest.fixture()
 def accuracy():
     return Accuracy()
 
