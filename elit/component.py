@@ -21,12 +21,12 @@ from types import SimpleNamespace
 
 import mxnet as mx
 import numpy as np
-from elitsdk.sdk import Component
 from mxnet import nd, gluon, autograd
 
-from elit.model import FFNNModel, output_namespace, input_namespace
-from elit.util import pkl, gln, group_states
-from elit.vsm import LabelMap, X_ANY
+from .model import FFNNModel, output_namespace, input_namespace
+from .sdk import Component
+from .util import pkl, gln, group_states
+from .vsm import LabelMap, X_ANY
 
 __author__ = 'Jinho D. Choi'
 

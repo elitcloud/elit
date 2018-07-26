@@ -14,7 +14,8 @@
 # limitations under the License.
 # ========================================================================
 import pytest
-from ..tokenizer import Tokenizer, SpaceTokenizer
+from ..tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from ..segmenter import EnglishSegmenter
 from ..util import Accuracy, F1
 
 __author__ = "Gary Lai"
@@ -28,6 +29,16 @@ def tokenizer():
 @pytest.fixture()
 def space_tokenizer():
     return SpaceTokenizer()
+
+
+@pytest.fixture()
+def english_tokenizer():
+    return EnglishTokenizer()
+
+
+@pytest.fixture()
+def english_segmenter():
+    return EnglishSegmenter()
 
 
 @pytest.fixture()

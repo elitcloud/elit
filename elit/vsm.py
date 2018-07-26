@@ -19,7 +19,7 @@ import fastText
 import numpy as np
 from gensim.models import KeyedVectors
 
-from elit.structure import TOK
+from .structure import TOK
 
 __author__ = 'Jinho D. Choi'
 

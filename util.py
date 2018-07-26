@@ -59,7 +59,7 @@ def get_version_info(filename):
     elif os.path.exists(filename):
         # must be a source distribution, use existing version file
         try:
-            from elit.version import git_revision as GIT_REVISION
+            from .elit.version import git_revision as GIT_REVISION
         except ImportError:
             raise ImportError("Unable to import git_revision. Try removing " \
                               "elit/version.py and the build directory " \
@@ -94,3 +94,7 @@ if not release:
                        'isrelease': str(ISRELEASED)})
     finally:
         a.close()
+
+
+if __name__ == '__main__':
+    print(get_version_info('elit/version.py'))

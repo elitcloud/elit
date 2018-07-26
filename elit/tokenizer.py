@@ -20,10 +20,9 @@ import re
 
 from pkg_resources import resource_filename
 
-from elit.structure import TOK, OFF
-from elit.utils.string import *
-from elitsdk.sdk import Component
-
+from .sdk import Component
+from .structure import TOK, OFF
+from .utils.string import *
 
 __author__ = "Jinho D. Choi, Gary Lai"
 

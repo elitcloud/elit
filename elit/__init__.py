@@ -13,7 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from .version import version
 
 __author__ = 'Jinho D. Choi'
-__version__ = version

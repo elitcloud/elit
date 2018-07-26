@@ -18,12 +18,6 @@ import pytest
 __author__ = 'Jinho D. Choi'
 
 
-@pytest.fixture(scope="module")
-def space_tok():
-    from elit.tokenizer import SpaceTokenizer
-    return SpaceTokenizer()
-
-
 space_tokenizer_test_data = [
     ('  Hello\t\r, world  !\n\n', 0,
      {'tok': ['Hello', ',', 'world', '!'], 'off': [(2, 7), (9, 10), (11, 16), (18, 19)]}),
@@ -33,23 +27,17 @@ space_tokenizer_test_data = [
 
 
 @pytest.mark.parametrize('input, offset, expected', space_tokenizer_test_data)
-def test_pace_tokenizer(space_tok, input, offset, expected):
-    result = space_tok.decode(input, offset)
+def test_pace_tokenizer(space_tokenizer, input, offset, expected):
+    result = space_tokenizer.decode(input, offset)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
 
-@pytest.fixture(scope="module")
-def eng_tok():
-    from elit.tokenizer import EnglishTokenizer
-    return EnglishTokenizer()
-
-
-def test_eng_tokenizer_load(eng_tok):
-    assert len(eng_tok.ABBREVIATION_PERIOD) == 159
-    assert len(eng_tok.APOSTROPHE_FRONT) == 7
-    assert len(eng_tok.HYPHEN_PREFIX) == 156
-    assert len(eng_tok.HYPHEN_SUFFIX) == 39
+def test_eng_tokenizer_load(english_tokenizer):
+    assert len(english_tokenizer.ABBREVIATION_PERIOD) == 159
+    assert len(english_tokenizer.APOSTROPHE_FRONT) == 7
+    assert len(english_tokenizer.HYPHEN_PREFIX) == 156
+    assert len(english_tokenizer.HYPHEN_SUFFIX) == 39
 
 
 @pytest.mark.parametrize('input, expected', [
@@ -59,8 +47,8 @@ def test_eng_tokenizer_load(eng_tok):
     (' A\tBC  D12 \n', {'tok': ['A', 'BC', 'D12'],
                         'off': [(1, 2), (3, 5), (7, 10)]})
 ])
-def test_eng_tokenizer_space(eng_tok, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_tokenizer_space(english_tokenizer, input, expected):
+    result = english_tokenizer.decode(input)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
@@ -69,8 +57,8 @@ def test_eng_tokenizer_space(eng_tok, input, expected):
     ('Hello, world!', 5,  {'tok': ['Hello', ',', 'world', '!'], 'off': [
      (5, 10), (10, 11), (12, 17), (17, 18)]}),
 ])
-def test_eng_tokenizer_offset(eng_tok, input, offset, expected):
-    result = eng_tok.decode(input, offset)
+def test_eng_tokenizer_offset(english_tokenizer, input, offset, expected):
+    result = english_tokenizer.decode(input, offset)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
@@ -115,8 +103,8 @@ def test_eng_tokenizer_offset(eng_tok, input, offset, expected):
                  (25, 28), (29, 31), (31, 34), (35, 40)]
       }),
 ])
-def test_eng_tokenizer_regex(eng_tok, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_tokenizer_regex(english_tokenizer, input, expected):
+    result = english_tokenizer.decode(input)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
@@ -154,8 +142,8 @@ def test_eng_tokenizer_regex(eng_tok, input, expected):
                  (26, 27), (27, 31), (32, 35), (35, 36), (36, 40)]
       })
 ])
-def test_eng_tokenizer_symbol(eng_tok, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_tokenizer_symbol(english_tokenizer, input, expected):
+    result = english_tokenizer.decode(input)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
@@ -187,8 +175,8 @@ def test_eng_tokenizer_symbol(eng_tok, input, expected):
         'off': [(0, 3), (4, 5), (6, 8), (8, 9), (10, 11), (12, 14), (14, 15)]
     })
 ])
-def test_eng_tokenizer_concat(eng_tok, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_tokenizer_concat(english_tokenizer, input, expected):
+    result = english_tokenizer.decode(input)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
 
@@ -210,16 +198,10 @@ def test_eng_tokenizer_concat(eng_tok, input, expected):
         'off':[(0, 6), (6, 7), (7, 13), (14, 19), (19, 22), (22, 27)]
     }),
 ])
-def test_eng_tokenizer_split(eng_tok, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_tokenizer_split(english_tokenizer, input, expected):
+    result = english_tokenizer.decode(input)
     assert result['tok'] == expected['tok']
     assert result['off'] == expected['off']
-
-
-@pytest.fixture(scope="module")
-def eng_seg():
-    from elit.segmenter import EnglishSegmenter
-    return EnglishSegmenter()
 
 
 @pytest.mark.parametrize('input, expected', [
@@ -246,7 +228,7 @@ def eng_seg():
          'off': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]
      }])
 ])
-def test_eng_seg(eng_tok, eng_seg, input, expected):
-    result = eng_tok.decode(input)
+def test_eng_seg(english_tokenizer, english_segmenter, input, expected):
+    result = english_tokenizer.decode(input)
     print(result['tok'])
-    assert eng_seg.decode(result['tok'], result['off']) == expected
+    assert english_segmenter.decode(result['tok'], result['off']) == expected
