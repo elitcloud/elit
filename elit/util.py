@@ -42,7 +42,7 @@ def group_states(data, create_state, max_len=-1):
     def aux(i):
         ls = d[keys[i]]
         t = ls.pop()
-        document.add_sentence(t)
+        document.sentences.append(t)
         if not ls: del keys[i]
         return len(t)
 

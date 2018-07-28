@@ -13,24 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import _io
 import abc
 import pickle
 import random
 import time
 from itertools import islice
 from types import SimpleNamespace
-from typing import List
+from typing import List, Optional, Tuple
 
 
 import mxnet as mx
 import numpy as np
 from mxnet import nd, gluon, autograd
 
-from elit.model import FFNNModel, output_namespace, input_namespace
+from elit.model import FFNNModel
 from elit.state import NLPState, BatchState, SequenceState
 from elit.structure import Document
-from elit.util import pkl, gln, EvalMetric
-from elit.vsm import LabelMap, X_ANY
+from elit.util import EvalMetric
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -39,6 +39,7 @@ class Component(abc.ABC):
     """
     Component provides an abstract class to implement a component.
     Any component deployed to ELIT must inherit this class.
+    Abstract methods to be implemented: init, load, save, decode, train.
     """
 
     @abc.abstractmethod
@@ -92,6 +93,7 @@ class NLPComponent(Component):
     """
     NLPComponent provides an abstract class to implement an NLP component.
     Any NLP component deployed to ELIT must inherit this class.
+    Abstract methods to be implemented: init, load, save, decode, train.
     """
 
     @abc.abstractmethod
@@ -118,14 +120,14 @@ class NLPComponent(Component):
 class MXNetComponent(NLPComponent):
     """
     MXNetNLPComponent provides an abstract class to implement a machine-learning based NLP component using MXNet.
+    Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric, _decode, _evaluate, _train.
     """
 
-    def __init__(self, ctx: mx.Context = None):
+    def __init__(self, ctx: mx.Context):
         """
-        :param ctx: a device context (default: mxnet.cpu()).
+        :param ctx: a device context.
         """
-        self.ctx = mx.cpu() if ctx is None else ctx
-        self.label_map = None
+        self.ctx = ctx
         self.model = None
 
     @abc.abstractmethod
@@ -244,12 +246,12 @@ class MXNetComponent(NLPComponent):
 
         # train
         log = ('* Training',
-               '- train batch   : %d' % trn_batch,
-               '- epoch         : %d' % epoch,
-               '- loss          : %d' % str(loss),
-               '- optimizer     : %s' % optimizer,
-               '- learning rate : %f' % learning_rate,
-               '- weight decay  : %f' % weight_decay)
+               '- train batch  : %d' % trn_batch,
+               '- epoch        : %d' % epoch,
+               '- loss         : %d' % str(loss),
+               '- optimizer    : %s' % optimizer,
+               '- learning rate: %f' % learning_rate,
+               '- weight decay : %f' % weight_decay)
         print('\n'.join(log))
 
         best_e, best_eval = -1, -1
@@ -264,17 +266,18 @@ class MXNetComponent(NLPComponent):
                 best_e, best_eval = e, dev_metric.get()
                 self.save(model_path)
 
-            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, num-class: %d, best-dev: %5.2f @%4d' %
-                  (e, mt - st, et - mt, 100.0 * trn_correct / len(trn_ys), dev_metric.get(), len(self.label_map), best_eval, best_e))
+            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
+                  (e, mt - st, et - mt, 100.0 * trn_correct / len(trn_ys), dev_metric.get(), best_eval, best_e))
 
 
 class BatchComponent(MXNetComponent):
     """
     BatchComponent provides an abstract class to implement an NLP component in batch mode.
     See the description of :class:`elit.state.BatchState` for more details about batch mode.
+    Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric.
     """
 
-    def __init__(self, ctx: mx.Context = None):
+    def __init__(self, ctx: mx.Context):
         """
         :param ctx: a device context.
         """
@@ -371,9 +374,10 @@ class SequenceComponent(MXNetComponent):
     """
     SequenceComponent provides an abstract class to implement an NLP component in sequence mode.
     See the description of :class:`elit.state.SequenceState` for more details about sequence mode.
+    Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric.
     """
 
-    def __init__(self, ctx: mx.Context = None):
+    def __init__(self, ctx: mx.Context):
         """
         :param ctx: a device context.
         """
@@ -485,132 +489,85 @@ class SequenceComponent(MXNetComponent):
         return correct
 
 
-class TokenTagger:
-    def __init__(self, ctx, vsm_list):
-        """
-        TokenTagger provides a generic template to implement a component that predicts a tag for every token.
-        :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
-        :type ctx: str
-        :param vsm_list: a list of vector space models (must include at least one).
-        :type vsm_list: list of elit.vsm.VectorSpaceModel
-        """
-        super().__init__(ctx)
-        self.vsm_list = vsm_list
-        self.padout = None
+class FFNNComponent:
+    """
+    FFNNComponent provides a helper class to implement an NLP component using :class:`elit.model.FFNNModel`.
+    """
 
-        # to be initialized
-        self.label_map = None
-        self.label_embedding = None
-        self.feature_windows = None
+    def __init__(self):
         self.input_config = None
         self.output_config = None
         self.conv2d_config = None
         self.hidden_config = None
 
-    def __str__(self):
-        s = ('Configuration',
-             '- label embedding: %r' % self.label_embedding,
-             '- feature windows: %s' % str(self.feature_windows),
-             '- input layer    : %s' % str(self.input_config).replace('namespace', ''),
-             '- output layer   : %s' % str(self.output_config).replace('namespace', ''),
-             '- conv2d layer   : %s' % str(self.conv2d_config).replace('namespace', ''),
-             '- hidden layer   : %s' % str(self.hidden_config).replace('namespace', ''))
-        return '\n'.join(s)
-
-    @abc.abstractmethod
-    def create_state(self, document):
-        return
-
-    @abc.abstractmethod
-    def eval_metric(self):
-        return
-
-    # override
-    def init(self,
-             label_embedding=True,
-             feature_windows=tuple(range(-3, 4)),
-             num_class=50,
-             input_dropout=0.0,
-             conv2d_config=None,
-             hidden_config=None,
-             **kwargs):
+    def _init(self,
+              ctx: mx.Context,
+              input_config: SimpleNamespace,
+              output_config: SimpleNamespace,
+              conv2d_config: Optional[Tuple[SimpleNamespace]] = None,
+              hidden_config: Optional[Tuple[SimpleNamespace]] = None,
+              **kwargs) -> FFNNModel:
         """
-        :param label_embedding: True if label embeddings are used as features; otherwise, False.
-        :type label_embedding: bool
-        :param feature_windows: contextual windows for feature extraction.
-        :type feature_windows: tuple of int
-        :param num_class: the number of classes (part-of-speech tags).
-        :type num_class: int
-        :param input_dropout: a dropout rate to be applied to the input layer.
-        :type input_dropout: float
-        :param conv2d_config: configuration for n-gram 2D convolutions.
-        :type conv2d_config: list of SimpleNamespace
-        :param hidden_config: configuration for hidden layers
-        :type hidden_config: list of SimpleNamespace
-        :param kwargs: parameters for the initialization of gluon.Block.
-        :type kwargs: dict
-        :return: self
-        :rtype: NLPComponent
+        :param ctx: a device context.
+        :param input_config: configuration for the input layer, that is the output of :meth:`elit.model.input_namespace`;
+                             {row: int, col: int, dropout: float}.
+        :param output_config: configuration for the output layer, that is the output of :meth:`elit.model.output_namespace`;
+                              {dim: int}.
+        :param conv2d_config: configuration for the 2D convolution layer, that is the output of :meth:`elit.model.conv2d_namespace';
+                              {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
+        :param hidden_config: configuration for the hidden layers, that is the output of :meth:`elit.model.hidden_namespace`;
+                              {dim: int, activation: str, dropout: float}.
+        :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
+        :return: the feed-forward neural network model initialized by the configurations.
         """
-        self.label_map = LabelMap()
-        self.label_embedding = label_embedding
-        self.feature_windows = feature_windows
-
-        # input dimension
-        input_dim = len(X_ANY) + sum([vsm.dim for vsm in self.vsm_list])
-        if self.label_embedding: input_dim += num_class
-
-        # network configuration
-        self.input_config = input_namespace(input_dim, maxlen=len(feature_windows), dropout=input_dropout)
-        self.output_config = output_namespace(num_class)
+        # network
+        self.input_config = input_config
+        self.output_config = output_config
         self.conv2d_config = conv2d_config
         self.hidden_config = hidden_config
 
         # model
-        self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
-        self.model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=self.ctx)
-        self.padout = np.zeros(self.output_config.dim).astype('float32') if self.label_embedding else None
-        print(self.__str__())
-        return self
+        model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=ctx)
+        return model
 
-    # override
-    def load(self, model_path, **kwargs):
+    def _load(self,
+              ctx: mx.Context,
+              fin: _io.FileIO[bytes],
+              gluon_path: str,
+              **kwargs) -> FFNNModel:
         """
-        :param model_path: the path to a pre-trained model to be loaded.
-        :type model_path: str
-        :param kwargs: parameters for the initialization of gluon.Block.
-        :type kwargs: dict
-        :return: self
-        :rtype: NLPComponent
+        :param ctx: a device context.
+        :param fin: a pickle input stream to retrieve the network configuration.
+        :param gluon_path: a filepath to the gluon model to load.
+        :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
+        :return: the feed-forward neural network model initialized by the pre-trained model.
         """
-        with open(pkl(model_path), 'rb') as f:
-            self.label_map = pickle.load(f)
-            self.label_embedding = pickle.load(f)
-            self.feature_windows = pickle.load(f)
-            self.input_config = pickle.load(f)
-            self.output_config = pickle.load(f)
-            self.conv2d_config = pickle.load(f)
-            self.hidden_config = pickle.load(f)
+        # network
+        self.input_config = pickle.load(fin)
+        self.output_config = pickle.load(fin)
+        self.conv2d_config = pickle.load(fin)
+        self.hidden_config = pickle.load(fin)
 
-        self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
-        self.model.load_parameters(gln(model_path), ctx=self.ctx)
-        self.padout = np.zeros(self.output_config.dim).astype('float32') if self.label_embedding else None
-        print(self.__str__())
-        return self
+        # model
+        model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        model.load_parameters(gluon_path, ctx=ctx)
+        return model
 
-    # override
-    def save(self, model_path, **kwargs):
+    def _save(self,
+              fout: _io.FileIO[bytes],
+              gluon_path: str,
+              model: FFNNModel):
         """
-        :param model_path: the filepath where the model is saved.
-        :type model_path: str
+        :param fout: a pickle output stream to save the network configuration
+        :param gluon_path: a filepath to the gluon model to save.
+        :param model: the feed-forward neural network model to be saved.
         """
-        with open(pkl(model_path), 'wb') as f:
-            pickle.dump(self.label_map, f)
-            pickle.dump(self.label_embedding, f)
-            pickle.dump(self.feature_windows, f)
-            pickle.dump(self.input_config, f)
-            pickle.dump(self.output_config, f)
-            pickle.dump(self.conv2d_config, f)
-            pickle.dump(self.hidden_config, f)
+        # network
+        pickle.dump(self.input_config, fout)
+        pickle.dump(self.output_config, fout)
+        pickle.dump(self.conv2d_config, fout)
+        pickle.dump(self.hidden_config, fout)
 
-            # self.model.save_parameters(gln(model_path))
+        # model
+        model.save_parameters(gluon_path)

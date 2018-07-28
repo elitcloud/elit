@@ -263,7 +263,7 @@ def get_vsm_embeddings(vsm, document, key=TOK):
     :return: (the list of embeddings, zero embedding).
     :rtype: tuple of (list of numpy.array, numpy.array)
     """
-    return [vsm.embedding_list(s[key]) for s in document.sentences], vsm.pad
+    return [vsm.embedding_list(s[key]) for s in document], vsm.pad
 
 
 def x_extract(tok_id, window, size, emb, pad):

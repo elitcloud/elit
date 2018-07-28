@@ -18,8 +18,8 @@ from typing import Tuple, Optional
 
 import numpy as np
 
-from elit.structure import Document, TOK
-from elit.vsm import LabelMap, VectorSpaceModel, get_vsm_embeddings, get_loc_embeddings, x_extract
+from elit.structure import Document
+from elit.vsm import LabelMap, VectorSpaceModel
 
 __author__ = 'Jinho D. Choi'
 
@@ -27,6 +27,7 @@ __author__ = 'Jinho D. Choi'
 class NLPState(abc.ABC):
     """
     NLPState provides an abstract class to define a decoding strategy.
+    Abstract methods to be implemented: init, process, has_next, x, y.
     """
 
     def __init__(self, document: Document, key: str):
@@ -86,6 +87,7 @@ class BatchState(NLPState):
     Batch mode assumes that predictions made by earlier states do not affect predictions made by later states.
     Thus, all predictions can be made in batch where each prediction is independent from one another.
     BatchState is iterable (see self.__iter__() and self.__next__()).
+    Abstract methods to be implemented: init, process, has_next, x, y, assign.
     """
 
     def __init__(self, document: Document, key: str):
@@ -124,6 +126,7 @@ class SequenceState(NLPState):
     SequenceState provides an abstract class to define a decoding strategy in sequence mode.
     Sequence mode assumes that predictions made by earlier states affect predictions made by later states.
     Thus, predictions need to be made in sequence where earlier predictions get passed onto later states.
+    Abstract methods to be implemented: init, process, has_next, x, y.
     """
 
     def __init__(self, document: Document, key: str):
@@ -144,8 +147,7 @@ class SequenceState(NLPState):
 
 class SentenceClassificationBatchState(BatchState):
     """
-    SentenceClassificationBatchState labels each sentence in the input document with a certain class
-    (e.g., positive or negative for sentiment analysis).
+    SentenceClassificationBatchState labels each sentence in the input document with a certain class (e.g., positive or negative for sentiment analysis).
     """
 
     def __init__(self,
@@ -293,181 +295,3 @@ class DocumentClassificationBatchState(BatchState):
         return begin + 1
 
 
-class TokenTaggingBatchState(BatchState):
-    """
-    TokenTaggingBatchState defines the one-pass left-to-right strategy for tagging individual tokens in batch mode.
-    """
-
-    def __init__(self,
-                 document: Document,
-                 key: str,
-                 label_map: LabelMap,
-                 word_vsm: VectorSpaceModel,
-                 windows: Tuple[int, ...]):
-        """
-        :param document: an input document.
-        :param key: the key to each sentence in the document where predicted labels are to be saved.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param word_vsm: a vector space model to retrieve token embeddings.
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        """
-        super().__init__(document, key)
-        self.label_map = label_map
-        self.windows = windows
-
-        # initialize gold-standard labels if available
-        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
-
-        # initialize embeddings
-        self.embs = [get_vsm_embeddings(word_vsm, document, TOK)]
-        self.embs.append(get_loc_embeddings(document))
-
-        # self.init()
-        self.sen_id = 0
-        self.tok_id = 0
-
-    def init(self):
-        """
-        Initializes the pointers to the first token in the first sentence.
-        """
-        self.sen_id = 0
-        self.tok_id = 0
-
-    def process(self):
-        """
-        Processes to the next token.
-        """
-        self.tok_id += 1
-        if self.tok_id == len(self.document.sentences[self.sen_id]):
-            self.sen_id += 1
-            self.tok_id = 0
-
-    @property
-    def has_next(self) -> bool:
-        """
-        :return: False if no more token is left to be tagged; otherwise, True.
-        """
-        return 0 <= self.sen_id < len(self.document)
-
-    @property
-    def x(self) -> np.ndarray:
-        """
-        :return: the feature matrix of the current token.
-        """
-        t = len(self.document.sentences[self.sen_id])
-        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], pad) for w in self.windows] for emb, pad in self.embs)
-        return np.column_stack(l)
-
-    @property
-    def y(self) -> Optional[int]:
-        """
-        :return: the class ID of the current token's gold-standard label if available; otherwise, None.
-        """
-        return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
-
-    def assign(self, output: np.ndarray, begin: int = 0) -> int:
-        """
-        Assigns the predicted output to the each token in the input document.
-        :param output: a matrix where each row contains prediction scores of the corresponding token.
-        :param begin: the row index of the output matrix corresponding to the first token in the input document.
-        :return: the row index of the output matrix to be assigned by the next document.
-        """
-        for sentence in self.document:
-            end = begin + len(sentence)
-            sentence[self.key_out] = output[begin:end]
-            begin = end
-        return begin
-
-
-class TokenTaggingSequenceState(SequenceState):
-    """
-    TokenTaggingSequenceState defines the one-pass left-to-right strategy for tagging individual tokens in sequence mode.
-    In other words, predicted outputs from earlier tokens are used as features to predict later tokens.
-    """
-
-    def __init__(self,
-                 document: Document,
-                 key: str,
-                 label_map: LabelMap,
-                 word_vsm: VectorSpaceModel,
-                 windows: Tuple[int, ...],
-                 padout: np.ndarray):
-        """
-        :param document: an input document.
-        :param key: the key to each sentence in the document where predicted labels are to be saved.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param word_vsm: a vector space model to retrieve token embeddings.
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        :param padout: a zero-vector whose dimension is the number of class labels, used to zero-pad label embeddings.
-        """
-        super().__init__(document, key)
-        self.label_map = label_map
-        self.windows = windows
-        self.padout = padout
-        self.output = []
-
-        # initialize gold-standard labels if available
-        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
-
-        # initialize embeddings
-        self.embs = [get_vsm_embeddings(word_vsm, document, TOK)]
-        self.embs.append(get_loc_embeddings(document))
-        self.embs.append((self.output, self.padout))
-
-        # self.init()
-        self.sen_id = 0
-        self.tok_id = 0
-
-        for s in self.document:
-            o = [self.padout] * len(s)
-            self.output.append(o)
-            s[self.key_out] = o
-
-    def init(self):
-        """
-        Initializes the pointers to the first otken in the first sentence and the predicted outputs and labels.
-        """
-        self.sen_id = 0
-        self.tok_id = 0
-
-        for i, s in enumerate(self.document):
-            o = [self.padout] * len(s)
-            self.output[i] = o
-            s[self.key_out] = o
-
-    def process(self, output: np.ndarray):
-        """
-        Assigns the predicted output to the current token, then processes to the next token.
-        :param output: the predicted output of the current token.
-        """
-        # apply the output to the current token
-        self.output[self.sen_id][self.tok_id] = output
-
-        # process to the next token
-        self.tok_id += 1
-        if self.tok_id == len(self.document.sentences[self.sen_id]):
-            self.sen_id += 1
-            self.tok_id = 0
-
-    @property
-    def has_next(self) -> bool:
-        """
-        :return: False if no more token is left to be tagged; otherwise, True.
-        """
-        return 0 <= self.sen_id < len(self.document)
-
-    @property
-    def x(self) -> np.ndarray:
-        """
-        :return: the feature matrix of the current token.
-        """
-        t = len(self.document.sentences[self.sen_id])
-        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], pad) for w in self.windows] for emb, pad in self.embs)
-        return np.column_stack(l)
-
-    @property
-    def y(self) -> Optional[int]:
-        """
-        :return: the class ID of the current token's gold-standard label if available; otherwise, None.
-        """
-        return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
