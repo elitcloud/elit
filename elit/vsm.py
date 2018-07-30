@@ -73,6 +73,14 @@ class LabelMap:
             self.labels.append(label)
         return idx
 
+    def argmax(self, scores: np.ndarray) -> str:
+        """
+        :param scores: scores of all labels.
+        :return: the label with the maximum score.
+        """
+        if self.__len__() < len(scores): scores = scores[:self.__len__()]
+        return self.get(np.argmax(scores))
+
 
 # ======================================== Vector Space Models ========================================
 

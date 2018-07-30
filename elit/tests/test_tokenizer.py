@@ -207,7 +207,7 @@ def test_eng_tokenizer_split(english_tokenizer, input, expected):
 @pytest.mark.parametrize('input, expected', [
     ('hello world',
      [{
-         'sen_id': 0,
+         'doc_id': 0,
          'tok': ['hello', 'world'],
          'off': [(0, 5), (6, 11)]
      }]
@@ -215,15 +215,15 @@ def test_eng_tokenizer_split(english_tokenizer, input, expected):
     # unit
     ('. "1st sentence." 2nd sentence? "3rd sentence!"',
      [{
-         'sen_id': 0,
+         'doc_id': 0,
          'tok': ['.', '"', '1st', 'sentence', '.', '"'],
          'off': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]
      }, {
-         'sen_id': 1,
+         'doc_id': 1,
          'tok': ['2nd', 'sentence', '?'],
          'off': [(18, 21), (22, 30), (30, 31)]
      }, {
-         'sen_id': 2,
+         'doc_id': 2,
          'tok': ['"', '3rd', 'sentence', '!', '"'],
          'off': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]
      }])

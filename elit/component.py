@@ -35,15 +35,10 @@ class NLPComponent(Component):
     def __init__(self, ctx=None):
         """
         NLPComponent provides a generic template to implement an NLP component.
-        :param ctx: "[cg]\\d*"; the context (e.g., CPU or GPU) to process.
-        :type ctx: str
+        :param ctx: a device context.
+        :type ctx: mxnet.Context
         """
-        if ctx:
-            d = int(ctx[1:]) if len(ctx) > 1 else 0
-            self.ctx = mx.gpu(d) if ctx[0] == 'g' else mx.cpu(d)
-        else:
-            self.ctx = None
-
+        self.ctx = ctx
         self.model = None
 
     @abc.abstractmethod
@@ -51,7 +46,7 @@ class NLPComponent(Component):
         """
         :param document: the input document.
         :type document: elit.structure.Document
-        :return: the state containing the input document for this component.
+        :return: the initial state from the input document for this component.
         :rtype: elit.state.NLPState
         """
         return
@@ -64,7 +59,74 @@ class NLPComponent(Component):
         """
         return
 
-    def _decode(self, states, batch_size=2048):
+    # ======================================== Process ========================================
+
+    @staticmethod
+    def _process(states, outputs, begin):
+        """
+        :param states: input states.
+        :type states: list of elit.state.NLPState
+        :param outputs: the prediction output (output layers).
+        :param begin: list of numpy.array
+        :return: the number of processed states.
+        :rtype: int
+        """
+        size = len(outputs)
+
+        for i in range(size):
+            states[begin + i].process(outputs[i].asnumpy())
+
+        return size
+
+    @staticmethod
+    def _process_seq(states, outputs, begin):
+        """
+        :param states: input states.
+        :type states: list of elit.state.NLPState
+        :param outputs: the prediction output (output layers).
+        :param begin: list of numpy.array
+        :return: the number of processed states.
+        :rtype: int
+        """
+        size = len(outputs)
+
+        for i in range(size):
+            states[begin + i].process(outputs[i].asnumpy())
+
+        return size
+
+    def _cuts(self, states, begin, size):
+        for i in range(begin, len(states)):
+            n = len(states[i].document)
+
+
+    # ======================================== Decode ========================================
+
+    def _decode(self, states, batch_size):
+        """
+        Decodes every state in the input states independently.
+        :param states: input states.
+        :type states: list of elit.state.NLPState
+        :param batch_size: the maximum size of each batch.
+        :type batch_size: int
+        """
+        begin = 0
+        xs = nd.array([x for state in states for x, y in state])
+        batches = gluon.data.DataLoader(xs, batch_size=batch_size)
+
+        for batch in batches:
+            batch = batch.as_in_context(self.ctx)
+            outputs = self.model(batch)
+
+
+
+            size = len(outputs)
+
+
+
+            begin += self._process(states, outputs, begin)
+
+    def _decode_seq(self, states, batch_size):
         """
         :param states: input states.
         :type states: list of elit.state.NLPState
@@ -81,9 +143,15 @@ class NLPComponent(Component):
             for x in batches:
                 x = x.as_in_context(self.ctx)
                 outputs = self.model(x)
-                begin += self._process(tmp, outputs, begin)
+                begin += self._process_seq(tmp, outputs, begin)
 
             tmp = [state for state in tmp if state.has_next()]
+
+
+
+    # ======================================== Sequence process ========================================
+
+
 
     def _evaluate(self, states, batch_size=2048, reset=True):
         """
@@ -96,16 +164,16 @@ class NLPComponent(Component):
         :return: the evaluation metric.
         :rtype: elit.util.EvalMetric
         """
-        self._decode(states, batch_size)
+        self._decode_seq(states, batch_size)
         metric = self.eval_metric()
 
         for state in states:
             state.eval(metric)
-            if reset: state.reset()
+            if reset: state.init()
 
         return metric
 
-    def _train(self, states, trainer, loss_func, batch_size=64):
+    def _train_seq(self, states, trainer, loss_func, batch_size=64):
         """
         :param states: input states.
         :type states: list of elit.state.NLPState
@@ -138,32 +206,17 @@ class NLPComponent(Component):
                     loss.backward()
 
                 trainer.step(x.shape[0])
-                begin += self._process(tmp, output, begin)
+                begin += self._process_seq(tmp, output, begin)
 
             tmp = [state for state in tmp if state.has_next()]
 
         for state in states:
             state.eval(metric)
-            state.reset()
+            state.init()
 
         return metric
 
-    @staticmethod
-    def _process(states, outputs, begin):
-        """
-        :param states: input states.
-        :type states: list of elit.state.NLPState
-        :param outputs: the prediction outputs (output layers).
-        :param begin: list of numpy.array
-        :return: the number of processed states.
-        :rtype: int
-        """
-        size = len(outputs)
 
-        for i in range(size):
-            states[begin + i].process(outputs[i].asnumpy())
-
-        return size
 
 
 class SequenceTagger(NLPComponent):
@@ -303,7 +356,7 @@ class SequenceTagger(NLPComponent):
         :type batch_size: int
         """
         states = group_states(input_data, self.create_state)
-        self._decode(states, batch_size)
+        self._decode_seq(states, batch_size)
         for state in states: state.finalize()
 
     # override
@@ -330,7 +383,7 @@ class SequenceTagger(NLPComponent):
 
         for e in range(1, epoch+1):
             st = time.time()
-            trn_metric = self._train(trn_states, trainer, loss_func, trn_batch)
+            trn_metric = self._train_seq(trn_states, trainer, loss_func, trn_batch)
             mt = time.time()
             dev_metric = self._evaluate(dev_states, dev_batch)
             et = time.time()

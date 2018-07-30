@@ -96,6 +96,8 @@ class FFNNModel(gluon.Block):
         return x
 
 
+# ======================================== Configuration ========================================
+
 def input_namespace(dim, maxlen, dropout=0.0):
     return SimpleNamespace(dim=dim, maxlen=maxlen, dropout=dropout)
 
@@ -108,10 +110,18 @@ def conv2d_namespace(ngram, filters, activation, pool=None, dropout=0.0):
     return SimpleNamespace(ngram=ngram, filters=filters, activation=activation, pool=pool, dropout=dropout)
 
 
+def hidden_namespace(dim, activation, dropout):
+    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
+
+
+# ======================================== ArgumentParser ========================================
+
 def conv2d_args(s):
     """
     :param s: (ngram:filters:activation:pool:dropout)(;#1)*
-    :return: list of conv2d_namespace
+    :param s: str
+    :return: list of (ngram, filters, activation, pool, dropout)
+    :rtype: list of SimpleNamespace
     """
     def create(config):
         c = config.split(':')
@@ -121,17 +131,26 @@ def conv2d_args(s):
     return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None
 
 
-def hidden_namespace(dim, activation, dropout):
-    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
-
-
 def hidden_args(s):
     """
     :param s: (dim:activation:dropout)(;#1)*
-    :return: list of SimpleNamespace
+    :type s: str
+    :return: list of (dim, activation, dropout)
+    :rtype: list of SimpleNamespace
     """
     def create(config):
         c = config.split(':')
         return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
 
     return tuple(create(config) for config in s.split(';')) if s.lower() != 'none' else None
+
+
+def context_args(s):
+    """
+    :param s: [cg]\\d*
+    :type s: str
+    :return: a device context
+    :rtype: mxnet.Context
+    """
+    d = int(s[1:]) if len(s) > 1 else 0
+    return mx.gpu(d) if s[0] == 'g' else mx.cpu(d)

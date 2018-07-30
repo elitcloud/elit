@@ -23,7 +23,7 @@ import numpy as np
 from mxnet import gluon
 
 from elit.component import FFNNModel, LSTMModel, NLPComponent
-from elit.state import OPLRState
+from elit.state import TokenTaggingState
 from elit.utils import TOKEN, NER, F1
 from elit.vsm import LabelMap, FastText, Word2Vec, X_ANY, get_loc_embeddings, get_embeddings, x_extract
 from elit.utils.bilou import BILOU
@@ -33,7 +33,7 @@ from elit.util import pkl, gln
 __author__ = 'Jinho D. Choi'
 
 
-class NERState(OPLRState):
+class NERState(TokenTaggingState):
     def __init__(self, document, params):
         """
         NERState inherits the one-pass, left-to-right tagging strategy from ForwardState.
@@ -298,8 +298,8 @@ def train():
     dev_metric = F1()
 
     for e in range(args.epoch):
-        trn_metric.reset()
-        dev_metric.reset()
+        trn_metric.init()
+        dev_metric.init()
 
         # call the overridden method instead
 

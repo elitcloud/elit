@@ -22,7 +22,7 @@ def test_util_accuracy(accuracy):
     accuracy.correct = 9
     accuracy.total = 10
     assert accuracy.get() == 90.0
-    accuracy.reset()
+    accuracy.init()
     assert accuracy.correct == 0
     assert accuracy.total == 0
 

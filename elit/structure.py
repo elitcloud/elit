@@ -19,7 +19,7 @@ __author__ = 'Jinho D. Choi'
 
 DOC_ID = 'doc_id'   # document ID
 SEN = 'sen'       # sentences
-SEN_ID = 'sen_id'   # sentence ID
+SEN_ID = 'doc_id'   # sentence ID
 TOK = 'tok'
 OFF = 'off'
 LEM = 'lem'
@@ -28,6 +28,12 @@ NER = 'ner'
 DEP = 'dep'
 COREF = 'coref'
 SENTI = 'senti'
+
+
+# sentiment analysis labels
+SENTI_POSITIVE = 'p'
+SENTI_NEGATIVE = 'n'
+SENTI_NEUTRAL = '0'
 
 
 class Document(dict):
@@ -77,7 +83,7 @@ class Document(dict):
         """
         tokens = []
         for sentence in self.sentences:
-            tokens.extend(sentence[TOK])
+            tokens.extend(sentence.tokens)
         return tokens
 
     def add_sentence(self, sentence):

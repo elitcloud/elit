@@ -14,124 +14,23 @@
 # limitations under the License.
 # ========================================================================
 from types import SimpleNamespace
+from typing import List, Tuple
 
 import mxnet as mx
 import numpy as np
 from mxnet import gluon
 
-from .component import NLPComponent
-from .state import NLPState
+from elit.component import NLPComponent
+from elit.state import NLPState, SentenceClassificationBatchState
+from elit.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
+from elit.util import EvalMetric, Accuracy, F1
 
 __author__ = 'Jinho D. Choi'
 
 
-class SentenceClassificationState(NLPState):
-    def __init__(self, document, vsm, label_map, maxlen, key, key_out=None):
-        """
-        SentenceClassificationState labels each sentence in the input document with a certain class
-        (e.g., positive or negative for sentiment analysis).
-        :param document: an input document.
-        :type document: elit.structure.Document
-        :param vsm: a vector space model for word embeddings.
-        :type vsm: elit.vsm.VectorSpaceModel
-        :param label_map: the mapping between class labels and their unique IDs.
-        :type label_map: elit.vsm.LabelMap
-        :param maxlen: the maximum length of each sentence.
-        :type maxlen: int
-        :param key: the key to each sentence in the input document where the inferred labels (self.labels) are saved.
-        :type key: str
-        :param key_out: the key to each sentence in the input document where the predicted outputs (self.outputs) are saved.
-        :type key_out: str
-        """
-        super().__init__(document)
-        self.embs = [vsm.document_matrix(sen.tokens, maxlen) for sen in document]
-        self.label_map = label_map
-        self.key = key
-        self.key_out = key_out if key_out else key + '-out'
-
-    def process(self, outputs):
-        """
-        Saves the predicted outputs to self.outputs.
-        :param outputs: a matrix where each row contains the prediction scores for the corresponding sentence.
-        :param outputs: numpy.array
-        """
-        self.outputs = outputs
-
-    def finalize(self):
-        """
-        Saves the predicted outputs (self.outputs) and the inferred labels (self.labels) to the input document once decoding is done.
-        """
-        for i, labels in enumerate(self.labels):
-            d = self.document.get_sentence(i)
-            d[self.key] = labels
-            d[self.key_out] = self.outputs[i]
-
-    def eval(self, metric):
-        """
-        :param metric: the accuracy metric.
-        :type metric: elit.util.Accuracy
-        """
-        pass
-
-
-    def reset(self):
-        """
-        Nothing to reset.
-        """
-        pass
-
-    def has_next(self):
-        """
-        No use for this class.
-        :return: False.
-        """
-        return False
-
-
-
-
-
-    @property
-    def labels(self):
-        return [self.label_map.get(np.argmax(output)) for output in self.outputs]
-
-    @property
-    def x(self):
-        """
-        :return: the n * d matrix where n = # of feature_windows and d = sum(vsm_list) + position emb + label emb
-        """
-        t = len(self.document.get_sentence(self.sen_id))
-        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], zero) for w in self.feature_windows] for emb, zero in self.embs)
-        n = np.column_stack(l)
-        return n
-
-    @property
-    def y(self):
-        pass
-
-
-class DocumentClassificationCNNModel(gluon.Block):
-    def __init__(self, input_config, output_config, conv2d_config, **kwargs):
-        super().__init__(**kwargs)
-
-
-
-
-        def pool(c):
-            if c.pool is None: return None
-            p = mx.gluon.nn.MaxPool2D if c.pool == 'max' else mx.gluon.nn.AvgPool2D
-            return mx.gluon.nn.MaxPool2D(pool_size=(input_config.row - c.ngram + 1, 1))
-
-
-
-
-        self.conv2d = [SimpleNamespace(
-            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
-            dropout=mx.gluon.nn.Dropout(c.dropout)) for c in conv2d_config] if conv2d_config else None
-
-
-
-
+class SentimentState(SentenceClassificationBatchState):
+    def eval(self, metric: List[Accuracy, Accuracy, F1, F1, F1]):
+        eval(metric, self.gold, [s[self.key] for s in self.document])
 
 
 class SentimentAnalyzer(NLPComponent):
@@ -146,3 +45,28 @@ class SentimentAnalyzer(NLPComponent):
 
         # to be initialized
         self.label_map = None
+
+
+def eval(metric: List[Accuracy, Accuracy, F1, F1, F1], gold_labels: List[str], pred_labels: List[str]):
+    for i, gold in enumerate(gold_labels):
+        pred = pred_labels[i]
+
+        # accuracy: multi-class
+        m: Accuracy = metric[0]
+        m.total += 1
+        if gold == pred: m.correct += 1
+
+        # accuracy: binary
+        if gold != SENTI_NEUTRAL:
+            m: Accuracy = metric[1]
+            m.total += 1
+            if gold[0] == pred[0]: m.correct += 1
+
+        # f1: positive, negative, neutral
+        m: F1 = metric[2] if gold[0] == SENTI_POSITIVE else metric[3] if gold[0] == SENTI_NEGATIVE else metric[4]
+        m.r_total += 1
+
+        m: F1 = metric[2] if pred[0] == SENTI_POSITIVE else metric[3] if pred[0] == SENTI_NEGATIVE else metric[4]
+        m.p_total += 1
+
+        if gold[0] == pred[0]: m.correct += 1
