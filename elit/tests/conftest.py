@@ -14,9 +14,9 @@
 # limitations under the License.
 # ========================================================================
 import pytest
-from ..tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
-from ..segmenter import EnglishSegmenter
-from ..util import Accuracy, F1
+
+from ..tokenizer import Tokenizer, SpaceTokenizer
+from elit.eval import Accuracy, F1
 
 __author__ = "Gary Lai"
 

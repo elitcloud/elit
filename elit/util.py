@@ -13,162 +13,115 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
-import bisect
-import glob
 import inspect
 
-from .structure import Document, Sentence
+from typing import List, Tuple
 
 __author__ = 'Jinho D. Choi'
 
 
 # ======================================== Structure ========================================
 
-def group_states(data, create_state, max_len=-1):
-    """
-    Groups sentences into documents such that each document consists of multiple sentences and the total number of words
-    across all sentences within a document is close to the specified maximum length.
-
-    :param data: a list of documents.
-    :type data: list of elit.structure.Document
-    :param create_state: a function that takes a document and returns a state.
-    :type create_state: Document -> elit.nlp.component.NLPState
-    :param max_len: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
-    :type max_len: int
-    :return: list of states, where each state roughly consists of the max_len number of words.
-    :rtype: list of elit.nlp.NLPState
-    """
-    def aux(i):
-        ls = d[keys[i]]
-        t = ls.pop()
-        document.sentences.append(t)
-        if not ls: del keys[i]
-        return len(t)
-
-    # key = length, value = list of sentences with the key length
-    assert isinstance(data, list) and data and isinstance(data[0], Document)
-    d = {}
-
-    for doc in data:
-        for sen in doc.sentences:
-            d.setdefault(len(sen), []).append(sen)
-
-    keys = sorted(list(d.keys()))
-    if max_len < 0:
-        max_len = keys[-1]
-
-    states = []
-    document = Document()
-    wc = max_len - aux(-1)
-
-    while keys:
-        idx = bisect.bisect_left(keys, wc)
-        if idx >= len(keys) or keys[idx] > wc:
-            idx -= 1
-        if idx < 0:
-            states.append(create_state(document))
-            document = Document()
-            wc = max_len - aux(-1)
-        else:
-            wc -= aux(idx)
-
-    if document:
-        states.append(create_state(document))
-
-    return states
+def to_gold(key: str) -> str:
+    return key + '-gold'
 
 
-# ======================================= Evaluation Metric ========================================
+def to_out(key: str) -> str:
+    return key + '-out'
 
-class EvalMetric(abc.ABC):
-    @abc.abstractmethod
-    def update(self, document: Document):
+
+class BILOU:
+    B = 'B'  # beginning
+    I = 'I'  # inside
+    L = 'L'  # last
+    O = 'O'  # outside
+    U = 'U'  # unit
+
+    @classmethod
+    def to_chunks(cls, tags: List[str], fix: bool = False) -> List[Tuple[int, int, str]]:
         """
-        Resets all counts to 0.
+        :param tags: a list of tags encoded by BILOU.
+        :param fix: if True, fixes potential mismatches in BILOU (see :meth:`heuristic_fix`).
+        :return: a list of tuples where each tuple contains (begin index (inclusive), end index (exclusive), label) of the chunk.
         """
-        pass
+        if fix: cls.heuristic_fix(tags)
+        chunks = []
+        begin = -1
 
-    @abc.abstractmethod
-    def get(self):
+        for i, tag in enumerate(tags):
+            t = tag[0]
+
+            if t == cls.B:
+                begin = i
+            elif t == cls.I:
+                pass
+            elif t == cls.L:
+                if begin >= 0: chunks.append((begin, i + 1, tag[2:]))
+                begin = -1
+            elif t == cls.O:
+                begin = -1
+            elif t == cls.U:
+                chunks.append((i, i + 1, tag[2:]))
+                begin = -1
+
+        return chunks
+
+    @classmethod
+    def heuristic_fix(cls, tags):
         """
-        :return: the evaluated score.
+        Use heuristics to fix potential mismatches in BILOU.
+        :param tags: a list of tags encoded by BLIOU.
         """
-        return
 
+        def fix(i, pt, ct, t1, t2):
+            if pt == ct:
+                tags[i][0] = t1
+            else:
+                tags[i - 1][0] = t2
 
-class Accuracy(EvalMetric):
-    def __init__(self):
-        super(Accuracy, self).__init__()
-        self.correct = 0
-        self.total = 0
+        def aux(i):
+            p = tags[i - 1][0]
+            c = tags[i][0]
+            pt = tags[i - 1][1:]
+            ct = tags[i][1:]
 
-    def get(self):
-        """
-        :rtype: float
-        """
-        return 100.0 * self.correct / self.total
+            if p == cls.B:
+                if c == cls.B:
+                    fix(i, pt, ct, cls.I, cls.U)  # BB -> BI or UB
+                elif c == cls.U:
+                    fix(i, pt, ct, cls.L, cls.U)  # BU -> BL or UU
+                elif c == cls.O:
+                    tags[i - 1][0] = cls.U  # BO -> UO
+            elif p == cls.I:
+                if c == cls.B:
+                    fix(i, pt, ct, cls.I, cls.L)  # IB -> II or LB
+                elif c == cls.U:
+                    fix(i, pt, ct, cls.I, cls.L)  # IU -> II or LU
+                elif c == cls.O:
+                    tags[i - 1][0] = cls.L  # IO -> LO
+            elif p == cls.L:
+                if c == cls.I:
+                    fix(i, pt, ct, cls.I, cls.B)  # LI -> II or LB
+                elif c == cls.L:
+                    fix(i, pt, ct, cls.I, cls.B)  # LL -> IL or LB
+            elif p == cls.O:
+                if c == cls.I:
+                    tags[i][0] = cls.B  # OI -> OB
+                elif c == cls.L:
+                    tags[i][0] = cls.B  # OL -> OB
+            elif p == cls.U:
+                if c == cls.I:
+                    fix(i, pt, ct, cls.B, cls.B)  # UI -> BI or UB
+                elif c == cls.L:
+                    fix(i, pt, ct, cls.B, cls.B)  # UL -> BL or UB
 
+        for idx in range(1, len(tags)): aux(idx)
+        prev = tags[-1][0]
 
-class F1(EvalMetric):
-    def __init__(self):
-        super(F1, self).__init__()
-        self.correct = 0
-        self.p_total = 0
-        self.r_total = 0
-
-    def get(self):
-        """
-        :return: (F1 score, prediction, recall)
-        :rtype: (float, float, float)
-        """
-        p = 100.0 * self.correct / self.p_total
-        r = 100.0 * self.correct / self.r_total
-        f1 = 2 * p * r / (p + r)
-        return f1, p, r
-
-
-# ======================================== File ========================================
-
-def pkl(filepath):
-    return filepath + '.pkl'
-
-
-def gln(filepath):
-    return filepath + '.gln'
-
-
-def tsv_reader(filepath, args):
-    documents = []
-    wc = sc = 0
-
-    for filename in glob.glob(filepath):
-        sentences, tokens, tags = [], [], []
-        fin = open(filename)
-
-        for line in fin:
-            if line.startswith('#'): continue
-            l = line.split()
-            if l:
-                tokens.append(l[args.tok])
-                tags.append(l[args.pos])
-            elif len(tokens) > 0:
-                wc += len(tokens)
-                sentences.append(Sentence(tok=tokens, pos=tags))
-                tokens, tags = [], []
-
-        fin.close()
-        sc += len(sentences)
-        documents.append(Document(sen=sentences))
-
-    print('Reading: dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
-    return documents
-
-
-def json_reader(filepath, args):
-    # TODO: to be filled
-    documents = []
-    return documents
+        if prev == cls.B:
+            tags[-1][0] = cls.U
+        elif prev == cls.I:
+            tags[-1][0] = cls.L
 
 
 # ======================================== More ========================================

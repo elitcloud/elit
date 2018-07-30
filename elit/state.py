@@ -14,11 +14,13 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import Tuple, Optional
+import bisect
+from typing import Tuple, Optional, List, Callable
 
 import numpy as np
 
 from elit.structure import Document
+from elit.util import to_gold, to_out
 from elit.vsm import LabelMap, VectorSpaceModel
 
 __author__ = 'Jinho D. Choi'
@@ -37,8 +39,6 @@ class NLPState(abc.ABC):
         """
         self.document = document
         self.key = key
-        self.key_out = key + '-out'
-        self.key_gold = key + '-gold'
 
     @abc.abstractmethod
     def init(self, **kwargs):
@@ -167,10 +167,11 @@ class SentenceClassificationBatchState(BatchState):
         self.label_map = label_map
 
         # initialize gold-standard labels if available
-        self.gold = [s[self.key_gold] for s in document] if self.key_gold in document.sentences[0] else None
+        key_gold = to_gold(key)
+        self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
 
         # initialize embeddings
-        self.embs = [word_vsm.document_matrix(s.tokens, maxlen) for s in document]
+        self.embs = [word_vsm.embedding_matrix(s.tokens, maxlen) for s in document]
 
         # self.init()
         self.sen_id = 0
@@ -195,9 +196,9 @@ class SentenceClassificationBatchState(BatchState):
         return 0 <= self.sen_id < len(self.document)
 
     @property
-    def x(self) -> np.ndarray:
+    def x(self) -> List[np.ndarray]:
         """
-        :return: the document matrix of the current sentence.
+        :return: the embedding matrix of the current sentence.
         """
         return self.embs[self.sen_id]
 
@@ -215,8 +216,9 @@ class SentenceClassificationBatchState(BatchState):
         :param begin: the row index of the output matrix corresponding to the first sentence in the input document.
         :return: the row index of the output matrix to be assigned by the next document.
         """
+        key_out = to_out(self.key)
         for i, sentence in enumerate(self.document):
-            sentence[self.key_out] = output[begin + i]
+            sentence[key_out] = output[begin + i]
 
         return begin + len(self.document)
 
@@ -243,10 +245,10 @@ class DocumentClassificationBatchState(BatchState):
         self.label_map = label_map
 
         # initialize gold-standard labels if available
-        self.gold = document.get(self.key_gold, None)
+        self.gold = document.get(to_gold(key), None)
 
         # initialize embeddings
-        self.emb = word_vsm.document_matrix(document.tokens, maxlen)
+        self.emb = word_vsm.embedding_matrix(document.tokens, maxlen)
 
         # self.init()
         self.doc_id = 0
@@ -271,9 +273,9 @@ class DocumentClassificationBatchState(BatchState):
         return 0 == self.doc_id
 
     @property
-    def x(self) -> np.ndarray:
+    def x(self) -> List[np.ndarray]:
         """
-        :return: the document matrix of the input document.
+        :return: the embedding matrix of the input document.
         """
         return self.emb
 
@@ -291,7 +293,54 @@ class DocumentClassificationBatchState(BatchState):
         :param begin: the row index of the output matrix corresponding to this document.
         :return: the row index of the output matrix to be assigned by the next document.
         """
-        self.document[self.key_out] = output
+        self.document[to_out(self.key)] = output
         return begin + 1
 
 
+def group_states(docs: List[Document], create_state: Callable[[Document], List[NLPState]], maxlen: int = -1) -> List[NLPState]:
+    """
+    Groups sentences into documents such that each document consists of multiple sentences and the total number of words
+    across all sentences within a document is close to the specified maximum length.
+    :param docs: a list of documents.
+    :param create_state: a function that takes a document and returns a state.
+    :param maxlen: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
+    :return: list of states, where each state roughly consists of the max_len number of words.
+    """
+
+    def aux(i):
+        ls = d[keys[i]]
+        t = ls.pop()
+        document.sentences.append(t)
+        if not ls: del keys[i]
+        return len(t)
+
+    # key = length, value = list of sentences with the key length
+    d = {}
+
+    for doc in docs:
+        for sen in doc.sentences:
+            d.setdefault(len(sen), []).append(sen)
+
+    keys = sorted(list(d.keys()))
+    if maxlen < 0:
+        maxlen = keys[-1]
+
+    states = []
+    document = Document()
+    wc = maxlen - aux(-1)
+
+    while keys:
+        idx = bisect.bisect_left(keys, wc)
+        if idx >= len(keys) or keys[idx] > wc:
+            idx -= 1
+        if idx < 0:
+            states.append(create_state(document))
+            document = Document()
+            wc = maxlen - aux(-1)
+        else:
+            wc -= aux(idx)
+
+    if document:
+        states.append(create_state(document))
+
+    return states

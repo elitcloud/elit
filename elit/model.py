@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 from types import SimpleNamespace
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import mxnet as mx
 from mxnet import gluon, nd
@@ -24,13 +24,17 @@ __author__ = 'Jinho D. Choi'
 
 class FFNNModel(gluon.Block):
     def __init__(self,
+                 ctx: mx.Context,
+                 initializer: mx.init.Initializer,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
-                 conv2d_config: Optional[Tuple[SimpleNamespace]] = None,
-                 hidden_config: Optional[Tuple[SimpleNamespace]] = None,
+                 conv2d_config: Optional[Tuple[SimpleNamespace, ...]] = None,
+                 hidden_config: Optional[Tuple[SimpleNamespace, ...]] = None,
                  **kwargs):
         """
         Feed-Forward Neural Network (FFNN) that includes n-gram convolutions or/and hidden layers.
+        :param ctx: a device context.
+        :param initializer: a weight initializer for the gluon block.
         :param input_config: configuration for the input layer -> elit.model.input_namespace();
                              {row: int, col: int, dropout: float}.
         :param output_config: configuration for the output layer -> elit.model.output_namespace();
@@ -42,25 +46,25 @@ class FFNNModel(gluon.Block):
         :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
         """
         super().__init__(**kwargs)
+        self.ctx = ctx
 
-        def pool(c: SimpleNamespace) -> Optional[mx.gluon.nn.MaxPool2D, mx.gluon.nn.AvgPool2D]:
-            if c.pool is None: return None
-            p = mx.gluon.nn.MaxPool2D if c.pool == 'max' else mx.gluon.nn.AvgPool2D
-            n = input_config.maxlen - c.ngram + 1
-            return p(pool_size=(n, 1), strides=(n, 1))
+        # initialize
+        self.input = SimpleNamespace(dropout=mx.gluon.nn.Dropout(input_config.dropout))
+        self.output = SimpleNamespace(dense=mx.gluon.nn.Dense(output_config.dim))
 
         self.conv2d = [SimpleNamespace(
-            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.dim), strides=(1, input_config.dim), activation=c.activation),
+            conv=mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.col), strides=(1, input_config.col), activation=c.activation),
             dropout=mx.gluon.nn.Dropout(c.dropout),
-            pool=pool(c)) for c in conv2d_config] if conv2d_config else None
+            pool=conv2d_pool(c.pool, input_config.row - c.ngram + 1)) for c in conv2d_config] if conv2d_config else None
 
         self.hidden = [SimpleNamespace(
             dense=mx.gluon.nn.Dense(units=h.dim, activation=h.activation),
             dropout=mx.gluon.nn.Dropout(h.dropout)) for h in hidden_config] if hidden_config else None
 
+        # name scope
         with self.name_scope():
-            self.input_dropout = mx.gluon.nn.Dropout(input_config.dropout)
-            self.output = mx.gluon.nn.Dense(output_config.dim)
+            setattr(self, 'input_dropout', self.input.dropout)
+            setattr(self, 'output_0', self.output.dense)
 
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
@@ -73,12 +77,14 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_' + str(i), h.dense)
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
+        self.collect_params().initialize(initializer, ctx=self.ctx)
+
     def forward(self, x):
         def conv(c: SimpleNamespace):
             return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
 
         # input layer
-        x = self.input_dropout(x)
+        x = self.input.dropout(x)
 
         # convolution layer
         if self.conv2d:
@@ -97,14 +103,14 @@ class FFNNModel(gluon.Block):
                 x = h.dropout(x)
 
         # output layer
-        x = self.output(x)
+        x = self.output.dense(x)
         return x
 
 
 # ======================================== Configuration ========================================
 
-def input_namespace(dim: int, maxlen: int, dropout: float = 0.0) -> SimpleNamespace:
-    return SimpleNamespace(dim=dim, maxlen=maxlen, dropout=dropout)
+def input_namespace(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
+    return SimpleNamespace(col=col, row=row, dropout=dropout)
 
 
 def output_namespace(dim: int) -> SimpleNamespace:
@@ -119,13 +125,20 @@ def hidden_namespace(dim: int, activation: str, dropout: float) -> SimpleNamespa
     return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
 
 
-# ======================================== ArgumentParser ========================================
+def conv2d_pool(pool: str, n: int) -> Union[mx.gluon.nn.MaxPool2D, mx.gluon.nn.AvgPool2D, None]:
+    if pool is None: return None
+    p = mx.gluon.nn.MaxPool2D if pool == 'max' else mx.gluon.nn.AvgPool2D
+    return p(pool_size=(n, 1), strides=(n, 1))
+
+
+# ======================================== Argument ========================================
 
 def conv2d_args(s: str) -> Tuple[SimpleNamespace, ...]:
     """
     :param s: (ngram:filters:activation:pool:dropout)(;#1)*
     :return: a tuple of conf2d_namespace()
     """
+
     def create(config):
         c = config.split(':')
         pool = c[3] if c[3].lower() != 'none' else None
@@ -139,6 +152,7 @@ def hidden_args(s: str) -> Tuple[SimpleNamespace, ...]:
     :param s: (dim:activation:dropout)(;#1)*
     :return: a tuple of hidden_namespace()
     """
+
     def create(config):
         c = config.split(':')
         return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
@@ -181,4 +195,4 @@ def loss_args(s: str) -> mx.gluon.loss.Loss:
     if s == 'ctcloss':
         return mx.gluon.loss.CTCLoss()
 
-    raise ValueError("Unsupported loss: "+s)
+    raise ValueError("Unsupported loss: " + s)

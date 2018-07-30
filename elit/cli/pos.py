@@ -149,9 +149,9 @@ commands:
         args = self.pos_args()
 
         # vector space models
-        from ..vsm import FastText
-        from ..pos import POSTagger
-        from ..util import group_states
+        from elit.vsm import FastText
+        from elit.pos import POSTagger
+        from elit.state import group_states
         vsm_list = [FastText(args.word_vsm)]
         if args.ambi_vsm:
             from ..vsm import Word2Vec

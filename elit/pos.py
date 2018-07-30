@@ -19,10 +19,11 @@ from types import SimpleNamespace
 import numpy as np
 
 from elit.component import SequenceTagger
-from elit.state import TokenTaggingState
+from elit.state import TokenTaggingState, group_states
 from elit.model import conv2d_args, hidden_args
 from elit.structure import TOK, POS
-from elit.util import Accuracy, tsv_reader, json_reader, group_states
+from elit.util import tsv_reader, json_reader
+from elit.eval import Accuracy
 from elit.vsm import FastText, Word2Vec, get_loc_embeddings, get_vsm_embeddings, x_extract, LabelMap
 
 __author__ = 'Jinho D. Choi'
@@ -47,14 +48,14 @@ class POSState(TokenTaggingState):
         self.feature_windows = feature_windows
 
         # initialize embeddings
-        self.embs = [get_vsm_embeddings(vsm, document, TOK) for vsm in vsm_list]
+        self.embs = [vsm.sentence_embedding_list(document, TOK) for vsm in vsm_list]
         self.embs.append(get_loc_embeddings(document))
         if padout: self.embs.append(self._label_embeddings())
 
     def eval(self, metric):
         """
         :param metric: the accuracy metric.
-        :type metric: elit.util.Accuracy
+        :type metric: elit.eval.Accuracy
         """
         autos = self.labels
 
@@ -70,7 +71,7 @@ class POSState(TokenTaggingState):
         :return: the n * d matrix where n = # of feature_windows and d = sum(vsm_list) + position emb + label emb
         """
         t = len(self.document.get_sentence(self.sen_id))
-        l = ([x_extract(self.tok_id, w, t, emb[self.sen_id], pad) for w in self.feature_windows] for emb, pad in self.embs)
+        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad) for w in self.feature_windows] for emb, pad in self.embs)
         n = np.column_stack(l)
         return n
 

@@ -13,24 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import _io
 import abc
-import pickle
 import random
 import time
 from itertools import islice
-from types import SimpleNamespace
-from typing import List, Optional, Tuple
+from typing import List
 
 
 import mxnet as mx
 import numpy as np
 from mxnet import nd, gluon, autograd
 
-from elit.model import FFNNModel
+from elit.eval import EvalMetric
 from elit.state import NLPState, BatchState, SequenceState
 from elit.structure import Document
-from elit.util import EvalMetric
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -139,7 +135,7 @@ class MXNetComponent(NLPComponent):
         pass
 
     @abc.abstractmethod
-    def finalize(self, document: Document):
+    def finalize(self, state: NLPState):
         """
         Finalizes by saving the predicted labels to the input document once decoding is done.
         """
@@ -234,7 +230,9 @@ class MXNetComponent(NLPComponent):
         dev_states = self.create_states(dev_docs)
 
         # generate instances for batch mode
-        if isinstance(trn_states[0], BatchState):
+        batch = isinstance(trn_states[0], BatchState)
+
+        if batch:
             trn_xs, trn_ys = zip(*[(x, y) for state in trn_states for x, y in state])
             dev_xs = [x for state in dev_states for x, _ in state]
         else:
@@ -248,7 +246,7 @@ class MXNetComponent(NLPComponent):
         log = ('* Training',
                '- train batch  : %d' % trn_batch,
                '- epoch        : %d' % epoch,
-               '- loss         : %d' % str(loss),
+               '- loss         : %s' % str(loss),
                '- optimizer    : %s' % optimizer,
                '- learning rate: %f' % learning_rate,
                '- weight decay : %f' % weight_decay)
@@ -258,7 +256,7 @@ class MXNetComponent(NLPComponent):
 
         for e in range(1, epoch + 1):
             st = time.time()
-            trn_correct = self._train(trn_states, trn_batch, loss, trainer, trn_xs, trn_ys)
+            trn_acc = self._train(trn_states, trn_batch, loss, trainer, trn_xs, trn_ys)
             mt = time.time()
             dev_metric = self._evaluate(dev_states, dev_batch, dev_xs)
             et = time.time()
@@ -267,7 +265,7 @@ class MXNetComponent(NLPComponent):
                 self.save(model_path)
 
             print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
-                  (e, mt - st, et - mt, 100.0 * trn_correct / len(trn_ys), dev_metric.get(), best_eval, best_e))
+                  (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_eval, best_e))
 
 
 class BatchComponent(MXNetComponent):
@@ -316,7 +314,7 @@ class BatchComponent(MXNetComponent):
                 if o_begin >= len(outputs): break
 
         for state in states:
-            self.finalize(state.document)
+            self.finalize(state)
 
     # override
     def _evaluate(self,
@@ -342,7 +340,7 @@ class BatchComponent(MXNetComponent):
                loss: gluon.loss.Loss,
                trainer: gluon.Trainer,
                xs: List[np.ndarray] = None,
-               ys: List[np.ndarray] = None) -> int:
+               ys: List[int] = None) -> float:
         """
         :param states: a list of states including documents for training.
         :param batch_size: the batch size.
@@ -365,9 +363,9 @@ class BatchComponent(MXNetComponent):
                 l.backward()
 
             trainer.step(x_batch.shape[0])
-            correct += int(sum(mx.ndarray.argmax(outputs, axis=0) == y_batch).asscalar())
+            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
 
-        return correct
+        return 100 * correct / len(ys)
 
 
 class SequenceComponent(MXNetComponent):
@@ -420,7 +418,7 @@ class SequenceComponent(MXNetComponent):
             tmp = [state for state in tmp if state.has_next]
 
         for state in states:
-            self.finalize(state.document)
+            self.finalize(state)
 
     # override
     def _evaluate(self,
@@ -464,8 +462,9 @@ class SequenceComponent(MXNetComponent):
 
         while tmp:
             random.shuffle(tmp)
-            xs = nd.array([state.x for state in tmp])
-            ys = nd.array([state.y for state in tmp])
+            xs = [state.x for state in tmp]
+            ys = [state.y for state in tmp]
+
             batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size)
             begin = 0
 
@@ -479,95 +478,11 @@ class SequenceComponent(MXNetComponent):
                     l.backward()
 
                 trainer.step(x_batch.shape[0])
-                correct += int(sum(mx.ndarray.argmax(outputs, axis=0) == y_batch).asscalar())
-                for i, output in enumerate(outputs): states[begin + i].process(output)
+                correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
+                for i, output in enumerate(outputs): states[begin + i].process(output.asnumpy())
                 begin += len(outputs)
 
             tmp = [state for state in tmp if state.has_next]
 
         for state in states: state.init()
         return correct
-
-
-class FFNNComponent:
-    """
-    FFNNComponent provides a helper class to implement an NLP component using :class:`elit.model.FFNNModel`.
-    """
-
-    def __init__(self):
-        self.input_config = None
-        self.output_config = None
-        self.conv2d_config = None
-        self.hidden_config = None
-
-    def _init(self,
-              ctx: mx.Context,
-              input_config: SimpleNamespace,
-              output_config: SimpleNamespace,
-              conv2d_config: Optional[Tuple[SimpleNamespace]] = None,
-              hidden_config: Optional[Tuple[SimpleNamespace]] = None,
-              **kwargs) -> FFNNModel:
-        """
-        :param ctx: a device context.
-        :param input_config: configuration for the input layer, that is the output of :meth:`elit.model.input_namespace`;
-                             {row: int, col: int, dropout: float}.
-        :param output_config: configuration for the output layer, that is the output of :meth:`elit.model.output_namespace`;
-                              {dim: int}.
-        :param conv2d_config: configuration for the 2D convolution layer, that is the output of :meth:`elit.model.conv2d_namespace';
-                              {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
-        :param hidden_config: configuration for the hidden layers, that is the output of :meth:`elit.model.hidden_namespace`;
-                              {dim: int, activation: str, dropout: float}.
-        :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
-        :return: the feed-forward neural network model initialized by the configurations.
-        """
-        # network
-        self.input_config = input_config
-        self.output_config = output_config
-        self.conv2d_config = conv2d_config
-        self.hidden_config = hidden_config
-
-        # model
-        model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
-        model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=ctx)
-        return model
-
-    def _load(self,
-              ctx: mx.Context,
-              fin: _io.FileIO[bytes],
-              gluon_path: str,
-              **kwargs) -> FFNNModel:
-        """
-        :param ctx: a device context.
-        :param fin: a pickle input stream to retrieve the network configuration.
-        :param gluon_path: a filepath to the gluon model to load.
-        :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
-        :return: the feed-forward neural network model initialized by the pre-trained model.
-        """
-        # network
-        self.input_config = pickle.load(fin)
-        self.output_config = pickle.load(fin)
-        self.conv2d_config = pickle.load(fin)
-        self.hidden_config = pickle.load(fin)
-
-        # model
-        model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
-        model.load_parameters(gluon_path, ctx=ctx)
-        return model
-
-    def _save(self,
-              fout: _io.FileIO[bytes],
-              gluon_path: str,
-              model: FFNNModel):
-        """
-        :param fout: a pickle output stream to save the network configuration
-        :param gluon_path: a filepath to the gluon model to save.
-        :param model: the feed-forward neural network model to be saved.
-        """
-        # network
-        pickle.dump(self.input_config, fout)
-        pickle.dump(self.output_config, fout)
-        pickle.dump(self.conv2d_config, fout)
-        pickle.dump(self.hidden_config, fout)
-
-        # model
-        model.save_parameters(gluon_path)

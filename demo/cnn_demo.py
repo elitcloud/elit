@@ -13,11 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import pickle
 from types import SimpleNamespace
 
-import numpy as np
 import mxnet as mx
+import numpy as np
 from mxnet import gluon, nd, autograd
+
+from elit.model import FFNNModel
 
 __author__ = 'Jinho D. Choi'
 
@@ -47,8 +50,8 @@ class CNNModel(gluon.Block):
 
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
-                    setattr(self, 'conv_'+str(i), c.conv)
-                    setattr(self, 'conv_pool_'+str(i), c.pool)
+                    setattr(self, 'conv_' + str(i), c.conv)
+                    setattr(self, 'conv_pool_' + str(i), c.pool)
                     setattr(self, 'conv_dropout_' + str(i), c.dropout)
 
             if self.hidden:
@@ -85,22 +88,26 @@ def demo():
     ngrams = range(2, 5)
     train_size = 10
     ctx = mx.cpu(0)
-    batches = 3
+    batch_size = 3
 
     input_config = SimpleNamespace(row=5, col=20, dropout=0.0)
     output_config = SimpleNamespace(dim=3)
-    conv2d_config = [SimpleNamespace(ngram=i, filters=4, activation='relu', pool='max', dropout=0.0) for i in ngrams]
-    hidden_config = [SimpleNamespace(dim=10, activation='relu', dropout=0.0)]
+    conv2d_config = None  # tuple(SimpleNamespace(ngram=i, filters=4, activation='relu', pool='max', dropout=0.0) for i in ngrams)
+    hidden_config = None  # tuple(SimpleNamespace(dim=10, activation='relu', dropout=0.0) for i in range(2))
 
     xs = nd.array([np.random.rand(input_config.row, input_config.col) for i in range(train_size)])
     ys = nd.array(np.random.randint(output_config.dim, size=train_size))
 
-    model = CNNModel(input_config, output_config, conv2d_config, hidden_config)
-    model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=ctx)
+    initializer = mx.init.Xavier(rnd_type='gaussian', magnitude=2.24)
+    model = FFNNModel(mx.cpu(), initializer, input_config, output_config, conv2d_config, hidden_config)
+    # model = CNNModel(input_config, output_config, conv2d_config, hidden_config)
+    # model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=ctx)
 
-    batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batches)
+    # train
+    batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size)
     trainer = gluon.Trainer(model.collect_params(), 'sgd', {'learning_rate': 0.01, 'wd': 0.0})
     loss_func = mx.gluon.loss.SoftmaxCrossEntropyLoss()
+    correct = 0
 
     for x, y in batches:
         x = x.as_in_context(ctx)
@@ -112,6 +119,37 @@ def demo():
             loss.backward()
 
         trainer.step(x.shape[0])
+        correct += int(sum(mx.ndarray.argmax(output, axis=0) == y).asscalar())
+
+    print(correct, len(ys))
+
+    # evaluate
+    batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size)
+    outputs = []
+
+    for x, _ in batches:
+        x = x.as_in_context(ctx)
+        outputs.append(model(x))
+
+    with open('/Users/jdchoi/Downloads/tmp.pkl', 'wb') as fout:
+        pickle.dump(model, fout)
+
+    with open('/Users/jdchoi/Downloads/tmp.pkl', 'rb') as fin:
+        model = pickle.load(fin)
+
+    batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size)
+    outputs2 = []
+    print(str(model))
+
+    for x, _ in batches:
+        x = x.as_in_context(ctx)
+        outputs2.append(model(x))
+
+    c = 0
+    for i in range(len(outputs)):
+        c += (sum(outputs[i] - outputs2[i]))
+        print(outputs[i] - outputs2[i])
+    print(c)
 
 
 if __name__ == '__main__':

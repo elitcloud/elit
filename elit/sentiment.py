@@ -23,7 +23,7 @@ from mxnet import gluon
 from elit.component import NLPComponent
 from elit.state import NLPState, SentenceClassificationBatchState
 from elit.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
-from elit.util import EvalMetric, Accuracy, F1
+from elit.eval import Accuracy, F1, EvalMetric
 
 __author__ = 'Jinho D. Choi'
 

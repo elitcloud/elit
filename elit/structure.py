@@ -37,6 +37,53 @@ SENTI_NEGATIVE = 'n'
 SENTI_NEUTRAL = '0'
 
 
+class Sentence(dict):
+    def __init__(self, d=None, **kwargs):
+        """
+        :param d: a dictionary, if not None, all of whose fields are added to this sentence.
+        :type d: dict
+        :param kwargs: additional fields to be added; if keys already exist; the values are overwritten with these.
+        """
+        super().__init__()
+        self._iter = -1
+
+        if d is not None: self.update(d)
+        self.update(kwargs)
+        self._tokens = self.setdefault(TOK, [])
+
+    def __len__(self):
+        """
+        :return: the number of tokens in the sentence.
+        """
+        return len(self.tokens)
+
+    def __iter__(self):
+        self._iter = -1
+        return self
+
+    def __next__(self):
+        self._iter += 1
+        if self._iter >= len(self.tokens):
+            raise StopIteration
+        return self._tokens[self._iter]
+
+    @property
+    def tokens(self):
+        """
+        :return: the list of tokens in the sentence.
+        :rtype: list of str
+        """
+        return self._tokens
+
+    @property
+    def part_of_speech_tags(self):
+        """
+        :return: the list of part-of-speech tags corresponding to the tokens in this sentence.
+        :rtype: list of str
+        """
+        return self[POS]
+
+
 class Document(dict):
     def __init__(self, d=None, **kwargs):
         """
@@ -86,53 +133,6 @@ class Document(dict):
         for sentence in self.sentences:
             tokens.extend(sentence.tokens)
         return tokens
-
-
-class Sentence(dict):
-    def __init__(self, d=None, **kwargs):
-        """
-        :param d: a dictionary, if not None, all of whose fields are added to this sentence.
-        :type d: dict
-        :param kwargs: additional fields to be added; if keys already exist; the values are overwritten with these.
-        """
-        super().__init__()
-        self._iter = -1
-
-        if d is not None: self.update(d)
-        self.update(kwargs)
-        self._tokens = self.setdefault(TOK, [])
-
-    def __len__(self):
-        """
-        :return: the number of tokens in the sentence.
-        """
-        return len(self.tokens)
-
-    def __iter__(self):
-        self._iter = -1
-        return self
-
-    def __next__(self):
-        self._iter += 1
-        if self._iter >= len(self.tokens):
-            raise StopIteration
-        return self._tokens[self._iter]
-
-    @property
-    def tokens(self):
-        """
-        :return: the list of tokens in the sentence.
-        :rtype: list of str
-        """
-        return self._tokens
-
-    @property
-    def part_of_speech_tags(self):
-        """
-        :return: the list of part-of-speech tags corresponding to the tokens in this sentence.
-        :rtype: list of str
-        """
-        return self[POS]
 
 
 class Node(object):
