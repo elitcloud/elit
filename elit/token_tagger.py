@@ -581,8 +581,10 @@ def evaluate_args():
 def train():
     # cml arguments
     args = train_args()
-    if args.ctx is None: args.ctx = mx.cpu()
-    if args.loss is None: args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
+    if args.ctx is None:
+        args.ctx = mx.cpu()
+    if args.loss is None:
+        args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
 
     # vector space models
     vsm_list = [(FastText(args.word_vsm), TOK)]
