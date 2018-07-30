@@ -32,13 +32,10 @@ commands:
         )
         parser.add_argument('command', help='command to run')
         args = parser.parse_args(sys.argv[1:2])
-        if args.command == 'pos':
-            from .pos import PosCli
-            PosCli()
-        else:
-            print('Unrecognized command')
-            parser.print_help()
-            exit(1)
+        # TODO
+        # print('Unrecognized command')
+        # parser.print_help()
+        # exit(1)
 
 
 if __name__ == '__main__':

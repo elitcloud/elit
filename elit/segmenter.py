@@ -15,9 +15,9 @@
 # ========================================================================
 import abc
 
-from .sdk import Component
-from .structure import SEN_ID, TOK, OFF
-from .utils.string import *
+from elit.component import Component
+from elit.structure import SEN_ID, TOK, OFF
+from elit.string import *
 
 __author__ = "Gary Lai"
 

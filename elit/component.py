@@ -44,7 +44,7 @@ class Component(abc.ABC):
         Initializes this component.
         :param kwargs: custom parameters.
         """
-        pass
+        raise NotImplementedError("Not implemented")
 
     @abc.abstractmethod
     def load(self, model_path: str, **kwargs):
@@ -53,7 +53,7 @@ class Component(abc.ABC):
         :param model_path: a filepath to the model.
         :param kwargs: custom parameters.
         """
-        pass
+        raise NotImplementedError("Not implemented")
 
     @abc.abstractmethod
     def save(self, model_path: str, **kwargs):
@@ -62,7 +62,7 @@ class Component(abc.ABC):
         :param model_path: a filepath to the model to be saved.
         :param kwargs: custom parameters.
         """
-        pass
+        raise NotImplementedError("Not implemented")
 
     @abc.abstractmethod
     def decode(self, data, **kwargs):
@@ -71,7 +71,7 @@ class Component(abc.ABC):
         :param data: input data to be decoded.
         :param kwargs: custom parameters.
         """
-        pass
+        raise NotImplementedError("Not implemented")
 
     @abc.abstractmethod
     def train(self, trn_data, dev_data, model_path: str, **kwargs):
@@ -82,7 +82,7 @@ class Component(abc.ABC):
         :param model_path: a filepath to the model to be saved.
         :param kwargs: custom parameters
         """
-        pass
+        raise NotImplementedError("Not implemented")
 
 
 class NLPComponent(Component):

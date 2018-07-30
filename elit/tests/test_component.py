@@ -20,16 +20,16 @@ from elit.component import Component
 __author__ = "Gary Lai"
 
 
-def test_sdk():
-    class TestSDK(Component):
+def test_component():
+    class TestComponent(Component):
         pass
 
     with pytest.raises(TypeError):
-        TestSDK()
+        TestComponent()
 
 
 def test_abstract_class():
-    class TestSDK(Component):
+    class TestComponent(Component):
 
         def __init__(self):
             super().__init__()
@@ -50,7 +50,7 @@ def test_abstract_class():
             super().save(model_path, **kwargs)
 
     with pytest.raises(NotImplementedError):
-        test_task = TestSDK()
+        test_task = TestComponent()
         test_task.decode("test")
 
 

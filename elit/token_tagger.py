@@ -281,7 +281,8 @@ class TokenTagger(MXNetComponent):
         key_out = to_out(self.key)
         sequence = isinstance(state, TokenSequenceTaggerState)
         for i, sentence in enumerate(state.document):
-            if sequence: sentence[key_out] = state.output[i]
+            if sequence:
+                sentence[key_out] = state.output[i]
             sentence[self.key] = [self.label_map.argmax(o) for o in sentence[key_out]]
 
     # override
@@ -304,6 +305,7 @@ class TokenTagger(MXNetComponent):
              initializer: mx.init.Initializer = None,
              **kwargs):
         """
+        :param sequence:
         :param key: the key to each sentence where the tags are to be saved.
         :param chunking: if True, this tagging is used for chunking instead.
         :param feature_windows: content windows for feature extraction.
@@ -317,7 +319,8 @@ class TokenTagger(MXNetComponent):
         # configuration
         if initializer is None: initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
         input_dim = sum([vsm.dim for vsm, _ in self.vsm_list]) + len(X_ANY)
-        if sequence: input_dim += num_class
+        if sequence:
+            input_dim += num_class
         input_config = input_namespace(input_dim, row=len(feature_windows), dropout=input_dropout)
         output_config = output_namespace(num_class)
 
@@ -433,7 +436,8 @@ def tsv_reader(filepath, key, args):
         fin = open(filename)
 
         for line in fin:
-            if line.startswith('#'): continue
+            if line.startswith('#'):
+                continue
             l = line.split()
 
             if l:
@@ -476,18 +480,6 @@ def reader_args(s):
 
 
 def train_args():
-    def reader(s):
-        """
-        :param s: (tsv|json)(;\\d:\\d)*
-        :return: reader, SimpleNamespace(tok, pos)
-        """
-        r = s.split(';')
-        if r[0] == 'tsv':
-            t = r[1].split(':')
-            return tsv_reader, SimpleNamespace(tok=int(t[0]), tag=int(t[1]))
-        else:
-            return json_reader, None
-
     def int_tuple(s):
         """
         :param s: \\d(,\\d)*

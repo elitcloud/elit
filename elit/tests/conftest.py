@@ -15,8 +15,9 @@
 # ========================================================================
 import pytest
 
-from ..tokenizer import Tokenizer, SpaceTokenizer
 from elit.eval import Accuracy, F1
+from elit.segmenter import EnglishSegmenter
+from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 
 __author__ = "Gary Lai"
 
