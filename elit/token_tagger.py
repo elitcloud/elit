@@ -16,6 +16,7 @@
 import abc
 import argparse
 import glob
+import json
 import pickle
 from types import SimpleNamespace
 from typing import Tuple, Optional, List, Union
@@ -25,7 +26,8 @@ import numpy as np
 
 from elit.component import MXNetComponent, SequenceComponent, BatchComponent
 from elit.eval import Accuracy, F1
-from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, loss_args
+from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, \
+    loss_args
 from elit.state import BatchState, SequenceState, group_states
 from elit.structure import Document, Sentence, TOK
 from elit.util import BILOU, to_gold, to_out
@@ -460,9 +462,24 @@ def tsv_reader(filepath, key, args):
     return documents
 
 
-def json_reader(filepath, key, args):
+def json_reader(filepath) -> List[Document]:
     # TODO: to be filled
     documents = []
+    dc = wc = sc = 0
+
+    for filename in glob.glob('{}/*.json'.format(filepath)):
+        assert filename.endswith('.json')
+        with open(filename) as f:
+            docs = json.load(f)
+            for doc in docs:
+                sentences = []
+                for sen in doc['sen']:
+                    wc += len(sen['tok'])
+                    sentences.append(Sentence(sen))
+                sc += len(sentences)
+                documents.append(Document(sen=sentences))
+            dc += len(documents)
+    print('Reading: dc = %d, sc = %d, wc = %d' % (dc, sc, wc))
     return documents
 
 
