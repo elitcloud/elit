@@ -19,8 +19,8 @@ from typing import List
 __author__ = 'Jinho D. Choi'
 
 DOC_ID = 'doc_id'   # document ID
-SEN = 'sen'       # sentences
-SEN_ID = 'doc_id'   # sentence ID
+SEN = 'sen'         # sentences
+SEN_ID = 'sen_id'   # sentence ID
 TOK = 'tok'
 OFF = 'off'
 LEM = 'lem'
