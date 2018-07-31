@@ -189,9 +189,9 @@ class GloVe(VectorSpaceModel):
 
 # ======================================== Embeddings ========================================
 
-X_FST: np.ndarray = np.array([1, 0]).astype('float32')  # the first word
-X_LST: np.ndarray = np.array([0, 1]).astype('float32')  # the last word
-X_ANY: np.ndarray = np.array([0, 0]).astype('float32')  # any other word
+X_FST = np.array([1, 0]).astype('float32')  # the first word
+X_LST = np.array([0, 1]).astype('float32')  # the last word
+X_ANY = np.array([0, 0]).astype('float32')  # any other word
 
 
 def get_loc_embeddings(document: Document) -> Tuple[List[List[np.ndarray]], np.ndarray]:
