@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Model
 - State
 - Command line interface
+- Structure
 ### Changed
 - Update component
 - Update docs
 - lexicon -> vsm
+- POS, NER -> token_tagger
 ### Removed
 - unsed files
 
