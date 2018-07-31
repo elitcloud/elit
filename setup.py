@@ -134,8 +134,6 @@ def setup_package():
             'yafasttext',
             'gensim',
             'numpy',
-            'keras',
-            'tensorflow',
             'ujson',
             'mxnet',
         ],
