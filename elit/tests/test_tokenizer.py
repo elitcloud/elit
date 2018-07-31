@@ -190,12 +190,12 @@ def test_eng_tokenizer_concat(english_tokenizer, input, expected):
     # concatenated word
     ("whadya DON'CHA", {
         'tok': ['wha', 'd', 'ya', 'DO', "N'", 'CHA'],
-        'off':[(0, 3), (3, 4), (4, 6), (7, 9), (9, 11), (11, 14)]
+        'off': [(0, 3), (3, 4), (4, 6), (7, 9), (9, 11), (11, 14)]
     }),
     # final mark
     ('Mbaaah.Please hello.!?world', {
         'tok': ['Mbaaah', '.', 'Please', 'hello', '.!?', 'world'],
-        'off':[(0, 6), (6, 7), (7, 13), (14, 19), (19, 22), (22, 27)]
+        'off': [(0, 6), (6, 7), (7, 13), (14, 19), (19, 22), (22, 27)]
     }),
 ])
 def test_eng_tokenizer_split(english_tokenizer, input, expected):
@@ -207,7 +207,7 @@ def test_eng_tokenizer_split(english_tokenizer, input, expected):
 @pytest.mark.parametrize('input, expected', [
     ('hello world',
      [{
-         'doc_id': 0,
+         'sen_id': 0,
          'tok': ['hello', 'world'],
          'off': [(0, 5), (6, 11)]
      }]
@@ -215,20 +215,19 @@ def test_eng_tokenizer_split(english_tokenizer, input, expected):
     # unit
     ('. "1st sentence." 2nd sentence? "3rd sentence!"',
      [{
-         'doc_id': 0,
+        'sen_id': 0,
          'tok': ['.', '"', '1st', 'sentence', '.', '"'],
          'off': [(0, 1), (2, 3), (3, 6), (7, 15), (15, 16), (16, 17)]
      }, {
-         'doc_id': 1,
+        'sen_id': 1,
          'tok': ['2nd', 'sentence', '?'],
          'off': [(18, 21), (22, 30), (30, 31)]
      }, {
-         'doc_id': 2,
+         'sen_id': 2,
          'tok': ['"', '3rd', 'sentence', '!', '"'],
          'off': [(32, 33), (33, 36), (37, 45), (45, 46), (46, 47)]
      }])
 ])
 def test_eng_seg(english_tokenizer, english_segmenter, input, expected):
     result = english_tokenizer.decode(input)
-    print(result['tok'])
     assert english_segmenter.decode(result['tok'], result['off']) == expected
