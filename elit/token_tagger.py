@@ -319,7 +319,8 @@ class TokenTagger(MXNetComponent):
         :param kwargs: parameters for the initialization of gluon.Block.
         """
         # configuration
-        if initializer is None: initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
+        if initializer is None:
+            initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
         input_dim = sum([vsm.dim for vsm, _ in self.vsm_list]) + len(X_ANY)
         if sequence:
             input_dim += num_class
@@ -625,7 +626,8 @@ def train():
 def evaluate():
     # cml arguments
     args = train_args()
-    if args.ctx is None: args.ctx = mx.cpu()
+    if args.ctx is None:
+        args.ctx = mx.cpu()
 
     # vector space models
     vsm_list = [(FastText(args.word_vsm), TOK)]

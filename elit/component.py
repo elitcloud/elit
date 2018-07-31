@@ -239,7 +239,8 @@ class MXNetComponent(NLPComponent):
             trn_xs, trn_ys, dev_xs = None, None, None
 
         # create a trainer
-        if loss is None: loss = gluon.loss.SoftmaxCrossEntropyLoss()
+        if loss is None:
+            loss = gluon.loss.SoftmaxCrossEntropyLoss()
         trainer = gluon.Trainer(self.model.collect_params(), optimizer, {'learning_rate': learning_rate, 'wd': weight_decay})
 
         # train
