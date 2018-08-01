@@ -600,7 +600,7 @@ def train():
     initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
 
     # vector space models
-    vsm_list = (FastText(args.word_vsm), TOK,)
+    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
 
     # component
     comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
@@ -622,7 +622,7 @@ def evaluate():
     if args.ctx is None: args.ctx = mx.cpu()
 
     # vector space models
-    vsm_list = (FastText(args.word_vsm), TOK,)
+    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
 
     # component
     comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
