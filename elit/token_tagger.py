@@ -26,8 +26,7 @@ import numpy as np
 
 from elit.component import MXNetComponent, SequenceComponent, BatchComponent
 from elit.eval import Accuracy, F1
-from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, \
-    loss_args
+from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, loss_args
 from elit.state import BatchState, SequenceState, group_states
 from elit.structure import Document, Sentence, TOK
 from elit.util import BILOU, to_gold, to_out
@@ -281,10 +280,9 @@ class TokenTagger(MXNetComponent):
         :param state: an input state.
         """
         key_out = to_out(self.key)
-        sequence = isinstance(state, TokenSequenceTaggerState)
+        sequence = isinstance(state, TokenSequenceTagger)
         for i, sentence in enumerate(state.document):
-            if sequence:
-                sentence[key_out] = state.output[i]
+            if sequence: sentence[key_out] = state.output[i]
             sentence[self.key] = [self.label_map.argmax(o) for o in sentence[key_out]]
 
     # override
@@ -297,7 +295,6 @@ class TokenTagger(MXNetComponent):
     # override
     def init(self,
              key: str,
-             sequence: bool,
              chunking: bool,
              num_class: int,
              feature_windows: Tuple[int, ...],
@@ -307,7 +304,6 @@ class TokenTagger(MXNetComponent):
              initializer: mx.init.Initializer = None,
              **kwargs):
         """
-        :param sequence:
         :param key: the key to each sentence where the tags are to be saved.
         :param chunking: if True, this tagging is used for chunking instead.
         :param feature_windows: content windows for feature extraction.
@@ -322,7 +318,7 @@ class TokenTagger(MXNetComponent):
         if initializer is None:
             initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
         input_dim = sum([vsm.dim for vsm, _ in self.vsm_list]) + len(X_ANY)
-        if sequence:
+        if isinstance(self, TokenSequenceTagger):
             input_dim += num_class
         input_config = input_namespace(input_dim, row=len(feature_windows), dropout=input_dropout)
         output_config = output_namespace(num_class)
@@ -599,24 +595,21 @@ def evaluate_args():
 def train():
     # cml arguments
     args = train_args()
-    if args.ctx is None:
-        args.ctx = mx.cpu()
-    if args.loss is None:
-        args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
+    if args.ctx is None: args.ctx = mx.cpu()
+    if args.loss is None: args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
+    initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
 
     # vector space models
-    vsm_list = [(FastText(args.word_vsm), TOK)]
+    vsm_list = (FastText(args.word_vsm), TOK,)
 
     # component
-    TokenTagger = TokenSequenceTagger if args.sequence else TokenBatchTagger
-    comp = TokenTagger(args.ctx, vsm_list)
-    initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
-    comp.init(args.key, args.sequence, args.chunking, args.num_class, args.feature_windows, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
+    comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
+    comp.init(args.key, args.chunking, args.num_class, args.feature_windows, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
 
     # data
-    reader, reader_args = args.reader
-    trn_docs = reader(args.trn_path, args.key, reader_args)
-    dev_docs = reader(args.dev_path, args.key, reader_args)
+    reader, rargs = args.reader
+    trn_docs = reader(args.trn_path, args.key, rargs)
+    dev_docs = reader(args.dev_path, args.key, rargs)
 
     # train
     comp.train(trn_docs, dev_docs, args.model_path, args.trn_batch, args.dev_batch, args.epoch, args.loss, args.optimizer, args.learning_rate, args.weight_decay)
@@ -626,25 +619,23 @@ def train():
 def evaluate():
     # cml arguments
     args = train_args()
-    if args.ctx is None:
-        args.ctx = mx.cpu()
+    if args.ctx is None: args.ctx = mx.cpu()
 
     # vector space models
-    vsm_list = [(FastText(args.word_vsm), TOK)]
+    vsm_list = (FastText(args.word_vsm), TOK,)
 
     # component
-    TokenTagger = TokenSequenceTagger if args.sequence else TokenBatchTagger
-    comp = TokenTagger(args.ctx, vsm_list)
+    comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
     comp.load(args.model_path)
 
     # data
-    reader, reader_args = args.reader
-    dev_docs = reader(args.dev_path, comp.key, reader_args)
+    reader, rargs = args.reader
+    dev_docs = reader(args.dev_path, comp.key, rargs)
 
     # decode
     states = comp.create_states(dev_docs)
     e = comp._evaluate(states, args.dev_batch)
-    print('DEV: %s' % str(e.get()))
+    print(str(e))
 
 
 if __name__ == '__main__':

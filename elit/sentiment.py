@@ -21,7 +21,8 @@ import numpy as np
 from mxnet import gluon
 
 from elit.component import NLPComponent
-from elit.state import NLPState, SentenceClassificationBatchState
+from elit.state import NLPState
+from elit.doc_classifier import SentenceClassificationBatchState
 from elit.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
 from elit.eval import Accuracy, F1, EvalMetric
 

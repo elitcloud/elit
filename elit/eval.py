@@ -42,6 +42,9 @@ class Accuracy(EvalMetric):
         self.correct = 0
         self.total = 0
 
+    def __str__(self):
+        return 'ACC:%6.2f' % self.get()
+
     @abc.abstractmethod
     def update(self, document: Document):
         pass
@@ -59,6 +62,9 @@ class F1(EvalMetric):
         self.correct = 0
         self.p_total = 0
         self.r_total = 0
+
+    def __str__(self):
+        return 'F1:%6.2f, P:%6.2f, R:%6.2f' % (self.f1(), self.precision(), self.recall())
 
     @abc.abstractmethod
     def update(self, document: Document):
