@@ -15,16 +15,16 @@
 # ========================================================================
 import argparse
 import logging
-import re
 import sys
 from types import SimpleNamespace
 
 import mxnet as mx
 
-from elit.model import conv2d_args, hidden_args, loss_args, context_args
 from elit.structure import TOK
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
-from elit.utils.file import tsv_reader, json_reader
+from elit.utils.args import context_args, loss_args, feature_windows_args, reader_args, conv2d_args, \
+    hidden_args
+from elit.utils.file import tsv_reader
 from elit.vsm import FastText
 
 __author__ = "Gary Lai"
@@ -37,166 +37,165 @@ class PosTagger(object):
 
 
 # ======================================== Command-Line ========================================
-def reader_args(s):
-    """
-    :param s: (tsv|json)(;\\d:\\d)*
-    :return: reader, SimpleNamespace(tok, pos)
-    """
-    r = s.split(';')
-    if r[0] == 'tsv':
-        t = r[1].split(':')
-        return tsv_reader, SimpleNamespace(tok=int(t[0]), tag=int(t[1]))
-    else:
-        return json_reader, None
+class PosCli(object):
 
+    def __init__(self):
+        self.key = 'pos'
+        parser = argparse.ArgumentParser(
+            usage='''
+    elit pos <command> [<args>]
 
-def train_args():
-    def int_tuple(s):
-        """
-        :param s: \\d(,\\d)*
-        :return: tuple of int
-        """
-        return tuple(map(int, s.split(',')))
+commands:
+    train   part-of-speech tagger
+    eval    named entity recognition
+''',
+            description='Part-of-speech tagging')
+        parser.add_argument('command', help='command to run')
+        args = parser.parse_args(sys.argv[2:3])
+        if not hasattr(self, args.command):
+            logging.info('Unrecognized command')
+            parser.print_help()
+            exit(1)
+        getattr(self, args.command)()
 
-    parser = argparse.ArgumentParser('Train: part-of-speech tagging')
+    def train(self):
 
-    # data
-    parser.add_argument('-t', '--trn_path', type=str, metavar='filepath',
-                        help='path to the training data (input)')
-    parser.add_argument('-d', '--dev_path', type=str, metavar='filepath',
-                        help='path to the development data (input)')
-    parser.add_argument('-m', '--model_path', type=str, metavar='filepath', default=None,
-                        help='path to the model data (output)')
-    parser.add_argument('-r', '--reader', type=reader_args, metavar='(tsv|json)(;\\d:\\d)*',
-                        default=(tsv_reader, SimpleNamespace(tok=0, tag=1)),
-                        help='reader configuration')
+        # positional arguments:
+        # These are required arguments. Positional arguments don't use hyphen or dash prefix.
+        parser = argparse.ArgumentParser(description='Train: Part-of-speech tagging',
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument('trn_path', type=str, metavar='TRN_PATH',
+                            help='path to the training data (input)')
+        parser.add_argument('dev_path', type=str, metavar='DEV_PATH',
+                            help='path to the development data (input)')
+        #   Lexicon
+        parser.add_argument('word_vsm', type=str, metavar='WORD_VSM_PATH',
+                            help='path to the vector space model for word embeddings')
 
-    # generic
-    parser.add_argument('-key', '--key', type=str, metavar='str',
-                        help='path to the model data (output)')
-    parser.add_argument('-seq', '--sequence', type=bool, metavar='boolean', default=False,
-                        help='if set, use sequence mode')
-    parser.add_argument('-chu', '--chunking', type=bool, metavar='boolean', default=False,
-                        help='if set, generate chunks')
+        # Optional arguments:
+        # These are optional arguments.
+        #
+        #   Generic
+        parser.add_argument('-m', '--model_path', type=str, metavar='MODEL_PATH', default=None,
+                            help='path to the model data (output)')
+        parser.add_argument('-r', '--reader', type=reader_args, metavar='READER',
+                            default="tsv:0,1",
+                            help='reader configuration. format: (tsv|json)(:\\d,\\d)*')
+        parser.add_argument('-seq', '--sequence', type=bool, metavar='BOOLEAN', default=False,
+                            help='if set, use sequence mode')
+        parser.add_argument('-chu', '--chunking', type=bool, metavar='BOOLEAN', default=False,
+                            help='if set, generate chunks')
 
-    # lexicon
-    parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath',
-                        help='vector space model for word embeddings')
+        #   Configuration
+        parser.add_argument('-nc', '--num_class', type=int, metavar='INT',
+                            help='number of classes (part-of-speech tags)')
+        parser.add_argument('-fw', '--feature_windows', type=feature_windows_args,
+                            metavar='FEATURE_WINDOWS', default=tuple(range(-3, 4)),
+                            help='contextual windows for feature extraction')
+        parser.add_argument('-ir', '--input_dropout', type=float, metavar='float', default=0.0,
+                            help='dropout rate applied to the input layer')
+        # parser.add_argument('-cc', '--conv2d_config', type=conv2d_args,
+        #                     metavar='(ngram:filters:activation:pool:dropout)(;#1)*',
+        #                     default=tuple(
+        #                         SimpleNamespace(ngram=i, filters=128, activation='relu', pool=None,
+        #                                         dropout=0.2) for i in range(1, 6)),
+        #                     help='configuration for the convolution layer')
+        parser.add_argument('-cc', '--conv2d_config', type=str,
+                            metavar='CONV2D_CONFIG', nargs='*',
+                            default=["{},128,relu,none,0.2".format(i) for i in range(1, 6)],
+                            help='configuration for the convolution layer')
+        # parser.add_argument('-hc', '--hidden_config', type=hidden_args,
+        #                     metavar='(dim:activation:dropout)(;#1)*', default=None,
+        #                     help='configuration for the hidden layer')
+        parser.add_argument('-hc', '--hidden_config', type=str,
+                            metavar='HIDDEN_CONFIG', nargs='*', default=None,
+                            help='configuration for the hidden layer')
+        training = parser.add_argument_group("configuration for the training")
+        training.add_argument('-cx', '--ctx', type=context_args, metavar='CTX', default="c0",
+                            help='device context: ([cg])(\d*) ex: c0')
+        training.add_argument('-ep', '--epoch', type=int, metavar='EPOCH', default=50,
+                            help='number of epochs')
+        training.add_argument('-tb', '--trn_batch', type=int, metavar='TRN_BATCH', default=64,
+                            help='batch size for training')
+        training.add_argument('-db', '--dev_batch', type=int, metavar='DEV_BATCH', default=4096,
+                            help='batch size for evaluation')
+        training.add_argument('-lo', '--loss', type=loss_args, metavar='LOSS',
+                              default='softmaxcrossentropyloss', help='loss function')
+        training.add_argument('-op', '--optimizer', type=str, metavar='OPTIMIZER', default='adagrad',
+                            help='optimizer algorithm')
+        training.add_argument('-lr', '--learning_rate', type=float, metavar='LEARNING_RATE', default=0.01,
+                            help='learning rate')
+        training.add_argument('-wd', '--weight_decay', type=float, metavar='WEIGHT_DECAY', default=0.0,
+                            help='weight decay')
 
-    # configuration
-    parser.add_argument('-nc', '--num_class', type=int, metavar='int',
-                        help='number of classes (part-of-speech tags)')
-    parser.add_argument('-fw', '--feature_windows', type=int_tuple, metavar='int[,int]*',
-                        default=tuple(range(-3, 4)),
-                        help='contextual windows for feature extraction')
-    parser.add_argument('-ir', '--input_dropout', type=float, metavar='float', default=0.0,
-                        help='dropout rate applied to the input layer')
-    parser.add_argument('-cc', '--conv2d_config', type=conv2d_args,
-                        metavar='(ngram:filters:activation:pool:dropout)(;#1)*',
-                        default=tuple(SimpleNamespace(ngram=i, filters=128, activation='relu', pool=None, dropout=0.2) for i in range(1, 6)),
-                        help='configuration for the convolution layer')
-    parser.add_argument('-hc', '--hidden_config', type=hidden_args, metavar='(dim:activation:dropout)(;#1)*', default=None,
-                        help='configuration for the hidden layer')
+        args = parser.parse_args(sys.argv[3:])
 
-    # training
-    parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\\d', default=None,
-                        help='device context')
-    parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50,
-                        help='number of epochs')
-    parser.add_argument('-tb', '--trn_batch', type=int, metavar='int', default=64,
-                        help='batch size for training')
-    parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=4096,
-                        help='batch size for evaluation')
-    parser.add_argument('-lo', '--loss', type=loss_args, metavar='str', default=None,
-                        help='loss function')
-    parser.add_argument('-op', '--optimizer', type=str, metavar='str', default='adagrad',
-                        help='optimizer algorithm')
-    parser.add_argument('-lr', '--learning_rate', type=float, metavar='float', default=0.01,
-                        help='learning rate')
-    parser.add_argument('-wd', '--weight_decay', type=float, metavar='float', default=0.0,
-                        help='weight decay')
+        conv2d_config = conv2d_args(args.conv2d_config)
+        hidden_config = hidden_args(args.hidden_config)
 
-    args = parser.parse_args()
-    return args
+        # cml arguments
+        initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
+        #
+        # vector space models
+        vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
+        #
+        # component
+        comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(
+            args.ctx, vsm_list)
+        comp.init(self.key, args.chunking, args.num_class, args.feature_windows, args.input_dropout,
+                  conv2d_config, hidden_config, initializer)
 
+        # data
+        reader, rargs = args.reader
+        trn_docs = reader(args.trn_path, self.key, rargs)
+        dev_docs = reader(args.dev_path, self.key, rargs)
 
-def evaluate_args():
-    parser = argparse.ArgumentParser('Train: part-of-speech tagging')
+        # train
+        comp.train(trn_docs, dev_docs, args.model_path, args.trn_batch, args.dev_batch,
+                   args.epoch, args.loss, args.optimizer, args.learning_rate, args.weight_decay)
+        logging.info('# of classes: %d' % len(comp.label_map))
 
-    # data
-    parser.add_argument('-d', '--dev_path', type=str, metavar='filepath',
-                        help='path to the evaluation data (input)')
-    parser.add_argument('-m', '--model_path', type=str, metavar='filepath', default=None,
-                        help='path to the model data (output)')
-    parser.add_argument('-r', '--reader', type=reader_args, metavar='(tsv|json)(;\\d:\\d)*',
-                        default=(tsv_reader, SimpleNamespace(tok=0, tag=1)),
-                        help='reader configuration')
+    def eval(self):
+        # positional arguments:
+        # These are required arguments. Positional arguments don't use hyphen or dash prefix.
+        parser = argparse.ArgumentParser(description='Evaluation: Part-of-speech tagging',
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-seq', '--sequence', type=bool, metavar='boolean', default=False,
-                        help='if set, use sequence mode')
+        parser.add_argument('dev_path', type=str, metavar='DEV_PATH',
+                            help='path to the development data (input)')
+        #   Lexicon
+        parser.add_argument('word_vsm', type=str, metavar='WORD_VSM_PATH',
+                            help='path to the vector space model for word embeddings')
 
-    # lexicon
-    parser.add_argument('-wv', '--word_vsm', type=str, metavar='filepath',
-                        help='vector space model for word embeddings')
+        # Optional arguments:
+        # These are optional arguments.
+        #
+        #   Generic
+        parser.add_argument('-m', '--model_path', type=str, metavar='MODEL_PATH', default=None,
+                            help='path to the model data (output)')
+        parser.add_argument('-r', '--reader', type=reader_args, metavar='READER',
+                            default="tsv:0,1",
+                            help='reader configuration. format: (tsv|json)(:\\d,\\d)*')
+        parser.add_argument('-seq', '--sequence', type=bool, metavar='BOOLEAN', default=False,
+                            help='if set, use sequence mode')
+        parser.add_argument('-db', '--dev_batch', type=int, metavar='DEV_BATCH', default=4096,
+                              help='batch size for evaluation')
 
-    # evaluation
-    parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\\d', default=None,
-                        help='device context')
-    parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=4096,
-                        help='batch size for evaluation')
+        args = parser.parse_args(sys.argv[3:])
 
-    args = parser.parse_args()
-    return args
+        # vector space models
+        vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
 
+        # component
+        comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(
+            args.ctx, vsm_list)
+        comp.load(args.model_path)
 
-def train():
-    # cml arguments
-    args = train_args()
-    if args.ctx is None: args.ctx = mx.cpu()
-    if args.loss is None: args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
-    initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
+        # data
+        reader, rargs = args.reader
+        dev_docs = reader(args.dev_path, self.key, rargs)
 
-    # vector space models
-    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
-
-    # component
-    comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
-    comp.init(args.key, args.chunking, args.num_class, args.feature_windows, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
-
-    # data
-    reader, rargs = args.reader
-    trn_docs = reader(args.trn_path, args.key, rargs)
-    dev_docs = reader(args.dev_path, args.key, rargs)
-
-    # train
-    comp.train(trn_docs, dev_docs, args.model_path, args.trn_batch, args.dev_batch, args.epoch, args.loss, args.optimizer, args.learning_rate, args.weight_decay)
-    print('# of classes: %d' % len(comp.label_map))
-
-
-def evaluate():
-    # cml arguments
-    args = train_args()
-    if args.ctx is None: args.ctx = mx.cpu()
-
-    # vector space models
-    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
-
-    # component
-    comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
-    comp.load(args.model_path)
-
-    # data
-    reader, rargs = args.reader
-    dev_docs = reader(args.dev_path, comp.key, rargs)
-
-    # decode
-    states = comp.create_states(dev_docs)
-    e = comp._evaluate(states, args.dev_batch)
-    print(str(e))
-
-
-if __name__ == '__main__':
-    train()
-    evaluate()
-
-
+        # decode
+        states = comp.create_states(dev_docs)
+        e = comp._evaluate(states, args.dev_batch)
+        print(str(e))
