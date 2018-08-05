@@ -28,14 +28,21 @@ class ElitCli(object):
 
 commands:
     pos     part-of-speech tagger
+    ner     named entity recognition
 '''
         )
         parser.add_argument('command', help='command to run')
         args = parser.parse_args(sys.argv[1:2])
         # TODO
-        # print('Unrecognized command')
-        # parser.print_help()
-        # exit(1)
+        if args.command == 'pos':
+            from elit.pos import PosCli
+            PosCli()
+        elif args.command == 'ner':
+            pass
+        else:
+            print('Unrecognized command')
+            parser.print_help()
+            exit(1)
 
 
 if __name__ == '__main__':
