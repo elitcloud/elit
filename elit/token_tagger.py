@@ -14,21 +14,21 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import argparse
 import glob
-import json
 import pickle
 from types import SimpleNamespace
 from typing import Tuple, Optional, List, Union
 
+import argparse
 import mxnet as mx
 import numpy as np
 
 from elit.component import MXNetComponent, SequenceComponent, BatchComponent
 from elit.eval import Accuracy, F1
-from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, loss_args
+from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, \
+    loss_args
 from elit.state import BatchState, SequenceState, group_states
-from elit.structure import Document, Sentence, TOK
+from elit.structure import Document, TOK, Sentence
 from elit.util import BILOU, to_gold, to_out
 from elit.vsm import LabelMap, VectorSpaceModel, get_loc_embeddings, x_extract, X_ANY, FastText
 
@@ -422,7 +422,6 @@ class TokenSequenceTagger(TokenTagger, SequenceComponent):
         :return: the list of sequence or batch states corresponding to the input documents.
         """
         return group_states(documents, lambda d: TokenSequenceTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows, self.padout))
-
 
 # ======================================== Command-Line ========================================
 
