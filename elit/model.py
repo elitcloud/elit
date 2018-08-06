@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import re
 from types import SimpleNamespace
 from typing import Optional, Tuple, Union
 
@@ -25,8 +24,6 @@ __author__ = 'Jinho D. Choi'
 
 class FFNNModel(gluon.Block):
     def __init__(self,
-                 ctx: mx.Context,
-                 initializer: mx.init.Initializer,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
                  conv2d_config: Optional[Tuple[SimpleNamespace, ...]] = None,
@@ -47,7 +44,6 @@ class FFNNModel(gluon.Block):
         :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
         """
         super().__init__(**kwargs)
-        self.ctx = ctx
 
         # initialize
         self.input = SimpleNamespace(dropout=mx.gluon.nn.Dropout(input_config.dropout))
@@ -77,8 +73,6 @@ class FFNNModel(gluon.Block):
                 for i, h in enumerate(self.hidden, 1):
                     setattr(self, 'hidden_' + str(i), h.dense)
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
-
-        self.collect_params().initialize(initializer, ctx=self.ctx)
 
     def forward(self, x):
         def conv(c: SimpleNamespace):

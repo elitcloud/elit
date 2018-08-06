@@ -43,7 +43,7 @@ class Accuracy(EvalMetric):
         self.total = 0
 
     def __str__(self):
-        return 'ACC:%6.2f' % self.get()
+        return 'ACC:%6.2f (%d/%d)' % (self.get(), self.correct, self.total)
 
     @abc.abstractmethod
     def update(self, document: Document):
@@ -53,7 +53,7 @@ class Accuracy(EvalMetric):
         """
         :return: accuracy in percentage.
         """
-        return 100.0 * self.correct / self.total
+        return 100.0 * self.correct / self.total if self.total > 0 else 0
 
 
 class F1(EvalMetric):

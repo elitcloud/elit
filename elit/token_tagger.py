@@ -15,6 +15,7 @@
 # ========================================================================
 import abc
 import glob
+import json
 import pickle
 from types import SimpleNamespace
 from typing import Tuple, Optional, List, Union
@@ -26,7 +27,7 @@ import numpy as np
 from elit.component import MXNetComponent, SequenceComponent, BatchComponent
 from elit.eval import Accuracy, F1
 from elit.model import input_namespace, output_namespace, FFNNModel, conv2d_args, hidden_args, \
-    loss_args
+    loss_args, context_args
 from elit.state import BatchState, SequenceState, group_states
 from elit.structure import Document, TOK, Sentence
 from elit.util import BILOU, to_gold, to_out
@@ -249,7 +250,7 @@ class TokenTagger(MXNetComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Tuple[VectorSpaceModel, str]):
+                 vsm_list: List[Tuple[VectorSpaceModel, str]]):
         """
         :param ctx: a device context.
         :param vsm_list: a list of tuples (vector space model, key), where the key indicates the key to each sentence to retrieve embeddings for (e.g., TOK).
@@ -329,7 +330,8 @@ class TokenTagger(MXNetComponent):
         self.label_map = LabelMap()
         self.feature_windows = feature_windows
         self.padout = np.zeros(output_config.dim).astype('float32')
-        self.model = FFNNModel(self.ctx, initializer, input_config, output_config, conv2d_config, hidden_config, **kwargs)
+        self.model = FFNNModel(input_config, output_config, conv2d_config, hidden_config, **kwargs)
+        self.model.collect_params().initialize(initializer, ctx=self.ctx)
         print(self.__str__())
 
     # override
@@ -369,7 +371,7 @@ class TokenBatchTagger(TokenTagger, BatchComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Tuple[VectorSpaceModel, str]):
+                 vsm_list: List[Tuple[VectorSpaceModel, str]]):
         """
         :param ctx: a device context.
         :param vsm_list: a list of tuples (vector space model, key), where the key indicates the key to each sentence to retrieve embeddings for (e.g., TOK).
@@ -400,7 +402,7 @@ class TokenSequenceTagger(TokenTagger, SequenceComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Tuple[VectorSpaceModel, str]):
+                 vsm_list: List[Tuple[VectorSpaceModel, str]]):
         """
         :param ctx: a device context.
         :param vsm_list: a list of tuples (vector space model, key), where the key indicates the key to each sentence to retrieve embeddings for (e.g., TOK).
@@ -422,6 +424,7 @@ class TokenSequenceTagger(TokenTagger, SequenceComponent):
         :return: the list of sequence or batch states corresponding to the input documents.
         """
         return group_states(documents, lambda d: TokenSequenceTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows, self.padout))
+
 
 # ======================================== Command-Line ========================================
 
@@ -541,7 +544,7 @@ def train_args():
                         help='configuration for the hidden layer')
 
     # training
-    parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\\d', default=None,
+    parser.add_argument('-cx', '--ctx', type=context_args, metavar='[cg]\\d', default=mx.cpu(),
                         help='device context')
     parser.add_argument('-ep', '--epoch', type=int, metavar='int', default=50,
                         help='number of epochs')
@@ -582,7 +585,7 @@ def evaluate_args():
                         help='vector space model for word embeddings')
 
     # evaluation
-    parser.add_argument('-cx', '--ctx', type=str, metavar='[cg]\\d', default=None,
+    parser.add_argument('-cx', '--ctx', type=context_args, metavar='[cg]\\d', default=mx.cpu(),
                         help='device context')
     parser.add_argument('-db', '--dev_batch', type=int, metavar='int', default=4096,
                         help='batch size for evaluation')
@@ -594,12 +597,11 @@ def evaluate_args():
 def train():
     # cml arguments
     args = train_args()
-    if args.ctx is None: args.ctx = mx.cpu()
     if args.loss is None: args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
     initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
 
     # vector space models
-    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
+    vsm_list = [(FastText(args.word_vsm), TOK)]
 
     # component
     comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
@@ -621,7 +623,7 @@ def evaluate():
     if args.ctx is None: args.ctx = mx.cpu()
 
     # vector space models
-    vsm_list = tuple((FastText(args.word_vsm), TOK) for _ in range(1))
+    vsm_list = [(FastText(args.word_vsm), TOK)]
 
     # component
     comp = TokenSequenceTagger(args.ctx, vsm_list) if args.sequence else TokenBatchTagger(args.ctx, vsm_list)
