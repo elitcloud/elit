@@ -302,19 +302,13 @@ class BatchComponent(MXNetComponent):
         """
         if xs is None: xs = [x for state in states for x, y in state]
         batches = gluon.data.DataLoader(xs, batch_size=batch_size, shuffle=False)
+
+        outputs = [self.model(x_batch.as_in_context(self.ctx)) for x_batch in batches]
+        outputs = nd.concat(*outputs, dim=0)
         begin = 0
 
-        for x_batch in batches:
-            x_batch = x_batch.as_in_context(self.ctx)
-            outputs = self.model(x_batch).asnumpy()
-            o_begin = 0
-
-            for state in islice(states, begin, None):
-                o_begin = state.assign(outputs, o_begin)
-                begin += 1
-                if o_begin >= len(outputs): break
-
         for state in states:
+            begin = state.assign(outputs, begin)
             self.finalize(state)
 
     # override
@@ -331,7 +325,8 @@ class BatchComponent(MXNetComponent):
         if xs is None: xs = [x for state in states for x, y in state]
         self._decode(states, batch_size, xs)
         metric = self.eval_metric()
-        for state in states: metric.update(state.document)
+        for state in states:
+            metric.update(state.document)
         return metric
 
     # override

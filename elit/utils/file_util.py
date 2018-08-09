@@ -15,37 +15,48 @@
 # ========================================================================
 import glob
 import json
-from typing import List
+from typing import List, Dict
 
 from elit.structure import Sentence, TOK, Document
 from elit.util import to_gold
 
-__author__ = "Gary Lai"
+__author__ = "Jinho D. Choi, Gary Lai"
 
-def tsv_reader(filepath, key, args):
+
+def tsv_reader(filepath: str, cols: Dict[str, int], key: str = None) -> List[Document]:
     documents = []
     wc = sc = 0
 
+    if TOK not in cols:
+        raise ValueError('The column index of "%s" must be specified' % TOK)
+
+    if key is not None:
+        if key in cols:
+            cols = cols.copy()
+            cols[to_gold(key)] = cols.pop(key)
+        else:
+            raise ValueError('Key mismatch: %s is not a key in %s' % (key, str(cols)))
+
     for filename in glob.glob(filepath):
-        sentences, tokens, tags = [], [], []
         fin = open(filename)
+        sentences = []
+        fields = {k: [] for k in cols.keys()}
 
         for line in fin:
-            if line.startswith('#'):
-                continue
+            if line.startswith('#'): continue
             l = line.split()
 
             if l:
-                tokens.append(l[args.tok])
-                tags.append(l[args.tag])
-            elif len(tokens) > 0:
-                wc += len(tokens)
-                sentences.append(Sentence({TOK: tokens, to_gold(key): tags}))
-                tokens, tags = [], []
+                for k, v in fields.items():
+                    v.append(l[cols[k]])
+            elif len(fields[TOK]) > 0:
+                wc += len(fields[TOK])
+                sentences.append(Sentence(fields))
+                fields = {k: [] for k in cols.keys()}
 
-        if len(tokens) > 0:
-            wc += len(tokens)
-            sentences.append(Sentence({TOK: tokens, to_gold(key): tags}))
+        if len(fields[TOK]) > 0:
+            wc += len(fields[TOK])
+            sentences.append(Sentence(fields))
 
         fin.close()
         sc += len(sentences)
@@ -54,7 +65,8 @@ def tsv_reader(filepath, key, args):
     print('Reading: dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
     return documents
 
-def json_reader(filepath) -> List[Document]:
+
+def json_reader(filepath: str) -> List[Document]:
     # TODO: to be filled
     documents = []
     dc = wc = sc = 0

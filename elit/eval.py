@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import Any, Tuple
+from typing import Any
 
 from elit.structure import Document
 
@@ -86,5 +86,3 @@ class F1(EvalMetric):
         :return: (F1 score, prediction, recall)
         """
         return self.f1()
-
-

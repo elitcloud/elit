@@ -15,7 +15,7 @@
 # ========================================================================
 import abc
 import bisect
-from typing import Tuple, Optional, List, Callable
+from typing import Tuple, Optional, List, Callable, Type
 
 import numpy as np
 
@@ -143,7 +143,7 @@ class SequenceState(NLPState):
         pass
 
 
-def group_states(docs: List[Document], create_state: Callable[[Document], List[NLPState]], maxlen: int = -1) -> List[NLPState]:
+def group_states(docs: List[Document], create_state: Callable[[Document], Type[SequenceState]], maxlen: int = -1) -> List[Type[SequenceState]]:
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.

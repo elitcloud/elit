@@ -22,9 +22,9 @@ import mxnet as mx
 
 from elit.structure import TOK
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
-from elit.utils.args import context_args, loss_args, feature_windows_args, reader_args, conv2d_args, \
-    hidden_args
-from elit.utils.file import tsv_reader
+from elit.utils.cli_util import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
+    args_hidden
+from elit.utils.file_util import tsv_reader
 from elit.vsm import FastText
 
 __author__ = "Gary Lai"
@@ -78,7 +78,7 @@ commands:
         #   Generic
         parser.add_argument('-m', '--model_path', type=str, metavar='MODEL_PATH', default=None,
                             help='path to the model data (output)')
-        parser.add_argument('-r', '--reader', type=reader_args, metavar='READER',
+        parser.add_argument('-r', '--reader', type=args_reader, metavar='READER',
                             default="tsv:0,1",
                             help='reader configuration. format: (tsv|json)(:\\d,\\d)*')
         parser.add_argument('-seq', '--sequence', type=bool, metavar='BOOLEAN', default=False,
@@ -111,15 +111,15 @@ commands:
                             metavar='HIDDEN_CONFIG', nargs='*', default=None,
                             help='configuration for the hidden layer')
         training = parser.add_argument_group("configuration for the training")
-        training.add_argument('-cx', '--ctx', type=context_args, metavar='CTX', default="c0",
-                            help='device context: ([cg])(\d*) ex: c0')
+        training.add_argument('-cx', '--ctx', type=args_context, metavar='CTX', default="c0",
+                              help='device context: ([cg])(\d*) ex: c0')
         training.add_argument('-ep', '--epoch', type=int, metavar='EPOCH', default=50,
                             help='number of epochs')
         training.add_argument('-tb', '--trn_batch', type=int, metavar='TRN_BATCH', default=64,
                             help='batch size for training')
         training.add_argument('-db', '--dev_batch', type=int, metavar='DEV_BATCH', default=4096,
                             help='batch size for evaluation')
-        training.add_argument('-lo', '--loss', type=loss_args, metavar='LOSS',
+        training.add_argument('-lo', '--loss', type=args_loss, metavar='LOSS',
                               default='softmaxcrossentropyloss', help='loss function')
         training.add_argument('-op', '--optimizer', type=str, metavar='OPTIMIZER', default='adagrad',
                             help='optimizer algorithm')
@@ -131,7 +131,7 @@ commands:
         args = parser.parse_args(sys.argv[3:])
 
         conv2d_config = conv2d_args(args.conv2d_config)
-        hidden_config = hidden_args(args.hidden_config)
+        hidden_config = args_hidden(args.hidden_config)
 
         # cml arguments
         initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
@@ -173,7 +173,7 @@ commands:
         #   Generic
         parser.add_argument('-m', '--model_path', type=str, metavar='MODEL_PATH', default=None,
                             help='path to the model data (output)')
-        parser.add_argument('-r', '--reader', type=reader_args, metavar='READER',
+        parser.add_argument('-r', '--reader', type=args_reader, metavar='READER',
                             default="tsv:0,1",
                             help='reader configuration. format: (tsv|json)(:\\d,\\d)*')
         parser.add_argument('-seq', '--sequence', type=bool, metavar='BOOLEAN', default=False,
