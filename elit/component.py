@@ -16,13 +16,13 @@
 import abc
 import random
 import time
-from itertools import islice
-from typing import List
-
+from typing import List, Union
 
 import mxnet as mx
 import numpy as np
 from mxnet import nd, gluon, autograd
+from mxnet.gluon.data import DataLoader
+from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
 from elit.state import NLPState, BatchState, SequenceState
@@ -119,7 +119,7 @@ class MXNetComponent(NLPComponent):
     Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric, _decode, _evaluate, _train.
     """
 
-    def __init__(self, ctx: mx.Context):
+    def __init__(self, ctx: Union[mx.Context, List[mx.Context]]):
         """
         :param ctx: a device context.
         """
@@ -160,6 +160,61 @@ class MXNetComponent(NLPComponent):
         """
         pass
 
+    def _decode_single_device(self,
+                              states: List[NLPState],
+                              batches: DataLoader,
+                              sequence: bool = False) -> List[NDArray]:
+        """
+        Decodes with a single device; in other words, self.ctx is one device.
+        :param states: list of states.
+        :param batches: decoding batches extracted from the states.
+        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
+        :return: the list of output scores (batch mode only).
+        """
+        output_list = []
+        begin = 0
+
+        for x_batch in batches:
+            x_batch = x_batch.as_in_context(self.ctx)
+            outputs = self.model(x_batch)
+
+            if sequence:
+                for i, output in enumerate(outputs): states[begin + i].process(output.asnumpy())
+                begin += len(outputs)
+            else:
+                output_list.append(outputs)
+
+        return output_list
+
+    def _decode_multiple_devices(self,
+                                 states: List[NLPState],
+                                 batches: DataLoader,
+                                 sequence: bool = False) -> List[NDArray]:
+        """
+        Decodes with multiple devices; in other words, self.ctx is a list of devices.
+        :param states: list of states.
+        :param batches: decoding batches extracted from the states.
+        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
+        :return: the list of output scores (batch mode only).
+        """
+        output_list = []
+        begin = 0
+
+        for x_batch in batches:
+            ctx = self.ctx[:x_batch.shape[0]] if x_batch.shape[0] < len(self.ctx) else self.ctx
+            x_splits = gluon.utils.split_and_load(x_batch, ctx, even_split=False)
+            output_splits = [self.model(x_split) for x_split in x_splits]
+
+            if sequence:
+                for output_split in output_splits:
+                    for i, output in enumerate(output_split): states[begin + i].process(output.asnumpy())
+                    begin += len(output_split)
+            else:
+                output_list.extend(output_splits)
+
+        nd.waitall()
+        return output_list
+
     @abc.abstractmethod
     def _evaluate(self,
                   states: List[NLPState],
@@ -192,12 +247,93 @@ class MXNetComponent(NLPComponent):
         """
         pass
 
+    def _train_single_device(self,
+                             states: List[NLPState],
+                             batches: DataLoader,
+                             loss: gluon.loss.Loss,
+                             trainer: gluon.Trainer,
+                             sequence: bool = False) -> int:
+        """
+        Trains with a single device; in other words, self.ctx is one device.
+        :param states: list of states.
+        :param batches: decoding batches extracted from the states.
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
+        :return: the number of correctly classified instances.
+        """
+        correct = 0
+        begin = 0
+
+        for x_batch, y_batch in batches:
+            x_batch = x_batch.as_in_context(self.ctx)
+            y_batch = y_batch.as_in_context(self.ctx)
+
+            with autograd.record():
+                outputs = self.model(x_batch)
+                l = loss(outputs, y_batch)
+                l.backward()
+
+            trainer.step(x_batch.shape[0])
+            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
+
+            if sequence:
+                for i, output in enumerate(outputs): states[begin + i].process(output.asnumpy())
+                begin += len(outputs)
+
+        return correct
+
+    def _train_multiple_devices(self,
+                                states: List[NLPState],
+                                batches: DataLoader,
+                                loss: gluon.loss.Loss,
+                                trainer: gluon.Trainer,
+                                sequence: bool = False) -> int:
+        """
+        Trains with multiple devices; in other words, self.ctx is a list of devices.
+        :param states: list of states.
+        :param batches: decoding batches extracted from the states.
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
+        :return: the number of correctly classified instances.
+        """
+        correct = 0
+        begin = 0
+
+        for x_batch, y_batch in batches:
+            ctx = self.ctx[:x_batch.shape[0]] if x_batch.shape[0] < len(self.ctx) else self.ctx
+            x_splits = gluon.utils.split_and_load(x_batch, ctx, even_split=False)
+            y_splits = gluon.utils.split_and_load(y_batch, ctx, even_split=False)
+
+            with autograd.record():
+                output_splits = [self.model(x_split) for x_split in x_splits]
+                losses = [loss(output_split, y_split) for output_split, y_split in zip(output_splits, y_splits)]
+                for l in losses: l.backward()
+
+            trainer.step(x_batch.shape[0])
+
+            for output_split, y_split in zip(output_splits, y_splits):
+                correct += len([1 for o, y in zip(mx.ndarray.argmax(output_split, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+
+                if sequence:
+                    for i, output in enumerate(output_split): states[begin + i].process(output.asnumpy())
+                    begin += len(output_split)
+
+        nd.waitall()
+        return correct
+
     # override
     def decode(self, docs: List[Document], batch_size: int = 2048):
         """
         :param docs: a list of input documents.
         :param batch_size: the batch size.
         """
+        log = ('* Training',
+               '- context(s): %s' % str(self.ctx),
+               '- batch size: %d' % batch_size)
+        print('\n'.join(log))
+
         states = self.create_states(docs)
         self._decode(states, batch_size)
 
@@ -245,6 +381,7 @@ class MXNetComponent(NLPComponent):
 
         # train
         log = ('* Training',
+               '- context(s)   : %s' % str(self.ctx),
                '- train batch  : %d' % trn_batch,
                '- epoch        : %d' % epoch,
                '- loss         : %s' % str(loss),
@@ -276,7 +413,7 @@ class BatchComponent(MXNetComponent):
     Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric.
     """
 
-    def __init__(self, ctx: mx.Context):
+    def __init__(self, ctx: Union[mx.Context, List[mx.Context]]):
         """
         :param ctx: a device context.
         """
@@ -301,9 +438,15 @@ class BatchComponent(MXNetComponent):
         :param xs: a list of feature vectors extracted from the input states.
         """
         if xs is None: xs = [x for state in states for x, y in state]
-        batches = gluon.data.DataLoader(xs, batch_size=batch_size, shuffle=False)
 
-        outputs = [self.model(x_batch.as_in_context(self.ctx)) for x_batch in batches]
+        if isinstance(self.ctx, list):
+            device = self._decode_multiple_devices
+            batch_size *= len(self.ctx)
+        else:
+            device = self._decode_single_device
+
+        batches = gluon.data.DataLoader(xs, batch_size=batch_size, shuffle=False)
+        outputs = device(states, batches, False)
         outputs = nd.concat(*outputs, dim=0)
         begin = 0
 
@@ -346,21 +489,14 @@ class BatchComponent(MXNetComponent):
         :param ys: a list of gold-standard class IDs corresponding to the feature vectors.
         :return: the number of correctly classified instances.
         """
+        if isinstance(self.ctx, list):
+            device = self._train_multiple_devices
+            batch_size *= len(self.ctx)
+        else:
+            device = self._train_single_device
+
         batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size, shuffle=True)
-        correct = 0
-
-        for x_batch, y_batch in batches:
-            x_batch = x_batch.as_in_context(self.ctx)
-            y_batch = y_batch.as_in_context(self.ctx)
-
-            with autograd.record():
-                outputs = self.model(x_batch)
-                l = loss(outputs, y_batch)
-                l.backward()
-
-            trainer.step(x_batch.shape[0])
-            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
-
+        correct = device(states, batches, loss, trainer, False)
         return 100 * correct / len(ys)
 
 
@@ -371,7 +507,7 @@ class SequenceComponent(MXNetComponent):
     Abstract methods to be implemented: init, load, save, create_states, finalize, eval_metric.
     """
 
-    def __init__(self, ctx: mx.Context):
+    def __init__(self, ctx: Union[mx.Context, List[mx.Context]]):
         """
         :param ctx: a device context.
         """
@@ -397,20 +533,16 @@ class SequenceComponent(MXNetComponent):
         """
         tmp = list(states)
 
+        if isinstance(self.ctx, list):
+            device = self._decode_multiple_devices
+            batch_size *= len(self.ctx)
+        else:
+            device = self._decode_single_device
+
         while tmp:
             xs = nd.array([state.x for state in tmp])
             batches = gluon.data.DataLoader(xs, batch_size=batch_size, shuffle=False)
-            begin = 0
-
-            for x_batch in batches:
-                x_batch = x_batch.as_in_context(self.ctx)
-                outputs = self.model(x_batch).asnumpy()
-
-                for i, output in enumerate(outputs):
-                    states[begin + i].process(output)
-
-                begin += len(outputs)
-
+            device(states, batches, True)
             tmp = [state for state in tmp if state.has_next]
 
         for state in states:
@@ -438,12 +570,12 @@ class SequenceComponent(MXNetComponent):
 
     # override
     def _train(self,
-               states: List[BatchState],
+               states: List[SequenceState],
                batch_size: int,
                loss: gluon.loss.Loss,
                trainer: gluon.Trainer,
                xs: List[np.ndarray] = None,
-               ys: List[np.ndarray] = None) -> int:
+               ys: List[np.ndarray] = None) -> float:
         """
         :param states: a list of states including documents for training.
         :param batch_size: the batch size.
@@ -455,6 +587,13 @@ class SequenceComponent(MXNetComponent):
         """
         tmp = list(states)
         correct = 0
+        total = 0
+
+        if isinstance(self.ctx, list):
+            device = self._train_multiple_devices
+            batch_size *= len(self.ctx)
+        else:
+            device = self._train_single_device
 
         while tmp:
             random.shuffle(tmp)
@@ -462,23 +601,9 @@ class SequenceComponent(MXNetComponent):
             ys = [state.y for state in tmp]
 
             batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size)
-            begin = 0
-
-            for x_batch, y_batch in batches:
-                x_batch = x_batch.as_in_context(self.ctx)
-                y_batch = y_batch.as_in_context(self.ctx)
-
-                with autograd.record():
-                    outputs = self.model(x_batch)
-                    l = loss(outputs, y_batch)
-                    l.backward()
-
-                trainer.step(x_batch.shape[0])
-                correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
-                for i, output in enumerate(outputs): states[begin + i].process(output.asnumpy())
-                begin += len(outputs)
-
+            correct += device(states, batches, loss, trainer, True)
+            total += len(ys)
             tmp = [state for state in tmp if state.has_next]
 
         for state in states: state.init()
-        return correct
+        return 100 * correct / total

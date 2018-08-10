@@ -85,3 +85,11 @@ def json_reader(filepath: str) -> List[Document]:
             dc += len(documents)
     print('Reading: dc = %d, sc = %d, wc = %d' % (dc, sc, wc))
     return documents
+
+
+def pkl(filepath):
+    return filepath + '.pkl'
+
+
+def gln(filepath):
+    return filepath + '.gln'

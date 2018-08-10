@@ -23,16 +23,17 @@ from typing import Tuple, Optional, List, Union
 
 import mxnet as mx
 import numpy as np
+from elit.utils.file_util import pkl, gln
 from mxnet.ndarray import NDArray
 
 from elit.component import MXNetComponent, SequenceComponent, BatchComponent
 from elit.eval import Accuracy, F1
 from elit.model import FFNNModel
 from elit.state import BatchState, SequenceState, group_states, NLPState
-from elit.structure import Document, TOK
+from elit.structure import Document
 from elit.util import BILOU, to_gold, to_out
 from elit.utils.cli_util import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, namespace_input, namespace_output
-from elit.vsm import LabelMap, get_loc_embeddings, x_extract, X_ANY, FastText
+from elit.vsm import LabelMap, get_loc_embeddings, x_extract, X_ANY
 
 __author__ = 'Jinho D. Choi'
 
@@ -250,6 +251,10 @@ class TokenTagger(MXNetComponent):
         self.feature_windows = None
         self.label_embedding = None   # sequence mode only
         self.padout = None            # sequence mode only
+        self.input_config = None
+        self.output_config = None
+        self.conv2d_config = None
+        self.hidden_config = None
 
     @abc.abstractmethod
     def create_states(self, documents: List[Document]) -> List[Union[TokenTaggerBatchState, TokenTaggerSequenceState]]:
@@ -319,7 +324,12 @@ class TokenTagger(MXNetComponent):
         self.feature_windows = feature_windows
         self.label_embedding = label_embedding
         self.padout = np.zeros(output_config.dim).astype('float32')
-        self.model = FFNNModel(input_config, output_config, conv2d_config, hidden_config, **kwargs)
+        self.input_config = input_config
+        self.output_config = output_config
+        self.conv2d_config = conv2d_config
+        self.hidden_config = hidden_config
+
+        self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().initialize(initializer, ctx=self.ctx)
         print(self.__str__())
 
@@ -329,7 +339,7 @@ class TokenTagger(MXNetComponent):
         :param model_path: the path to a pre-trained model to be loaded.
         :type model_path: str
         """
-        with open(model_path, 'rb') as fin:
+        with open(pkl(model_path), 'rb') as fin:
             self.sequence = pickle.load(fin)
             self.chunking = pickle.load(fin)
             self.key = pickle.load(fin)
@@ -337,7 +347,13 @@ class TokenTagger(MXNetComponent):
             self.feature_windows = pickle.load(fin)
             self.label_embedding = pickle.load(fin)
             self.padout = pickle.load(fin)
-            self.model = pickle.load(fin)
+            self.input_config = pickle.load(fin)
+            self.output_config = pickle.load(fin)
+            self.conv2d_config = pickle.load(fin)
+            self.hidden_config = pickle.load(fin)
+
+        self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
+        self.model.collect_params().load(gln(model_path), self.ctx)
         print(self.__str__())
 
     # override
@@ -346,7 +362,7 @@ class TokenTagger(MXNetComponent):
         :param model_path: the filepath where the model is to be saved.
         :type model_path: str
         """
-        with open(model_path, 'wb') as fout:
+        with open(pkl(model_path), 'wb') as fout:
             pickle.dump(self.sequence, fout)
             pickle.dump(self.chunking, fout)
             pickle.dump(self.key, fout)
@@ -354,7 +370,12 @@ class TokenTagger(MXNetComponent):
             pickle.dump(self.feature_windows, fout)
             pickle.dump(self.label_embedding, fout)
             pickle.dump(self.padout, fout)
-            pickle.dump(self.model, fout)
+            pickle.dump(self.input_config, fout)
+            pickle.dump(self.output_config, fout)
+            pickle.dump(self.conv2d_config, fout)
+            pickle.dump(self.hidden_config, fout)
+
+        self.model.collect_params().save(gln(model_path))
 
 
 class TokenBatchTagger(TokenTagger, BatchComponent):
@@ -363,7 +384,7 @@ class TokenBatchTagger(TokenTagger, BatchComponent):
     """
 
     def __init__(self,
-                 ctx: mx.Context,
+                 ctx: Union[mx.Context, List[mx.Context]],
                  vsm_list: Tuple[SimpleNamespace, ...]):
         """
         :param ctx: a device context.
@@ -393,7 +414,7 @@ class TokenSequenceTagger(TokenTagger, SequenceComponent):
     """
 
     def __init__(self,
-                 ctx: mx.Context,
+                 ctx: Union[mx.Context, List[mx.Context]],
                  vsm_list: Tuple[SimpleNamespace, ...]):
         """
         :param ctx: a device context.
@@ -583,7 +604,7 @@ commands:
         if isinstance(args.context, list) and len(args.context) == 1: args.context = args.context[0]
 
         # component
-        with open(args.model_path, 'rb') as fin: sequence = pickle.load(fin)
+        with open(pkl(args.model_path), 'rb') as fin: sequence = pickle.load(fin)
         factory = TokenSequenceTagger if sequence else TokenBatchTagger
         comp = factory(args.context, args.vsm_list)
         comp.load(args.model_path)
