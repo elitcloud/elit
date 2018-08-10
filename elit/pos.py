@@ -197,5 +197,5 @@ commands:
 
         # decode
         states = comp.create_states(dev_docs)
-        e = comp._evaluate(states, args.dev_batch)
+        e = comp.evaluate_states(states, args.dev_batch)
         print(str(e))

@@ -27,7 +27,7 @@ __author__ = 'Jinho D. Choi'
 
 # ======================================== State ========================================
 
-class DocumentClassificationBatchState(BatchState):
+class DocumentClassifierState(BatchState):
     """
     DocumentClassificationBatchState labels input document with a certain class in batch mode.
     """

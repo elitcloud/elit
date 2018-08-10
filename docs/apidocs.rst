@@ -1,6 +1,30 @@
 Documentation
 =================
 
+Component
+---------
+
+.. automodule:: elit.component
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+State
+---------
+
+.. automodule:: elit.state
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Model
+---------
+
+.. automodule:: elit.model
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 SDK
 ---------
 
@@ -25,29 +49,6 @@ Structure
     :undoc-members:
     :show-inheritance:
 
-Component
----------
-
-.. automodule:: elit.component
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-State
----------
-
-.. automodule:: elit.state
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-Model
----------
-
-.. automodule:: elit.model
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 Util
 ---------

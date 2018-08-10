@@ -23,6 +23,8 @@ from typing import Tuple, Optional, List, Union
 
 import mxnet as mx
 import numpy as np
+import time
+
 from elit.utils.file_util import pkl, gln
 from mxnet.ndarray import NDArray
 
@@ -614,8 +616,11 @@ commands:
 
         # decode
         states = comp.create_states(dev_docs)
-        e = comp._evaluate(states, args.dev_batch)
+        st = time.time()
+        e = comp.evaluate_states(states, args.dev_batch)
+        et = time.time()
         print(str(e))
+        print('Time: %d' % (et-st))
 
 
 if __name__ == '__main__':
