@@ -18,23 +18,22 @@ import argparse
 import logging
 import pickle
 import sys
+import time
 from types import SimpleNamespace
 from typing import Tuple, Optional, List, Union
 
 import mxnet as mx
 import numpy as np
-import time
-
-from elit.utils.file_util import pkl, gln
 from mxnet.ndarray import NDArray
 
-from elit.component import MXNetComponent, SequenceComponent, BatchComponent
+from demo.tmp import BatchState, SequenceState, BatchComponent, SequenceComponent
 from elit.eval import Accuracy, F1
 from elit.model import FFNNModel
-from elit.state import BatchState, SequenceState, group_states, NLPState
+from elit.state import NLPState
 from elit.structure import Document
 from elit.util import BILOU, to_gold, to_out
 from elit.utils.cli_util import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, namespace_input, namespace_output
+from elit.utils.io_util import pkl, gln, group_states
 from elit.vsm import LabelMap, get_loc_embeddings, x_extract, X_ANY
 
 __author__ = 'Jinho D. Choi'
@@ -230,7 +229,7 @@ class ChunkF1(F1):
 
 # ======================================== Component ========================================
 
-class TokenTagger(MXNetComponent):
+class TokenTagger(BatchComponent):
     """
     TokenBatchTagger provides an abstract class to implement a tagger that predicts a tag for every token.
     """
@@ -452,8 +451,8 @@ class TokenTaggerCLI:
     elit tagger <command> [<args>]
 
 commands:
-    train  train a model (gold labels required)
-    eval   evaluate a pre-trained model (gold labels required) 
+       train: train a model (gold labels required)
+    evaluate: evaluate a pre-trained model (gold labels required) 
 '''
         parser = argparse.ArgumentParser(usage=usage, description='Token Tagger')
         parser.add_argument('command', help='command to run')
@@ -568,7 +567,7 @@ commands:
         print('# of classes: %d' % len(comp.label_map))
 
     @classmethod
-    def eval(cls):
+    def evaluate(cls):
         # create a arg-parser
         parser = argparse.ArgumentParser(description='Evaluate the token tagger',
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -617,7 +616,7 @@ commands:
         # decode
         states = comp.create_states(dev_docs)
         st = time.time()
-        e = comp.evaluate_states(states, args.dev_batch)
+        e = comp._evaluate(states, args.dev_batch)
         et = time.time()
         print(str(e))
         print('Time: %d' % (et-st))

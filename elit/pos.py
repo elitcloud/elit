@@ -24,7 +24,7 @@ from elit.structure import TOK
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
 from elit.utils.cli_util import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
     args_hidden
-from elit.utils.file_util import tsv_reader
+from elit.utils.io_util import tsv_reader
 from elit.vsm import FastText
 
 __author__ = "Gary Lai"
@@ -197,5 +197,5 @@ commands:
 
         # decode
         states = comp.create_states(dev_docs)
-        e = comp.evaluate_states(states, args.dev_batch)
+        e = comp._evaluate(states, args.dev_batch)
         print(str(e))

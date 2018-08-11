@@ -17,7 +17,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from elit.state import BatchState
+from demo.tmp import BatchState
 from elit.structure import Document
 from elit.util import to_gold, to_out
 from elit.vsm import LabelMap, VectorSpaceModel

@@ -14,10 +14,12 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import bisect
-from typing import Tuple, Optional, List, Callable, Type
+import inspect
+from itertools import islice
+from typing import Optional, Tuple, Sequence, Union
 
 import numpy as np
+from mxnet.ndarray import NDArray
 
 from elit.structure import Document
 
@@ -26,167 +28,102 @@ __author__ = 'Jinho D. Choi'
 
 class NLPState(abc.ABC):
     """
-    NLPState provides an abstract class to define a decoding strategy.
-    Abstract methods to be implemented: init, process, has_next, x, y.
+    :class:`NLPState` is an abstract class that takes a document and
+    generates states to make predictions for NLP tasks defined in subclasses.
+
+    Abstract methods to be implemented:
+      - :meth:`NLPState.init`
+      - :meth:`NLPState.process`
+      - :meth:`NLPState.has_next`
+      - :meth:`NLPState.x`
+      - :meth:`NLPState.y`
     """
 
     def __init__(self, document: Document, key: str):
         """
-        :param document: an input document.
+        :param document: the input document.
         :param key: the key to the input document where the predicted labels are to be saved.
         """
         self.document = document
         self.key = key
 
-    @abc.abstractmethod
-    def init(self, **kwargs):
-        """
-        Sets to the initial state.
-        :param kwargs: custom arguments.
-        """
-        pass
-
-    @abc.abstractmethod
-    def process(self, **kwargs):
-        """
-        Applies any custom arguments to the current state if available, then processes to the next state.
-        :param kwargs: custom arguments
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def has_next(self) -> bool:
-        """
-        :return: True if there exists a next state to be processed; otherwise, False.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def x(self) -> np.ndarray:
-        """
-        :return: the feature vector (or matrix) extracted from the current state.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def y(self) -> Optional[int]:
-        """
-        :return: the class ID of the gold-standard label for the current state if available; otherwise None.
-        """
-        pass
-
-
-class BatchState(NLPState):
-    """
-    BatchState provides an abstract class to define a decoding strategy in batch mode.
-    Batch mode assumes that predictions made by earlier states do not affect predictions made by later states.
-    Thus, all predictions can be made in batch where each prediction is independent from one another.
-    BatchState is iterable (see self.__iter__() and self.__next__()).
-    Abstract methods to be implemented: init, process, has_next, x, y, assign.
-    """
-
-    def __init__(self, document: Document, key: str):
-        """
-        :param document: an input document.
-        :param key: the key to the input document where the predicted labels are to be saved.
-        """
-        super().__init__(document, key)
-
-    def __iter__(self) -> 'BatchState':
+    def __iter__(self) -> 'NLPState':
         self.init()
         return self
 
     def __next__(self) -> Tuple[np.ndarray, Optional[int]]:
-        """
-        :return: self.x, self.y
-        """
-        if not self.has_next: raise StopIteration
+        if not self.has_next(): raise StopIteration
         x, y = self.x, self.y
         self.process()
         return x, y
 
     @abc.abstractmethod
-    def assign(self, output: np.ndarray, begin: int = 0) -> int:
+    def init(self, **kwargs):
         """
-        Assigns the predicted output in batch to the input document.
-        :param output: a matrix where each row contains prediction scores of the corresponding state.
-        :param begin: the row index of the output matrix corresponding to the initial state.
-        :return: the row index of the output matrix to be assigned by the next document.
-        """
-        pass
+        :param kwargs: custom parameters.
 
-
-class SequenceState(NLPState):
-    """
-    SequenceState provides an abstract class to define a decoding strategy in sequence mode.
-    Sequence mode assumes that predictions made by earlier states affect predictions made by later states.
-    Thus, predictions need to be made in sequence where earlier predictions get passed onto later states.
-    Abstract methods to be implemented: init, process, has_next, x, y.
-    """
-
-    def __init__(self, document: Document, key: str):
+        Abstract method to initialize the state of the input document.
         """
-        :param document: an input document
-        :param key: the key to the input document where the predicted labels are to be saved.
-        """
-        super().__init__(document, key)
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def process(self, output: np.ndarray):
+    def process(self, output, **kwargs):
         """
-        Applies the predicted output to the current state, then processes to the next state.
-        :param output: the predicted output of the current state.
+        :param output: the prediction output of the current state.
+        :param kwargs: custom parameters.
+
+        Abstract method to apply the prediction output and custom parameters to the current state, then process onto the next state.
         """
-        pass
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @abc.abstractmethod
+    def has_next(self) -> bool:
+        """
+        :return: ``True`` if there exists the next state to be processed; otherwise, ``False``.
+
+        Abstract method.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @property
+    def x(self) -> np.ndarray:
+        """
+        :return: the feature vector (or matrix) extracted from the current state.
+        :rtype: numpy.ndarray
+
+        Abstract method.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @property
+    @abc.abstractmethod
+    def y(self) -> Optional[int]:
+        """
+        :return: the class ID of the gold label for the current state if available; otherwise ``None``.
+        :rtype: int or None
+
+        Abstract method.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
 
-def group_states(docs: List[Document], create_state: Callable[[Document], Type[SequenceState]], maxlen: int = -1) -> List[Type[SequenceState]]:
+def process_outputs(states: Sequence[NLPState], outputs: Union[NDArray, np.ndarray], state_idx) -> int:
     """
-    Groups sentences into documents such that each document consists of multiple sentences and the total number of words
-    across all sentences within a document is close to the specified maximum length.
-    :param docs: a list of documents.
-    :param create_state: a function that takes a document and returns a state.
-    :param maxlen: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
-    :return: list of states, where each state roughly consists of the max_len number of words.
+    :param states: the sequence of input states.
+    :param outputs: the 2D matrix where each row contains the prediction scores of the corresponding state.
+    :param state_idx: the index of the state in the sequence to begin the process with.
+    :return: the index of the state to be processed next.
+
+    Processes through the states and assigns the outputs accordingly.
     """
+    i = 0
 
-    def aux(i):
-        ls = d[keys[i]]
-        t = ls.pop()
-        document.sentences.append(t)
-        if not ls: del keys[i]
-        return len(t)
+    for state in islice(states, state_idx):
+        while state.has_next():
+            if i == len(outputs): return state_idx
+            state.process(outputs[i])
+            i += 1
 
-    # key = length, value = list of sentences with the key length
-    d = {}
+        state_idx += 1
 
-    for doc in docs:
-        for sen in doc.sentences:
-            d.setdefault(len(sen), []).append(sen)
-
-    keys = sorted(list(d.keys()))
-    if maxlen < 0:
-        maxlen = keys[-1]
-
-    states = []
-    document = Document()
-    wc = maxlen - aux(-1)
-
-    while keys:
-        idx = bisect.bisect_left(keys, wc)
-        if idx >= len(keys) or keys[idx] > wc:
-            idx -= 1
-        if idx < 0:
-            states.append(create_state(document))
-            document = Document()
-            wc = maxlen - aux(-1)
-        else:
-            wc -= aux(idx)
-
-    if document:
-        states.append(create_state(document))
-
-    return states
+    return state_idx

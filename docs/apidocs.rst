@@ -25,22 +25,6 @@ Model
     :undoc-members:
     :show-inheritance:
 
-SDK
----------
-
-.. automodule:: elit.sdk
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-Benchmark
----------
-
-.. automodule:: elit.benchmark
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Structure
 ---------
 
@@ -49,11 +33,18 @@ Structure
     :undoc-members:
     :show-inheritance:
 
-
 Util
 ---------
 
 .. automodule:: elit.util
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Benchmark
+---------
+
+.. automodule:: elit.benchmark
     :members:
     :undoc-members:
     :show-inheritance:

@@ -20,7 +20,7 @@ from typing import Tuple, Type, Dict, Union, Optional
 
 import mxnet as mx
 
-from elit.utils.file_util import tsv_reader, json_reader
+from elit.utils.io_util import tsv_reader, json_reader
 from elit.vsm import VectorSpaceModel, Word2Vec, FastText
 
 __author__ = "Gary Lai, Jinho D. Choi"

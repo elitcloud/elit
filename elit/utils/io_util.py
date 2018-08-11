@@ -13,15 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import bisect
 import glob
 import json
-from typing import List, Dict
+from typing import List, Dict, Callable, Type
 
+from demo.tmp import SequenceState
 from elit.structure import Sentence, TOK, Document
 from elit.util import to_gold
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
+
+# ======================================== Readers ========================================
 
 def tsv_reader(filepath: str, cols: Dict[str, int], key: str = None) -> List[Document]:
     documents = []
@@ -67,7 +71,7 @@ def tsv_reader(filepath: str, cols: Dict[str, int], key: str = None) -> List[Doc
 
 
 def json_reader(filepath: str) -> List[Document]:
-    # TODO: to be filled
+    # TODO: update this to accept any format (see tsv_reader)
     documents = []
     dc = wc = sc = 0
 
@@ -93,3 +97,52 @@ def pkl(filepath):
 
 def gln(filepath):
     return filepath + '.gln'
+
+
+def group_states(docs: List[Document], create_state: Callable[[Document], Type[SequenceState]], maxlen: int = -1) -> List[Type[SequenceState]]:
+    """
+    Groups sentences into documents such that each document consists of multiple sentences and the total number of words
+    across all sentences within a document is close to the specified maximum length.
+    :param docs: a list of documents.
+    :param create_state: a function that takes a document and returns a state.
+    :param maxlen: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
+    :return: list of states, where each state roughly consists of the max_len number of words.
+    """
+
+    def aux(i):
+        ls = d[keys[i]]
+        t = ls.pop()
+        document.sentences.append(t)
+        if not ls: del keys[i]
+        return len(t)
+
+    # key = length, value = list of sentences with the key length
+    d = {}
+
+    for doc in docs:
+        for sen in doc.sentences:
+            d.setdefault(len(sen), []).append(sen)
+
+    keys = sorted(list(d.keys()))
+    if maxlen < 0:
+        maxlen = keys[-1]
+
+    states = []
+    document = Document()
+    wc = maxlen - aux(-1)
+
+    while keys:
+        idx = bisect.bisect_left(keys, wc)
+        if idx >= len(keys) or keys[idx] > wc:
+            idx -= 1
+        if idx < 0:
+            states.append(create_state(document))
+            document = Document()
+            wc = maxlen - aux(-1)
+        else:
+            wc -= aux(idx)
+
+    if document:
+        states.append(create_state(document))
+
+    return states
