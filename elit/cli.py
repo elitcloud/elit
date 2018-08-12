@@ -15,6 +15,10 @@
 # ========================================================================
 import argparse
 import sys
+from types import SimpleNamespace
+from typing import Type
+
+from elit.vsm import VectorSpaceModel
 
 __author__ = "Gary Lai"
 
@@ -47,3 +51,7 @@ commands:
 
 if __name__ == '__main__':
     ElitCli()
+
+
+def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
+    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)

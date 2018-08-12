@@ -23,6 +23,10 @@ __author__ = 'Jinho D. Choi'
 
 
 class FFNNModel(gluon.Block):
+    """
+    :class:`FFNNModel` implements a Feed-Forward Neural Network (FFNN) consisting of
+    an input layer, n-gram convolution layers (optional), hidden layers (optional), and an output layer.
+    """
     def __init__(self,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
@@ -30,18 +34,15 @@ class FFNNModel(gluon.Block):
                  hidden_config: Optional[Tuple[SimpleNamespace, ...]] = None,
                  **kwargs):
         """
-        Feed-Forward Neural Network (FFNN) that includes n-gram convolutions or/and hidden layers.
-        :param ctx: a device context.
-        :param initializer: a weight initializer for the gluon block.
-        :param input_config: configuration for the input layer -> elit.model.input_namespace();
+        :param input_config: configuration for the input layer -> :meth:`namespace_input`;
                              {row: int, col: int, dropout: float}.
-        :param output_config: configuration for the output layer -> elit.model.output_namespace();
+        :param output_config: configuration for the output layer -> :meth:`namespace_output`;
                               {dim: int}.
-        :param conv2d_config: configuration for the 2D convolution layer -> elit.model.conv2d_namespace();
+        :param conv2d_config: configuration for the 2D convolution layer -> :meth:`namespace_conv2d`;
                               {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
-        :param hidden_config: configuration for the hidden layers -> elit.model.hidden_namespace();
+        :param hidden_config: configuration for the hidden layers -> :meth:`namespace_hidden`;
                               {dim: int, activation: str, dropout: float}.
-        :param kwargs: extra parameters for the initialization of mxnet.gluon.Block.
+        :param kwargs: extra parameters for the initialization of :class:`mxnet.gluon.Block`.
         """
         super().__init__(**kwargs)
 
@@ -106,3 +107,19 @@ def conv2d_pool(pool: str, n: int) -> Union[mx.gluon.nn.MaxPool2D, mx.gluon.nn.A
     if pool is None: return None
     p = mx.gluon.nn.MaxPool2D if pool == 'max' else mx.gluon.nn.AvgPool2D
     return p(pool_size=(n, 1), strides=(n, 1))
+
+
+def namespace_input(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
+    return SimpleNamespace(col=col, row=row, dropout=dropout)
+
+
+def namespace_output(dim: int) -> SimpleNamespace:
+    return SimpleNamespace(dim=dim)
+
+
+def namespace_conv2d(ngram: int, filters: int, activation: str, pool: str = None, dropout: float = 0.0) -> SimpleNamespace:
+    return SimpleNamespace(ngram=ngram, filters=filters, activation=activation, pool=pool, dropout=dropout)
+
+
+def namespace_hidden(dim: int, activation: str, dropout: float) -> SimpleNamespace:
+    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)

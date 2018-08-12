@@ -1,14 +1,6 @@
 Documentation
 =================
 
-Component
----------
-
-.. automodule:: elit.component
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 State
 ---------
 
@@ -21,6 +13,14 @@ Model
 ---------
 
 .. automodule:: elit.model
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Component
+---------
+
+.. automodule:: elit.component
     :members:
     :undoc-members:
     :show-inheritance:

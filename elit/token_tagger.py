@@ -28,12 +28,12 @@ from mxnet.ndarray import NDArray
 
 from demo.tmp import BatchState, SequenceState, BatchComponent, SequenceComponent
 from elit.eval import Accuracy, F1
-from elit.model import FFNNModel
+from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
 from elit.structure import Document
 from elit.util import BILOU, to_gold, to_out
-from elit.utils.cli_util import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, namespace_input, namespace_output
-from elit.utils.io_util import pkl, gln, group_states
+from elit.utils.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context
+from elit.utils.io import pkl, gln, group_states
 from elit.vsm import LabelMap, get_loc_embeddings, x_extract, X_ANY
 
 __author__ = 'Jinho D. Choi'

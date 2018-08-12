@@ -18,7 +18,7 @@ import inspect
 import logging
 import time
 from itertools import islice
-from typing import Union, Sequence, Type, Dict
+from typing import Union, Sequence, Dict
 
 import mxnet as mx
 import numpy as np
@@ -437,6 +437,7 @@ class BatchComponent(MXNetComponent):
 
         Trains all batches in the iterator with a single device.
         """
+
         def train():
             with autograd.record():
                 outputs = [self.model(x_split) for x_split in x_splits]
@@ -495,6 +496,7 @@ class BatchComponent(MXNetComponent):
 
         Decodes all batches in the iterator with multiple devices.
         """
+
         def decode():
             outputs = [self.model(split) for split in splits]
             outputs = nd.concat(*outputs, dim=0)

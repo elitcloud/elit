@@ -16,40 +16,16 @@
 import argparse
 import re
 from types import SimpleNamespace
-from typing import Tuple, Type, Dict, Union, Optional
+from typing import Tuple, Dict, Optional, Union
 
 import mxnet as mx
 
-from elit.utils.io_util import tsv_reader, json_reader
-from elit.vsm import VectorSpaceModel, Word2Vec, FastText
+from elit.model import namespace_conv2d
+from elit.cli import namespace_vsm
+from elit.utils.io import tsv_reader, json_reader
+from elit.vsm import Word2Vec, FastText
 
 __author__ = "Gary Lai, Jinho D. Choi"
-
-
-# ======================================== Namespaces ========================================
-
-def namespace_reader(reader_type: Union[json_reader, tsv_reader], params: Optional[Dict] = None) -> SimpleNamespace:
-    return SimpleNamespace(type=reader_type, params=params)
-
-
-def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
-    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
-
-
-def namespace_input(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
-    return SimpleNamespace(col=col, row=row, dropout=dropout)
-
-
-def namespace_output(dim: int) -> SimpleNamespace:
-    return SimpleNamespace(dim=dim)
-
-
-def namespace_conv2d(ngram: int, filters: int, activation: str, pool: str = None, dropout: float = 0.0) -> SimpleNamespace:
-    return SimpleNamespace(ngram=ngram, filters=filters, activation=activation, pool=pool, dropout=dropout)
-
-
-def namespace_hidden(dim: int, activation: str, dropout: float) -> SimpleNamespace:
-    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
 
 
 # ======================================== Arguments ========================================
@@ -183,3 +159,7 @@ def args_loss(s: str) -> mx.gluon.loss.Loss:
         return mx.gluon.loss.CTCLoss()
 
     raise argparse.ArgumentTypeError("Unsupported loss: " + s)
+
+
+def namespace_reader(reader_type: Union[json_reader, tsv_reader], params: Optional[Dict] = None) -> SimpleNamespace:
+    return SimpleNamespace(type=reader_type, params=params)
