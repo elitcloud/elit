@@ -15,11 +15,9 @@
 # ========================================================================
 import abc
 import inspect
-from itertools import islice
-from typing import Optional, Tuple, Sequence, Union
+from typing import Optional, Tuple
 
 import numpy as np
-from mxnet.ndarray import NDArray
 
 from elit.structure import Document
 
@@ -105,25 +103,3 @@ class NLPState(abc.ABC):
         Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-
-def process_outputs(states: Sequence[NLPState], outputs: Union[NDArray, np.ndarray], state_idx) -> int:
-    """
-    :param states: the sequence of input states.
-    :param outputs: the 2D matrix where each row contains the prediction scores of the corresponding state.
-    :param state_idx: the index of the state in the sequence to begin the process with.
-    :return: the index of the state to be processed next.
-
-    Processes through the states and assigns the outputs accordingly.
-    """
-    i = 0
-
-    for state in islice(states, state_idx):
-        while state.has_next():
-            if i == len(outputs): return state_idx
-            state.process(outputs[i])
-            i += 1
-
-        state_idx += 1
-
-    return state_idx

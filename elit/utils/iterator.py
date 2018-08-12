@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import collections
+import inspect
 import random
 from typing import Sequence
 
-from mxnet import nd
 from mxnet.ndarray import NDArray
 
 from elit.state import NLPState
@@ -24,9 +25,12 @@ from elit.state import NLPState
 __author__ = 'Jinho D. Choi'
 
 
-class NLPIterator:
+class NLPIterator(collections.Iterator):
     def __init__(self, states: Sequence[NLPState]):
         self.states = states
+
+    def __next__(self):
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
 
 class BatchIterator(NLPIterator):

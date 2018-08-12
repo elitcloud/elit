@@ -177,10 +177,10 @@ class BatchComponent(BatchComponent):
         :return: the number of correctly classified instances.
         """
         if isinstance(self.ctx, list):
-            device = self._train_multiple_devices
+            device = self.train_multiple_devices
             batch_size *= len(self.ctx)
         else:
-            device = self._train_single_device
+            device = self.train_single_device
 
         batches = gluon.data.DataLoader(gluon.data.ArrayDataset(xs, ys), batch_size=batch_size, shuffle=True)
         correct = device(states, batches, loss, trainer, False)
@@ -277,10 +277,10 @@ class SequenceComponent(BatchComponent):
         total = 0
 
         if isinstance(self.ctx, list):
-            device = self._train_multiple_devices
+            device = self.train_multiple_devices
             batch_size *= len(self.ctx)
         else:
-            device = self._train_single_device
+            device = self.train_single_device
 
         while tmp:
             random.shuffle(tmp)

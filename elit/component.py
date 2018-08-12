@@ -18,7 +18,7 @@ import inspect
 import logging
 import time
 from itertools import islice
-from typing import List, Union, Sequence, Type, Dict
+from typing import Union, Sequence, Type, Dict
 
 import mxnet as mx
 import numpy as np
@@ -26,9 +26,9 @@ from mxnet import nd, gluon, autograd
 from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
-from elit.state import NLPState, process_outputs
+from elit.state import NLPState
 from elit.structure import Document
-from elit.utils.iterator import BatchIterator
+from elit.utils.iterator import BatchIterator, NLPIterator
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -41,9 +41,9 @@ class Component(abc.ABC):
       - :meth:`Component.init`
       - :meth:`Component.load`
       - :meth:`Component.save`
+      - :meth:`Component.train`
       - :meth:`Component.decode`
       - :meth:`Component.evaluate`
-      - :meth:`Component.train`
     """
 
     @abc.abstractmethod
@@ -76,6 +76,18 @@ class Component(abc.ABC):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
+    def train(self, trn_data, dev_data, model_path: str, **kwargs):
+        """
+        :param trn_data: training data.
+        :param dev_data: development (validation) data.
+        :param model_path: the filepath where trained model(s) are to be saved.
+        :param kwargs: custom parameters.
+
+        Abstract class to train and save a model for this component.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @abc.abstractmethod
     def decode(self, data, **kwargs):
         """
         :param data: input data.
@@ -95,18 +107,6 @@ class Component(abc.ABC):
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
-    @abc.abstractmethod
-    def train(self, trn_data, dev_data, model_path: str, **kwargs):
-        """
-        :param trn_data: training data.
-        :param dev_data: development (validation) data.
-        :param model_path: the filepath where trained model(s) are to be saved.
-        :param kwargs: custom parameters.
-
-        Abstract class to train and save a model for this component.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
 
 class NLPComponent(Component):
     """
@@ -117,9 +117,22 @@ class NLPComponent(Component):
       - :meth:`Component.init`
       - :meth:`Component.load`
       - :meth:`Component.save`
-      - :meth:`NLPComponent.decode`
       - :meth:`NLPComponent.train`
+      - :meth:`NLPComponent.decode`
+      - :meth:`NLPComponent.evaluate`
     """
+
+    @abc.abstractmethod
+    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs):
+        """
+        :param trn_docs: the sequence of documents for training.
+        :param dev_docs: the sequence of documents for development (validation).
+        :param model_path: the filepath where trained model(s) are to be saved.
+        :param kwargs: custom parameters.
+
+        Abstract method to train and save a model for this component.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def decode(self, docs: Sequence[Document], **kwargs):
@@ -141,31 +154,20 @@ class NLPComponent(Component):
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
-    @abc.abstractmethod
-    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs):
-        """
-        :param trn_docs: the sequence of documents for training.
-        :param dev_docs: the sequence of documents for development (validation).
-        :param model_path: the filepath where trained model(s) are to be saved.
-        :param kwargs: custom parameters.
 
-        Abstract method to train and save a model for this component.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-
-class BatchComponent(NLPComponent):
+class MXNetComponent(NLPComponent):
     """
-    :class:`BatchComponent` is an abstract class to implement NLP components that process all states in batch
-    such that it assumes that every state is independent to one another.
-    The abstract methods :meth:`NLPComponent.decode` and :meth:`NLPComponent.train` are defined in this class.
+    :class:`MXNetComponent` is an abstract class to implement NLP components using MXNet for machine learning.
+    :meth:`MXNetComponent.decode` and :meth:`MXNetComponent.train` are defined in this class.
 
     Abstract methods to be implemented:
       - :meth:`Component.init`
       - :meth:`Component.load`
       - :meth:`Component.save`
-      - :meth:`BatchComponent.create_states`
-      - :meth:`BatchComponent.eval_metric`
+      - :meth:`MXNetComponent.data_iterator`
+      - :meth:`MXNetComponent.eval_metric`
+      - :meth:`MXNetComponent.train_iter`
+      - :meth:`MXNetComponent.decode_iter`
     """
 
     def __init__(self, ctx: Union[mx.Context, Sequence[mx.Context]]):
@@ -176,29 +178,135 @@ class BatchComponent(NLPComponent):
         self.model: gluon.Block = None
 
     @abc.abstractmethod
-    def create_states(self, documents: Sequence[Document]) -> List[NLPState]:
+    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> NLPIterator:
         """
         :param documents: the sequence of input documents.
-        :return: the list of states corresponding to the input documents.
+        :param batch_size: the size of mini-batches.
+        :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
+        :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
+        :param kwargs: custom parameters.
+        :return: the iterator to retrieve batches of training or decoding instances.
 
         Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def eval_metric(self) -> Type[EvalMetric]:
+    def eval_metric(self, **kwargs) -> EvalMetric:
         """
+        :param kwargs: custom parameters.
         :return: the evaluation metric for this component.
 
         Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
+    @abc.abstractmethod
+    def train_iter(self,
+                   iterator: NLPIterator,
+                   loss: gluon.loss.Loss,
+                   trainer: gluon.Trainer,
+                   **kwargs) -> float:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :param kwargs: custom parameters.
+        :return: the training accuracy.
+
+        Abstract method to train all batches in the iterator for one epoch.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @abc.abstractmethod
+    def decode_iter(self, iterator: NLPIterator, **kwargs):
+        """
+        :param iterator: the iterator to retrieve batches of feature vectors.
+        :param kwargs: custom parameters.
+
+        Abstract method to decode all batches in the iterator.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    def evaluate_iter(self, iterator: NLPIterator, **kwargs) -> EvalMetric:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param kwargs: custom parameters.
+        :return: the evaluation metric including evaluation statistics on the input states.
+
+        Evaluates all batches in the iterator.
+        """
+        self.decode_iter(iterator, kwargs)
+        metric = self.eval_metric()
+        for state in iterator.states: metric.update(state.document)
+        return metric
+
     # override
-    def decode(self, docs: Sequence[Document], batch_size: int = 2048):
+    def train(self,
+              trn_docs: Sequence[Document],
+              dev_docs: Sequence[Document],
+              model_path: str,
+              trn_batch_size: int = 64,
+              dev_batch_size: int = 2048,
+              epoch: int = 100,
+              loss: gluon.loss.Loss = None,
+              optimizer: str = 'adagrad',
+              optimizer_params: Dict[str, float] = None,
+              **kwargs):
+        """
+        :param trn_docs: the sequence of documents for training.
+        :param dev_docs: the sequence of documents for development (validation).
+        :param model_path: the filepath where the trained model to be saved.
+        :param trn_batch_size: the batch size applied to the training data.
+        :param dev_batch_size: the batch size applied to the development data.
+        :param epoch: the maximum number of epochs.
+        :param loss: the `loss function <https://mxnet.incubator.apache.org/api/python/gluon/loss.html?highlight=softmaxcrossentropyloss#gluon-loss-api>`_; if not specified, ``SoftmaxCrossEntropyLoss`` is used.
+        :param optimizer: the type of the `optimizer <https://mxnet.incubator.apache.org/api/python/optimization/optimization.html?highlight=optimiz#the-mxnet-optimizer-package>`_ for training.
+        :param optimizer_params: the parameters for the optimizer.
+        :param kwargs: custom parameters.
+
+        Trains and saves a model for this component.
+        """
+        # create iterators
+        trn_iterator = self.data_iterator(trn_docs, trn_batch_size, shuffle=True, label=True)
+        dev_iterator = self.data_iterator(trn_docs, dev_batch_size, shuffle=False, label=True)
+
+        # create a trainer
+        if loss is None: loss = gluon.loss.SoftmaxCrossEntropyLoss()
+        trainer = gluon.Trainer(self.model.collect_params(), optimizer, optimizer_params)
+
+        # train
+        log = ('* Training',
+               '- context(s): %s' % str(self.ctx),
+               '- batch size: %d' % trn_batch_size,
+               '- max epoch : %d' % epoch,
+               '- loss      : %s' % str(loss),
+               '- optimizer : %s -> %s' % (optimizer, optimizer_params))
+        logging.info('\n'.join(log) + '\n')
+
+        best_e, best_acc = -1, -1
+
+        for e in range(1, epoch + 1):
+            st = time.time()
+            trn_acc = self.train_iter(trn_iterator, loss, trainer)
+            mt = time.time()
+            dev_metric = self.evaluate_iter(dev_iterator)
+            et = time.time()
+            acc = dev_metric.get()
+
+            if best_acc < acc:
+                best_e, best_acc = e, acc
+                self.save(model_path)
+
+            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
+                  (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
+
+    # override
+    def decode(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
         """
         :param docs: the sequence of input documents.
         :param batch_size: the batch size.
+        :param kwargs: custom parameters.
 
         Processes the input documents and saves the predicted labels to the input documents.
         """
@@ -207,15 +315,159 @@ class BatchComponent(NLPComponent):
                '- batch size: %d' % batch_size)
         logging.info('\n'.join(log) + '\n')
 
-        states = self.create_states(docs)
-        iterator = BatchIterator(states, batch_size, shuffle=False, label=False)
-
+        iterator = self.data_iterator(docs, batch_size, shuffle=False, label=False)
         st = time.time()
         self.decode_iter(iterator)
         et = time.time()
         logging.info('- time: %d (sec)\n' % (et - st))
 
-    def decode_iter(self, iterator: BatchIterator):
+    # override
+    def evaluate(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
+        """
+        :param docs: the sequence of input documents.
+        :param batch_size: the batch size.
+        :param kwargs: custom parameters.
+
+        Evaluates the current model with the input documents.
+        """
+        log = ('* Evaluating',
+               '- context(s): %s' % str(self.ctx),
+               '- batch size: %d' % batch_size)
+        logging.info('\n'.join(log) + '\n')
+
+        iterator = self.data_iterator(docs, batch_size, shuffle=False, label=True)
+        st = time.time()
+        metric = self.evaluate_iter(iterator)
+        et = time.time()
+        logging.info('- time: %d (sec)\n' % (et - st))
+        logging.info('%s\n' % str(metric))
+
+
+class BatchComponent(MXNetComponent):
+    """
+    :class:`BatchComponent` is an abstract class to implement NLP components that process all states in batch
+    such that it assumes every state is independent to one another.
+    :meth:`BatchComponent.train_iter` and :meth:`BatchComponent.decode_iter` are defined in this class.
+
+    Abstract methods to be implemented:
+      - :meth:`Component.init`
+      - :meth:`Component.load`
+      - :meth:`Component.save`
+      - :meth:`MXNetComponent.eval_metric`
+      - :meth:`BatchComponent.data_iterator`
+    """
+
+    def __init__(self, ctx: Union[mx.Context, Sequence[mx.Context]]):
+        """
+        :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
+        """
+        super().__init__(ctx)
+
+    @abc.abstractmethod
+    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> BatchIterator:
+        """
+        :param documents: the sequence of input documents.
+        :param batch_size: the size of mini-batches.
+        :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
+        :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
+        :param kwargs: custom parameters.
+        :return: the iterator to retrieve batches of training or decoding instances.
+
+        Abstract method.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    # override
+    def train_iter(self,
+                   iterator: BatchIterator,
+                   loss: gluon.loss.Loss,
+                   trainer: gluon.Trainer,
+                   **kwargs) -> float:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :param kwargs: custom parameters.
+        :return: the training accuracy.
+
+        Trains all batches in the iterator for one epoch.
+        """
+        device = self.train_multiple_devices if isinstance(self.ctx, list) else self.train_single_device
+        correct = device(iterator, loss, trainer)
+        return 100 * correct / iterator.total
+
+    def train_single_device(self,
+                            iterator: BatchIterator,
+                            loss: gluon.loss.Loss,
+                            trainer: gluon.Trainer) -> int:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :return: the number of correctly classified instances.
+
+        Trains all batches in the iterator with a single device.
+        """
+        correct = 0
+
+        for batch in iterator:
+            xs, ys = zip(*batch)
+            xs = nd.array(xs, self.ctx)
+            ys = nd.array(ys, self.ctx)
+
+            with autograd.record():
+                outputs = self.model(xs)
+                l = loss(outputs, ys)
+                l.backward()
+
+            trainer.step(xs.shape[0])
+            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
+
+        return correct
+
+    def train_multiple_devices(self,
+                               iterator: BatchIterator,
+                               loss: gluon.loss.Loss,
+                               trainer: gluon.Trainer) -> int:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :return: the number of correctly classified instances.
+
+        Trains all batches in the iterator with a single device.
+        """
+        def train():
+            with autograd.record():
+                outputs = [self.model(x_split) for x_split in x_splits]
+                losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
+                for l in losses: l.backward()
+
+            c = 0
+            trainer.step(sum(x_split.shape[0] for x_split in x_splits))
+            for output, y_split in zip(outputs, y_splits):
+                c += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+            return c
+
+        x_splits, y_splits = [], []
+        correct = 0
+
+        for batch in iterator:
+            xs, ys = zip(*batch)
+            x_splits.append(nd.array(xs, self.ctx))
+            y_splits.append(nd.array(ys, self.ctx))
+
+            if len(x_splits) == len(self.ctx):
+                correct += train()
+                x_splits, y_splits = [], []
+
+        if x_splits:
+            correct += train()
+
+        return correct
+
+    # override
+    def decode_iter(self, iterator: BatchIterator, **kwargs):
         """
         :param iterator: the iterator to retrieve batches of feature vectors.
 
@@ -235,7 +487,7 @@ class BatchComponent(NLPComponent):
         for batch in iterator:
             xs = nd.array(batch, self.ctx)
             outputs = self.model(xs)
-            state_idx = process_outputs(iterator.states, outputs, state_idx)
+            state_idx = self._process_outputs(iterator.states, outputs, state_idx)
 
     def decode_multiple_devices(self, iterator: BatchIterator):
         """
@@ -243,6 +495,11 @@ class BatchComponent(NLPComponent):
 
         Decodes all batches in the iterator with multiple devices.
         """
+        def decode():
+            outputs = [self.model(split) for split in splits]
+            outputs = nd.concat(*outputs, dim=0)
+            return self._process_outputs(iterator.states, outputs, state_idx)
+
         state_idx = 0
         splits = []
 
@@ -250,197 +507,30 @@ class BatchComponent(NLPComponent):
             splits.append(nd.array(batch, self.ctx[len(splits)]))
 
             if len(splits) == len(self.ctx):
-                outputs = [self.model(split) for split in splits]
-                outputs = nd.concat(*outputs, dim=0)
-                state_idx = process_outputs(iterator.states, outputs, state_idx)
+                state_idx = decode()
                 splits = []
 
         if splits:
-            outputs = [self.model(split) for split in splits]
-            outputs = nd.concat(*outputs, dim=0)
-            process_outputs(iterator.states, outputs, state_idx)
+            decode()
 
-    # override
-    def evaluate(self, docs: Sequence[Document], batch_size: int = 2048):
-        """
-        :param docs: the sequence of input documents.
-        :param batch_size: the batch size.
-
-        Evaluates the current model with the input documents.
-        """
-        log = ('* Evaluating',
-               '- context(s): %s' % str(self.ctx),
-               '- batch size: %d' % batch_size)
-        logging.info('\n'.join(log) + '\n')
-
-        states = self.create_states(docs)
-        iterator = BatchIterator(states, batch_size, shuffle=False, label=True)
-
-        st = time.time()
-        metric = self.evaluate_iter(iterator)
-        et = time.time()
-        logging.info('- time: %d (sec)\n' % (et - st))
-        logging.info('%s\n' % str(metric))
-
-    def evaluate_iter(self, iterator: BatchIterator) -> Type[EvalMetric]:
-        """
-        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :return: the evaluation metric including evaluation statistics on the input states.
-
-        Evaluates all batches in the iterator.
-        """
-        self.decode_iter(iterator)
-        metric = self.eval_metric()
-        for state in iterator.states: metric.update(state.document)
-        return metric
-
-    # override
-    def train(self,
-              trn_docs: Sequence[Document],
-              dev_docs: Sequence[Document],
-              model_path: str,
-              trn_batch_size: int = 64,
-              dev_batch_size: int = 2048,
-              epoch: int = 100,
-              loss: gluon.loss.Loss = None,
-              optimizer: str = 'adagrad',
-              optimizer_params: Dict[str, float] = None):
-        """
-        :param trn_docs: the sequence of documents for training.
-        :param dev_docs: the sequence of documents for development (validation).
-        :param model_path: the filepath where the trained model to be saved.
-        :param trn_batch_size: the batch size applied to the training set.
-        :param dev_batch_size: the batch size applied to the development set.
-        :param epoch: the maximum number of epochs.
-        :param loss: the loss function; if ``None``, it uses :meth:`mxnet.gluon.loss.SoftmaxCrossEntropyLoss`.
-        :param optimizer: the type of the optimizer for training (:class:`mxnet.optimizer.Optimizer`).
-        :param optimizer_params: the parameters for the optimizer.
-
-        Trains and saves a model for this component.
-        """
-        # create instances
-        trn_states = self.create_states(trn_docs)
-        dev_states = self.create_states(dev_docs)
-
-        # create iterators
-        trn_iterator = BatchIterator(trn_states, trn_batch_size, shuffle=True, label=True)
-        dev_iterator = BatchIterator(dev_states, dev_batch_size, shuffle=False, label=True)
-
-        # create a trainer
-        if loss is None: loss = gluon.loss.SoftmaxCrossEntropyLoss()
-        trainer = gluon.Trainer(self.model.collect_params(), optimizer, optimizer_params)
-
-        # train
-        log = ('* Training',
-               '- context(s): %s' % str(self.ctx),
-               '- batch size: %d' % trn_batch_size,
-               '- max epoch : %d' % epoch,
-               '- loss      : %s' % str(loss),
-               '- optimizer : %s -> %s' % (optimizer, optimizer_params))
-        logging.info('\n'.join(log) + '\n')
-
-        best_e, best_acc = -1, -1
-
-        for e in range(1, epoch + 1):
-            st = time.time()
-            trn_acc = self._train(trn_iterator, loss, trainer)
-            mt = time.time()
-            dev_metric = self.evaluate_iter(dev_iterator)
-            et = time.time()
-            acc = dev_metric.get()
-
-            if best_acc < acc:
-                best_e, best_acc = e, acc
-                self.save(model_path)
-
-            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
-                  (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
-
-    def _train(self,
-               iterator: BatchIterator,
-               loss: gluon.loss.Loss,
-               trainer: gluon.Trainer) -> float:
+    @classmethod
+    def _process_outputs(cls, states: Sequence[NLPState], outputs: Union[NDArray, np.ndarray], state_idx) -> int:
         """
         :param states: the sequence of input states.
-        :param batch_size: the batch size .
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :param xs: the sequence of feature vectors extracted from the input states.
-        :param ys: the sequence of gold-standard class IDs corresponding to the feature vectors.
-        :return: the training accuracy.
-        Abstract method to train and save a model for this component.
+        :param outputs: the 2D matrix where each row contains the prediction scores of the corresponding state.
+        :param state_idx: the index of the state in the sequence to begin the process with.
+        :return: the index of the state to be processed next.
+
+        Processes through the states and assigns the outputs accordingly.
         """
-        device = self._train_multiple_devices if isinstance(self.ctx, list) else self._train_single_device
-        correct = device(iterator, loss, trainer)
-        return 100 * correct / iterator.total
+        i = 0
 
-    def _train_single_device(self,
-                             iterator: BatchIterator,
-                             loss: gluon.loss.Loss,
-                             trainer: gluon.Trainer) -> int:
-        """
-        Trains with a single device; in other words, self.ctx is one device.
-        :param states: list of states.
-        :param batches: decoding batches extracted from the states.
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
-        :return: the number of correctly classified instances.
-        """
-        correct = 0
-        begin = 0
+        for state in islice(states, state_idx):
+            while state.has_next():
+                if i == len(outputs): return state_idx
+                state.process(outputs[i])
+                i += 1
 
-        for batch in iterator:
-            x_batch = x_batch.as_in_context(self.ctx)
-            y_batch = y_batch.as_in_context(self.ctx)
+            state_idx += 1
 
-            with autograd.record():
-                outputs = self.model(x_batch)
-                l = loss(outputs, y_batch)
-                l.backward()
-
-            trainer.step(x_batch.shape[0])
-            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), y_batch) if int(o.asscalar()) == int(y.asscalar())])
-
-            if sequence:
-                for i, output in enumerate(outputs): states[begin + i].process(output.asnumpy())
-                begin += len(outputs)
-
-        return correct
-
-    def _train_multiple_devices(self,
-                                iterator: BatchIterator,
-                                loss: gluon.loss.Loss,
-                                trainer: gluon.Trainer) -> int:
-        """
-        Trains with multiple devices; in other words, self.ctx is a list of devices.
-        :param states: list of states.
-        :param batches: decoding batches extracted from the states.
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :param sequence: if True, decode in sequence mode; otherwise, batch mode.
-        :return: the number of correctly classified instances.
-        """
-        correct = 0
-        begin = 0
-
-        for x_batch, y_batch in batches:
-            ctx = self.ctx[:x_batch.shape[0]] if x_batch.shape[0] < len(self.ctx) else self.ctx
-            x_splits = gluon.utils.split_and_load(x_batch, ctx, even_split=False)
-            y_splits = gluon.utils.split_and_load(y_batch, ctx, even_split=False)
-
-            with autograd.record():
-                output_splits = [self.model(x_split) for x_split in x_splits]
-                losses = [loss(output_split, y_split) for output_split, y_split in zip(output_splits, y_splits)]
-                for l in losses: l.backward()
-
-            trainer.step(x_batch.shape[0])
-
-            for output_split, y_split in zip(output_splits, y_splits):
-                correct += len([1 for o, y in zip(mx.ndarray.argmax(output_split, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
-
-                if sequence:
-                    for i, output in enumerate(output_split): states[begin + i].process(output.asnumpy())
-                    begin += len(output_split)
-
-        return correct
+        return state_idx
