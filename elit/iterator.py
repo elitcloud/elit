@@ -18,7 +18,7 @@ import collections
 import inspect
 import random
 from itertools import islice
-from typing import Sequence, Union, List, Tuple
+from typing import Sequence, Union, List, Tuple, Any
 
 import numpy as np
 from mxnet.ndarray import NDArray
@@ -48,14 +48,14 @@ class NLPIterator(collections.Iterator):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def process(self, outputs: Union[NDArray, np.ndarray], state_begin, **kwargs) -> int:
+    def process(self, state_begin: int, output: Any, *args) -> int:
         """
-        :param outputs: the 2D matrix where each row contains the prediction scores of the corresponding state.
         :param state_begin: the index of the input state to begin the process with.
-        :param kwargs: custom parameters.
+        :param output: the prediction output to be applied to the current batch.
+        :param args: custom parameters.
         :return: the index of the state to be processed next after this method is called.
 
-        Processes through the states and assigns the outputs accordingly.
+        Processes through the states and assigns the parameters accordingly.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -110,14 +110,15 @@ class BatchIterator(NLPIterator):
         return batch
 
     # override
-    def process(self, outputs: Union[NDArray, np.ndarray], state_begin, **kwargs) -> int:
+    def process(self, state_begin: int, output: Union[NDArray, np.ndarray], *args) -> int:
         if self._shuffle: return -1
         i = 0
 
         for state in islice(self.states, state_begin):
             while state.has_next():
-                if i == len(outputs): return state_begin
-                state.process(outputs[i], kwargs)
+                if i == len(output): return state_begin
+                if args: state.process(output[i], *[arg[i] for arg in args])
+                else: state.process(output[i])
                 i += 1
 
             state_begin += 1
@@ -147,9 +148,10 @@ class SequenceIterator(NLPIterator):
         self._iter += len(batch)
         return batch
 
-    def process(self, outputs: Union[NDArray, np.ndarray], state_begin, **kwargs) -> int:
+    def process(self, state_begin: int, output: Union[NDArray, np.ndarray], *args) -> int:
         for i, state in enumerate(islice(self.states, state_begin, self._iter)):
-            state.process(outputs[i])
+            if args: state.process(output[i], *[arg[i] for arg in args])
+            else: state.process(output[i])
 
         if self._iter >= len(self._states):
             self._states = [state for state in self._states if state.has_next()]

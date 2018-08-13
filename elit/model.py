@@ -42,7 +42,6 @@ class FFNNModel(gluon.Block):
                               {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
         :param hidden_config: configuration for the hidden layers that is the return value of :meth:`namespace_hidden`;
                               {dim: int, activation: str, dropout: float}.
-        :param kwargs: extra parameters for the initialization of :class:`mxnet.gluon.Block`.
         """
         super().__init__(**kwargs)
 

@@ -24,10 +24,12 @@ from typing import Tuple, Optional, List, Union, Sequence
 
 import mxnet as mx
 import numpy as np
+from mxnet.ndarray import NDArray
 
 from demo.tmp import BatchComponent, SequenceComponent
 from elit.component import MXNetComponent
 from elit.eval import Accuracy, F1
+from elit.iterator import SequenceIterator, BatchIterator
 from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
 from elit.structure import Document
@@ -94,7 +96,7 @@ class TokenTaggerState(NLPState):
         self.sen_id = 0
         self.tok_id = 0
 
-    def process(self, output: np.ndarray = None, **kwargs):
+    def process(self, output: NDArray = None):
         """
         :param output: the predicted output of the current token.
 
@@ -180,24 +182,24 @@ class TokenTagger(MXNetComponent):
 
         # to be loaded/saved
         self.key = None
-        self.sequence = None
-        self.chunking = None
         self.label_map = None
         self.feature_windows = None
-        self.label_embedding = None  # sequence mode only
         self.padout = None  # sequence mode only
         self.input_config = None
         self.output_config = None
         self.conv2d_config = None
         self.hidden_config = None
 
-    @abc.abstractmethod
-    def create_states(self, documents: List[Document]) -> List[Union[TokenTaggerBatchState, TokenTaggerSequenceState]]:
-        """
-        :param documents: a list of input documents.
-        :return: the list of sequence or batch states corresponding to the input documents.
-        """
-        pass
+    # override
+    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> Union[BatchIterator, SequenceIterator]:
+        if self.padout:
+            def create(d: Document) -> TokenTaggerSequenceState:
+                padout = self.padout if self.label_embedding else None
+                return TokenTaggerSequenceState(d, self.key, self.label_map, self.vsm_list, self.feature_windows, padout)
+
+            return group_states(documents, create)
+        else:
+            return [TokenTaggerBatchState(d, self.key, self.label_map, self.vsm_list, self.feature_windows) for d in documents]
 
     # override
     def finalize(self, state: Union[TokenTaggerBatchState, TokenTaggerSequenceState]):

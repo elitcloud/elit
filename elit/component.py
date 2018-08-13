@@ -17,10 +17,11 @@ import abc
 import inspect
 import logging
 import time
-from typing import Union, Sequence, Dict
+from typing import Union, Sequence, Dict, Any
 
 import mxnet as mx
 from mxnet import nd, gluon, autograd
+from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
 from elit.iterator import BatchIterator, NLPIterator
@@ -47,17 +48,16 @@ class Component(abc.ABC):
         """
         :param kwargs: custom parameters.
 
-        Abstract method to initialize this component.
+        Initializes this component.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def load(self, model_path: str, **kwargs):
         """
-        :param model_path: the filepath where a pre-trained model can be loaded.
-        :param kwargs: custom parameters.
+        :param model_path: the filepath where a model can be loaded.
 
-        Abstract method to load a pre-trained model from the filepath.
+        Loads a model for this component from the filepath.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -65,41 +65,37 @@ class Component(abc.ABC):
     def save(self, model_path: str, **kwargs):
         """
         :param model_path: the filepath where the current model can be saved.
-        :param kwargs: custom parameters.
 
-        Abstract method to save the current model to the filepath.
+        Saves the current model of this component to the filepath.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def train(self, trn_data, dev_data, model_path: str, **kwargs):
+    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs):
         """
         :param trn_data: training data.
         :param dev_data: development (validation) data.
-        :param model_path: the filepath where trained model(s) are to be saved.
-        :param kwargs: custom parameters.
+        :param model_path: the filepath where the trained model(s) are to be saved.
 
-        Abstract class to train and save a model for this component.
+        Trains a model for this component and saves the model to the filepath.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def decode(self, data, **kwargs):
+    def decode(self, data: Any, **kwargs):
         """
         :param data: input data.
-        :param kwargs: custom parameters.
 
-        Abstract method to process the input data and save the processed results to the input data.
+        Processes the input data, make predictions, and saves the predicted labels back to the input data.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def evaluate(self, data, **kwargs):
+    def evaluate(self, data: Any, **kwargs):
         """
         :param data: input data.
-        :param kwargs: custom parameters.
 
-        Abstract method to evaluate the current model of this component with the input data.
+        Evaluates the current model of this component with the input data.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -124,9 +120,8 @@ class NLPComponent(Component):
         :param trn_docs: the sequence of documents for training.
         :param dev_docs: the sequence of documents for development (validation).
         :param model_path: the filepath where trained model(s) are to be saved.
-        :param kwargs: custom parameters.
 
-        Abstract method to train and save a model for this component.
+        Trains a model for this component and saves the model to the filepath.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -134,9 +129,8 @@ class NLPComponent(Component):
     def decode(self, docs: Sequence[Document], **kwargs):
         """
         :param docs: the sequence of input documents.
-        :param kwargs: custom parameters.
 
-        Abstract method to process the input documents and save the processed results to the input documents.
+        Processes the input documents, make predictions, and saves the predicted labels back to the input documents.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -144,9 +138,8 @@ class NLPComponent(Component):
     def evaluate(self, docs: Sequence[Document], **kwargs):
         """
         :param docs: the sequence of input documents.
-        :param kwargs: custom parameters.
 
-        Abstract method to evaluate the current model of this component with the input documents.
+        Evaluates the current model of this component with the input documents.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -178,20 +171,14 @@ class MXNetComponent(NLPComponent):
         :param batch_size: the size of batches to process at a time.
         :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
         :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
-        :param kwargs: custom parameters.
         :return: the iterator to retrieve batches of training or decoding instances.
-
-        Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def eval_metric(self, **kwargs) -> EvalMetric:
         """
-        :param kwargs: custom parameters.
         :return: the evaluation metric for this component.
-
-        Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -217,27 +204,36 @@ class MXNetComponent(NLPComponent):
         :param loss: the `loss function <https://mxnet.incubator.apache.org/api/python/gluon/loss.html?highlight=softmaxcrossentropyloss#gluon-loss-api>`_; if not specified, ``SoftmaxCrossEntropyLoss`` is used.
         :param optimizer: the type of the `optimizer <https://mxnet.incubator.apache.org/api/python/optimization/optimization.html?highlight=optimiz#the-mxnet-optimizer-package>`_ for training.
         :param optimizer_params: the parameters for the optimizer.
-        :param kwargs: custom parameters.
 
         Trains and saves a model for this component.
         """
+        log = ('Configuration',
+               '- context(s): %s' % str(self.ctx),
+               '- batch size: %d' % trn_batch_size,
+               '- max epoch : %d' % epoch,
+               '- loss func : %s' % str(loss),
+               '- optimizer : %s <- %s' % (optimizer, optimizer_params))
+        logging.info('\n'.join(log) + '\n')
+
         # create iterators
-        trn_iterator = self.data_iterator(trn_docs, trn_batch_size, shuffle=True, label=True)
-        dev_iterator = self.data_iterator(trn_docs, dev_batch_size, shuffle=False, label=True)
+        logging.info('Creating iterators')
+
+        st = time.time()
+        trn_iterator = self.data_iterator(trn_docs, trn_batch_size, shuffle=True, label=True, **kwargs)
+        et = time.time()
+        logging.info('- trn: %s (%d sec)\n' % (str(trn_iterator), et - st))
+
+        st = time.time()
+        dev_iterator = self.data_iterator(dev_docs, dev_batch_size, shuffle=False, label=True, **kwargs)
+        et = time.time()
+        logging.info('- dev: %s (%d sec)\n' % (str(dev_iterator), et - st))
 
         # create a trainer
         if loss is None: loss = gluon.loss.SoftmaxCrossEntropyLoss()
         trainer = gluon.Trainer(self.model.collect_params(), optimizer, optimizer_params)
 
         # train
-        log = ('* Training',
-               '- context(s): %s' % str(self.ctx),
-               '- batch size: %d' % trn_batch_size,
-               '- max epoch : %d' % epoch,
-               '- loss      : %s' % str(loss),
-               '- optimizer : %s -> %s' % (optimizer, optimizer_params))
-        logging.info('\n'.join(log) + '\n')
-
+        logging.info('Training')
         best_e, best_acc = -1, -1
 
         for e in range(1, epoch + 1):
@@ -246,14 +242,14 @@ class MXNetComponent(NLPComponent):
             mt = time.time()
             dev_metric = self.evaluate_iter(dev_iterator)
             et = time.time()
-            acc = dev_metric.get()
 
+            acc = dev_metric.get()
             if best_acc < acc:
                 best_e, best_acc = e, acc
                 self.save(model_path)
 
-            print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
-                  (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
+            logging.info('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
+                         (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
 
     def train_iter(self,
                    iterator: NLPIterator,
@@ -283,6 +279,7 @@ class MXNetComponent(NLPComponent):
         Trains all batches in the iterator with a single device.
         """
         state_begin, total, correct = 0, 0, 0
+        hidden = None
 
         for batch in iterator:
             xs, ys = zip(*batch)
@@ -291,13 +288,20 @@ class MXNetComponent(NLPComponent):
             ys = nd.array(ys, self.ctx)
 
             with autograd.record():
-                outputs = self.model(xs)
-                l = loss(outputs, ys)
+                t = self.model(xs)
+                if isinstance(t, NDArray):
+                    output = t
+                else:
+                    output = t[0]
+                    hidden = t[1:]
+
+                l = loss(output, ys)
                 l.backward()
 
             trainer.step(xs.shape[0])
-            state_begin = iterator.process(outputs.asnumpy(), state_begin)
-            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
+            if hidden: state_begin = iterator.process(state_begin, output, *hidden)
+            else: state_begin = iterator.process(state_begin, output)
+            correct += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
 
         return 100.0 * correct / total
 
@@ -316,16 +320,24 @@ class MXNetComponent(NLPComponent):
 
         def train():
             with autograd.record():
-                outputs = [self.model(x_split) for x_split in x_splits]
+                ts = [self.model(x_split) for x_split in x_splits]
+                if isinstance(ts[0], NDArray):
+                    outputs = ts
+                    hiddens = None
+                else:
+                    outputs = [t[0] for t in ts]
+                    hiddens = [t[1:] for t in ts]
+
                 losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
                 for l in losses: l.backward()
 
             trainer.step(sum(x_split.shape[0] for x_split in x_splits))
-            begin, c = state_begin, 0
-            for output, y_split in zip(outputs, y_splits):
-                begin = iterator.process(output.asnumpy(), begin)
-                c += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
-            return begin, c
+            begin, corr = state_begin, 0
+            for i, output, y_split in enumerate(zip(outputs, y_splits)):
+                if hiddens: begin = iterator.process(state_begin, output, *hiddens[i])
+                else: begin = iterator.process(state_begin, output)
+                corr += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+            return begin, corr
 
         state_begin, total, correct = 0, 0, 0
         x_splits, y_splits = [], []
@@ -337,9 +349,9 @@ class MXNetComponent(NLPComponent):
             y_splits.append(nd.array(ys, self.ctx[len(y_splits)]))
 
             if len(x_splits) == len(self.ctx):
-                t = train()
-                state_begin = t[0]
-                correct += t[1]
+                b, c = train()
+                state_begin = b
+                correct += c
                 x_splits, y_splits = [], []
 
         if x_splits: correct += train()[1]
@@ -350,11 +362,10 @@ class MXNetComponent(NLPComponent):
         """
         :param docs: the sequence of input documents.
         :param batch_size: the batch size.
-        :param kwargs: custom parameters.
 
         Processes the input documents and saves the predicted labels to the input documents.
         """
-        log = ('* Decoding',
+        log = ('Decoding',
                '- context(s): %s' % str(self.ctx),
                '- batch size: %d' % batch_size)
         logging.info('\n'.join(log) + '\n')
@@ -381,11 +392,19 @@ class MXNetComponent(NLPComponent):
         Decodes all batches in the iterator with a single device.
         """
         state_begin = 0
+        hidden = None
 
         for batch in iterator:
             xs = nd.array(batch, self.ctx)
-            outputs = self.model(xs)
-            state_begin = iterator.process(outputs.asnumpy(), state_begin)
+            t = self.model(xs)
+            if isinstance(t, NDArray):
+                output = t
+            else:
+                output = t[0]
+                hidden = t[1:]
+
+            if hidden: state_begin = iterator.process(state_begin, output, *hidden)
+            else: state_begin = iterator.process(state_begin, output)
 
     def decode_multiple_devices(self, iterator: BatchIterator):
         """
@@ -395,9 +414,18 @@ class MXNetComponent(NLPComponent):
         """
 
         def decode():
-            outputs = [self.model(split) for split in splits]
+            ts = [self.model(split) for split in splits]
+            if isinstance(ts[0], NDArray):
+                outputs = ts
+                hiddens = None
+            else:
+                outputs = [t[0] for t in ts]
+                hiddens = [t[1:] for t in ts]
+
             begin = state_begin
-            for output in outputs: begin = iterator.process(output.asnumpy(), begin)
+            for i, output in enumerate(outputs):
+                if hiddens: begin = iterator.process(state_begin, output, *hiddens[i])
+                else: begin = iterator.process(state_begin, output)
             return begin
 
         state_begin = 0
@@ -421,7 +449,7 @@ class MXNetComponent(NLPComponent):
 
         Evaluates the current model with the input documents.
         """
-        log = ('* Evaluating',
+        log = ('Evaluating',
                '- context(s): %s' % str(self.ctx),
                '- batch size: %d' % batch_size)
         logging.info('\n'.join(log) + '\n')

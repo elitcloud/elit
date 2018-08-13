@@ -15,7 +15,7 @@
 # ========================================================================
 import abc
 import inspect
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 import numpy as np
 
@@ -58,17 +58,16 @@ class NLPState(abc.ABC):
     @abc.abstractmethod
     def init(self):
         """
-        Abstract method to initialize the state of the input document.
+        Initializes the state of the input document.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def process(self, output, **kwargs):
+    def process(self, output: Any, *args):
         """
-        :param output: the prediction output of the current state.
-        :param kwargs: custom parameters.
-
-        Abstract method to apply the prediction output and custom parameters to the current state, then process onto the next state.
+        :param output: the prediction output for the current state.
+        :param args: custom parameters.
+        Applies the prediction output and custom parameters to the current state, then processes onto the next state.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -76,8 +75,6 @@ class NLPState(abc.ABC):
     def has_next(self) -> bool:
         """
         :return: ``True`` if there exists the next state to be processed; otherwise, ``False``.
-
-        Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -86,8 +83,6 @@ class NLPState(abc.ABC):
         """
         :return: the feature vector (or matrix) extracted from the current state.
         :rtype: numpy.ndarray
-
-        Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -97,7 +92,5 @@ class NLPState(abc.ABC):
         """
         :return: the class ID of the gold label for the current state if available; otherwise ``None``.
         :rtype: int or None
-
-        Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))

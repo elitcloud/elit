@@ -1,8 +1,11 @@
-Development
+API Documentation
 =================
 
+Development
+-----------------
+
 Component
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.component
     :members:
@@ -10,7 +13,7 @@ Component
     :show-inheritance:
 
 State
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.state
     :members:
@@ -18,7 +21,7 @@ State
     :show-inheritance:
 
 Model
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.model
     :members:
@@ -27,10 +30,10 @@ Model
 
 
 Components
-=================
+-----------------
 
 Token Tagger
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.token_tagger
     :members:
@@ -39,10 +42,10 @@ Token Tagger
 
 
 Utilities
-=================
+-----------------
 
 Structure
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.structure
     :members:
@@ -50,7 +53,7 @@ Structure
     :show-inheritance:
 
 Iterator
----------
+^^^^^^^^^^^^^^^^^
 
 .. automodule:: elit.iterator
     :members:
