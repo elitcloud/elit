@@ -34,13 +34,13 @@ class FFNNModel(gluon.Block):
                  hidden_config: Optional[Tuple[SimpleNamespace, ...]] = None,
                  **kwargs):
         """
-        :param input_config: configuration for the input layer -> :meth:`namespace_input`;
+        :param input_config: configuration for the input layer, that is the return value of :meth:`namespace_input`;
                              {row: int, col: int, dropout: float}.
-        :param output_config: configuration for the output layer -> :meth:`namespace_output`;
+        :param output_config: configuration for the output layer, that is the return value of :meth:`namespace_output`;
                               {dim: int}.
-        :param conv2d_config: configuration for the 2D convolution layer -> :meth:`namespace_conv2d`;
+        :param conv2d_config: configuration for the 2D convolution layer, that is the return value of :meth:`namespace_conv2d`;
                               {ngram: int, filters: int, activation: str, pool: str, dropout: float}.
-        :param hidden_config: configuration for the hidden layers -> :meth:`namespace_hidden`;
+        :param hidden_config: configuration for the hidden layers that is the return value of :meth:`namespace_hidden`;
                               {dim: int, activation: str, dropout: float}.
         :param kwargs: extra parameters for the initialization of :class:`mxnet.gluon.Block`.
         """
@@ -103,12 +103,6 @@ class FFNNModel(gluon.Block):
         return x
 
 
-def conv2d_pool(pool: str, n: int) -> Union[mx.gluon.nn.MaxPool2D, mx.gluon.nn.AvgPool2D, None]:
-    if pool is None: return None
-    p = mx.gluon.nn.MaxPool2D if pool == 'max' else mx.gluon.nn.AvgPool2D
-    return p(pool_size=(n, 1), strides=(n, 1))
-
-
 def namespace_input(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
     return SimpleNamespace(col=col, row=row, dropout=dropout)
 
@@ -123,3 +117,9 @@ def namespace_conv2d(ngram: int, filters: int, activation: str, pool: str = None
 
 def namespace_hidden(dim: int, activation: str, dropout: float) -> SimpleNamespace:
     return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
+
+
+def conv2d_pool(pool: str, n: int) -> Union[mx.gluon.nn.MaxPool2D, mx.gluon.nn.AvgPool2D, None]:
+    if pool is None: return None
+    p = mx.gluon.nn.MaxPool2D if pool == 'max' else mx.gluon.nn.AvgPool2D
+    return p(pool_size=(n, 1), strides=(n, 1))

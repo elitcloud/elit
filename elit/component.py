@@ -17,18 +17,14 @@ import abc
 import inspect
 import logging
 import time
-from itertools import islice
 from typing import Union, Sequence, Dict
 
 import mxnet as mx
-import numpy as np
 from mxnet import nd, gluon, autograd
-from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
-from elit.state import NLPState
+from elit.iterator import BatchIterator, NLPIterator
 from elit.structure import Document
-from elit.utils.iterator import BatchIterator, NLPIterator
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -166,8 +162,6 @@ class MXNetComponent(NLPComponent):
       - :meth:`Component.save`
       - :meth:`MXNetComponent.data_iterator`
       - :meth:`MXNetComponent.eval_metric`
-      - :meth:`MXNetComponent.train_iter`
-      - :meth:`MXNetComponent.decode_iter`
     """
 
     def __init__(self, ctx: Union[mx.Context, Sequence[mx.Context]]):
@@ -181,7 +175,7 @@ class MXNetComponent(NLPComponent):
     def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> NLPIterator:
         """
         :param documents: the sequence of input documents.
-        :param batch_size: the size of mini-batches.
+        :param batch_size: the size of batches to process at a time.
         :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
         :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
         :param kwargs: custom parameters.
@@ -200,46 +194,6 @@ class MXNetComponent(NLPComponent):
         Abstract method.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def train_iter(self,
-                   iterator: NLPIterator,
-                   loss: gluon.loss.Loss,
-                   trainer: gluon.Trainer,
-                   **kwargs) -> float:
-        """
-        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :param kwargs: custom parameters.
-        :return: the training accuracy.
-
-        Abstract method to train all batches in the iterator for one epoch.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def decode_iter(self, iterator: NLPIterator, **kwargs):
-        """
-        :param iterator: the iterator to retrieve batches of feature vectors.
-        :param kwargs: custom parameters.
-
-        Abstract method to decode all batches in the iterator.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    def evaluate_iter(self, iterator: NLPIterator, **kwargs) -> EvalMetric:
-        """
-        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :param kwargs: custom parameters.
-        :return: the evaluation metric including evaluation statistics on the input states.
-
-        Evaluates all batches in the iterator.
-        """
-        self.decode_iter(iterator, kwargs)
-        metric = self.eval_metric()
-        for state in iterator.states: metric.update(state.document)
-        return metric
 
     # override
     def train(self,
@@ -301,6 +255,96 @@ class MXNetComponent(NLPComponent):
             print('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
                   (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
 
+    def train_iter(self,
+                   iterator: NLPIterator,
+                   loss: gluon.loss.Loss,
+                   trainer: gluon.Trainer) -> float:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :return: the evaluation metric including evaluation statistics on the training states.
+
+        Trains all batches in the iterator for one epoch.
+        """
+        device = self.train_multiple_devices if isinstance(self.ctx, list) else self.train_single_device
+        return device(iterator, loss, trainer)
+
+    def train_single_device(self,
+                            iterator: NLPIterator,
+                            loss: gluon.loss.Loss,
+                            trainer: gluon.Trainer) -> float:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :return: the training accuracy.
+
+        Trains all batches in the iterator with a single device.
+        """
+        state_begin, total, correct = 0, 0, 0
+
+        for batch in iterator:
+            xs, ys = zip(*batch)
+            total += len(ys)
+            xs = nd.array(xs, self.ctx)
+            ys = nd.array(ys, self.ctx)
+
+            with autograd.record():
+                outputs = self.model(xs)
+                l = loss(outputs, ys)
+                l.backward()
+
+            trainer.step(xs.shape[0])
+            state_begin = iterator.process(outputs.asnumpy(), state_begin)
+            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
+
+        return 100.0 * correct / total
+
+    def train_multiple_devices(self,
+                               iterator: NLPIterator,
+                               loss: gluon.loss.Loss,
+                               trainer: gluon.Trainer) -> float:
+        """
+        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
+        :param loss: the loss function.
+        :param trainer: the trainer.
+        :return: the training accuracy.
+
+        Trains all batches in the iterator with a single device.
+        """
+
+        def train():
+            with autograd.record():
+                outputs = [self.model(x_split) for x_split in x_splits]
+                losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
+                for l in losses: l.backward()
+
+            trainer.step(sum(x_split.shape[0] for x_split in x_splits))
+            begin, c = state_begin, 0
+            for output, y_split in zip(outputs, y_splits):
+                begin = iterator.process(output.asnumpy(), begin)
+                c += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+            return begin, c
+
+        state_begin, total, correct = 0, 0, 0
+        x_splits, y_splits = [], []
+
+        for batch in iterator:
+            xs, ys = zip(*batch)
+            total += len(ys)
+            x_splits.append(nd.array(xs, self.ctx[len(x_splits)]))
+            y_splits.append(nd.array(ys, self.ctx[len(y_splits)]))
+
+            if len(x_splits) == len(self.ctx):
+                t = train()
+                state_begin = t[0]
+                correct += t[1]
+                x_splits, y_splits = [], []
+
+        if x_splits: correct += train()[1]
+        return 100.0 * correct / total
+
     # override
     def decode(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
         """
@@ -320,6 +364,53 @@ class MXNetComponent(NLPComponent):
         self.decode_iter(iterator)
         et = time.time()
         logging.info('- time: %d (sec)\n' % (et - st))
+
+    def decode_iter(self, iterator: NLPIterator):
+        """
+        :param iterator: the iterator to retrieve batches of feature vectors.
+
+        Decodes all batches in the iterator.
+        """
+        device = self.decode_multiple_devices if isinstance(self.ctx, list) else self.decode_single_device
+        device(iterator)
+
+    def decode_single_device(self, iterator: NLPIterator):
+        """
+        :param iterator: the iterator to retrieve batches of feature vectors.
+
+        Decodes all batches in the iterator with a single device.
+        """
+        state_begin = 0
+
+        for batch in iterator:
+            xs = nd.array(batch, self.ctx)
+            outputs = self.model(xs)
+            state_begin = iterator.process(outputs.asnumpy(), state_begin)
+
+    def decode_multiple_devices(self, iterator: BatchIterator):
+        """
+        :param iterator: the iterator to retrieve batches of feature vectors.
+
+        Decodes all batches in the iterator with multiple devices.
+        """
+
+        def decode():
+            outputs = [self.model(split) for split in splits]
+            begin = state_begin
+            for output in outputs: begin = iterator.process(output.asnumpy(), begin)
+            return begin
+
+        state_begin = 0
+        splits = []
+
+        for batch in iterator:
+            splits.append(nd.array(batch, self.ctx[len(splits)]))
+
+            if len(splits) == len(self.ctx):
+                state_begin = decode()
+                splits = []
+
+        if splits: decode()
 
     # override
     def evaluate(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
@@ -342,197 +433,15 @@ class MXNetComponent(NLPComponent):
         logging.info('- time: %d (sec)\n' % (et - st))
         logging.info('%s\n' % str(metric))
 
-
-class BatchComponent(MXNetComponent):
-    """
-    :class:`BatchComponent` is an abstract class to implement NLP components that process all states in batch
-    such that it assumes every state is independent to one another.
-    :meth:`BatchComponent.train_iter` and :meth:`BatchComponent.decode_iter` are defined in this class.
-
-    Abstract methods to be implemented:
-      - :meth:`Component.init`
-      - :meth:`Component.load`
-      - :meth:`Component.save`
-      - :meth:`MXNetComponent.eval_metric`
-      - :meth:`BatchComponent.data_iterator`
-    """
-
-    def __init__(self, ctx: Union[mx.Context, Sequence[mx.Context]]):
-        """
-        :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
-        """
-        super().__init__(ctx)
-
-    @abc.abstractmethod
-    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> BatchIterator:
-        """
-        :param documents: the sequence of input documents.
-        :param batch_size: the size of mini-batches.
-        :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
-        :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
-        :param kwargs: custom parameters.
-        :return: the iterator to retrieve batches of training or decoding instances.
-
-        Abstract method.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    # override
-    def train_iter(self,
-                   iterator: BatchIterator,
-                   loss: gluon.loss.Loss,
-                   trainer: gluon.Trainer,
-                   **kwargs) -> float:
+    def evaluate_iter(self, iterator: NLPIterator, decode=True) -> EvalMetric:
         """
         :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :param kwargs: custom parameters.
-        :return: the training accuracy.
+        :param decode: if ``True``, decodes all the states in the iterator before evaluation.
+        :return: the evaluation metric including evaluation statistics on the input states.
 
-        Trains all batches in the iterator for one epoch.
+        Evaluates all batches in the iterator.
         """
-        device = self.train_multiple_devices if isinstance(self.ctx, list) else self.train_single_device
-        correct = device(iterator, loss, trainer)
-        return 100 * correct / iterator.total
-
-    def train_single_device(self,
-                            iterator: BatchIterator,
-                            loss: gluon.loss.Loss,
-                            trainer: gluon.Trainer) -> int:
-        """
-        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :return: the number of correctly classified instances.
-
-        Trains all batches in the iterator with a single device.
-        """
-        correct = 0
-
-        for batch in iterator:
-            xs, ys = zip(*batch)
-            xs = nd.array(xs, self.ctx)
-            ys = nd.array(ys, self.ctx)
-
-            with autograd.record():
-                outputs = self.model(xs)
-                l = loss(outputs, ys)
-                l.backward()
-
-            trainer.step(xs.shape[0])
-            correct += len([1 for o, y in zip(mx.ndarray.argmax(outputs, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
-
-        return correct
-
-    def train_multiple_devices(self,
-                               iterator: BatchIterator,
-                               loss: gluon.loss.Loss,
-                               trainer: gluon.Trainer) -> int:
-        """
-        :param iterator: the iterator to retrieve batches of (feature vectors, labels).
-        :param loss: the loss function.
-        :param trainer: the trainer.
-        :return: the number of correctly classified instances.
-
-        Trains all batches in the iterator with a single device.
-        """
-
-        def train():
-            with autograd.record():
-                outputs = [self.model(x_split) for x_split in x_splits]
-                losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
-                for l in losses: l.backward()
-
-            c = 0
-            trainer.step(sum(x_split.shape[0] for x_split in x_splits))
-            for output, y_split in zip(outputs, y_splits):
-                c += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
-            return c
-
-        x_splits, y_splits = [], []
-        correct = 0
-
-        for batch in iterator:
-            xs, ys = zip(*batch)
-            x_splits.append(nd.array(xs, self.ctx))
-            y_splits.append(nd.array(ys, self.ctx))
-
-            if len(x_splits) == len(self.ctx):
-                correct += train()
-                x_splits, y_splits = [], []
-
-        if x_splits:
-            correct += train()
-
-        return correct
-
-    # override
-    def decode_iter(self, iterator: BatchIterator, **kwargs):
-        """
-        :param iterator: the iterator to retrieve batches of feature vectors.
-
-        Decodes all batches in the iterator.
-        """
-        device = self.decode_multiple_devices if isinstance(self.ctx, list) else self.decode_single_device
-        device(iterator)
-
-    def decode_single_device(self, iterator: BatchIterator):
-        """
-        :param iterator: the iterator to retrieve batches of feature vectors.
-
-        Decodes all batches in the iterator with a single device.
-        """
-        state_idx = 0
-
-        for batch in iterator:
-            xs = nd.array(batch, self.ctx)
-            outputs = self.model(xs)
-            state_idx = self._process_outputs(iterator.states, outputs, state_idx)
-
-    def decode_multiple_devices(self, iterator: BatchIterator):
-        """
-        :param iterator: the iterator to retrieve batches of feature vectors.
-
-        Decodes all batches in the iterator with multiple devices.
-        """
-
-        def decode():
-            outputs = [self.model(split) for split in splits]
-            outputs = nd.concat(*outputs, dim=0)
-            return self._process_outputs(iterator.states, outputs, state_idx)
-
-        state_idx = 0
-        splits = []
-
-        for batch in iterator:
-            splits.append(nd.array(batch, self.ctx[len(splits)]))
-
-            if len(splits) == len(self.ctx):
-                state_idx = decode()
-                splits = []
-
-        if splits:
-            decode()
-
-    @classmethod
-    def _process_outputs(cls, states: Sequence[NLPState], outputs: Union[NDArray, np.ndarray], state_idx) -> int:
-        """
-        :param states: the sequence of input states.
-        :param outputs: the 2D matrix where each row contains the prediction scores of the corresponding state.
-        :param state_idx: the index of the state in the sequence to begin the process with.
-        :return: the index of the state to be processed next.
-
-        Processes through the states and assigns the outputs accordingly.
-        """
-        i = 0
-
-        for state in islice(states, state_idx):
-            while state.has_next():
-                if i == len(outputs): return state_idx
-                state.process(outputs[i])
-                i += 1
-
-            state_idx += 1
-
-        return state_idx
+        if decode: self.decode_iter(iterator)
+        metric = self.eval_metric()
+        for state in iterator.states: metric.update(state.document)
+        return metric

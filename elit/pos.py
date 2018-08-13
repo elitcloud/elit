@@ -22,9 +22,9 @@ import mxnet as mx
 
 from elit.structure import TOK
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
-from elit.utils.cli import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
+from elit.util.cli import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
     args_hidden
-from elit.utils.io import tsv_reader
+from elit.util.io import tsv_reader
 from elit.vsm import FastText
 
 __author__ = "Gary Lai"

@@ -56,10 +56,8 @@ class NLPState(abc.ABC):
         return x, y
 
     @abc.abstractmethod
-    def init(self, **kwargs):
+    def init(self):
         """
-        :param kwargs: custom parameters.
-
         Abstract method to initialize the state of the input document.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))

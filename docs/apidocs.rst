@@ -1,5 +1,13 @@
-Documentation
+Development
 =================
+
+Component
+---------
+
+.. automodule:: elit.component
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 State
 ---------
@@ -17,13 +25,21 @@ Model
     :undoc-members:
     :show-inheritance:
 
-Component
+
+Components
+=================
+
+Token Tagger
 ---------
 
-.. automodule:: elit.component
+.. automodule:: elit.token_tagger
     :members:
     :undoc-members:
     :show-inheritance:
+
+
+Utilities
+=================
 
 Structure
 ---------
@@ -33,18 +49,10 @@ Structure
     :undoc-members:
     :show-inheritance:
 
-Util
+Iterator
 ---------
 
-.. automodule:: elit.util
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-Benchmark
----------
-
-.. automodule:: elit.benchmark
+.. automodule:: elit.iterator
     :members:
     :undoc-members:
     :show-inheritance:

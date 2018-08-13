@@ -22,7 +22,7 @@ import mxnet as mx
 
 from elit.model import namespace_conv2d
 from elit.cli import namespace_vsm
-from elit.utils.io import tsv_reader, json_reader
+from elit.util.io import tsv_reader, json_reader
 from elit.vsm import Word2Vec, FastText
 
 __author__ = "Gary Lai, Jinho D. Choi"

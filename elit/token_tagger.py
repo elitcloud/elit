@@ -20,20 +20,20 @@ import pickle
 import sys
 import time
 from types import SimpleNamespace
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, List, Union, Sequence
 
 import mxnet as mx
 import numpy as np
-from mxnet.ndarray import NDArray
 
-from demo.tmp import BatchState, SequenceState, BatchComponent, SequenceComponent
+from demo.tmp import BatchComponent, SequenceComponent
+from elit.component import MXNetComponent
 from elit.eval import Accuracy, F1
 from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
 from elit.structure import Document
-from elit.util import BILOU, to_gold, to_out
-from elit.utils.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context
-from elit.utils.io import pkl, gln, group_states
+from elit.util.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context
+from elit.util.io import pkl, gln, group_states
+from elit.util.util import BILOU, to_gold, to_out
 from elit.vsm import LabelMap, get_loc_embeddings, x_extract, X_ANY
 
 __author__ = 'Jinho D. Choi'
@@ -43,32 +43,41 @@ __author__ = 'Jinho D. Choi'
 
 class TokenTaggerState(NLPState):
     """
-    TokenTaggingState defines the one-pass left-to-right strategy for tagging individual tokens.
+    :class:`TokenTaggingState` generates a state per token using the one-pass left-to-right decoding strategy
+    and predicts a tag per token.
     """
 
     def __init__(self,
                  document: Document,
                  key: str,
                  label_map: LabelMap,
-                 vsm_list: Tuple[SimpleNamespace, ...],
-                 windows: Tuple[int, ...]):
+                 vsm_list: Sequence[SimpleNamespace, ...],
+                 feature_windows: Tuple[int, ...],
+                 padout: Optional[np.ndarray] = None):
         """
-        :param document: an input document.
-        :param key: the key to each sentence in the document where predicted labels are to be saved.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param vsm_list: a tuple of namespace(model, key).
-        :param windows: contextual windows of adjacent tokens for feature extraction.
+        :param document: the input document.
+        :param key: the key to each sentence in the document where predicted tags are to be saved.
+        :param label_map: collects labels during training and maps them to unique class IDs.
+        :param vsm_list: the sequence of namespace(:class:`elit.vsm.VectorSpaceModel`, key).
+        :param feature_windows: the contextual windows for feature extraction.
+        :param padout: a zero-vector whose dimension is the number of labels, used to zero-pad label embeddings;
+                       if ``None``, label embeddings are not used as features.
         """
         super().__init__(document, key)
         self.label_map = label_map
-        self.windows = windows
+        self.feature_windows = feature_windows
 
         # initialize gold-standard labels if available
         key_gold = to_gold(key)
         self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
 
+        # initialize outputs
+        self.padout = padout
+        self.output = [[padout] * len(s) for s in self.document]
+
         # initialize embeddings
         self.embs = [vsm.model.sentence_embedding_list(document, vsm.key) for vsm in vsm_list]
+        if padout is not None: self.embs.append((self.output, self.padout))
         self.embs.append(get_loc_embeddings(document))
 
         # self.init()
@@ -79,13 +88,22 @@ class TokenTaggerState(NLPState):
         """
         Initializes the pointers to the first token in the first sentence.
         """
+        for i, s in enumerate(self.document):
+            self.output[i] = [self.padout] * len(s)
+
         self.sen_id = 0
         self.tok_id = 0
 
-    def process(self, **kwargs):
+    def process(self, output: np.ndarray = None, **kwargs):
         """
-        Processes to the next token.
+        :param output: the predicted output of the current token.
+
+        Assigns the predicted output to the current token, then processes to the next token.
         """
+        # apply the output to the current token
+        self.output[self.sen_id][self.tok_id] = output
+
+        # process to the next token
         self.tok_id += 1
         if self.tok_id == len(self.document.sentences[self.sen_id]):
             self.sen_id += 1
@@ -94,7 +112,7 @@ class TokenTaggerState(NLPState):
     @property
     def has_next(self) -> bool:
         """
-        :return: False if no more token is left to be tagged; otherwise, True.
+        :return: ``False`` if no more token is left to be tagged; otherwise, ``True``.
         """
         return 0 <= self.sen_id < len(self.document)
 
@@ -103,7 +121,7 @@ class TokenTaggerState(NLPState):
         """
         :return: the feature matrix of the current token.
         """
-        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad) for w in self.windows] for emb, pad in self.embs)
+        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad) for w in self.feature_windows] for emb, pad in self.embs)
         return np.column_stack(l)
 
     @property
@@ -112,90 +130,6 @@ class TokenTaggerState(NLPState):
         :return: the class ID of the current token's gold-standard label if available; otherwise, None.
         """
         return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
-
-
-class TokenTaggerBatchState(TokenTaggerState, BatchState):
-    """
-    TokenTaggingBatchState defines the one-pass left-to-right strategy for tagging individual tokens in batch mode.
-    """
-
-    def __init__(self,
-                 document: Document,
-                 key: str,
-                 label_map: LabelMap,
-                 vsm_list: Tuple[SimpleNamespace, ...],
-                 windows: Tuple[int, ...]):
-        """
-        :param document: an input document.
-        :param key: the key to each sentence in the document where predicted labels are to be saved.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param vsm_list: a tuple of namespace(model, key).
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        """
-        TokenTaggerState.__init__(self, document, key, label_map, vsm_list, windows)
-
-    def assign(self, output: NDArray, begin: int = 0) -> int:
-        """
-        Assigns the predicted output to the each token in the input document.
-        :param output: a matrix where each row contains prediction scores of the corresponding token.
-        :param begin: the row index of the output matrix corresponding to the first token in the input document.
-        :return: the row index of the output matrix to be assigned by the next document.
-        """
-        key_out = to_out(self.key)
-        for sentence in self.document:
-            end = begin + len(sentence)
-            sentence[key_out] = output[begin:end].asnumpy()
-            begin = end
-        return begin
-
-
-class TokenTaggerSequenceState(TokenTaggerState, SequenceState):
-    """
-    TokenTaggingSequenceState defines the one-pass left-to-right strategy for tagging individual tokens in sequence mode.
-    In other words, predicted outputs from earlier tokens are used as features to predict later tokens.
-    """
-
-    def __init__(self,
-                 document: Document,
-                 key: str,
-                 label_map: LabelMap,
-                 vsm_list: Tuple[SimpleNamespace, ...],
-                 windows: Tuple[int, ...],
-                 padout: np.ndarray):
-        """
-        :param document: an input document.
-        :param key: the key to each sentence in the document where predicted labels are to be saved.
-        :param label_map: collects class labels during training and maps them to unique IDs.
-        :param vsm_list: a list of namespace(model, key).
-        :param windows: contextual windows of adjacent tokens for feature extraction.
-        :param padout: a zero-vector whose dimension is the number of class labels, used to zero-pad label embeddings.
-        """
-        TokenTaggerState.__init__(self, document, key, label_map, vsm_list, windows)
-        self.padout = padout
-        self.output = [[self.padout] * len(s) for s in self.document]
-
-        # initialize embeddings
-        if padout is not None: self.embs.append((self.output, self.padout))
-
-    def init(self):
-        """
-        Initializes the pointers to the first otken in the first sentence and the predicted outputs and labels.
-        """
-        TokenTaggerState.init(self)
-
-        for i, s in enumerate(self.document):
-            self.output[i] = [self.padout] * len(s)
-
-    def process(self, output: np.ndarray):
-        """
-        Assigns the predicted output to the current token, then processes to the next token.
-        :param output: the predicted output of the current token.
-        """
-        # apply the output to the current token
-        self.output[self.sen_id][self.tok_id] = output
-
-        # process to the next token
-        TokenTaggerState.process(self)
 
 
 # ======================================== EvalMetric ========================================
@@ -229,7 +163,7 @@ class ChunkF1(F1):
 
 # ======================================== Component ========================================
 
-class TokenTagger(BatchComponent):
+class TokenTagger(MXNetComponent):
     """
     TokenBatchTagger provides an abstract class to implement a tagger that predicts a tag for every token.
     """
@@ -250,8 +184,8 @@ class TokenTagger(BatchComponent):
         self.chunking = None
         self.label_map = None
         self.feature_windows = None
-        self.label_embedding = None   # sequence mode only
-        self.padout = None            # sequence mode only
+        self.label_embedding = None  # sequence mode only
+        self.padout = None  # sequence mode only
         self.input_config = None
         self.output_config = None
         self.conv2d_config = None
@@ -437,9 +371,11 @@ class TokenSequenceTagger(TokenTagger, SequenceComponent):
         :param documents: a list of input documents.
         :return: the list of sequence or batch states corresponding to the input documents.
         """
+
         def create(d: Document) -> TokenTaggerSequenceState:
             padout = self.padout if self.label_embedding else None
             return TokenTaggerSequenceState(d, self.key, self.label_map, self.vsm_list, self.feature_windows, padout)
+
         return group_states(documents, create)
 
 
@@ -556,7 +492,8 @@ commands:
         # component
         factory = TokenSequenceTagger if args.sequence else TokenBatchTagger
         comp = factory(args.context, args.vsm_list)
-        comp.init(args.sequence, args.chunking, args.key, args.num_class, args.feature_windows, args.label_embedding, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
+        comp.init(args.sequence, args.chunking, args.key, args.num_class, args.feature_windows, args.label_embedding, args.input_dropout, args.conv2d_config, args.hidden_config,
+                  initializer)
 
         # data
         trn_docs = args.reader.type(args.trn_path, args.reader.params, args.key)
@@ -619,7 +556,7 @@ commands:
         e = comp._evaluate(states, args.dev_batch)
         et = time.time()
         print(str(e))
-        print('Time: %d' % (et-st))
+        print('Time: %d' % (et - st))
 
 
 if __name__ == '__main__':

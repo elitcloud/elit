@@ -20,7 +20,7 @@ from typing import List, Dict, Callable, Type
 
 from demo.tmp import SequenceState
 from elit.structure import Sentence, TOK, Document
-from elit.util import to_gold
+from elit.util.util import to_gold
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
