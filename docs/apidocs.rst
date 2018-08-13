@@ -44,6 +44,14 @@ Token Tagger
 Utilities
 -----------------
 
+Vector Space Model
+^^^^^^^^^^^^^^^^^^
+
+.. automodule:: elit.vsm
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Structure
 ^^^^^^^^^^^^^^^^^
 

@@ -279,7 +279,7 @@ class MXNetComponent(NLPComponent):
         Trains all batches in the iterator with a single device.
         """
         state_begin, total, correct = 0, 0, 0
-        hidden = None
+        hidden = []
 
         for batch in iterator:
             xs, ys = zip(*batch)
@@ -299,8 +299,7 @@ class MXNetComponent(NLPComponent):
                 l.backward()
 
             trainer.step(xs.shape[0])
-            if hidden: state_begin = iterator.process(state_begin, output, *hidden)
-            else: state_begin = iterator.process(state_begin, output)
+            state_begin = iterator.process(state_begin, output, *hidden)
             correct += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
 
         return 100.0 * correct / total
@@ -340,7 +339,7 @@ class MXNetComponent(NLPComponent):
             return begin, corr
 
         state_begin, total, correct = 0, 0, 0
-        x_splits, y_splits = [], []
+        x_splits, y_splits, empty = [], [], []
 
         for batch in iterator:
             xs, ys = zip(*batch)
@@ -392,7 +391,7 @@ class MXNetComponent(NLPComponent):
         Decodes all batches in the iterator with a single device.
         """
         state_begin = 0
-        hidden = None
+        hidden = []
 
         for batch in iterator:
             xs = nd.array(batch, self.ctx)
@@ -403,8 +402,7 @@ class MXNetComponent(NLPComponent):
                 output = t[0]
                 hidden = t[1:]
 
-            if hidden: state_begin = iterator.process(state_begin, output, *hidden)
-            else: state_begin = iterator.process(state_begin, output)
+            state_begin = iterator.process(state_begin, output, *hidden)
 
     def decode_multiple_devices(self, iterator: BatchIterator):
         """

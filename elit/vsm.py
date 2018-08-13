@@ -14,22 +14,23 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import List, Tuple, Any, Optional
+import inspect
+from typing import List, Tuple, Any, Optional, Union, Sequence
 
 import fastText
 import numpy as np
 from gensim.models import KeyedVectors
+from mxnet import nd
+from mxnet.ndarray import NDArray
 
 from elit.structure import TOK, Document
 
 __author__ = 'Jinho D. Choi'
 
 
-# ======================================== Labels ========================================
-
 class LabelMap:
     """
-    LabelMap provides the mapping between class labels and their unique IDs.
+    :class:`LabelMap` provides the mapping between string labels and their unique integer IDs.
     """
 
     def __init__(self):
@@ -42,52 +43,57 @@ class LabelMap:
     def __str__(self):
         return str(self.index_map)
 
-    def index(self, label: str) -> int:
-        """
-        :param label: a string label.
-        :return: the class ID of the label if exists; otherwise, -1.
-        """
-        return self.index_map.get(label, -1)
-
-    def get(self, index: int) -> str:
-        """
-        :param index: the class ID of the label.
-        :return: the index'th class label.
-        """
-        return self.labels[index]
-
     def add(self, label: str) -> int:
         """
-        Adds the class label to this map if not already exist.
-        :param label: the class label.
+        :param label: the label.
         :return: the class ID of the label.
+
+        Adds the label to this map and assigns its class ID if not already exists.
         """
-        idx = self.index(label)
+        idx = self.cid(label)
         if idx < 0:
             idx = len(self.labels)
             self.index_map[label] = idx
             self.labels.append(label)
         return idx
 
-    def argmax(self, scores: np.ndarray) -> str:
+    def get(self, cid: int) -> str:
         """
-        :param scores: scores of all labels.
+        :param cid: the class ID.
+        :return: the label corresponding to the class ID.
+        """
+        return self.labels[cid]
+
+    def cid(self, label: str) -> int:
+        """
+        :param label: the label.
+        :return: the class ID of the label if exists; otherwise, -1.
+        """
+        return self.index_map.get(label, -1)
+
+    def argmax(self, scores: Union[np.ndarray, NDArray]) -> str:
+        """
+        :param scores: the prediction scores of all labels.
         :return: the label with the maximum score.
         """
         if self.__len__() < len(scores): scores = scores[:self.__len__()]
-        return self.get(np.asscalar(np.argmax(scores)))
+        n = nd.argmax(scores, axis=0).asscalar() if isinstance(scores, NDArray) else np.argmax(scores)
+        return self.get(int(n))
 
 
 # ======================================== Vector Space Models ========================================
 
 class VectorSpaceModel(abc.ABC):
     """
-    VectorSpaceModel provides an abstract class to wrap token-based vector space models.
+    :class:`VectorSpaceModel` is an abstract class to implement token-based vector space models.
+
+    Abstract methods to be implemented:
+      - :meth:`VectorSpaceModel.emb`
     """
 
     def __init__(self, model: Any, dim: int):
         """
-        :param model: a (pre-trained) vector space model (e.g., Word2Vec, FastText, GloVe).
+        :param model: the vector space model (e.g., Word2Vec, FastText, GloVe).
         :param dim: the dimension of each embedding.
         """
         self.model = model
@@ -97,46 +103,46 @@ class VectorSpaceModel(abc.ABC):
         self.pad = np.zeros(dim).astype('float32')
 
     @abc.abstractmethod
-    def _emb(self, key: str) -> np.ndarray:
+    def emb(self, value: str) -> np.ndarray:
         """
-        Auxiliary function for #embedding().
-        :param key: a key (e.g., word, part-of-speech tag).
-        :return: the embedding of the key.
-        """
-        pass
+        :param value: the value (e.g., a word) to retrieve the embedding for.
+        :return: the embedding of the value.
 
-    def embedding(self, key: Optional[str] = None) -> np.ndarray:
+        This is an auxiliary function for :meth:`VectorSpaceModel.embedding`.
         """
-        :param key: a key (e.g., word, part-of-speech tag).
-        :return: the embedding of the key if not None; otherwise, the zero embedding (self.pad).
-        """
-        return self.pad if key is None else self._emb(key)
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
-    def embedding_list(self, keys: List[str]) -> List[np.ndarray]:
+    def embedding(self, value: Optional[str] = None) -> np.ndarray:
         """
-        :param keys: a list of keys.
-        :return: the list of embeddings for the corresponding keys.
+        :param value: the value (e.g., a word) to retrieve the embedding for.
+        :return: the embedding of the value; if the value is ``None``, the zero embedding.
         """
-        return [self.embedding(key) for key in keys]
+        return self.emb(value) if value is not None else self.pad
 
-    def embedding_matrix(self, keys: List[str], maxlen: int) -> List[np.ndarray]:
+    def embedding_list(self, values: Sequence[str]) -> List[np.ndarray]:
         """
-        :param keys: a list of keys.
+        :param values: the sequence of values (e.g., words).
+        :return: the list of embeddings for the corresponding values.
+        """
+        return [self.embedding(value) for value in values]
+
+    def embedding_list_of_sentences(self, document: Document, key: str = TOK) -> List[List[np.ndarray]]:
+        """
+        :param document: the input document.
+        :param key: the key to the values in each sentence to retrieve the embeddings for.
+        :return: the list of embedding lists, where each embedding list contains embeddings for the corresponding sentence.
+        """
+        return [self.embedding_list(s[key]) for s in document]
+
+    def embedding_matrix(self, values: List[str], maxlen: int) -> List[np.ndarray]:
+        """
+        :param values: the sequence of values (e.g., words).
         :param maxlen: the maximum length of the output list;
-                       if this is greater than the number of input keys, the bottom part of the matrix is padded with zero embeddings.
-                       if this is smaller than the number of input keys, the exceeding keys are not included in the embedding matrix.
-        :return: a matrix where each row is the embedding of the corresponding key.
+                       if ``> len(values)``, the bottom part of the matrix is padded with zero embeddings;
+                       if ``< len(values)``, embeddings of the exceeding values are discarded from the resulting matrix.
+        :return: the matrix where each row is the embedding of the corresponding value.
         """
-        size = len(keys)
-        return [self.embedding(keys[i]) if i < size else self.pad for i in range(maxlen)]
-
-    def sentence_embedding_list(self, document: Document, key: str = TOK) -> Tuple[List[List[np.ndarray]], np.ndarray]:
-        """
-        :param document: a document.
-        :param key: the key to the fields to be retrieved in each sentence.
-        :return: a tuple of (the list of embeddings, zero-pad embedding).
-        """
-        return [self.embedding_list(s[key]) for s in document], self.pad
+        return [self.embedding(values[i]) if i < len(values) else self.pad for i in range(maxlen)]
 
 
 class FastText(VectorSpaceModel):
@@ -150,8 +156,8 @@ class FastText(VectorSpaceModel):
         super().__init__(model, dim)
         print('FastText: %s (vocab = %d, dim = %d)' % (filepath, len(model.get_words()), dim))
 
-    def _emb(self, key: str) -> np.ndarray:
-        return self.model.get_word_vector(key)
+    def emb(self, value: str) -> np.ndarray:
+        return self.model.get_word_vector(value)
 
 
 class Word2Vec(VectorSpaceModel):
@@ -165,8 +171,8 @@ class Word2Vec(VectorSpaceModel):
         super().__init__(model, dim)
         print('Word2Vec: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
-    def _emb(self, key: str) -> np.ndarray:
-        vocab = self.model.vocab.get(key, None)
+    def emb(self, value: str) -> np.ndarray:
+        vocab = self.model.vocab.get(value, None)
         return self.model.syn0[vocab.index] if vocab else self.pad
 
 
@@ -182,7 +188,7 @@ class GloVe(VectorSpaceModel):
         super().__init__(model, dim)
         print('GloVe: %s (vocab = %d, dim = %d)' % (filepath, len(model.vocab), dim))
 
-    def _emb(self, key: str) -> np.ndarray:
+    def emb(self, value: str) -> np.ndarray:
         # TODO: to be completed
         return self.pad
 

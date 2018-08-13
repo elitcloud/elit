@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
 import argparse
 import logging
 import pickle
@@ -46,7 +45,7 @@ __author__ = 'Jinho D. Choi'
 class TokenTaggerState(NLPState):
     """
     :class:`TokenTaggingState` generates a state per token using the one-pass left-to-right decoding strategy
-    and predicts a tag per token.
+    and predicts tags for individual tokens.
     """
 
     def __init__(self,
@@ -54,16 +53,13 @@ class TokenTaggerState(NLPState):
                  key: str,
                  label_map: LabelMap,
                  vsm_list: Sequence[SimpleNamespace, ...],
-                 feature_windows: Tuple[int, ...],
-                 padout: Optional[np.ndarray] = None):
+                 feature_windows: Tuple[int, ...]):
         """
         :param document: the input document.
         :param key: the key to each sentence in the document where predicted tags are to be saved.
         :param label_map: collects labels during training and maps them to unique class IDs.
         :param vsm_list: the sequence of namespace(:class:`elit.vsm.VectorSpaceModel`, key).
         :param feature_windows: the contextual windows for feature extraction.
-        :param padout: a zero-vector whose dimension is the number of labels, used to zero-pad label embeddings;
-                       if ``None``, label embeddings are not used as features.
         """
         super().__init__(document, key)
         self.label_map = label_map
@@ -73,36 +69,45 @@ class TokenTaggerState(NLPState):
         key_gold = to_gold(key)
         self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
 
-        # initialize outputs
-        self.padout = padout
-        self.output = [[padout] * len(s) for s in self.document]
+        # initialize predicted labels
+
+        # initialize output and predicted tags
+        self.pred = []
+        self.output = []
 
         # initialize embeddings
-        self.embs = [vsm.model.sentence_embedding_list(document, vsm.key) for vsm in vsm_list]
-        if padout is not None: self.embs.append((self.output, self.padout))
+        self.embs = [vsm.model.embedding_list_of_sentences(document, vsm.key) for vsm in vsm_list]
         self.embs.append(get_loc_embeddings(document))
 
-        # self.init()
+        # the followings are initialized in self.init()
         self.sen_id = 0
         self.tok_id = 0
+        self.init()
 
     def init(self):
-        """
-        Initializes the pointers to the first token in the first sentence.
-        """
-        for i, s in enumerate(self.document):
-            self.output[i] = [self.padout] * len(s)
-
         self.sen_id = 0
         self.tok_id = 0
+        del self.pred[:]
+        del self.output[:]
 
-    def process(self, output: NDArray = None):
+        key_out = to_out(self.key)
+
+        for s in self.document:
+            self.pred.append([None] * len(s))
+            s[self.key] = self.pred[-1]
+
+            self.output.append([None] * len(s))
+            s[key_out] = self.output[-1]
+
+    def process(self, output: Union[NDArray, np.ndarray] = None, *args):
         """
         :param output: the predicted output of the current token.
 
         Assigns the predicted output to the current token, then processes to the next token.
         """
         # apply the output to the current token
+        if isinstance(output, NDArray): output = output.asnumpy()
+        self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
         self.output[self.sen_id][self.tok_id] = output
 
         # process to the next token
@@ -167,14 +172,14 @@ class ChunkF1(F1):
 
 class TokenTagger(MXNetComponent):
     """
-    TokenBatchTagger provides an abstract class to implement a tagger that predicts a tag for every token.
+    :class:`TokenTagger` provides an abstract class to implement a tagger that predicts a tag for every token.
     """
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Tuple[SimpleNamespace, ...]):
+                 vsm_list: Sequence[SimpleNamespace, ...]):
         """
-        :param ctx: a device context.
+        :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         :param vsm_list: a tuple of namespace(model, key), where the key indicates the key to each sentence to retrieve embeddings for (e.g., tok).
         """
         super().__init__(ctx)

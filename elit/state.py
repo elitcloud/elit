@@ -15,7 +15,7 @@
 # ========================================================================
 import abc
 import inspect
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
@@ -27,7 +27,7 @@ __author__ = 'Jinho D. Choi'
 class NLPState(abc.ABC):
     """
     :class:`NLPState` is an abstract class that takes a document and
-    generates states to make predictions for NLP tasks defined in subclasses.
+    generates states to make predictions for NLP tasks defined in its subclasses.
 
     Abstract methods to be implemented:
       - :meth:`NLPState.init`
@@ -56,18 +56,17 @@ class NLPState(abc.ABC):
         return x, y
 
     @abc.abstractmethod
-    def init(self):
+    def init(self, **kwargs):
         """
         Initializes the state of the input document.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def process(self, output: Any, *args):
+    def process(self, *args):
         """
-        :param output: the prediction output for the current state.
-        :param args: custom parameters.
-        Applies the prediction output and custom parameters to the current state, then processes onto the next state.
+        :param args: parameters to be applied to the current state.
+        Applies the parameters to the current state, then processes onto the next state.
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -88,9 +87,9 @@ class NLPState(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def y(self) -> Optional[int]:
+    def y(self) -> Optional[Union[int, Tuple[int, ...]]]:
         """
         :return: the class ID of the gold label for the current state if available; otherwise ``None``.
-        :rtype: int or None
+        :rtype: int or Tuple[int, ...] or None
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))

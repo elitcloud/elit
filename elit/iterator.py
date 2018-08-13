@@ -18,10 +18,9 @@ import collections
 import inspect
 import random
 from itertools import islice
-from typing import Sequence, Union, List, Tuple, Any
+from typing import Sequence, Union, List, Tuple
 
 import numpy as np
-from mxnet.ndarray import NDArray
 
 from elit.state import NLPState
 
@@ -48,11 +47,10 @@ class NLPIterator(collections.Iterator):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def process(self, state_begin: int, output: Any, *args) -> int:
+    def process(self, state_begin: int, *args) -> int:
         """
         :param state_begin: the index of the input state to begin the process with.
-        :param output: the prediction output to be applied to the current batch.
-        :param args: custom parameters.
+        :param args: parameters including the outputs; ``len(args)`` must be at least 1.
         :return: the index of the state to be processed next after this method is called.
 
         Processes through the states and assigns the parameters accordingly.
@@ -66,12 +64,13 @@ class BatchIterator(NLPIterator):
     This is useful when all instances are independent; in other words, the prediction for one instance does not affect the prediction of any other instance.
     """
 
-    def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool):
+    def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool, **kwargs):
         """
         :param states: the input states.
         :param batch_size: the size of batches to process at a time.
         :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
         :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
+        :param kwargs: custom parameters to initialize each state.
         """
         super().__init__(states)
         batches = []
@@ -89,7 +88,7 @@ class BatchIterator(NLPIterator):
                     batch = []
                     count = 0
 
-            state.init()
+            state.init(kwargs)
 
         if batch: batches.append(batch)
         self._batches = batches
@@ -110,15 +109,16 @@ class BatchIterator(NLPIterator):
         return batch
 
     # override
-    def process(self, state_begin: int, output: Union[NDArray, np.ndarray], *args) -> int:
+    def process(self, state_begin: int, *args) -> int:
         if self._shuffle: return -1
+        o = len(args) == 1
         i = 0
 
         for state in islice(self.states, state_begin):
             while state.has_next():
-                if i == len(output): return state_begin
-                if args: state.process(output[i], *[arg[i] for arg in args])
-                else: state.process(output[i])
+                if i == len(args[0]): return state_begin
+                if o: state.process(args[0][i])
+                else: state.process(*[arg[i] for arg in args])
                 i += 1
 
             state_begin += 1
@@ -127,16 +127,17 @@ class BatchIterator(NLPIterator):
 
 
 class SequenceIterator(NLPIterator):
-    def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool):
+    def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool, **kwargs):
         super().__init__(states)
         self._batch_size = batch_size
         self._shuffle = shuffle
         self._label = label
+        self._kwargs = kwargs
         self._states = None
         self._iter = 0
 
     def __iter__(self) -> 'SequenceIterator':
-        for state in self.states: state.init()
+        for state in self.states: state.init(self._kwargs)
         self._states = list(self.states)
         if self._shuffle: random.shuffle(self._states)
         self._iter = 0
@@ -148,10 +149,12 @@ class SequenceIterator(NLPIterator):
         self._iter += len(batch)
         return batch
 
-    def process(self, state_begin: int, output: Union[NDArray, np.ndarray], *args) -> int:
+    def process(self, state_begin: int, *args) -> int:
+        o = len(args) == 1
+
         for i, state in enumerate(islice(self.states, state_begin, self._iter)):
-            if args: state.process(output[i], *[arg[i] for arg in args])
-            else: state.process(output[i])
+            if o: state.process(args[0][i])
+            else: state.process(*[arg[i] for arg in args])
 
         if self._iter >= len(self._states):
             self._states = [state for state in self._states if state.has_next()]
