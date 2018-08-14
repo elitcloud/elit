@@ -13,18 +13,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
 import argparse
+import inspect
+import logging
 import sys
-from types import SimpleNamespace
-from typing import Type
-
-from elit.vsm import VectorSpaceModel
 
 __author__ = "Gary Lai"
 
 
-class ElitCli(object):
+class ComponentCLI(abc.ABC):
+    """
+    :class:`ComponentCLI` is an abstract class to implement a command-line interface for a component.
 
+    Abstract methods to be implemented:
+      - :meth:`ComponentCLI.train`
+      - :meth:`ComponentCLI.decode`
+      - :meth:`ComponentCLI.evaluate`
+    """
+
+    def __init__(self, name: str, description: str = None):
+        """
+        :param name: the name of the component.
+        :param description: the description of this component; if ``None``, the name is used instead.
+        """
+        usage = [
+            '        elit %s <command> [<args>]' % name,
+            '',
+            '    commands:',
+            '           train: train a model (gold labels required)',
+            '          decode: predict labels (gold labels not required)',
+            '        evaluate: evaluate the pre-trained model (gold labels required)']
+
+        usage = '\n'.join(usage)
+        if not description: description = name
+        parser = argparse.ArgumentParser(usage=usage, description=description)
+        command = sys.argv[2]
+
+        if not hasattr(self, command):
+            logging.info('Unrecognized command: ' + command)
+            parser.print_help()
+            exit(1)
+        getattr(self, command)(sys.argv[3:])
+
+    @classmethod
+    @abc.abstractmethod
+    def train(cls, args):
+        """
+        :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
+
+        Trains a model for this component.
+        """
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+
+    @classmethod
+    @abc.abstractmethod
+    def decode(cls, args):
+        """
+        :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
+
+        Predicts labels using this component.
+        """
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+
+    @classmethod
+    @abc.abstractmethod
+    def evaluate(cls, args):
+        """
+        :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
+
+        Evaluates the current model of this component.
+        """
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+
+
+class ELITCLI(object):
     def __init__(self):
         parser = argparse.ArgumentParser(
             usage='''
@@ -50,8 +113,4 @@ commands:
 
 
 if __name__ == '__main__':
-    ElitCli()
-
-
-def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
-    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
+    ELITCLI()

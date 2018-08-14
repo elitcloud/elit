@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 from types import SimpleNamespace
-from typing import Optional, Tuple, Union
+from typing import Optional, Union, Sequence
 
 import mxnet as mx
 from mxnet import gluon, nd
@@ -32,8 +32,8 @@ class FFNNModel(gluon.Block):
     def __init__(self,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
-                 conv2d_config: Optional[Tuple[SimpleNamespace, ...]] = None,
-                 hidden_config: Optional[Tuple[SimpleNamespace, ...]] = None,
+                 conv2d_config: Optional[Sequence[SimpleNamespace]] = None,
+                 hidden_config: Optional[Sequence[SimpleNamespace]] = None,
                  **kwargs):
         """
         :param input_config: configuration for the input layer, that is the return value of :meth:`namespace_input`;
@@ -63,7 +63,6 @@ class FFNNModel(gluon.Block):
         # name scope
         with self.name_scope():
             setattr(self, 'input_dropout', self.input.dropout)
-            setattr(self, 'output_0', self.output.dense)
 
             if self.conv2d:
                 for i, c in enumerate(self.conv2d, 1):
@@ -75,6 +74,8 @@ class FFNNModel(gluon.Block):
                 for i, h in enumerate(self.hidden, 1):
                     setattr(self, 'hidden_' + str(i), h.dense)
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
+
+            setattr(self, 'output_0', self.output.dense)
 
     def forward(self, x: NDArray) -> NDArray:
         """

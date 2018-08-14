@@ -457,7 +457,7 @@ class MXNetComponent(NLPComponent):
         metric = self.evaluate_iter(iterator)
         et = time.time()
         logging.info('- time: %d (sec)\n' % (et - st))
-        logging.info('- %s\n' % str(metric))
+        logging.info('%s\n' % str(metric))
 
     def evaluate_iter(self, iterator: NLPIterator, decode=True) -> EvalMetric:
         """

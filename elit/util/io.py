@@ -16,6 +16,7 @@
 import bisect
 import glob
 import json
+import logging
 from typing import List, Dict, Callable, Sequence
 
 from elit.state import NLPState
@@ -40,6 +41,9 @@ def tsv_reader(filepath: str, cols: Dict[str, int], key: str = None) -> List[Doc
             cols[to_gold(key)] = cols.pop(key)
         else:
             raise ValueError('Key mismatch: %s is not a key in %s' % (key, str(cols)))
+
+    logging.info('Reading')
+    logging.info('- filepath: %s' % filepath)
 
     for filename in glob.glob(filepath):
         fin = open(filename)
@@ -66,7 +70,7 @@ def tsv_reader(filepath: str, cols: Dict[str, int], key: str = None) -> List[Doc
         sc += len(sentences)
         documents.append(Document(sen=sentences))
 
-    print('Reading: dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
+    logging.info('- dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
     return documents
 
 
@@ -74,6 +78,9 @@ def json_reader(filepath: str) -> List[Document]:
     # TODO: update this to accept any format (see tsv_reader)
     documents = []
     dc = wc = sc = 0
+
+    logging.info('Reading')
+    logging.info('- filepath: %s' % filepath)
 
     for filename in glob.glob('{}/*.json'.format(filepath)):
         assert filename.endswith('.json')
@@ -87,7 +94,7 @@ def json_reader(filepath: str) -> List[Document]:
                 sc += len(sentences)
                 documents.append(Document(sen=sentences))
             dc += len(documents)
-    print('Reading: dc = %d, sc = %d, wc = %d' % (dc, sc, wc))
+    logging.info('- dc = %d, sc = %d, wc = %d' % (dc, sc, wc))
     return documents
 
 

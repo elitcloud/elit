@@ -24,16 +24,17 @@ from typing import Tuple, Optional, Union, Sequence
 import mxnet as mx
 import numpy as np
 
+from elit.cli import ComponentCLI
 from elit.component import MXNetComponent
 from elit.eval import Accuracy, F1
 from elit.iterator import SequenceIterator, BatchIterator
 from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
-from elit.structure import Document
-from elit.util.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, args_dict_str_float
+from elit.structure import Document, TOK
+from elit.util.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, args_dict_str_float, set_logger
 from elit.util.io import pkl, gln, group_states
 from elit.util.util import BILOU, to_gold, to_out
-from elit.vsm import LabelMap, x_extract
+from elit.vsm import LabelMap, x_extract, Position2Vec
 
 __author__ = 'Jinho D. Choi'
 
@@ -50,7 +51,7 @@ class TokenTaggerState(NLPState):
                  document: Document,
                  key: str,
                  label_map: LabelMap,
-                 vsm_list: Sequence[SimpleNamespace, ...],
+                 vsm_list: Sequence[SimpleNamespace],
                  feature_windows: Tuple[int, ...]):
         """
         :param document: the input document.
@@ -72,7 +73,7 @@ class TokenTaggerState(NLPState):
         self.output = []
 
         # initialize embeddings
-        self.embs = [(vsm.model.sentence_embedding_list(document, vsm.key), vsm.pad) for vsm in vsm_list]
+        self.embs = [(vsm.model.sentence_embedding_list(document, vsm.key), vsm.model.pad) for vsm in vsm_list]
 
         # the followings are initialized in self.init()
         self.sen_id = 0
@@ -92,15 +93,16 @@ class TokenTaggerState(NLPState):
             self.output.append([None] * len(s))
             s[key_out] = self.output[-1]
 
-    def process(self, output: np.ndarray = None):
+    def process(self, output: Optional[np.ndarray] = None):
         """
         :param output: the predicted output of the current token.
 
         Assigns the predicted output to the current token, then processes to the next token.
         """
         # apply the output to the current token
-        self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
-        self.output[self.sen_id][self.tok_id] = output
+        if output is not None:
+            self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
+            self.output[self.sen_id][self.tok_id] = output
 
         # process to the next token
         self.tok_id += 1
@@ -108,7 +110,6 @@ class TokenTaggerState(NLPState):
             self.sen_id += 1
             self.tok_id = 0
 
-    @property
     def has_next(self) -> bool:
         """
         :return: ``False`` if no more token is left to be tagged; otherwise, ``True``.
@@ -169,10 +170,11 @@ class TokenTagger(MXNetComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Sequence[SimpleNamespace, ...]):
+                 vsm_list: Sequence[SimpleNamespace]):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
-        :param vsm_list: a tuple of namespace(model, key), where the key indicates the key to each sentence to retrieve embeddings for (e.g., tok).
+        :param vsm_list: the sequence of namespace(model, key),
+                         where the key indicates the key of the values to retrieve embeddings for (e.g., tok).
         """
         super().__init__(ctx)
         self.vsm_list = vsm_list
@@ -183,6 +185,7 @@ class TokenTagger(MXNetComponent):
         self.chunking = None
         self.label_map = None
         self.feature_windows = None
+        self.position_embedding = None
         self.input_config = None
         self.output_config = None
         self.conv2d_config = None
@@ -193,7 +196,8 @@ class TokenTagger(MXNetComponent):
              '- type: %s' % ('chunking' if self.chunking else 'tagging'),
              '- sequence: %r' % self.sequence,
              '- feature windows: %s' % str(self.feature_windows),
-             '- model: %s' % str(self.model))
+             '- position embedding: %r' % self.position_embedding,
+             '- %s' % str(self.model))
         return '\n'.join(s)
 
     # override
@@ -203,22 +207,24 @@ class TokenTagger(MXNetComponent):
              chunking: bool,
              num_class: int,
              feature_windows: Tuple[int, ...],
+             position_embedding: bool,
              input_dropout: float = 0.0,
-             conv2d_config: Optional[Tuple[SimpleNamespace, ...]] = None,
-             hidden_config: Optional[Tuple[SimpleNamespace, ...]] = None,
+             conv2d_config: Optional[Tuple[SimpleNamespace]] = None,
+             hidden_config: Optional[Tuple[SimpleNamespace]] = None,
              initializer: mx.init.Initializer = None,
              **kwargs):
         """
         :param key: the key to each sentence where the tags are to be saved.
-        :param sequence: if True, this tagging is run in sequence mode; otherwise, batch mode.
-        :param chunking: if True, this tagging is used for chunking instead.
+        :param sequence: if ``True``, run in sequence mode; otherwise, batch mode.
+        :param chunking: if ``True``, run chunking instead of tagging.
         :param num_class: the number of classes (part-of-speech tags).
-        :param feature_windows: content windows for feature extraction.
-        :param input_dropout: a dropout rate to be applied to the input layer.
-        :param conv2d_config: configuration for n-gram 2D convolutions.
-        :param hidden_config: configuration for hidden layers
-        :param initializer: a weight initializer for the gluon block.
-        :param kwargs: parameters for the initialization of gluon.Block.
+        :param feature_windows: the content windows for feature extraction.
+        :param position_embedding: if ``True``, use position embeddings as features.
+        :param input_dropout: the dropout rate to be applied to the input layer.
+        :param conv2d_config: the configuration for n-gram 2D convolutions.
+        :param hidden_config: the configuration for hidden layers
+        :param initializer: the weight initializer for :class:`mxnet.gluon.Block`.
+        :param kwargs: extra parameters for :class:`mxnet.gluon.Block`.
         """
         # configuration
         if initializer is None: initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
@@ -232,6 +238,7 @@ class TokenTagger(MXNetComponent):
         self.chunking = chunking
         self.label_map = LabelMap()
         self.feature_windows = feature_windows
+        self.position_embedding = position_embedding
         self.input_config = input_config
         self.output_config = output_config
         self.conv2d_config = conv2d_config
@@ -239,7 +246,7 @@ class TokenTagger(MXNetComponent):
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().initialize(initializer, ctx=self.ctx)
-        print(self.__str__())
+        logging.info(self.__str__())
 
     # override
     def load(self, model_path: str, **kwargs):
@@ -253,6 +260,7 @@ class TokenTagger(MXNetComponent):
             self.chunking = pickle.load(fin)
             self.label_map = pickle.load(fin)
             self.feature_windows = pickle.load(fin)
+            self.position_embedding = pickle.load(fin)
             self.input_config = pickle.load(fin)
             self.output_config = pickle.load(fin)
             self.conv2d_config = pickle.load(fin)
@@ -260,7 +268,7 @@ class TokenTagger(MXNetComponent):
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().load(gln(model_path), self.ctx)
-        print(self.__str__())
+        logging.info(self.__str__())
 
     # override
     def save(self, model_path, **kwargs):
@@ -274,6 +282,7 @@ class TokenTagger(MXNetComponent):
             pickle.dump(self.chunking, fout)
             pickle.dump(self.label_map, fout)
             pickle.dump(self.feature_windows, fout)
+            pickle.dump(self.position_embedding, fout)
             pickle.dump(self.input_config, fout)
             pickle.dump(self.output_config, fout)
             pickle.dump(self.conv2d_config, fout)
@@ -292,7 +301,7 @@ class TokenTagger(MXNetComponent):
             states = [TokenTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows) for d in documents]
 
         iterator = SequenceIterator if self.sequence else BatchIterator
-        return iterator(states, batch_size, shuffle, label, kwargs)
+        return iterator(states, batch_size, shuffle, label, **kwargs)
 
     # override
     def eval_metric(self) -> Union[TokenAccuracy, ChunkF1]:
@@ -304,39 +313,16 @@ class TokenTagger(MXNetComponent):
 
 # ======================================== Command-Line Interface ========================================
 
-class TokenTaggerCLI:
+class TokenTaggerCLI(ComponentCLI):
     def __init__(self):
-        usage = '''
-    elit tagger <command> [<args>]
+        super().__init__('token_tagger', 'Token Tagger')
 
-commands:
-       train: train a model (gold labels required)
-    evaluate: evaluate a pre-trained model (gold labels required) 
-'''
-        parser = argparse.ArgumentParser(usage=usage, description='Token Tagger')
-        parser.add_argument('command', help='command to run')
-        args = parser.parse_args(sys.argv[2:3])
-        if not hasattr(self, args.command):
-            logging.info('Unrecognized command: ' + args.command)
-            parser.print_help()
-            exit(1)
-        getattr(self, args.command)()
-
+    # override
     @classmethod
-    def train(cls):
+    def train(cls, args):
         # create a arg-parser
         parser = argparse.ArgumentParser(description='Train a token tagger',
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-        # tagger
-        group = parser.add_argument_group("tagger arguments")
-
-        group.add_argument('-key', '--key', type=str, metavar='str',
-                           help='key to the document dictionary where the predicted tags are to be stored')
-        group.add_argument('-seq', '--sequence', action='store_true',
-                           help='if set, run in sequence mode; otherwise, batch mode')
-        group.add_argument('-chu', '--chunking', action='store_true',
-                           help='if set, tag chunks (e.g., named entities); otherwise, tag tokens (e.g., part-of-speech tags)')
 
         # data
         group = parser.add_argument_group("data arguments")
@@ -347,26 +333,30 @@ commands:
                            help='filepath to the development data (input)')
         group.add_argument('-m', '--model_path', type=str, metavar='filepath',
                            default=None,
-                           help='filepath to the model data (output)')
+                           help='filepath to the model data (output); if not set, the model is not saved')
         group.add_argument('-r', '--reader', type=args_reader, metavar='json or tsv=(str:int)(,#1)*',
                            default=args_reader('json'),
                            help='type of the reader and its configuration to match the data format (default: json)')
-
-        # lexicon
-        group = parser.add_argument_group("lexicon arguments")
-
         group.add_argument('-v', '--vsm_list', type=args_vsm, metavar='(fasttext|word2vec:key:filepath)( #1)*', nargs='+',
                            help='list of (type of vector space model, key, filepath)')
+        group.add_argument('-l', '--log', type=str, metavar='filepath',
+                           default=None,
+                           help='filepath to the logging file; if not set, use stdout')
 
-        # feature
-        group = parser.add_argument_group("feature arguments")
+        # tagger
+        group = parser.add_argument_group("tagger arguments")
 
+        group.add_argument('-key', '--key', type=str, metavar='str',
+                           help='key to the document dictionary where the predicted tags are to be stored')
+        group.add_argument('-seq', '--sequence', action='store_true',
+                           help='if set, run in sequence mode; otherwise, batch mode')
+        group.add_argument('-chu', '--chunking', action='store_true',
+                           help='if set, tag chunks (e.g., named entities); otherwise, tag tokens (e.g., part-of-speech tags)')
         group.add_argument('-fw', '--feature_windows', type=args_tuple_int, metavar='int(,int)*',
                            default=args_tuple_int('3,2,1,0,-1,-2,-3'),
-                           help='contextual windows for feature extraction (default: 3,2,1,0,-1,-2,-3)')
-
-        # group.add_argument('-le', '--label_embedding', action='store_true',
-        #                    help='if set, use label embeddings as features in sequence mode')
+                           help='content windows for feature extraction (default: 3,2,1,0,-1,-2,-3)')
+        group.add_argument('-pe', '--position_embedding', action='store_true',
+                           help='if set, use position embeddings as features')
 
         # network
         group = parser.add_argument_group("network arguments")
@@ -404,8 +394,10 @@ commands:
                            help='optimizer parameters')
 
         # arguments
-        args = parser.parse_args(sys.argv[3:])
-        args.vsm_list = tuple(SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list)
+        args = parser.parse_args(args)
+        set_logger(args.log)
+
+        args.vsm_list = [SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list]
         if isinstance(args.context, list) and len(args.context) == 1: args.context = args.context[0]
         if isinstance(args.conv2d_config, list) and args.conv2d_config[0] is None: args.conv2d_config = None
         if args.loss is None: args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
@@ -413,18 +405,24 @@ commands:
 
         # component
         comp = TokenTagger(args.context, args.vsm_list)
-        comp.init(args.key, args.sequence, args.chunking, args.num_class, args.feature_windows, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
+        comp.init(args.key, args.sequence, args.chunking, args.num_class, args.feature_windows, args.position_embedding, args.input_dropout, args.conv2d_config, args.hidden_config, initializer)
 
         # data
         trn_docs = args.reader.type(args.trn_path, args.reader.params, args.key)
         dev_docs = args.reader.type(args.dev_path, args.reader.params, args.key)
 
-        # train
+        # # train
         comp.train(trn_docs, dev_docs, args.model_path, args.trn_batch, args.dev_batch, args.epoch, args.loss, args.optimizer, args.optimizer_params)
         logging.info('# of classes: %d' % len(comp.label_map))
 
+    # override
     @classmethod
-    def evaluate(cls):
+    def decode(cls, args):
+        pass
+
+    # override
+    @classmethod
+    def evaluate(cls, args):
         # create a arg-parser
         parser = argparse.ArgumentParser(description='Evaluate the token tagger',
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -472,8 +470,8 @@ commands:
         st = time.time()
         e = comp.evaluate(dev_docs, args.dev_batch)
         et = time.time()
-        print(str(e))
-        print('Time: %d' % (et - st))
+        logging.info(str(e))
+        logging.info('Time: %d' % (et - st))
 
 
 if __name__ == '__main__':

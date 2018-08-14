@@ -14,18 +14,27 @@
 # limitations under the License.
 # ========================================================================
 import argparse
+import logging
 import re
 from types import SimpleNamespace
-from typing import Tuple, Dict, Optional, Union, Any, Callable
+from typing import Tuple, Dict, Optional, Union, Any, Callable, Type
 
 import mxnet as mx
+import sys
 
 from elit.model import namespace_conv2d
-from elit.cli import namespace_vsm
 from elit.util.io import tsv_reader, json_reader
-from elit.vsm import Word2Vec, FastText
+from elit.vsm import Word2Vec, FastText, VectorSpaceModel
 
 __author__ = "Gary Lai, Jinho D. Choi"
+
+
+def set_logger(filename: str = None, level: int = logging.INFO, formatter: logging.Formatter = None):
+    log = logging.getLogger()
+    log.setLevel(level)
+    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
+    if formatter is not None: ch.setFormatter(formatter)
+    log.addHandler(ch)
 
 
 # ======================================== Arguments ========================================
@@ -36,7 +45,7 @@ def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
     :param const: type constructor (e.g., int, float)
     :return: a dictionary including key-value pairs from the input string.
     """
-    r = re.compile(r'([A-Za-z0-9_-]+):(\d+)')
+    r = re.compile(r'([A-Za-z0-9_-]+):([-]?[\d.]+)')
     d = {}
 
     for t in s.split(','):
@@ -72,7 +81,7 @@ def args_reader(s: str) -> SimpleNamespace:
     :return: the output of namespace_reader().
     """
     if s == 'json': return namespace_reader(reader_type=json_reader)
-    if s.startswith('tsv='): return namespace_reader(reader_type=tsv_reader, params=args_dict_str_int(s[4:]))
+    if s.startswith('tsv='): return namespace_reader(reader_type=tsv_reader, params=args_dict_str(s[4:], int))
     raise argparse.ArgumentTypeError
 
 
@@ -168,3 +177,7 @@ def args_loss(s: str) -> mx.gluon.loss.Loss:
 
 def namespace_reader(reader_type: Union[json_reader, tsv_reader], params: Optional[Dict] = None) -> SimpleNamespace:
     return SimpleNamespace(type=reader_type, params=params)
+
+
+def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
+    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)

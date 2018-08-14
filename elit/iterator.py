@@ -89,7 +89,7 @@ class BatchIterator(NLPIterator):
                     batch = []
                     count = 0
 
-            state.init(kwargs)
+            state.init(**kwargs)
 
         if batch: batches.append(batch)
         self._batches = batches
