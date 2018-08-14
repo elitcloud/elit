@@ -20,7 +20,7 @@ import logging
 from typing import List, Dict, Callable, Sequence
 
 from elit.state import NLPState
-from elit.structure import Sentence, TOK, Document
+from elit.util.structure import Sentence, TOK, Document
 from elit.util.util import to_gold
 
 __author__ = "Jinho D. Choi, Gary Lai"

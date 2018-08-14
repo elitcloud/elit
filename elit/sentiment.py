@@ -13,18 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from types import SimpleNamespace
-from typing import List, Tuple
-
-import mxnet as mx
-import numpy as np
-from mxnet import gluon
+from typing import List
 
 from elit.component import NLPComponent
-from elit.state import NLPState
 from elit.doc_classifier import SentenceClassificationBatchState
-from elit.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
-from elit.eval import Accuracy, F1, EvalMetric
+from elit.eval import Accuracy, F1
+from elit.util.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
 
 __author__ = 'Jinho D. Choi'
 

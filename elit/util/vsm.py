@@ -24,7 +24,7 @@ from gensim.models import KeyedVectors
 from mxnet import nd
 from mxnet.ndarray import NDArray
 
-from elit.structure import TOK, Document
+from elit.util.structure import TOK, Document
 
 __author__ = 'Jinho D. Choi'
 
@@ -154,7 +154,8 @@ class FastText(VectorSpaceModel):
         :param filepath: the path to the binary file containing a word embedding model trained by FastText.
         :type filepath: str
         """
-        logging.info('FastText: %s' % filepath)
+        logging.info('FastText')
+        logging.info('- model: %s' % filepath)
         self.model = fastText.load_model(filepath)
         dim = self.model.get_dimension()
         super().__init__(dim)
@@ -174,7 +175,8 @@ class Word2Vec(VectorSpaceModel):
         :param filepath: the path to the binary file containing a word embedding model trained by Word2Ved.
         :type filepath: str
         """
-        logging.info('Word2Vec: %s' % filepath)
+        logging.info('Word2Vec')
+        logging.info('- model: %s' % filepath)
         self.model = KeyedVectors.load(filepath) if filepath.lower().endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
         dim = self.model.syn0.shape[1]
         super().__init__(dim)

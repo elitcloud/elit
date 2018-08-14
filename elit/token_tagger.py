@@ -19,7 +19,7 @@ import pickle
 import sys
 import time
 from types import SimpleNamespace
-from typing import Tuple, Optional, Union, Sequence
+from typing import Tuple, Optional, Union, Sequence, List
 
 import mxnet as mx
 import numpy as np
@@ -30,11 +30,11 @@ from elit.eval import Accuracy, F1
 from elit.iterator import SequenceIterator, BatchIterator
 from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
-from elit.structure import Document, TOK
 from elit.util.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, args_dict_str_float, set_logger
 from elit.util.io import pkl, gln, group_states
+from elit.util.structure import Document
 from elit.util.util import BILOU, to_gold, to_out
-from elit.vsm import LabelMap, x_extract, Position2Vec
+from elit.util.vsm import LabelMap, x_extract, Position2Vec
 
 __author__ = 'Jinho D. Choi'
 
@@ -170,7 +170,7 @@ class TokenTagger(MXNetComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: Sequence[SimpleNamespace]):
+                 vsm_list: List[SimpleNamespace]):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         :param vsm_list: the sequence of namespace(model, key),
@@ -246,6 +246,7 @@ class TokenTagger(MXNetComponent):
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().initialize(initializer, ctx=self.ctx)
+        if self.position_embedding: self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
         logging.info(self.__str__())
 
     # override
@@ -268,6 +269,7 @@ class TokenTagger(MXNetComponent):
 
         self.model = FFNNModel(self.input_config, self.output_config, self.conv2d_config, self.hidden_config, **kwargs)
         self.model.collect_params().load(gln(model_path), self.ctx)
+        if self.position_embedding: self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
         logging.info(self.__str__())
 
     # override
@@ -291,7 +293,7 @@ class TokenTagger(MXNetComponent):
         self.model.collect_params().save(gln(model_path))
 
     # override
-    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> Union[BatchIterator, SequenceIterator]:
+    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, **kwargs) -> Union[BatchIterator, SequenceIterator]:
         if self.sequence:
             def create(d: Document) -> TokenTaggerState:
                 return TokenTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows)
@@ -301,7 +303,7 @@ class TokenTagger(MXNetComponent):
             states = [TokenTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows) for d in documents]
 
         iterator = SequenceIterator if self.sequence else BatchIterator
-        return iterator(states, batch_size, shuffle, label, **kwargs)
+        return iterator(states, batch_size, shuffle, **kwargs)
 
     # override
     def eval_metric(self) -> Union[TokenAccuracy, ChunkF1]:
@@ -456,6 +458,8 @@ class TokenTaggerCLI(ComponentCLI):
 
         # arguments
         args = parser.parse_args(sys.argv[3:])
+        set_logger(args.log)
+
         args.vsm_list = tuple(SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list)
         if isinstance(args.context, list) and len(args.context) == 1: args.context = args.context[0]
 

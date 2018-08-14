@@ -25,7 +25,7 @@ from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
 from elit.iterator import BatchIterator, NLPIterator
-from elit.structure import Document
+from elit.util.structure import Document
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -213,20 +213,20 @@ class MXNetComponent(NLPComponent):
                '- max epoch : %d' % epoch,
                '- loss func : %s' % str(loss),
                '- optimizer : %s <- %s' % (optimizer, optimizer_params))
-        logging.info('\n'.join(log) + '\n')
+        logging.info('\n'.join(log))
 
         # create iterators
-        logging.info('Creating iterators')
+        logging.info('Iterators')
 
         st = time.time()
         trn_iterator = self.data_iterator(trn_docs, trn_batch_size, shuffle=True, label=True, **kwargs)
         et = time.time()
-        logging.info('- trn: %s (%d sec)\n' % (str(trn_iterator), et - st))
+        logging.info('- trn: %s (%d sec)' % (str(trn_iterator), et - st))
 
         st = time.time()
         dev_iterator = self.data_iterator(dev_docs, dev_batch_size, shuffle=False, label=True, **kwargs)
         et = time.time()
-        logging.info('- dev: %s (%d sec)\n' % (str(dev_iterator), et - st))
+        logging.info('- dev: %s (%d sec)' % (str(dev_iterator), et - st))
 
         # create a trainer
         if loss is None: loss = gluon.loss.SoftmaxCrossEntropyLoss()
@@ -237,6 +237,7 @@ class MXNetComponent(NLPComponent):
         best_e, best_acc = -1, -1
 
         for e in range(1, epoch + 1):
+
             st = time.time()
             trn_acc = self.train_iter(trn_iterator, loss, trainer)
             mt = time.time()
@@ -248,7 +249,7 @@ class MXNetComponent(NLPComponent):
                 best_e, best_acc = e, acc
                 self.save(model_path)
 
-            logging.info('%4d: trn-time: %d, dev-time: %d, trn-acc: %5.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
+            logging.info('%4d: trn-time: %d, dev-time: %d, trn-acc: %6.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
                          (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
 
     def train_iter(self,
@@ -330,24 +331,26 @@ class MXNetComponent(NLPComponent):
                 losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
                 for l in losses: l.backward()
 
-            trainer.step(sum(x_split.shape[0] for x_split in x_splits))
-            begin, corr = state_begin, 0
-            for i, output, y_split in enumerate(zip(outputs, y_splits)):
+            trainer.step(sum(x_split.shape[0] for x_split in x_splits), ignore_stale_grad=True)
+            begin, corr, i, = state_begin, 0, 0
+            for output, y_split in zip(outputs, y_splits):
                 if hiddens: begin = iterator.process(state_begin, output, *hiddens[i])
                 else: begin = iterator.process(state_begin, output)
                 corr += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+                i += 1
             return begin, corr
 
         state_begin, total, correct = 0, 0, 0
         x_splits, y_splits, empty = [], [], []
 
         for batch in iterator:
-            xs, ys = zip(*batch)
-            total += len(ys)
-            x_splits.append(nd.array(xs, self.ctx[len(x_splits)]))
-            y_splits.append(nd.array(ys, self.ctx[len(y_splits)]))
+            if batch:
+                xs, ys = zip(*batch)
+                total += len(ys)
+                x_splits.append(nd.array(xs, self.ctx[len(x_splits)]))
+                y_splits.append(nd.array(ys, self.ctx[len(y_splits)]))
 
-            if len(x_splits) == len(self.ctx):
+            if len(x_splits) == len(self.ctx) or (x_splits and not batch):
                 b, c = train()
                 state_begin = b
                 correct += c
@@ -394,6 +397,7 @@ class MXNetComponent(NLPComponent):
         hidden = []
 
         for batch in iterator:
+            if not isinstance(batch[0], NDArray): batch, _ = zip(*batch)
             xs = nd.array(batch, self.ctx)
             t = self.model(xs)
             if isinstance(t, NDArray):
@@ -430,9 +434,11 @@ class MXNetComponent(NLPComponent):
         splits = []
 
         for batch in iterator:
-            splits.append(nd.array(batch, self.ctx[len(splits)]))
+            if batch:
+                if not isinstance(batch[0], NDArray): batch, _ = zip(*batch)
+                splits.append(nd.array(batch, self.ctx[len(splits)]))
 
-            if len(splits) == len(self.ctx):
+            if len(splits) == len(self.ctx) or (splits and not batch):
                 state_begin = decode()
                 splits = []
 

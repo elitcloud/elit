@@ -16,16 +16,14 @@
 import argparse
 import logging
 import sys
-from types import SimpleNamespace
 
 import mxnet as mx
 
-from elit.structure import TOK
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
 from elit.util.cli import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
     args_hidden
-from elit.util.io import tsv_reader
-from elit.vsm import FastText
+from elit.util.structure import TOK
+from elit.util.vsm import FastText
 
 __author__ = "Gary Lai"
 

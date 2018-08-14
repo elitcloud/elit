@@ -47,6 +47,9 @@ class NLPIterator(collections.Iterator):
     def __next__(self):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
+    def __str__(self):
+        return self.__class__.__name__
+
     @abc.abstractmethod
     def process(self, state_begin: int, *args) -> int:
         """
@@ -89,16 +92,19 @@ class BatchIterator(NLPIterator):
                     batch = []
                     count = 0
 
-            state.init(**kwargs)
-
         if batch: batches.append(batch)
         self._batches = batches
         self._shuffle = shuffle
+        self._kwargs = kwargs
         self._iter = 0
 
     # override
     def __iter__(self) -> 'BatchIterator':
-        if self._shuffle: random.shuffle(self._batches)
+        if self._shuffle:
+            random.shuffle(self._batches)
+        else:
+            for state in self.states: state.init(**self._kwargs)
+
         self._iter = 0
         return self
 
@@ -116,7 +122,7 @@ class BatchIterator(NLPIterator):
         o = len(args) == 1
         i = 0
 
-        for state in islice(self.states, state_begin):
+        for state in islice(self.states, state_begin, None):
             while state.has_next():
                 if i == len(args[0]): return state_begin
                 if o: state.process(args[0][i])
@@ -139,7 +145,7 @@ class SequenceIterator(NLPIterator):
         self._iter = 0
 
     def __iter__(self) -> 'SequenceIterator':
-        for state in self.states: state.init(self._kwargs)
+        for state in self.states: state.init(**self._kwargs)
         self._states = list(self.states)
         if self._shuffle: random.shuffle(self._states)
         self._iter = 0
@@ -155,7 +161,7 @@ class SequenceIterator(NLPIterator):
         # args = [arg.asnumpy() if isinstance(arg, NDArray) else arg for arg in args]
         o = len(args) == 1
 
-        for i, state in enumerate(islice(self.states, state_begin, self._iter)):
+        for i, state in enumerate(islice(self._states, state_begin, self._iter)):
             if o: state.process(args[0][i])
             else: state.process(*[arg[i] for arg in args])
 

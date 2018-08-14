@@ -16,15 +16,15 @@
 import argparse
 import logging
 import re
+import sys
 from types import SimpleNamespace
 from typing import Tuple, Dict, Optional, Union, Any, Callable, Type
 
 import mxnet as mx
-import sys
 
 from elit.model import namespace_conv2d
 from elit.util.io import tsv_reader, json_reader
-from elit.vsm import Word2Vec, FastText, VectorSpaceModel
+from elit.util.vsm import Word2Vec, FastText, VectorSpaceModel
 
 __author__ = "Gary Lai, Jinho D. Choi"
 

@@ -16,7 +16,7 @@
 import abc
 from typing import Any
 
-from elit.structure import Document
+from elit.util.structure import Document
 
 __author__ = 'Jinho D. Choi'
 

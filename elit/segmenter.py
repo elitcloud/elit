@@ -16,8 +16,8 @@
 import abc
 
 from elit.component import Component
-from elit.structure import SEN_ID, TOK, OFF
 from elit.util.string import *
+from elit.util.structure import SEN_ID, TOK, OFF
 
 __author__ = "Gary Lai"
 

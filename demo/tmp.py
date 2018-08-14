@@ -19,13 +19,12 @@ from typing import Tuple, Optional, Union, List, Type
 
 import mxnet as mx
 import numpy as np
-from mxnet import gluon, ndarray
+from mxnet import gluon
 
 from elit.component import BatchComponent
 from elit.eval import EvalMetric
-
 from elit.state import NLPState
-from elit.structure import Document
+from elit.util.structure import Document
 
 __author__ = 'Jinho D. Choi'
 

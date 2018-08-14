@@ -21,8 +21,8 @@ import re
 from pkg_resources import resource_filename
 
 from elit.component import Component
-from elit.structure import TOK, OFF
 from elit.util.string import *
+from elit.util.structure import TOK, OFF
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
