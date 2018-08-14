@@ -76,7 +76,7 @@ class TokenTaggerState(NLPState):
         self.output = []
 
         # initialize embeddings
-        self.embs = [vsm.model.embedding_list_of_sentences(document, vsm.key) for vsm in vsm_list]
+        self.embs = [(vsm.model.sentence_embedding_list(document, vsm.key), vsm.pad) for vsm in vsm_list]
         self.embs.append(get_loc_embeddings(document))
 
         # the followings are initialized in self.init()

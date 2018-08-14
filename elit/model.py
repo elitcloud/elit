@@ -18,6 +18,7 @@ from typing import Optional, Tuple, Union
 
 import mxnet as mx
 from mxnet import gluon, nd
+from mxnet.ndarray import NDArray
 
 __author__ = 'Jinho D. Choi'
 
@@ -27,6 +28,7 @@ class FFNNModel(gluon.Block):
     :class:`FFNNModel` implements a Feed-Forward Neural Network (FFNN) consisting of
     an input layer, n-gram convolution layers (optional), hidden layers (optional), and an output layer.
     """
+
     def __init__(self,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
@@ -74,7 +76,12 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_' + str(i), h.dense)
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
-    def forward(self, x):
+    def forward(self, x: NDArray) -> Tuple[NDArray, NDArray]:
+        """
+        :param x: the 3D input matrix whose dimensions represent (batch size, feature size, embedding size).
+        :return: the tuple of (output layer, hidden layer right before the final dense layer).
+        """
+
         def conv(c: SimpleNamespace):
             return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
 
@@ -98,8 +105,8 @@ class FFNNModel(gluon.Block):
                 x = h.dropout(x)
 
         # output layer
-        x = self.output.dense(x)
-        return x
+        y = self.output.dense(x)
+        return y, x
 
 
 def namespace_input(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
