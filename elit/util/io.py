@@ -16,9 +16,9 @@
 import bisect
 import glob
 import json
-from typing import List, Dict, Callable, Type
+from typing import List, Dict, Callable, Sequence
 
-from demo.tmp import SequenceState
+from elit.state import NLPState
 from elit.structure import Sentence, TOK, Document
 from elit.util.util import to_gold
 
@@ -99,7 +99,7 @@ def gln(filepath):
     return filepath + '.gln'
 
 
-def group_states(docs: List[Document], create_state: Callable[[Document], Type[SequenceState]], maxlen: int = -1) -> List[Type[SequenceState]]:
+def group_states(docs: Sequence[Document], create_state: Callable[[Document], NLPState], maxlen: int = -1) -> List[NLPState]:
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.

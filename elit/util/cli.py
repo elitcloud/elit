@@ -16,7 +16,7 @@
 import argparse
 import re
 from types import SimpleNamespace
-from typing import Tuple, Dict, Optional, Union
+from typing import Tuple, Dict, Optional, Union, Any, Callable
 
 import mxnet as mx
 
@@ -30,9 +30,10 @@ __author__ = "Gary Lai, Jinho D. Choi"
 
 # ======================================== Arguments ========================================
 
-def args_dict_str_int(s: str) -> Dict[str, int]:
+def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
     """
     :param s: key:int(,key:int)*
+    :param const: type constructor (e.g., int, float)
     :return: a dictionary including key-value pairs from the input string.
     """
     r = re.compile(r'([A-Za-z0-9_-]+):(\d+)')
@@ -41,12 +42,16 @@ def args_dict_str_int(s: str) -> Dict[str, int]:
     for t in s.split(','):
         m = r.match(t)
         if m:
-            d[m.group(1)] = int(m.group(2))
+            d[m.group(1)] = const(m.group(2))
         else:
             raise argparse.ArgumentTypeError
 
     if not d: raise argparse.ArgumentTypeError
     return d
+
+
+def args_dict_str_float(s: str) -> Dict[str, float]:
+    return args_dict_str(s, float)
 
 
 def args_tuple_int(s: str) -> Tuple[int, ...]:

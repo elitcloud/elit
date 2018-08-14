@@ -21,6 +21,7 @@ from itertools import islice
 from typing import Sequence, Union, List, Tuple
 
 import numpy as np
+from mxnet.ndarray import NDArray
 
 from elit.state import NLPState
 
@@ -111,6 +112,7 @@ class BatchIterator(NLPIterator):
     # override
     def process(self, state_begin: int, *args) -> int:
         if self._shuffle: return -1
+        # args = [arg.asnumpy() if isinstance(arg, NDArray) else arg for arg in args]
         o = len(args) == 1
         i = 0
 
@@ -150,6 +152,7 @@ class SequenceIterator(NLPIterator):
         return batch
 
     def process(self, state_begin: int, *args) -> int:
+        # args = [arg.asnumpy() if isinstance(arg, NDArray) else arg for arg in args]
         o = len(args) == 1
 
         for i, state in enumerate(islice(self.states, state_begin, self._iter)):

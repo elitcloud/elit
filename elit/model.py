@@ -76,10 +76,10 @@ class FFNNModel(gluon.Block):
                     setattr(self, 'hidden_' + str(i), h.dense)
                     setattr(self, 'hidden_dropout_' + str(i), h.dropout)
 
-    def forward(self, x: NDArray) -> Tuple[NDArray, NDArray]:
+    def forward(self, x: NDArray) -> NDArray:
         """
         :param x: the 3D input matrix whose dimensions represent (batch size, feature size, embedding size).
-        :return: the tuple of (output layer, hidden layer right before the final dense layer).
+        :return: the output.
         """
 
         def conv(c: SimpleNamespace):
@@ -106,7 +106,7 @@ class FFNNModel(gluon.Block):
 
         # output layer
         y = self.output.dense(x)
-        return y, x
+        return y
 
 
 def namespace_input(col: int, row: int, dropout: float = 0.0) -> SimpleNamespace:
