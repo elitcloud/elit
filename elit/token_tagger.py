@@ -24,13 +24,12 @@ from typing import Tuple, Optional, Union, Sequence, List
 import mxnet as mx
 import numpy as np
 
-from elit.cli import ComponentCLI
+from elit.cli import ComponentCLI, set_logger, args_dict_str_float, args_tuple_int, args_reader, args_vsm, args_conv2d, args_hidden, args_context, args_loss
 from elit.component import MXNetComponent
 from elit.eval import Accuracy, F1
 from elit.iterator import SequenceIterator, BatchIterator
 from elit.model import FFNNModel, namespace_input, namespace_output
 from elit.state import NLPState
-from elit.util.cli import args_reader, args_vsm, args_tuple_int, args_conv2d, args_hidden, args_loss, args_context, args_dict_str_float, set_logger
 from elit.util.io import pkl, gln, group_states
 from elit.util.structure import Document
 from elit.util.util import BILOU, to_gold, to_out

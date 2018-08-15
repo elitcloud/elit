@@ -16,6 +16,7 @@
 from types import SimpleNamespace
 from typing import Optional, Union, Sequence
 
+import numpy as np
 import mxnet as mx
 from mxnet import gluon, nd
 from mxnet.ndarray import NDArray
@@ -82,7 +83,6 @@ class FFNNModel(gluon.Block):
         :param x: the 3D input matrix whose dimensions represent (batch size, feature size, embedding size).
         :return: the output.
         """
-
         def conv(c: SimpleNamespace):
             return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
 

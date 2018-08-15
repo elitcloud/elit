@@ -20,8 +20,8 @@ import sys
 import mxnet as mx
 
 from elit.token_tagger import TokenSequenceTagger, TokenBatchTagger
-from elit.util.cli import args_context, args_loss, feature_windows_args, args_reader, conv2d_args, \
-    args_hidden
+from elit.util.cli import feature_windows_args, conv2d_args
+from elit.cli import args_reader, args_hidden, args_context, args_loss
 from elit.util.structure import TOK
 from elit.util.vsm import FastText
 

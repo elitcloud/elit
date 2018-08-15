@@ -19,28 +19,71 @@ from types import SimpleNamespace
 import mxnet as mx
 import numpy as np
 from mxnet import gluon, nd, autograd
+from mxnet.ndarray import NDArray
 
 from elit.model import FFNNModel
 
 __author__ = 'Jinho D. Choi'
 
 
+class CNN(gluon.Block):
+    """
+    :class:`FFNNModel` implements a Feed-Forward Neural Network (FFNN) consisting of
+    an input layer, n-gram convolution layers (optional), hidden layers (optional), and an output layer.
+    """
+
+    def __init__(self, input_config: SimpleNamespace, output_config: SimpleNamespace, conv2d_config, **kwargs):
+        super().__init__(**kwargs)
+
+        self.conv2d = [mx.gluon.nn.Conv2D(channels=c.filters, kernel_size=(c.ngram, input_config.col), strides=(1, input_config.col), activation=c.activation)
+                       for c in conv2d_config]
+
+        with self.name_scope():
+            for i, c in enumerate(self.conv2d, 0):
+                setattr(self, 'conv_' + str(i), c)
+
+            self.output = mx.gluon.nn.Dense(output_config.dim)
+
+    def forward(self, x: NDArray) -> NDArray:
+        """
+        :param x: the 3D input matrix whose dimensions represent (batch size, feature size, embedding size).
+        :return: the output.
+        """
+        print(x.shape)
+        def conv(c: SimpleNamespace):
+            return c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1)))
+
+        # (batches, input.row, input.col) -> (batches, 1, input.row, input.col)
+        x = x.reshape((0, 1, x.shape[1], x.shape[2]))
+
+        # conv: [(batches, filters, maxlen - ngram + 1, 1) for ngram in ngrams]
+        # pool: [(batches, filters, 1, 1) for ngram in ngrams]
+        # reshape: [(batches, filters * x * y) for ngram in ngrams]
+        t = [c(x) for c in self.conv2d]
+        print('=====')
+        for a in t: print(a.shape)
+        print('=====')
+        x = nd.concat(*t, dim=1)
+
+        # output layer
+        y = self.output(x)
+        return y
+
+
 def demo():
-    ngrams = range(2, 5)
+    ngrams = range(1, 4)
     train_size = 10
-    ctx = mx.cpu(0)
     batch_size = 3
+    ctx = mx.cpu()
 
-    input_config = SimpleNamespace(row=5, col=20, dropout=0.0)
+    input_config = SimpleNamespace(row=5, col=20)
     output_config = SimpleNamespace(dim=3)
-    conv2d_config = None  # tuple(SimpleNamespace(ngram=i, filters=4, activation='relu', pool='max', dropout=0.0) for i in ngrams)
-    hidden_config = None  # tuple(SimpleNamespace(dim=10, activation='relu', dropout=0.0) for i in range(2))
+    conv2d_config = [SimpleNamespace(ngram=i, filters=4, activation='relu', dropout=0.0) for i in ngrams]
 
-    xs = nd.array([np.random.rand(input_config.row, input_config.col) for i in range(train_size)])
+    xs = nd.array([np.random.rand(input_config.row, input_config.col) for _ in range(train_size)])
     ys = nd.array(np.random.randint(output_config.dim, size=train_size))
 
-    initializer = mx.init.Xavier(rnd_type='gaussian', magnitude=2.24)
-    model = FFNNModel(input_config, output_config, conv2d_config, hidden_config)
+    model = CNN(input_config, output_config, conv2d_config)
     model.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', magnitude=2.24), ctx=ctx)
 
     # train
