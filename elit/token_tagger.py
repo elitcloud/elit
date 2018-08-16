@@ -228,7 +228,7 @@ class TokenTagger(MXNetComponent):
         # configuration
         if initializer is None: initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
         input_dim = sum([vsm.model.dim for vsm in self.vsm_list])
-        input_config = namespace_input(input_dim, row=len(feature_windows), dropout=input_dropout)
+        input_config = namespace_input(input_dim, row=len(feature_windows), dropout=input_dropout, filters=None, activation=None) # TODO:
         output_config = namespace_output(num_class)
 
         # initialization
@@ -459,7 +459,7 @@ class TokenTaggerCLI(ComponentCLI):
         args = parser.parse_args(sys.argv[3:])
         set_logger(args.log)
 
-        args.vsm_list = tuple(SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list)
+        args.vsm_list = [SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list]
         if isinstance(args.context, list) and len(args.context) == 1: args.context = args.context[0]
 
         # component
