@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import argparse
+import json
 import logging
 import pickle
 from types import SimpleNamespace
@@ -396,7 +397,7 @@ class TokenTaggerCLI(ComponentCLI):
                            help='configuration for the hidden layers (default: None)')
 
         # training
-        group = parser.add_argument_group("training arguments")
+        group = parser.add_argument_group("arguments for training")
 
         group.add_argument('-cx', '--context', type=args_context, metavar='[cg]int', nargs='+',
                            default=mx.cpu(),
@@ -440,7 +441,59 @@ class TokenTaggerCLI(ComponentCLI):
     # override
     @classmethod
     def decode(cls, args):
-        pass
+        # create a arg-parser
+        parser = argparse.ArgumentParser(description='Decode with the token tagger',
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        # data
+        group = parser.add_argument_group("data arguments")
+
+        group.add_argument('-i', '--input_path', type=str, metavar='filepath',
+                           help='filepath to the input data')
+        group.add_argument('-o', '--output_path', type=str, metavar='filepath',
+                           default=None,
+                           help='filepath to the output data (default: input_path.json)')
+        group.add_argument('-m', '--model_path', type=str, metavar='filepath',
+                           default=None,
+                           help='filepath to the model data')
+        group.add_argument('-r', '--reader', type=args_reader, metavar='json or tsv=(str:int)(,#1)*',
+                           default=args_reader('json'),
+                           help='type of the reader and its configuration to match the data format (default: json)')
+        group.add_argument('-v', '--vsm_list', type=args_vsm, metavar='(fasttext|word2vec:key:filepath)( #1)*', nargs='+',
+                           help='list of (type of vector space model, key, filepath)')
+        group.add_argument('-l', '--log', type=str, metavar='filepath',
+                           default=None,
+                           help='filepath to the logging file; if not set, use stdout')
+
+        # evaluation
+        group = parser.add_argument_group("arguments for decoding")
+
+        group.add_argument('-cx', '--context', type=args_context, metavar='[cg]int', nargs='+',
+                           default=mx.cpu(),
+                           help='device context(s)')
+        group.add_argument('-ib', '--input_batch', type=int, metavar='int', default=2048,
+                           help='batch size for the input data')
+
+        # arguments
+        args = parser.parse_args(args)
+        set_logger(args.log)
+
+        args.vsm_list = [SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list]
+        if isinstance(args.context, list) and len(args.context) == 1: args.context = args.context[0]
+        if args.output_path is None: args.output_path = args.input_path + '.json'
+
+        # component
+        comp = TokenTagger(args.context, args.vsm_list)
+        comp.load(args.model_path)
+
+        # data
+        docs = args.reader.type(args.input_path, args.reader.params)
+
+        # evaluate
+        comp.decode(docs, args.input_batch)
+
+        with open(args.output_path, 'w') as fout:
+            json.dump(docs, fout)
 
     # override
     @classmethod
@@ -456,7 +509,7 @@ class TokenTaggerCLI(ComponentCLI):
                            help='filepath to the development data (input)')
         group.add_argument('-m', '--model_path', type=str, metavar='filepath',
                            default=None,
-                           help='filepath to the model data (output)')
+                           help='filepath to the model data')
         group.add_argument('-r', '--reader', type=args_reader, metavar='json or tsv=(str:int)(,#1)*',
                            default=args_reader('json'),
                            help='type of the reader and its configuration to match the data format (default: json)')
@@ -467,7 +520,7 @@ class TokenTaggerCLI(ComponentCLI):
                            help='filepath to the logging file; if not set, use stdout')
 
         # evaluation
-        group = parser.add_argument_group("training arguments")
+        group = parser.add_argument_group("arguments for evaluation")
 
         group.add_argument('-cx', '--context', type=args_context, metavar='[cg]int', nargs='+',
                            default=mx.cpu(),
