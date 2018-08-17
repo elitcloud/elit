@@ -369,13 +369,13 @@ class MXNetComponent(NLPComponent):
         log = ('Decoding',
                '- context(s): %s' % str(self.ctx),
                '- batch size: %d' % batch_size)
-        logging.info('\n'.join(log) + '\n')
+        logging.info('\n'.join(log))
 
         iterator = self.data_iterator(docs, batch_size, shuffle=False, label=False)
         st = time.time()
         self.decode_iter(iterator)
         et = time.time()
-        logging.info('- time: %d (sec)\n' % (et - st))
+        logging.info('- time: %d (sec)' % (et - st))
 
     def decode_iter(self, iterator: NLPIterator):
         """
@@ -452,14 +452,14 @@ class MXNetComponent(NLPComponent):
         log = ('Evaluating',
                '- context(s): %s' % str(self.ctx),
                '- batch size: %d' % batch_size)
-        logging.info('\n'.join(log) + '\n')
+        logging.info('\n'.join(log))
 
         iterator = self.data_iterator(docs, batch_size, shuffle=False, label=True)
         st = time.time()
         metric = self.evaluate_iter(iterator)
         et = time.time()
-        logging.info('- time: %d (sec)\n' % (et - st))
-        logging.info('%s\n' % str(metric))
+        logging.info('- time: %d (sec)' % (et - st))
+        logging.info('%s' % str(metric))
 
     def evaluate_iter(self, iterator: NLPIterator, decode=True) -> EvalMetric:
         """

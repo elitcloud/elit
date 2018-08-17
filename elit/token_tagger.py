@@ -16,7 +16,6 @@
 import argparse
 import logging
 import pickle
-import sys
 from types import SimpleNamespace
 from typing import Tuple, Optional, Union, Sequence, List
 
@@ -199,6 +198,7 @@ class TokenTagger(MXNetComponent):
              '- type: %s' % ('chunking' if self.chunking else 'tagging'),
              '- sequence: %r' % self.sequence,
              '- feature windows: %s' % str(self.feature_windows),
+             '- label embedding: %r' % (self.padout is not None),
              '- position embedding: %r' % self.position_embedding,
              '- %s' % str(self.model))
         return '\n'.join(s)
@@ -476,7 +476,7 @@ class TokenTaggerCLI(ComponentCLI):
                            help='batch size for the development data')
 
         # arguments
-        args = parser.parse_args(sys)
+        args = parser.parse_args(args)
         set_logger(args.log)
 
         args.vsm_list = [SimpleNamespace(model=n.type(n.filepath), key=n.key) for n in args.vsm_list]
