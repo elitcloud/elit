@@ -27,7 +27,7 @@ __author__ = 'Jinho D. Choi'
 class NLPState(abc.ABC):
     """
     :class:`NLPState` is an abstract class that takes a document and
-    generates states to make predictions for NLP tasks defined in its subclasses.
+    generates states to make predictions for an NLP task defined in its subclass.
 
     Abstract methods to be implemented:
       - :meth:`NLPState.init`
@@ -78,10 +78,10 @@ class NLPState(abc.ABC):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @property
-    def x(self) -> np.ndarray:
+    def x(self) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         """
-        :return: the feature vector (or matrix) extracted from the current state.
-        :rtype: numpy.ndarray
+        :return: the feature vector or the tuple of feature vectors extracted from the current state.
+        :rtype: numpy.ndarray or tuple(numpy.ndarray, ....)
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
@@ -90,6 +90,6 @@ class NLPState(abc.ABC):
     def y(self) -> Optional[Union[int, Tuple[int, ...]]]:
         """
         :return: the class ID of the gold label for the current state if available; otherwise ``None``.
-        :rtype: int or Tuple[int, ...] or None
+        :rtype: int or tuple(int, ....) or None
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))

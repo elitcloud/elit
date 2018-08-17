@@ -16,7 +16,7 @@
 import abc
 import inspect
 from types import SimpleNamespace
-from typing import Optional, Sequence, List, Tuple
+from typing import Optional, Sequence, List
 
 import mxnet as mx
 from mxnet import gluon, nd
@@ -58,12 +58,12 @@ class NLPModel(gluon.Block):
         return SimpleNamespace(dim=dim)
 
     @staticmethod
-    def namespace_de_layer(filters: int, activation: str, dropout: float = 0.0) -> SimpleNamespace:
+    def namespace_fuse_conv_layer(filters: int, activation: str, dropout: float = 0.0) -> SimpleNamespace:
         """
         :param filters: the number of filters.
         :param activation: the activation function.
         :param dropout: the dropout applied to the output of this convolution.
-        :return: the namespace of (filters, activation, dropout) for the dimensionality reduction layer.
+        :return: the namespace of (filters, activation, dropout) for the fuse convolution layer.
         """
         return SimpleNamespace(filters=filters, activation=activation, dropout=dropout)
 
@@ -115,11 +115,11 @@ class NLPModel(gluon.Block):
 
         return layer
 
-    def init_de_layer(self, config: SimpleNamespace, input_col: int) -> SimpleNamespace:
+    def init_fuse_conv_layer(self, config: SimpleNamespace, input_col: int) -> SimpleNamespace:
         """
         :param config: the output of :meth:`FFNNModel.namespace_input_conv_layer`.
         :param input_col: the column dimension of the input matrix.
-        :return: the namespace of (conv, dropout) for the dimensionality reduction layer.
+        :return: the namespace of (conv, dropout) for the fuse convolution layer.
         """
         layer = SimpleNamespace(
             conv=mx.gluon.nn.Conv2D(channels=config.filters, kernel_size=(1, input_col), strides=(1, input_col), activation=config.activation),
@@ -189,14 +189,14 @@ class FFNNModel(NLPModel):
     def __init__(self,
                  input_config: SimpleNamespace,
                  output_config: SimpleNamespace,
-                 de_config: Optional[SimpleNamespace] = None,
+                 fuse_conv_config: Optional[SimpleNamespace] = None,
                  ngram_conv_config: Optional[SimpleNamespace] = None,
                  hidden_configs: Optional[Sequence[SimpleNamespace]] = None,
                  **kwargs):
         """
         :param input_config: the configuration for the input layer; see :meth:`FFNNModel.namespace_input_layer`.
         :param output_config: the configuration for the output layer; see :meth:`FFNNModel.namespace_output_layer`.
-        :param de_config: the configuration for the dimensionality reduction layer; see :meth:`FFNNModel.namespace_de_layer`.
+        :param fuse_conv_config: the configuration for the fuse convolution layer; see :meth:`FFNNModel.namespace_fuse_conv_layer`.
         :param ngram_conv_config: the configuration for the n-gram convolution layer; see :meth:`FFNNModel.namespace_ngram_conv_layer`.
         :param hidden_configs: the configurations for the hidden layers; see :meth:`FFNNModel.namespace_hidden_layer`.
         """
@@ -205,50 +205,38 @@ class FFNNModel(NLPModel):
         # initialize
         self._input = self.init_input_layer(input_config)
 
-        if de_config:
-            self._de = self.init_de_layer(de_config, input_config.col)
-            col = de_config.filters
+        if fuse_conv_config:
+            self._fuse_conv = self.init_fuse_conv_layer(fuse_conv_config, input_config.col)
+            col = fuse_conv_config.filters
         else:
-            self._de = None
+            self._fuse_conv = None
             col = input_config.col
 
         self._ngram_convs = self.init_ngram_conv_layer(ngram_conv_config, input_config.row, col) if ngram_conv_config else None
         self._hiddens = self.init_hidden_layers(hidden_configs) if hidden_configs else None
         self._output = self.init_output_layer(output_config)
 
-    def forward(self, x: NDArray, cs: Sequence[NDArray] = None, hs: Sequence[NDArray] = None) -> Tuple[NDArray, NDArray, NDArray]:
-        """
-        :param x: the input matrix.
-        :param cs: the sequence of convolution vectors.
-        :param hs: the sequence of hidden vectors.
-        :return: (the output, the convolution vector, the hidden vector).
-        """
-        conv, hidden = None, None
-
+    def forward(self, x: NDArray) -> NDArray:
         # input layer
         x = self._input.dropout(x)
 
         # dimensionality reduction layer
-        if self._de:
+        if self._fuse_conv:
             x = x.reshape((0, 1, x.shape[1], x.shape[2]))
-            x = self._de.dropout(self._de.conv(x))
+            x = self._fuse_conv.dropout(self._fuse_conv.conv(x))
 
         # convolution layer
         if self._ngram_convs:
-            x = mx.nd.transpose(x, (0, 3, 2, 1)) if self._de else x.reshape((0, 1, x.shape[1], x.shape[2]))
+            x = mx.nd.transpose(x, (0, 3, 2, 1)) if self._fuse_conv else x.reshape((0, 1, x.shape[1], x.shape[2]))
             t = [c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1))) for c in self._ngram_convs]
             x = nd.concat(*t, dim=1)
-            conv = x
-            if cs: x = nd.concat(x, *cs, dim=1)
 
         # hidden layers
         if self._hiddens:
             for h in self._hiddens:
                 x = h.dense(x)
                 x = h.dropout(x)
-            hidden = x
-            if hs: x = nd.concat(x, *hs, dim=1)
 
         # output layer
         output = self._output.dense(x)
-        return output, conv, hidden
+        return output

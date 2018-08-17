@@ -102,10 +102,10 @@ commands:
                             metavar='CONV2D_CONFIG', nargs='*',
                             default=["{},128,relu,none,0.2".format(i) for i in range(1, 6)],
                             help='configuration for the convolution layer')
-        # parser.add_argument('-hc', '--hidden_config', type=hidden_args,
+        # parser.add_argument('-hc', '--hidden_configs', type=hidden_args,
         #                     metavar='(dim:activation:dropout)(;#1)*', default=None,
         #                     help='configuration for the hidden layer')
-        parser.add_argument('-hc', '--hidden_config', type=str,
+        parser.add_argument('-hc', '--hidden_configs', type=str,
                             metavar='HIDDEN_CONFIG', nargs='*', default=None,
                             help='configuration for the hidden layer')
         training = parser.add_argument_group("configuration for the training")

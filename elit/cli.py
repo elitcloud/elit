@@ -24,7 +24,7 @@ from typing import Callable, Any, Dict, Tuple, Optional, Union, Type
 
 import mxnet as mx
 
-from elit.model import namespace_conv2d
+from elit.model import NLPModel
 from elit.util.io import json_reader, tsv_reader
 from elit.util.vsm import FastText, Word2Vec, VectorSpaceModel
 
@@ -121,10 +121,6 @@ commands:
             exit(1)
 
 
-if __name__ == '__main__':
-    ELITCLI()
-
-
 def set_logger(filename: str = None, level: int = logging.INFO, formatter: logging.Formatter = None):
     log = logging.getLogger()
     log.setLevel(level)
@@ -206,7 +202,7 @@ def args_vsm(s: str) -> SimpleNamespace:
     return namespace_vsm(vsm_type=vsm, key=key, filepath=filepath)
 
 
-def args_conv2d(s: str) -> Optional[SimpleNamespace]:
+def args_ngram_conv(s: str) -> Optional[SimpleNamespace]:
     """
     :param s: ngram:filters:activation:pool:dropout
     :return: the output of namespace_conf2d().
@@ -214,7 +210,17 @@ def args_conv2d(s: str) -> Optional[SimpleNamespace]:
     if s.lower() == 'none': return None
     c = s.split(':')
     pool = c[3] if c[3].lower() != 'none' else None
-    return namespace_conv2d(ngram=int(c[0]), filters=int(c[1]), activation=c[2], pool=pool, dropout=float(c[4]))
+    return NLPModel.namespace_ngram_conv_layer(ngrams=args_tuple_int(c[0]), filters=int(c[1]), activation=c[2], pool=pool, dropout=float(c[4]))
+
+
+def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
+    """
+    :param s: filters:activation:dropout
+    :return: the output of namespace_conf2d().
+    """
+    if s.lower() == 'none': return None
+    c = s.split(':')
+    return NLPModel.namespace_fuse_conv_layer(filters=int(c[0]), activation=c[1], dropout=float(c[2]))
 
 
 def args_hidden(s: str) -> Optional[SimpleNamespace]:
@@ -275,3 +281,7 @@ def namespace_reader(reader_type: Union[json_reader, tsv_reader], params: Option
 
 def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
     return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
+
+
+if __name__ == '__main__':
+    ELITCLI()

@@ -24,7 +24,7 @@ from mxnet import nd, gluon, autograd
 from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
-from elit.iterator import BatchIterator, NLPIterator
+from elit.util.iterator import BatchIterator, NLPIterator
 from elit.util.structure import Document
 
 __author__ = 'Jinho D. Choi, Gary Lai'
@@ -237,7 +237,6 @@ class MXNetComponent(NLPComponent):
         best_e, best_acc = -1, -1
 
         for e in range(1, epoch + 1):
-
             st = time.time()
             trn_acc = self.train_iter(trn_iterator, loss, trainer)
             mt = time.time()
@@ -280,27 +279,27 @@ class MXNetComponent(NLPComponent):
         Trains all batches in the iterator with a single device.
         """
         state_begin, total, correct = 0, 0, 0
-        hidden = []
+        others = []
 
         for batch in iterator:
             xs, ys = zip(*batch)
             total += len(ys)
-            xs = nd.array(xs, self.ctx)
+            xs = nd.array(xs, self.ctx) if iterator.x1 else [nd.array(x, self.ctx) for x in zip(*xs)]
             ys = nd.array(ys, self.ctx)
 
             with autograd.record():
-                t = self.model(xs)
+                t = self.model(xs) if iterator.x1 else self.model(*xs)
                 if isinstance(t, NDArray):
                     output = t
                 else:
                     output = t[0]
-                    hidden = t[1:]
+                    others = t[1:]
 
                 l = loss(output, ys)
                 l.backward()
 
             trainer.step(xs.shape[0])
-            state_begin = iterator.process(state_begin, output, *hidden)
+            iterator.process(output, *others)
             correct += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), ys) if int(o.asscalar()) == int(y.asscalar())])
 
         return 100.0 * correct / total
@@ -320,43 +319,43 @@ class MXNetComponent(NLPComponent):
 
         def train():
             with autograd.record():
-                ts = [self.model(x_split) for x_split in x_splits]
+                ts = [self.model(x_split) if iterator.x1 else self.model(*x_split) for x_split in x_splits]
                 if isinstance(ts[0], NDArray):
                     outputs = ts
-                    hiddens = None
+                    others = empty
                 else:
                     outputs = [t[0] for t in ts]
-                    hiddens = [t[1:] for t in ts]
+                    others = [t[1:] for t in ts]
 
                 losses = [loss(output, y_split) for output, y_split in zip(outputs, y_splits)]
                 for l in losses: l.backward()
 
             trainer.step(sum(x_split.shape[0] for x_split in x_splits), ignore_stale_grad=True)
-            begin, corr, i, = state_begin, 0, 0
-            for output, y_split in zip(outputs, y_splits):
-                if hiddens: begin = iterator.process(state_begin, output, *hiddens[i])
-                else: begin = iterator.process(state_begin, output)
-                corr += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
-                i += 1
-            return begin, corr
 
-        state_begin, total, correct = 0, 0, 0
+            c, i = 0, 0
+            for output, y_split in zip(outputs, y_splits):
+                if others: iterator.process(output, *others[i])
+                else: iterator.process(output)
+                c += len([1 for o, y in zip(mx.ndarray.argmax(output, axis=1), y_split) if int(o.asscalar()) == int(y.asscalar())])
+                i += 1
+            return c
+
         x_splits, y_splits, empty = [], [], []
+        total, correct = 0, 0
 
         for batch in iterator:
             if batch:
                 xs, ys = zip(*batch)
                 total += len(ys)
-                x_splits.append(nd.array(xs, self.ctx[len(x_splits)]))
-                y_splits.append(nd.array(ys, self.ctx[len(y_splits)]))
+                ctx = self.ctx[len(x_splits)]
+                x_splits.append(nd.array(xs, ctx) if iterator.x1 else [nd.array(x, ctx) for x in zip(*xs)])
+                y_splits.append(nd.array(ys, ctx))
 
-            if len(x_splits) == len(self.ctx) or (x_splits and not batch):
-                b, c = train()
-                state_begin = b
-                correct += c
+            if len(x_splits) == len(self.ctx) or not batch:
+                correct += train()
                 x_splits, y_splits = [], []
 
-        if x_splits: correct += train()[1]
+        if x_splits: correct += train()
         return 100.0 * correct / total
 
     # override
@@ -393,8 +392,7 @@ class MXNetComponent(NLPComponent):
 
         Decodes all batches in the iterator with a single device.
         """
-        state_begin = 0
-        hidden = []
+        others = []
 
         for batch in iterator:
             if not isinstance(batch[0], NDArray): batch, _ = zip(*batch)
@@ -404,9 +402,9 @@ class MXNetComponent(NLPComponent):
                 output = t
             else:
                 output = t[0]
-                hidden = t[1:]
+                others = t[1:]
 
-            state_begin = iterator.process(state_begin, output, *hidden)
+            iterator.process(output, *others)
 
     def decode_multiple_devices(self, iterator: BatchIterator):
         """
@@ -416,30 +414,28 @@ class MXNetComponent(NLPComponent):
         """
 
         def decode():
-            ts = [self.model(split) for split in splits]
+            ts = [self.model(split) if iterator.x1 else self.model(*split) for split in splits]
             if isinstance(ts[0], NDArray):
                 outputs = ts
-                hiddens = None
+                others = empty
             else:
                 outputs = [t[0] for t in ts]
-                hiddens = [t[1:] for t in ts]
+                others = [t[1:] for t in ts]
 
-            begin = state_begin
             for i, output in enumerate(outputs):
-                if hiddens: begin = iterator.process(state_begin, output, *hiddens[i])
-                else: begin = iterator.process(state_begin, output)
-            return begin
+                if others: iterator.process(output, *others[i])
+                else: iterator.process(output)
 
-        state_begin = 0
-        splits = []
+        splits, empty = [], []
 
         for batch in iterator:
             if batch:
-                if not isinstance(batch[0], NDArray): batch, _ = zip(*batch)
-                splits.append(nd.array(batch, self.ctx[len(splits)]))
+                if iterator.label: batch, _ = zip(*batch)
+                ctx = self.ctx[len(splits)]
+                splits.append(nd.array(batch, ctx) if iterator.x1 else [nd.array(x, ctx) for x in zip(*batch)])
 
-            if len(splits) == len(self.ctx) or (splits and not batch):
-                state_begin = decode()
+            if len(splits) == len(self.ctx) or not batch:
+                decode()
                 splits = []
 
         if splits: decode()

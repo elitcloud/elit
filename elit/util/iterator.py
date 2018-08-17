@@ -21,7 +21,6 @@ from itertools import islice
 from typing import Sequence, Union, List, Tuple
 
 import numpy as np
-from mxnet.ndarray import NDArray
 
 from elit.state import NLPState
 
@@ -33,11 +32,14 @@ class NLPIterator(collections.Iterator):
     :class:`NLPIterator` generates batches of instances from the input states that are iterable.
     """
 
-    def __init__(self, states: Sequence[NLPState]):
+    def __init__(self, states: Sequence[NLPState], label: bool):
         """
         :param states: the sequence of input states.
+        :param label: if ``True``, each instance is ``(x, y)``; otherwise, it is just ``x``.
         """
         self.states = states
+        self.label = label
+        self.x1 = True
 
     @abc.abstractmethod
     def __iter__(self) -> 'NLPIterator':
@@ -51,11 +53,9 @@ class NLPIterator(collections.Iterator):
         return self.__class__.__name__
 
     @abc.abstractmethod
-    def process(self, state_begin: int, *args) -> int:
+    def process(self, *args):
         """
-        :param state_begin: the index of the input state to begin the process with.
-        :param args: parameters including the outputs; ``len(args)`` must be at least 1.
-        :return: the index of the state to be processed next after this method is called.
+        :param args: arguments to be applied to the input states; it must include at least one argument.
 
         Processes through the states and assigns the parameters accordingly.
         """
@@ -65,18 +65,18 @@ class NLPIterator(collections.Iterator):
 class BatchIterator(NLPIterator):
     """
     :class:`BatchIterator` generates all batches of instances in the constructor, and iterates through the generated batches.
-    This is useful when all instances are independent; in other words, the prediction for one instance does not affect the prediction of any other instance.
+    This is useful when all instances are independent to one another.
     """
 
     def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool, **kwargs):
         """
         :param states: the input states.
-        :param batch_size: the size of batches to process at a time.
-        :param shuffle: if ``True``, shuffle instances for every epoch; otherwise, no shuffle.
-        :param label: if ``True``, each instance is a tuple of (feature vector, label); otherwise, it is just a feature vector.
+        :param batch_size: the max number of instances per batch.
+        :param shuffle: if ``True``, shuffle instances for every epoch, in which case, :meth:`BatchIterator.process` cannot be called.
+        :param label: if ``True``, each instance is ``(x, y)``; otherwise, it is just ``x``.
         :param kwargs: custom parameters to initialize each state.
         """
-        super().__init__(states)
+        super().__init__(states, label)
         batches = []
         batch = []
         count = 0
@@ -96,7 +96,12 @@ class BatchIterator(NLPIterator):
         self._batches = batches
         self._shuffle = shuffle
         self._kwargs = kwargs
+        self._state_begin = 0
         self._iter = 0
+
+        x = batches[0][0]
+        if isinstance(x, tuple): x = x[0]
+        self.x1 = not isinstance(x, tuple)
 
     # override
     def __iter__(self) -> 'BatchIterator':
@@ -105,6 +110,7 @@ class BatchIterator(NLPIterator):
         else:
             for state in self.states: state.init(**self._kwargs)
 
+        self._state_begin = 0
         self._iter = 0
         return self
 
@@ -116,58 +122,73 @@ class BatchIterator(NLPIterator):
         return batch
 
     # override
-    def process(self, state_begin: int, *args) -> int:
+    def process(self, *args):
         if self._shuffle: return -1
-        # args = [arg.asnumpy() if isinstance(arg, NDArray) else arg for arg in args]
         o = len(args) == 1
         i = 0
 
-        for state in islice(self.states, state_begin, None):
+        for state in islice(self.states, self._state_begin, None):
             while state.has_next():
-                if i == len(args[0]): return state_begin
+                if i == len(args[0]): return
                 if o: state.process(args[0][i])
                 else: state.process(*[arg[i] for arg in args])
                 i += 1
 
-            state_begin += 1
-
-        return state_begin
+            self._state_begin += 1
 
 
 class SequenceIterator(NLPIterator):
+    """
+    :class:`SequenceIterator` dynamically generates batches of instances during iteration, where each instance is extracted from a different input state.
+    This is useful when the output of each state needs to be passed onto its following states.
+
+    Important: :meth:`SequenceIterator.process` must be called at each iteration.
+    """
+
     def __init__(self, states: Sequence[NLPState], batch_size: int, shuffle: bool, label: bool, **kwargs):
-        super().__init__(states)
+        """
+        :param states: the input states.
+        :param batch_size: the max number of instances per batch.
+        :param shuffle: if ``True``, shuffle instances for every epoch.
+        :param label: if ``True``, each instance is ``(x, y)``; otherwise, it is just ``x``.
+        :param kwargs: custom parameters to initialize each state.
+        """
+        super().__init__(states, label)
         self._batch_size = batch_size
         self._shuffle = shuffle
-        self._label = label
         self._kwargs = kwargs
         self._states = None
+        self._state_begin = 0
         self._iter = 0
 
     def __iter__(self) -> 'SequenceIterator':
         for state in self.states: state.init(**self._kwargs)
+
         self._states = list(self.states)
         if self._shuffle: random.shuffle(self._states)
+        self.x1 = not isinstance(self.states[0].x, tuple)
+        self._state_begin = 0
         self._iter = 0
         return self
 
     def __next__(self) -> List[Union[np.ndarray, Tuple[np.ndarray, int]]]:
         if not self._states: raise StopIteration
-        batch = [(state.x, state.y) if self._label else state.x for state in islice(self._states, self._iter, self._iter + self._batch_size)]
+        batch = [(state.x, state.y) if self.label else state.x for state in islice(self._states, self._iter, self._iter + self._batch_size)]
         self._iter += len(batch)
         return batch
 
-    def process(self, state_begin: int, *args) -> int:
-        # args = [arg.asnumpy() if isinstance(arg, NDArray) else arg for arg in args]
+    def process(self, *args):
         o = len(args) == 1
+        end = self._state_begin + len(args[0])
 
-        for i, state in enumerate(islice(self._states, state_begin, self._iter)):
+        for i, state in enumerate(islice(self._states, self._state_begin, end)):
             if o: state.process(args[0][i])
             else: state.process(*[arg[i] for arg in args])
 
-        if self._iter >= len(self._states):
+        self._state_begin = end
+
+        if end >= len(self._states):
             self._states = [state for state in self._states if state.has_next()]
             if self._shuffle: random.shuffle(self._states)
+            self._state_begin = 0
             self._iter = 0
-
-        return self._iter
