@@ -71,11 +71,12 @@ class Component(abc.ABC):
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
-    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs):
+    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs) -> float:
         """
         :param trn_data: training data.
         :param dev_data: development (validation) data.
         :param model_path: the filepath where the trained model(s) are to be saved.
+        :return: the best score form the development data.
 
         Trains a model for this component and saves the model to the filepath.
         """
@@ -115,11 +116,12 @@ class NLPComponent(Component):
     """
 
     @abc.abstractmethod
-    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs):
+    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
         """
         :param trn_docs: the sequence of documents for training.
         :param dev_docs: the sequence of documents for development (validation).
         :param model_path: the filepath where trained model(s) are to be saved.
+        :return: the best score form the development data.
 
         Trains a model for this component and saves the model to the filepath.
         """
@@ -193,7 +195,7 @@ class MXNetComponent(NLPComponent):
               loss: gluon.loss.Loss = None,
               optimizer: str = 'adagrad',
               optimizer_params: Dict[str, float] = None,
-              **kwargs):
+              **kwargs) -> float:
         """
         :param trn_docs: the sequence of documents for training.
         :param dev_docs: the sequence of documents for development (validation).
@@ -234,7 +236,7 @@ class MXNetComponent(NLPComponent):
 
         # train
         logging.info('Training')
-        best_e, best_acc = -1, -1
+        best_e, best_eval = -1, -1
 
         for e in range(1, epoch + 1):
             st = time.time()
@@ -243,13 +245,15 @@ class MXNetComponent(NLPComponent):
             dev_metric = self.evaluate_iter(dev_iterator)
             et = time.time()
 
-            acc = dev_metric.get()
-            if best_acc < acc:
-                best_e, best_acc = e, acc
+            ev = dev_metric.get()
+            if best_eval < ev:
+                best_e, best_eval = e, ev
                 self.save(model_path)
 
             logging.info('%4d: trn-time: %d, dev-time: %d, trn-acc: %6.2f, dev-eval: %5.2f, best-dev: %5.2f @%4d' %
-                         (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_acc, best_e))
+                         (e, mt - st, et - mt, trn_acc, dev_metric.get(), best_eval, best_e))
+
+        return best_eval
 
     def train_iter(self,
                    iterator: NLPIterator,
