@@ -8,68 +8,15 @@ The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**
 
 The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.emory.edu) research group. It is under the [Apache 2](http://www.apache.org/licenses/LICENSE-2.0) license. Please join our group to get notifications about updates and send us your feedback.
 
-## Installation
+## Docs
 
-The machine should satisfy the requirements below before installing elit. If you installed the requirements below, you can skip next part of setup machine environment.  
 
-- python > 3.4
-
-### Setup machine environment
-
-In this section, all the installation command execute
-
-#### Ubuntu
-
-```
-sudo apt-get -y update
-sudo apt-get -y install python3-pip python-dev build-essential
-```
-
-#### MacOS
-
-On Mac OS, please install [homebrew](https://brew.sh/) first.
-
-```
-brew update
-brew install python
-```
-
-#### Pyenv 
-
-If you're familiar with [pyenv](https://github.com/pyenv/pyenv), you can use it to install python on either Linux or Mac machine.
-
-### Install Elit
-
-There are many ways to start a python and install python package. To keep it simple, you can use [virtualenv](https://github.com/pypa/virtualenv) to initialize a environment come with Python 3 and use pip as the python package management tools.  
-
-First of all, update your pip to latest version:
-
-```
-pip install --upgrade pip
-```
-
-Create an virtualenv with python 3. `env` is your environment name, you can change it as you want. However, for simplicity, I use `env` in the rest of part. For much more usage, please check the [document](https://virtualenv.pypa.io/en/stable/userguide/).
-
-```
-virtualenv -p python env
-```
-
-Activate your virtualenv
-```
-source env/bin/activate
-```
-
-After you activate your virtualenv, you should your environment name in the starting of your command line, such as
-```
-(env) $
-```
-
-Now, we can install elit!
-
-```
-(env) $ pip install elit
-```
 
 If you have any question or want to report bugs, please let us know on [github issues](https://github.com/elitcloud/elit/issues).
 
 Thank you.
+
+
+## License
+
+[Apache License 2.0](LICENSE)
