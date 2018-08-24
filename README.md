@@ -8,14 +8,28 @@ The **E**mory **L**anguage **I**nformation **T**oolkit or **E**volution of **L**
 
 The project is initiated and currently led by the [Emory NLP](http://nlp.mathcs.emory.edu) research group. It is under the [Apache 2](http://www.apache.org/licenses/LICENSE-2.0) license. Please join our group to get notifications about updates and send us your feedback.
 
+## Installation
+
+```
+pip install elit
+```
+
 ## Docs
 
+Please visit: https://elit.readthedocs.io/
+
+
+## Issues
 
 
 If you have any question or want to report bugs, please let us know on [github issues](https://github.com/elitcloud/elit/issues).
 
-Thank you.
 
+## Contribution 
+
+We appreciate contributions. If you want to contribute to ELIT, please be sure to read our [contribution guidelines](CONTRIBUTING.md) first. 
+
+To setup the development environment, please read [development guidelines](DEVELOPMENT.md)  
 
 ## License
 
