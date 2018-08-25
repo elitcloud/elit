@@ -133,9 +133,9 @@ def setup_package():
             'pybind11',
             'yafasttext',
             'gensim',
-            'numpy',
+            'numpy==1.15.0',
             'ujson',
-            'mxnet',
+            'mxnet==1.2.0',
         ],
         tests_require=[
             'pytest',
