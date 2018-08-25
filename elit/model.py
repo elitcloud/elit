@@ -35,12 +35,17 @@ class NLPModel(gluon.Block):
 
     @abc.abstractmethod
     def forward(self, *args):
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError(
+            '%s.%s()' %
+            (self.__class__.__name__, inspect.stack()[0][3]))
 
-    # ======================================== namespaces ========================================
+    # ======================================== namespaces ====================
 
     @staticmethod
-    def namespace_input_layer(row: int, col: int, dropout: float = 0.0) -> SimpleNamespace:
+    def namespace_input_layer(
+            row: int,
+            col: int,
+            dropout: float = 0.0) -> SimpleNamespace:
         """
         :param row: the row dimension of the input matrix.
         :param col: the column dimension of the input matrix.
@@ -58,17 +63,28 @@ class NLPModel(gluon.Block):
         return SimpleNamespace(dim=dim)
 
     @staticmethod
-    def namespace_fuse_conv_layer(filters: int, activation: str, dropout: float = 0.0) -> SimpleNamespace:
+    def namespace_fuse_conv_layer(
+            filters: int,
+            activation: str,
+            dropout: float = 0.0) -> SimpleNamespace:
         """
         :param filters: the number of filters.
         :param activation: the activation function.
         :param dropout: the dropout applied to the output of this convolution.
         :return: the namespace of (filters, activation, dropout) for the fuse convolution layer.
         """
-        return SimpleNamespace(filters=filters, activation=activation, dropout=dropout)
+        return SimpleNamespace(
+            filters=filters,
+            activation=activation,
+            dropout=dropout)
 
     @staticmethod
-    def namespace_ngram_conv_layer(ngrams: Sequence[int], filters: int, activation: str, pool: str = None, dropout: float = 0.0) -> SimpleNamespace:
+    def namespace_ngram_conv_layer(
+            ngrams: Sequence[int],
+            filters: int,
+            activation: str,
+            pool: str = None,
+            dropout: float = 0.0) -> SimpleNamespace:
         """
         :param ngrams: the sequence of n-gram kernels applied to the convolutions.
         :param filters: the number of filters applied to each convolution.
@@ -77,10 +93,18 @@ class NLPModel(gluon.Block):
         :param pool: the pooling operation applied to each convolution (max|avg).
         :return: the namespace of (ngrams, filters, activation, pool, dropout) for the convolution layer.
         """
-        return SimpleNamespace(ngrams=ngrams, filters=filters, activation=activation, pool=pool, dropout=dropout)
+        return SimpleNamespace(
+            ngrams=ngrams,
+            filters=filters,
+            activation=activation,
+            pool=pool,
+            dropout=dropout)
 
     @staticmethod
-    def namespace_hidden_layer(dim: int, activation: str, dropout: float) -> SimpleNamespace:
+    def namespace_hidden_layer(
+            dim: int,
+            activation: str,
+            dropout: float) -> SimpleNamespace:
         """
         :param dim: the dimension of the hidden layer.
         :param activation: the activation function applied to the hidden layer.
@@ -89,7 +113,7 @@ class NLPModel(gluon.Block):
         """
         return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
 
-    # ======================================== create_layers ========================================
+    # ======================================== create_layers =================
 
     def init_input_layer(self, config: SimpleNamespace) -> SimpleNamespace:
         """
@@ -115,15 +139,21 @@ class NLPModel(gluon.Block):
 
         return layer
 
-    def init_fuse_conv_layer(self, config: SimpleNamespace, input_col: int) -> SimpleNamespace:
+    def init_fuse_conv_layer(
+            self,
+            config: SimpleNamespace,
+            input_col: int) -> SimpleNamespace:
         """
         :param config: the output of :meth:`FFNNModel.namespace_input_conv_layer`.
         :param input_col: the column dimension of the input matrix.
         :return: the namespace of (conv, dropout) for the fuse convolution layer.
         """
         layer = SimpleNamespace(
-            conv=mx.gluon.nn.Conv2D(channels=config.filters, kernel_size=(1, input_col), strides=(1, input_col), activation=config.activation),
-            dropout=mx.gluon.nn.Dropout(config.dropout))
+            conv=mx.gluon.nn.Conv2D(
+                channels=config.filters, kernel_size=(
+                    1, input_col), strides=(
+                    1, input_col), activation=config.activation), dropout=mx.gluon.nn.Dropout(
+                config.dropout))
 
         with self.name_scope():
             self.__setattr__('de_conv', layer.conv)
@@ -131,7 +161,11 @@ class NLPModel(gluon.Block):
 
         return layer
 
-    def init_ngram_conv_layer(self, config: SimpleNamespace, input_row: int, input_col: int) -> List[SimpleNamespace]:
+    def init_ngram_conv_layer(
+            self,
+            config: SimpleNamespace,
+            input_row: int,
+            input_col: int) -> List[SimpleNamespace]:
         """
         :param config: the output of :meth:`FFNNModel.namespace_ngram_conv_layer`.
         :param input_row: the row dimension of the input matrix.
@@ -140,26 +174,33 @@ class NLPModel(gluon.Block):
         """
 
         def pool(pool_type: str, n: int):
-            if pool_type is None: return None
+            if pool_type is None:
+                return None
             p = mx.gluon.nn.MaxPool2D if pool_type == 'max' else mx.gluon.nn.AvgPool2D
             return p(pool_size=(n, 1), strides=(n, 1))
 
         def conv(n: int):
             layer = SimpleNamespace(
-                conv=mx.gluon.nn.Conv2D(channels=config.filters, kernel_size=(n, input_col), strides=(1, input_col), activation=config.activation),
-                dropout=mx.gluon.nn.Dropout(config.dropout),
-                pool=pool(config.pool, input_row - n + 1))
+                conv=mx.gluon.nn.Conv2D(
+                    channels=config.filters, kernel_size=(
+                        n, input_col), strides=(
+                        1, input_col), activation=config.activation), dropout=mx.gluon.nn.Dropout(
+                    config.dropout), pool=pool(
+                        config.pool, input_row - n + 1))
 
             with self.name_scope():
                 self.__setattr__('ngram_conv_%d' % n, layer.conv)
                 self.__setattr__('ngram_conv_%d_dropout' % n, layer.dropout)
-                if layer.pool: self.__setattr__('ngram_conv_%d_pool' % n, layer.pool)
+                if layer.pool:
+                    self.__setattr__('ngram_conv_%d_pool' % n, layer.pool)
 
             return layer
 
         return [conv(ngram) for ngram in config.ngrams]
 
-    def init_hidden_layers(self, configs: Sequence[SimpleNamespace]) -> List[SimpleNamespace]:
+    def init_hidden_layers(
+            self,
+            configs: Sequence[SimpleNamespace]) -> List[SimpleNamespace]:
         """
         :param configs: the sequence of outputs of :meth:`FFNNModel.namespace_hidden_layers`.
         :return: the namespace of (dense, dropout) for the hidden layers.
@@ -206,14 +247,17 @@ class FFNNModel(NLPModel):
         self._input = self.init_input_layer(input_config)
 
         if fuse_conv_config:
-            self._fuse_conv = self.init_fuse_conv_layer(fuse_conv_config, input_config.col)
+            self._fuse_conv = self.init_fuse_conv_layer(
+                fuse_conv_config, input_config.col)
             col = fuse_conv_config.filters
         else:
             self._fuse_conv = None
             col = input_config.col
 
-        self._ngram_convs = self.init_ngram_conv_layer(ngram_conv_config, input_config.row, col) if ngram_conv_config else None
-        self._hiddens = self.init_hidden_layers(hidden_configs) if hidden_configs else None
+        self._ngram_convs = self.init_ngram_conv_layer(
+            ngram_conv_config, input_config.row, col) if ngram_conv_config else None
+        self._hiddens = self.init_hidden_layers(
+            hidden_configs) if hidden_configs else None
         self._output = self.init_output_layer(output_config)
 
     def forward(self, x: NDArray) -> NDArray:
@@ -227,8 +271,15 @@ class FFNNModel(NLPModel):
 
         # convolution layer
         if self._ngram_convs:
-            x = mx.nd.transpose(x, (0, 3, 2, 1)) if self._fuse_conv else x.reshape((0, 1, x.shape[1], x.shape[2]))
-            t = [c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1))) for c in self._ngram_convs]
+            x = mx.nd.transpose(
+                x, (0, 3, 2, 1)) if self._fuse_conv else x.reshape(
+                (0, 1, x.shape[1], x.shape[2]))
+            t = [
+                c.dropout(
+                    c.pool(
+                        c.conv(x))) if c.pool else c.dropout(
+                    c.conv(x).reshape(
+                        (0, -1))) for c in self._ngram_convs]
             x = nd.concat(*t, dim=1)
 
         # hidden layers

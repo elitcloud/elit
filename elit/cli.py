@@ -47,7 +47,8 @@ class ComponentCLI(abc.ABC):
         :param description: the description of this component; if ``None``, the name is used instead.
         """
         usage = [
-            '        elit %s <command> [<args>]' % name,
+            '        elit %s <command> [<args>]' %
+            name,
             '',
             '    commands:',
             '           train: train a model (gold labels required)',
@@ -55,7 +56,8 @@ class ComponentCLI(abc.ABC):
             '        evaluate: evaluate the pre-trained model (gold labels required)']
 
         usage = '\n'.join(usage)
-        if not description: description = name
+        if not description:
+            description = name
         parser = argparse.ArgumentParser(usage=usage, description=description)
         command = sys.argv[2]
 
@@ -73,7 +75,9 @@ class ComponentCLI(abc.ABC):
 
         Trains a model for this component.
         """
-        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError(
+            '%s.%s()' %
+            (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
@@ -83,7 +87,9 @@ class ComponentCLI(abc.ABC):
 
         Predicts labels using this component.
         """
-        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError(
+            '%s.%s()' %
+            (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
@@ -93,7 +99,9 @@ class ComponentCLI(abc.ABC):
 
         Evaluates the current model of this component.
         """
-        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError(
+            '%s.%s()' %
+            (cls.__class__.__name__, inspect.stack()[0][3]))
 
 
 class ELITCLI(object):
@@ -103,29 +111,29 @@ class ELITCLI(object):
     elit <command> [<args>]
 
 commands:
-    pos     part-of-speech tagger
-    ner     named entity recognition
+    token_tagger    token_tagger
 '''
         )
         parser.add_argument('command', help='command to run')
         args = parser.parse_args(sys.argv[1:2])
-        # TODO
-        if args.command == 'pos':
-            from elit.pos import PosCli
-            PosCli()
-        elif args.command == 'ner':
-            pass
+        if args.command == 'token_tagger':
+            from elit.token_tagger import TokenTaggerCLI
+            TokenTaggerCLI()
         else:
             print('Unrecognized command')
             parser.print_help()
             exit(1)
 
 
-def set_logger(filename: str = None, level: int = logging.INFO, formatter: logging.Formatter = None):
+def set_logger(filename: str = None,
+               level: int = logging.INFO,
+               formatter: logging.Formatter = None):
     log = logging.getLogger()
     log.setLevel(level)
-    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
-    if formatter is not None: ch.setFormatter(formatter)
+    ch = logging.StreamHandler(
+        sys.stdout) if filename is None else logging.FileHandler(filename)
+    if formatter is not None:
+        ch.setFormatter(formatter)
     log.addHandler(ch)
 
 
@@ -145,7 +153,8 @@ def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
         else:
             raise argparse.ArgumentTypeError
 
-    if not d: raise argparse.ArgumentTypeError
+    if not d:
+        raise argparse.ArgumentTypeError
     return d
 
 
@@ -170,8 +179,11 @@ def args_reader(s: str) -> SimpleNamespace:
     :param s: json or tsv=(str:int)(,#1)*
     :return: the output of namespace_reader().
     """
-    if s == 'json': return namespace_reader(reader_type=json_reader)
-    if s.startswith('tsv='): return namespace_reader(reader_type=tsv_reader, params=args_dict_str(s[4:], int))
+    if s == 'json':
+        return namespace_reader(reader_type=json_reader)
+    if s.startswith('tsv='):
+        return namespace_reader(reader_type=tsv_reader,
+                                params=args_dict_str(s[4:], int))
     raise argparse.ArgumentTypeError
 
 
@@ -181,7 +193,8 @@ def args_vsm(s: str) -> SimpleNamespace:
     :return: the output of namespace_vsm().
     """
     i = s.find(':')
-    if i < 1: raise argparse.ArgumentTypeError
+    if i < 1:
+        raise argparse.ArgumentTypeError
 
     v = s[:i]
     if v == 'fasttext':
@@ -189,15 +202,18 @@ def args_vsm(s: str) -> SimpleNamespace:
     elif v == 'word2vec':
         vsm = Word2Vec
     else:
-        raise argparse.ArgumentTypeError("Unsupported vector space model: " + v)
+        raise argparse.ArgumentTypeError(
+            "Unsupported vector space model: " + v)
 
     s = s[i + 1:]
     i = s.find(':')
-    if i < 1: raise argparse.ArgumentTypeError
+    if i < 1:
+        raise argparse.ArgumentTypeError
 
     key = s[:i]
     filepath = s[i + 1:]
-    if not filepath: raise argparse.ArgumentTypeError
+    if not filepath:
+        raise argparse.ArgumentTypeError
 
     return namespace_vsm(vsm_type=vsm, key=key, filepath=filepath)
 
@@ -207,10 +223,15 @@ def args_ngram_conv(s: str) -> Optional[SimpleNamespace]:
     :param s: ngram:filters:activation:pool:dropout
     :return: the output of namespace_conf2d().
     """
-    if s.lower() == 'none': return None
+    if s.lower() == 'none':
+        return None
     c = s.split(':')
     pool = c[3] if c[3].lower() != 'none' else None
-    return NLPModel.namespace_ngram_conv_layer(ngrams=args_tuple_int(c[0]), filters=int(c[1]), activation=c[2], pool=pool, dropout=float(c[4]))
+    return NLPModel.namespace_ngram_conv_layer(ngrams=args_tuple_int(c[0]),
+                                               filters=int(c[1]),
+                                               activation=c[2],
+                                               pool=pool,
+                                               dropout=float(c[4]))
 
 
 def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
@@ -218,9 +239,12 @@ def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
     :param s: filters:activation:dropout
     :return: the output of namespace_conf2d().
     """
-    if s.lower() == 'none': return None
+    if s.lower() == 'none':
+        return None
     c = s.split(':')
-    return NLPModel.namespace_fuse_conv_layer(filters=int(c[0]), activation=c[1], dropout=float(c[2]))
+    return NLPModel.namespace_fuse_conv_layer(filters=int(c[0]),
+                                              activation=c[1],
+                                              dropout=float(c[2]))
 
 
 def args_hidden(s: str) -> Optional[SimpleNamespace]:
@@ -228,7 +252,8 @@ def args_hidden(s: str) -> Optional[SimpleNamespace]:
     :param s: dim:activation:dropout
     :return: the output of namespace_hidden()
     """
-    if s.lower() == 'none': return None
+    if s.lower() == 'none':
+        return None
     c = s.split(':')
     return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
 
@@ -275,11 +300,16 @@ def args_loss(s: str) -> mx.gluon.loss.Loss:
     raise argparse.ArgumentTypeError("Unsupported loss: " + s)
 
 
-def namespace_reader(reader_type: Union[json_reader, tsv_reader], params: Optional[Dict] = None) -> SimpleNamespace:
+def namespace_reader(reader_type: Union[json_reader,
+                                        tsv_reader],
+                     params: Optional[Dict] = None) -> SimpleNamespace:
     return SimpleNamespace(type=reader_type, params=params)
 
 
-def namespace_vsm(vsm_type: Type[VectorSpaceModel], key: str, filepath: str) -> SimpleNamespace:
+def namespace_vsm(
+        vsm_type: Type[VectorSpaceModel],
+        key: str,
+        filepath: str) -> SimpleNamespace:
     return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
 
 

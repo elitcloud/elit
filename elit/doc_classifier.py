@@ -22,7 +22,7 @@ from elit.util.vsm import LabelMap, VectorSpaceModel
 __author__ = 'Jinho D. Choi'
 
 
-# ======================================== State ========================================
+# ======================================== State =========================
 
 class DocumentClassifierState(BatchState):
     """
@@ -54,8 +54,12 @@ class DocumentClassifierState(BatchState):
         key_gold = to_gold(key)
 
         if self.sentence_level:
-            self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
-            self.embs = [word_vsm.embedding_matrix(s.tokens, maxlen) for s in document]
+            self.gold = [
+                s[key_gold] for s in document] if key_gold in document.sentences[0] else None
+            self.embs = [
+                word_vsm.embedding_matrix(
+                    s.tokens,
+                    maxlen) for s in document]
         else:
             self.gold = [document[key_gold]] if key_gold in document else None
             self.emb = [word_vsm.embedding_matrix(document.tokens, maxlen)]
@@ -80,7 +84,8 @@ class DocumentClassifierState(BatchState):
         """
         :return: False if no more document is left to be classified; otherwise, True.
         """
-        if self.sentence_level: return self.doc_id < len(self.document)
+        if self.sentence_level:
+            return self.doc_id < len(self.document)
         return self.doc_id == 0
 
     @property
@@ -95,7 +100,8 @@ class DocumentClassifierState(BatchState):
         """
         :return: the class ID of the current document's gold-standard label if available; otherwise, None.
         """
-        return self.label_map.add(self.gold[self.doc_id]) if self.gold is not None else None
+        return self.label_map.add(
+            self.gold[self.doc_id]) if self.gold is not None else None
 
     def assign(self, output: np.ndarray, begin: int = 0) -> int:
         """

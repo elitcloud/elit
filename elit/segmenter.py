@@ -34,7 +34,12 @@ class Segmenter(Component):
     def save(self, model_path: str, **kwargs):
         pass
 
-    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs) -> float:
+    def train(
+            self,
+            trn_data: Any,
+            dev_data: Any,
+            model_path: str,
+            **kwargs) -> float:
         pass
 
     @abc.abstractmethod
@@ -65,7 +70,8 @@ class EnglishSegmenter(Segmenter):
                 right_quote = not right_quote
 
             if begin == i:
-                if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
+                if sentences and (is_right_bracket(t) or t ==
+                                  u'\u201D' or t == '"' and right_quote):
                     d = sentences[-1]
                     d[TOK].append(token)
                     d[OFF].append(offsets[i])

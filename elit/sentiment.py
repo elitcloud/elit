@@ -42,20 +42,28 @@ class SentimentAnalyzer(NLPComponent):
         self.label_map = None
 
 
-def eval_sentiment(metric: List[Accuracy, Accuracy, F1, F1, F1], gold_labels: List[str], pred_labels: List[str]):
+def eval_sentiment(metric: List[Accuracy,
+                                Accuracy,
+                                F1,
+                                F1,
+                                F1],
+                   gold_labels: List[str],
+                   pred_labels: List[str]):
     for i, gold in enumerate(gold_labels):
         pred = pred_labels[i]
 
         # accuracy: multi-class
         m: Accuracy = metric[0]
         m.total += 1
-        if gold == pred: m.correct += 1
+        if gold == pred:
+            m.correct += 1
 
         # accuracy: binary
         if gold != SENTI_NEUTRAL:
             m: Accuracy = metric[1]
             m.total += 1
-            if gold[0] == pred[0]: m.correct += 1
+            if gold[0] == pred[0]:
+                m.correct += 1
 
         # f1: positive, negative, neutral
         m: F1 = metric[2] if gold[0] == SENTI_POSITIVE else metric[3] if gold[0] == SENTI_NEGATIVE else metric[4]
@@ -64,4 +72,5 @@ def eval_sentiment(metric: List[Accuracy, Accuracy, F1, F1, F1], gold_labels: Li
         m: F1 = metric[2] if pred[0] == SENTI_POSITIVE else metric[3] if pred[0] == SENTI_NEGATIVE else metric[4]
         m.p_total += 1
 
-        if gold[0] == pred[0]: m.correct += 1
+        if gold[0] == pred[0]:
+            m.correct += 1

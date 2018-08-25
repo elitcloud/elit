@@ -36,8 +36,9 @@ class Timer(object):
         with Timer() as t:
             space_tokenizer.decode("hello world")
         print(t.runtime)
-    
+
     """
+
     def __init__(self, timer=timeit.default_timer):
         self.timer = timer
         self.start = None

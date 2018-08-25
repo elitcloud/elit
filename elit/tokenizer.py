@@ -135,16 +135,22 @@ class EnglishTokenizer(Tokenizer):
 
     def __init__(self):
         super(EnglishTokenizer, self).__init__()
-        self.ABBREVIATION_PERIOD = self.read_word_set(
-            resource_filename('elit.resources.tokenizer', 'english_abbreviation_period.txt'))
-        self.APOSTROPHE_FRONT = self.read_word_set(
-            resource_filename('elit.resources.tokenizer', 'english_apostrophe_front.txt'))
+        self.ABBREVIATION_PERIOD = self.read_word_set(resource_filename(
+            'elit.resources.tokenizer', 'english_abbreviation_period.txt'))
+        self.APOSTROPHE_FRONT = self.read_word_set(resource_filename(
+            'elit.resources.tokenizer', 'english_apostrophe_front.txt'))
         self.MAP_CONCAT_WORD = self.read_concat_word_dict(
-            resource_filename('elit.resources.tokenizer', 'english_concat_words.txt'))
+            resource_filename(
+                'elit.resources.tokenizer',
+                'english_concat_words.txt'))
         self.HYPHEN_PREFIX = self.read_word_set(
-            resource_filename('elit.resources.tokenizer', 'english_hyphen_prefix.txt'))
+            resource_filename(
+                'elit.resources.tokenizer',
+                'english_hyphen_prefix.txt'))
         self.HYPHEN_SUFFIX = self.read_word_set(
-            resource_filename('elit.resources.tokenizer', 'english_hyphen_suffix.txt'))
+            resource_filename(
+                'elit.resources.tokenizer',
+                'english_hyphen_suffix.txt'))
         # regular expressions
         self.RE_NETWORK_PROTOCOL = re.compile(
             r"((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|imap4|sip)(://))")
@@ -240,9 +246,23 @@ class EnglishTokenizer(Tokenizer):
         # handle special cases
         if self.tokenize_trivial(tokens, offsets, token, begin, end, offset):
             return True
-        if self.tokenize_regex(tokens, offsets, text, begin, end, offset, token):
+        if self.tokenize_regex(
+                tokens,
+                offsets,
+                text,
+                begin,
+                end,
+                offset,
+                token):
             return True
-        if self.tokenize_symbol(tokens, offsets, text, begin, end, offset, token):
+        if self.tokenize_symbol(
+                tokens,
+                offsets,
+                text,
+                begin,
+                end,
+                offset,
+                token):
             return True
 
         # add the token as it is
@@ -300,7 +320,15 @@ class EnglishTokenizer(Tokenizer):
             return True
         return False
 
-    def tokenize_symbol(self, tokens, offsets, text, begin, end, offset, token):
+    def tokenize_symbol(
+            self,
+            tokens,
+            offsets,
+            text,
+            begin,
+            end,
+            offset,
+            token):
         def index_last_sequence(i, c):
             final_mark = is_final_mark(c)
 
@@ -319,16 +347,37 @@ class EnglishTokenizer(Tokenizer):
             if c == '-':  # -1
                 return i == 0 and self.is_digit(token, i + 1)
             if c == ',':  # 1,000,000
-                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1,
-                                                                     i + 4) and not self.is_digit(
-                    token, i + 4)
+                return self.is_digit(
+                    token,
+                    i -
+                    1) and self.is_digit(
+                    token,
+                    i +
+                    1,
+                    i +
+                    4) and not self.is_digit(
+                    token,
+                    i +
+                    4)
             if c == ':':
                 # 1:2
-                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1)
-            if is_single_quote(c):
-                return self.is_digit(token, i + 1, i + 3) and not self.is_digit(
+                return self.is_digit(
                     token,
-                    i + 3)  # '97
+                    i -
+                    1) and self.is_digit(
+                    token,
+                    i +
+                    1)
+            if is_single_quote(c):
+                return self.is_digit(
+                    token,
+                    i +
+                    1,
+                    i +
+                    3) and not self.is_digit(
+                    token,
+                    i +
+                    3)  # '97
             return False
 
         def split(i, c, p0, p1):
@@ -379,17 +428,27 @@ class EnglishTokenizer(Tokenizer):
         return False
 
     def add_token(self, tokens, offsets, token, begin, end, offset):
-        if not self.concat_token(tokens, offsets, token, end) and \
-                not self.split_token(tokens, offsets, token, begin, end, offset):
+        if not self.concat_token(
+                tokens,
+                offsets,
+                token,
+                end) and not self.split_token(
+                tokens,
+                offsets,
+                token,
+                begin,
+                end,
+                offset):
             self.add_token_aux(tokens, offsets, token, begin, end, offset)
 
     def concat_token(self, tokens, offsets, token, end):
         def apostrophe_front(prev, curr):
-            return len(prev) == 1 and is_single_quote(prev) and curr in self.APOSTROPHE_FRONT
+            return len(prev) == 1 and is_single_quote(
+                prev) and curr in self.APOSTROPHE_FRONT
 
         def abbreviation(prev, curr):
-            return curr == '.' and (
-                self.RE_ABBREVIATION.match(prev) or prev in self.ABBREVIATION_PERIOD)
+            return curr == '.' and (self.RE_ABBREVIATION.match(
+                prev) or prev in self.ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
             return len(curr) == 1 and curr in {'&', '|', '/'} and (
@@ -403,8 +462,8 @@ class EnglishTokenizer(Tokenizer):
                         prev[p - 4])) and next.isdigit():
                     # 000-0000, 000-000-0000
                     return True
-                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])) and len(
-                        next) == 1 and next.isalnum():
+                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])
+                                           ) and len(next) == 1 and next.isalnum():
                     # p-u-s-h
                     return True
                 return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (
@@ -436,7 +495,11 @@ class EnglishTokenizer(Tokenizer):
             curr = tokens[-1].lower()
             next = token.lower()
 
-            if acronym(tokens[-2], curr, token) or hyphenated(prev, curr, next):
+            if acronym(tokens[-2],
+                       curr,
+                       token) or hyphenated(prev,
+                                            curr,
+                                            next):
                 tokens[-2] += tokens[-1] + token
                 offsets[-2] = (offsets[-2][0], end)
                 del tokens[-1]
@@ -474,8 +537,13 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_FINAL_MARK_IN_BETWEEN.match(token)
             if m:
                 for i in range(1, 4):
-                    self.add_token_aux(tokens, offsets, m.group(i), begin + m.start(i),
-                                       begin + m.end(i), offset)
+                    self.add_token_aux(
+                        tokens,
+                        offsets,
+                        m.group(i),
+                        begin + m.start(i),
+                        begin + m.end(i),
+                        offset)
                 return True
             return False
 
@@ -515,4 +583,3 @@ class EnglishTokenizer(Tokenizer):
             if i < j <= len(token):
                 return token[i:j].isdigit()
         return False
-

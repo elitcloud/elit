@@ -22,7 +22,8 @@ def test_benchmark(space_tokenizer):
     with Timer() as time1:
         space_tokenizer.decode("Hello, world")
     with Timer() as time2:
-        space_tokenizer.decode("This module implements specialized container datatypes providing alternatives to Python’s general purpose built-in containers.")
+        space_tokenizer.decode(
+            "This module implements specialized container datatypes providing alternatives to Python’s general purpose built-in containers.")
 
     assert isinstance(time1.runtime, float)
     assert isinstance(time2.runtime, float)
