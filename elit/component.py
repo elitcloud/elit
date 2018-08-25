@@ -164,7 +164,7 @@ class MXNetComponent(NLPComponent):
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         """
         self.ctx = ctx
-        self.model: gluon.Block = None
+        self.model = None
 
     @abc.abstractmethod
     def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool, label: bool, **kwargs) -> NLPIterator:
