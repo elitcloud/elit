@@ -60,7 +60,7 @@ def get_version_info(filename):
         GIT_REVISION = "Unknown"
 
     if not ISRELEASED:
-        FULLVERSION += 'dev' + GIT_REVISION[:7]
+        FULLVERSION = '%d.%d.%d' % (MAJOR, MINOR, 'dev' + GIT_REVISION[:7])
 
     return FULLVERSION, GIT_REVISION
 
