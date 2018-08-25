@@ -13,7 +13,7 @@ __author__ = "Gary Lai"
 MAJOR = 0
 MINOR = 1
 MICRO = 25
-ISRELEASED = True
+ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 
@@ -60,7 +60,7 @@ def get_version_info(filename):
         GIT_REVISION = "Unknown"
 
     if not ISRELEASED:
-        FULLVERSION += '.dev0+' + GIT_REVISION[:7]
+        FULLVERSION += 'dev' + GIT_REVISION[:7]
 
     return FULLVERSION, GIT_REVISION
 
@@ -133,7 +133,7 @@ def setup_package():
             'pybind11',
             'yafasttext',
             'gensim',
-            'numpy==1.15.0',
+            'numpy==1.14.5',
             'ujson',
             'mxnet==1.2.0',
         ],
