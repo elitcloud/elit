@@ -18,7 +18,7 @@ VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 
 # Return the git revision as a string
-def git_version():
+def get_dev_version():
     def _minimal_ext_cmd(cmd):
         # construct minimal environment
         env = {}
@@ -34,12 +34,13 @@ def git_version():
         return out
 
     try:
-        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
-        GIT_REVISION = out.strip().decode('ascii')
+        # out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
+        out = _minimal_ext_cmd(['git', 'log', '-1', '--pretty=format:%ct'])
+        DEV_VERSION = out.strip().decode()
     except OSError:
-        GIT_REVISION = "Unknown"
+        DEV_VERSION = "Unknown"
 
-    return GIT_REVISION
+    return DEV_VERSION
 
 
 def get_version_info(filename):
@@ -47,22 +48,22 @@ def get_version_info(filename):
     # otherwise the import of numpy.version messes up the build under Python 3.
     FULLVERSION = VERSION
     if os.path.exists('.git'):
-        GIT_REVISION = git_version()
+        DEV_VERSION = get_dev_version()
     elif os.path.exists(filename):
         # must be a source distribution, use existing version file
         try:
-            from elit.version import git_revision as GIT_REVISION
+            from elit.version import dev_version as DEV_VERSION
         except ImportError:
-            raise ImportError("Unable to import git_revision. Try removing " \
+            raise ImportError("Unable to import dev_version. Try removing " \
                               "elit/version.py and the build directory " \
                               "before building.")
     else:
-        GIT_REVISION = "Unknown"
+        DEV_VERSION = "Unknown"
 
     if not ISRELEASED:
-        FULLVERSION = '%d.%d.%s' % (MAJOR, MINOR, 'dev' + GIT_REVISION[:7])
+        FULLVERSION += '.dev' + DEV_VERSION
 
-    return FULLVERSION, GIT_REVISION
+    return FULLVERSION, DEV_VERSION
 
 
 def write_version_py(filename):
@@ -71,26 +72,26 @@ def write_version_py(filename):
 short_version = '%(version)s'
 version = '%(version)s'
 full_version = '%(full_version)s'
-git_revision = '%(git_revision)s'
+dev_version = '%(dev_version)s'
 release = %(isrelease)s
 if not release:
     version = full_version
 """
-    FULLVERSION, GIT_REVISION = get_version_info(filename)
+    FULLVERSION, DEV_VERSION  = get_version_info(filename)
 
     a = open(filename, 'w')
     try:
         a.write(cnt % {'version': VERSION,
                        'full_version': FULLVERSION,
-                       'git_revision': GIT_REVISION,
+                       'dev_version': DEV_VERSION ,
                        'isrelease': str(ISRELEASED)})
     finally:
         a.close()
 
 VERSION_PY = 'elit/version.py'
 
-if sys.version_info[:2] < (3, 4):
-    raise RuntimeError("Python version >= 3.4 required.")
+if sys.version_info[:2] < (3, 5):
+    raise RuntimeError("Python version >= 3.5 required.")
 
 # How mature is this project? Common values are
 #   3 - Alpha
@@ -102,7 +103,6 @@ Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: Apache Software License
 Programming Language :: Python :: 3 :: Only
-Programming Language :: Python :: 3.4
 Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Topic :: Scientific/Engineering :: Artificial Intelligence
@@ -129,12 +129,12 @@ def setup_package():
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         package_data={'': ['*.txt']},
         install_requires=[
-            'argparse',
-            'pybind11',
-            'yafasttext',
-            'gensim',
+            'argparse==1.4.0',
+            'pybind11==2.2.3',
+            'yafasttext==0.8.22.1',
+            'gensim3.5.0',
             'numpy==1.14.5',
-            'ujson',
+            'ujson==1.35',
             'mxnet==1.2.0',
         ],
         tests_require=[
