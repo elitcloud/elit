@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from typing import Any
+
 import pytest
 
 from elit.component import Component
@@ -26,32 +28,6 @@ def test_component():
 
     with pytest.raises(TypeError):
         TestComponent()
-
-
-def test_abstract_class():
-    class TestComponent(Component):
-
-        def __init__(self):
-            super().__init__()
-
-        def init(self):
-            super().init()
-
-        def decode(self, input_data, **kwargs):
-            super().decode(input_data, **kwargs)
-
-        def load(self, model_path, **kwargs):
-            super().load(model_path, **kwargs)
-
-        def train(self, trn_data, dev_data, model_path, **kwargs):
-            super().train(trn_data, dev_data, model_path, **kwargs)
-
-        def save(self, model_path, **kwargs):
-            super().save(model_path, **kwargs)
-
-    with pytest.raises(NotImplementedError):
-        test_task = TestComponent()
-        test_task.decode("test")
 
 
 def test_space_tokenizer(space_tokenizer):

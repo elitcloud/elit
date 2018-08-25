@@ -35,46 +35,50 @@ class Tokenizer(Component):
     def init(self):
         pass
 
-    @abc.abstractmethod
-    def decode(self, input_data, offset=0, **kwargs):
+    def load(self, model_path, **kwargs):
         """
 
-        :type input_data: str
+        :param model_path:
+        :return:
+        """
+        pass
+
+    def save(self, model_path, **kwargs):
+        """
+
+        :param model_path:
+        :param kwargs:
+        :return:
+        """
+        pass
+
+    def train(self, trn_data, dev_data, model_path, **kwargs):
+        """
+
+        :param trn_data:
+        :param dev_data:
+        :param model_path:
+        :return:
+        """
+        pass
+
+    @abc.abstractmethod
+    def decode(self, data, offset=0, **kwargs):
+        """
+
+        :type data: str
         :type offset: int
-        :param input_data: the input text.
+        :param data: the input text.
         :param offset: the starting offset.
         :return: the tuple of (tokens, offsets[, custom values]*); see the comments for Tokenizer.offsets() for more details about the offsets.
         :rtype: json
         """
         pass
 
-    def load(self, model_path, *args, **kwargs):
+    def evaluate(self, data, **kwargs):
         """
 
-        :param model_path:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        pass
-
-    def train(self, trn_data, dev_data, *args, **kwargs):
-        """
-
-        :param trn_data:
-        :param dev_data:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        pass
-
-    def save(self, model_path, *args, **kwargs):
-        """
-
-        :param model_path:
-        :param args:
-        :param kwargs:
+        :param data:
         :return:
         """
         pass
@@ -89,7 +93,10 @@ class Tokenizer(Component):
         :param input_data: the input text.
         :param tokens: the list of tokens split from the input text.
         :param offset: offset of tokens
-        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end (exclusive) offsets indicate the caret positions of the first and the last characters of the corresponding token, respectively. e.g., text = 'Hello, world!', tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
+        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end
+        (exclusive) offsets indicate the caret positions of the first and the last characters of the
+        corresponding token, respectively. e.g., text = 'Hello, world!',
+        tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
         :rtype: json
         """
 
@@ -148,7 +155,7 @@ class EnglishTokenizer(Tokenizer):
         # :) :( =) B) 8) :-) :^) :3 :D :p :| :(( :---)
         """
         self.RE_EMOTICON = re.compile(
-            r"(:\w+:|<[\\/]?3|[\(\)\\\|\*\$][-\^]?[:\=\;]|[:\=\;B8]([-\^]+)?[3DOPp\@\$\*\(\)\\/\|]+)(\W|$)")
+            r"(:\w+:|<[\\/]?3|[\(\)\\\|\*\$][-\^]?[:=\;]|[:\=\;B8]([-\^]+)?[3DOPp\@\$\*\(\)\\/\|]+)(\W|$)")
         """
         jinho@elit.cloud
         jinho.choi@elit.cloud

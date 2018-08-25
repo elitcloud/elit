@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import abc
+from typing import Any
 
 from elit.component import Component
 from elit.util.string import *
@@ -24,20 +25,23 @@ __author__ = "Gary Lai"
 
 class Segmenter(Component):
 
-    def init(self):
+    def init(self, **kwargs):
+        pass
+
+    def load(self, model_path: str, **kwargs):
+        pass
+
+    def save(self, model_path: str, **kwargs):
+        pass
+
+    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs) -> float:
         pass
 
     @abc.abstractmethod
-    def decode(self, input_data, offsets=0, **kwargs):
+    def decode(self, data: Any, **kwargs):
         pass
 
-    def load(self, model_path, **kwargs):
-        pass
-
-    def train(self, trn_data, dev_data, model_path, **kwargs):
-        pass
-
-    def save(self, model_path, **kwargs):
+    def evaluate(self, data: Any, **kwargs):
         pass
 
 

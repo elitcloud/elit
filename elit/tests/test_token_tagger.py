@@ -17,7 +17,3 @@ import pytest
 
 __author__ = "Gary Lai"
 
-def test_json_reader():
-    from elit.token_tagger import json_reader
-    json_file = './resources'
-    docs = json_reader(json_file)
