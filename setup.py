@@ -132,7 +132,7 @@ def setup_package():
             'argparse==1.4.0',
             'pybind11==2.2.3',
             'yafasttext==0.8.22.1',
-            'gensim3.5.0',
+            'gensim==3.5.0',
             'numpy==1.14.5',
             'ujson==1.35',
             'mxnet==1.2.0',
