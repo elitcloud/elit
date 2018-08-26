@@ -74,6 +74,9 @@ class Lemmatizer(NLPComponent):
 
 
 class EnglishLemmatizer(Lemmatizer):
+    CONST_CARDINAL = "#crd#"
+    CONST_ORDINAL = "#ord#"
+
     def __init__(self):
         super(EnglishLemmatizer, self).__init__()
         pass
@@ -84,13 +87,72 @@ class EnglishLemmatizer(Lemmatizer):
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
         return [self.get_lemma(doc[0], doc[1]) for doc in docs]
 
-    @staticmethod
-    def get_lemma(form: str, pos: str):
-        return "yes"
+    @classmethod
+    def get_lemma(cls, form: str, pos: str) -> str:
+        """
+        :param form:
+        :param pos:
+        :return:
+        """
+        form = cls.simplify_form(form)
+
+        lemma = cls.get_abbreviation(form, pos)
+        lemma = lemma if lemma is not None else cls.get_base_form_from_inflection(form, pos)
+        lemma = lemma if lemma is not None else form
+
+        if cls.is_cardinal(lemma):
+            return cls.CONST_CARDINAL
+
+        if cls.is_ordinal(lemma):
+            return cls.CONST_ORDINAL
+
+        return lemma
+
+    @classmethod
+    def simplify_form(cls, form: str) -> str:
+        """
+        TODO: figure out what transformation is needed
+        :param form:
+        :return:
+        """
+        return form.lower()
+
+    @classmethod
+    def get_abbreviation(cls, lower: str, pos: str) -> str:
+        """
+        :param lower:
+        :param pos:
+        :return: abbreviation or None
+        """
+        return None
+
+    @classmethod
+    def get_base_form_from_inflection(cls, lower: str, pos: str) -> str:
+        """
+        :param lower:
+        :param pos:
+        :return: base form or None
+        """
+        return None
+
+    @classmethod
+    def is_cardinal(cls, lower: str) -> bool:
+        """
+        :param lower:
+        :return:
+        """
+        return False
+
+    @classmethod
+    def is_ordinal(cls, lower: str) -> bool:
+        """
+        :param lower:
+        :return:
+        """
+        return False
 
 
 if __name__ == "__main__":
-    pass
-    #lemmatizer = EnglishLemmatizer()
-    #docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
-    #print(lemmatizer.decode(docs))
+    lemmatizer = EnglishLemmatizer()
+    docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
+    print(lemmatizer.decode(docs))
