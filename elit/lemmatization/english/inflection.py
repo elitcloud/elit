@@ -20,16 +20,16 @@ __author__ = "Liyan Xu"
 
 
 class Inflection:
-    def __init__(self, base_pos: str, set_base: set, dict_exp: dict, suffix_groups: Sequence[SuffixGroup]):
+    def __init__(self, base_pos: str, set_base: set, dict_exc: dict, suffix_groups: Sequence[SuffixGroup]):
         """
         :param base_pos:
         :param set_base:
-        :param dict_exp:
+        :param dict_exc:
         :param suffix_groups:
         """
         self.base_pos = base_pos
         self.set_base = set_base
-        self.dict_exp = dict_exp
+        self.dict_exc = dict_exc
         self.suffix_groups = suffix_groups
 
     def get_base_form(self, lower: str, pos: str):
@@ -54,7 +54,7 @@ class Inflection:
         :param lower:
         :return:
         """
-        return self.dict_exp.get(lower, None)
+        return self.dict_exc.get(lower, None)
 
     def __get_base_from_suffixes__(self, lower: str, pos: str):
         """
