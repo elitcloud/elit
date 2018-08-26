@@ -14,8 +14,9 @@
 # limitations under the License.
 # ========================================================================
 import abc
+import codecs
 from elit.component import NLPComponent
-from elit.util.structure import Document
+from pkg_resources import resource_filename
 from typing import Sequence
 
 __author__ = "Liyan Xu"
@@ -24,7 +25,7 @@ __author__ = "Liyan Xu"
 class Lemmatizer(NLPComponent):
     def __init__(self):
         super(Lemmatizer, self).__init__()
-        self.init()
+        pass
 
     @abc.abstractmethod
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
@@ -74,37 +75,44 @@ class Lemmatizer(NLPComponent):
 
 
 class EnglishLemmatizer(Lemmatizer):
+
     CONST_CARDINAL = "#crd#"
     CONST_ORDINAL = "#ord#"
 
+    PATH_ROOT = "elit.resources.lemmatizer.english"
+    PATH_ABBREVIATION = "abbreviation.rule"
+
     def __init__(self):
         super(EnglishLemmatizer, self).__init__()
-        pass
+
+        self.abbreviation_rule = None
+
+        self.init()
 
     def init(self):
-        pass
+        self.abbreviation_rule = self.__load_abbreviation_rule__(
+            resource_filename(self.PATH_ROOT, self.PATH_ABBREVIATION))
 
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
         return [self.get_lemma(doc[0], doc[1]) for doc in docs]
 
-    @classmethod
-    def get_lemma(cls, form: str, pos: str) -> str:
+    def get_lemma(self, form: str, pos: str) -> str:
         """
         :param form:
         :param pos:
         :return:
         """
-        form = cls.simplify_form(form)
+        form = self.simplify_form(form)
 
-        lemma = cls.get_abbreviation(form, pos)
-        lemma = lemma if lemma is not None else cls.get_base_form_from_inflection(form, pos)
+        lemma = self.get_abbreviation(form, pos)
+        lemma = lemma if lemma is not None else self.get_base_form_from_inflection(form, pos)
         lemma = lemma if lemma is not None else form
 
-        if cls.is_cardinal(lemma):
-            return cls.CONST_CARDINAL
+        if self.is_cardinal(lemma):
+            return self.CONST_CARDINAL
 
-        if cls.is_ordinal(lemma):
-            return cls.CONST_ORDINAL
+        if self.is_ordinal(lemma):
+            return self.CONST_ORDINAL
 
         return lemma
 
@@ -117,17 +125,15 @@ class EnglishLemmatizer(Lemmatizer):
         """
         return form.lower()
 
-    @classmethod
-    def get_abbreviation(cls, lower: str, pos: str) -> str:
+    def get_abbreviation(self, lower: str, pos: str) -> str:
         """
         :param lower:
         :param pos:
-        :return: abbreviation or None
+        :return: abbreviation form or None
         """
-        return None
+        return self.abbreviation_rule.get(self.__generate_abbreviation_key__(lower, pos), None)
 
-    @classmethod
-    def get_base_form_from_inflection(cls, lower: str, pos: str) -> str:
+    def get_base_form_from_inflection(self, lower: str, pos: str) -> str:
         """
         :param lower:
         :param pos:
@@ -135,8 +141,14 @@ class EnglishLemmatizer(Lemmatizer):
         """
         return None
 
-    @classmethod
-    def is_cardinal(cls, lower: str) -> bool:
+    def is_cardinal(self, lower: str) -> bool:
+        """
+        :param lower:
+        :return:
+        """
+        return False
+
+    def is_ordinal(self, lower: str) -> bool:
         """
         :param lower:
         :return:
@@ -144,15 +156,33 @@ class EnglishLemmatizer(Lemmatizer):
         return False
 
     @classmethod
-    def is_ordinal(cls, lower: str) -> bool:
+    def __load_abbreviation_rule__(cls, path: str) -> dict:
         """
-        :param lower:
+        :param path:
         :return:
         """
-        return False
+        def key_value(line: str):
+            tokens = line.strip().split()
+            return cls.__generate_abbreviation_key__(tokens[0], tokens[1]), tokens[2]
+
+        fin = codecs.open(path, mode='r', encoding='utf-8')
+        return dict(key_value(line) for line in fin)
+
+    @classmethod
+    def __generate_abbreviation_key__(cls, form: str, pos: str) -> str:
+        """
+        :param form:
+        :param pos:
+        :return:
+        """
+        return form + "-" + pos
 
 
 if __name__ == "__main__":
     lemmatizer = EnglishLemmatizer()
+
     docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
+    print(lemmatizer.decode(docs))
+
+    docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
     print(lemmatizer.decode(docs))
