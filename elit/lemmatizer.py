@@ -80,18 +80,26 @@ class EnglishLemmatizer(Lemmatizer):
     CONST_ORDINAL = "#ord#"
 
     PATH_ROOT = "elit.resources.lemmatizer.english"
-    PATH_ABBREVIATION = "abbreviation.rule"
+    FILENAME_ABBREVIATION = "abbreviation.rule"
+    FILENAME_CARDINAL = "cardinal.base"
+    FILENAME_ORDINAL = "ordinal.base"
 
     def __init__(self):
         super(EnglishLemmatizer, self).__init__()
 
-        self.abbreviation_rule = None
+        self.rule_abbreviation = None
+        self.base_cardinal = None
+        self.base_ordinal = None
 
         self.init()
 
     def init(self):
-        self.abbreviation_rule = self.__load_abbreviation_rule__(
-            resource_filename(self.PATH_ROOT, self.PATH_ABBREVIATION))
+        self.rule_abbreviation = self.__load_abbreviation_rule__(
+            resource_filename(self.PATH_ROOT, self.FILENAME_ABBREVIATION))
+        self.base_cardinal = self.read_word_set(
+            resource_filename(self.PATH_ROOT, self.FILENAME_CARDINAL))
+        self.base_ordinal = self.read_word_set(
+            resource_filename(self.PATH_ROOT, self.FILENAME_ORDINAL))
 
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
         return [self.get_lemma(doc[0], doc[1]) for doc in docs]
@@ -131,7 +139,7 @@ class EnglishLemmatizer(Lemmatizer):
         :param pos:
         :return: abbreviation form or None
         """
-        return self.abbreviation_rule.get(self.__generate_abbreviation_key__(lower, pos), None)
+        return self.rule_abbreviation.get(self.__generate_abbreviation_key__(lower, pos), None)
 
     def get_base_form_from_inflection(self, lower: str, pos: str) -> str:
         """
@@ -146,14 +154,14 @@ class EnglishLemmatizer(Lemmatizer):
         :param lower:
         :return:
         """
-        return False
+        return lower in self.base_cardinal
 
     def is_ordinal(self, lower: str) -> bool:
         """
         :param lower:
         :return:
         """
-        return False
+        return lower in self.base_ordinal
 
     @classmethod
     def __load_abbreviation_rule__(cls, path: str) -> dict:
@@ -166,7 +174,9 @@ class EnglishLemmatizer(Lemmatizer):
             return cls.__generate_abbreviation_key__(tokens[0], tokens[1]), tokens[2]
 
         fin = codecs.open(path, mode='r', encoding='utf-8')
-        return dict(key_value(line) for line in fin)
+        d = dict(key_value(line) for line in fin)
+        print('Init: %s(keys=%d)' % (path, len(d)))
+        return d
 
     @classmethod
     def __generate_abbreviation_key__(cls, form: str, pos: str) -> str:
@@ -177,6 +187,18 @@ class EnglishLemmatizer(Lemmatizer):
         """
         return form + "-" + pos
 
+    @classmethod
+    def read_word_set(cls, path: str):
+        """
+        TODO: refactor; duplicate from tokenizer
+        :param path:
+        :return:
+        """
+        fin = codecs.open(path, mode='r', encoding='utf-8')
+        s = set(line.strip() for line in fin)
+        print('Init: %s(keys=%d)' % (path, len(s)))
+        return s
+
 
 if __name__ == "__main__":
     lemmatizer = EnglishLemmatizer()
@@ -185,4 +207,10 @@ if __name__ == "__main__":
     print(lemmatizer.decode(docs))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
+    print(lemmatizer.decode(docs))
+
+    docs = [("He", "PRP"), ("has", "VBZ"), ("one", "CD"), ("paper", "NN")]
+    print(lemmatizer.decode(docs))
+
+    docs = [("He", "PRP"), ("is", "VBZ"), ("the", "DT"), ("first", "JJ"), ("winner", "NN")]
     print(lemmatizer.decode(docs))
