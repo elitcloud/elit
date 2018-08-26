@@ -15,6 +15,7 @@
 # ========================================================================
 import abc
 import codecs
+import xml.etree.ElementTree as ET
 from elit.component import NLPComponent
 from pkg_resources import resource_filename
 from typing import Sequence
