@@ -18,6 +18,7 @@ import pytest
 from elit.eval import Accuracy, F1
 from elit.segmenter import EnglishSegmenter
 from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.lemmatizer import EnglishLemmatizer
 
 __author__ = "Gary Lai"
 
@@ -50,3 +51,8 @@ def accuracy():
 @pytest.fixture()
 def f1():
     return F1()
+
+
+@pytest.fixture()
+def english_lemmatizer():
+    return EnglishLemmatizer()

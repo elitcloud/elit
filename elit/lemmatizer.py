@@ -34,7 +34,7 @@ class Lemmatizer(NLPComponent):
     @abc.abstractmethod
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
         """
-        :param docs: the list of pairs in the form of (form, pos)
+        :param docs: the list of pairs in the form of (form, pos). e.g. [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
         :param kwargs:
         :return:
         """
@@ -104,7 +104,7 @@ class EnglishLemmatizer(Lemmatizer):
         self.rule_abbreviation = None
         self.base_cardinal = None
         self.base_ordinal = None
-        self.infl_by_base_pos = None
+        self.inf_by_base_pos = None
 
         self.init()
 
@@ -115,7 +115,7 @@ class EnglishLemmatizer(Lemmatizer):
             resource_filename(self.PATH_ROOT, self.FILENAME_CARDINAL))
         self.base_ordinal = self.read_word_set(
             resource_filename(self.PATH_ROOT, self.FILENAME_ORDINAL))
-        self.infl_by_base_pos = self.__load_inflections_from_xml__(
+        self.inf_by_base_pos = self.__load_inflections_from_xml__(
             resource_filename(self.PATH_ROOT, self.FILENAME_INFLECTION))
 
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
@@ -167,7 +167,7 @@ class EnglishLemmatizer(Lemmatizer):
         :param pos:
         :return: base form or None
         """
-        inflection = self.infl_by_base_pos.get(pos[:2], None)
+        inflection = self.inf_by_base_pos.get(pos[:2], None)
         return None if inflection is None else inflection.get_base_form(lower, pos)
 
     def is_cardinal(self, lower: str) -> bool:
@@ -286,7 +286,7 @@ class EnglishLemmatizer(Lemmatizer):
         return s is not None and s.lower() == "true"
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     lemmatizer = EnglishLemmatizer()
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
@@ -314,4 +314,4 @@ if __name__ == "__main__":
     print(lemmatizer.decode(docs))
 
     docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(docs))'''
