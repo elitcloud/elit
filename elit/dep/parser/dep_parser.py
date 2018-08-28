@@ -92,7 +92,7 @@ class DepParser(object):
                                                                config.test_batch_size,
                                                                config.dev_file,
                                                                os.path.join(config.save_dir, 'valid_tmp'))
-                    logger.info('Dev: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
+                    logger.info('Dev : UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
                     epoch += 1
                     if global_step < config.train_iters:
                         logger.info("Epoch {} out of {}".format(epoch, total_epoch))
@@ -126,7 +126,7 @@ class DepParser(object):
                                                    config.dev_file, os.path.join(config.save_dir, 'valid_tmp'))
         if logger is None:
             logger = init_logger(config.save_dir, 'test.log')
-        logger.info('UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
+        logger.info('Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
 
         return UAS, LAS
 
