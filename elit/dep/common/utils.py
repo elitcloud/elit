@@ -77,7 +77,7 @@ class Progbar(object):
             sys.stdout.write("\b" * prev_total_width)
             sys.stdout.write("\r")
 
-            numdigits = int(np.floor(np.log10(self.target))) + 1
+            numdigits = 0 if self.target == 0 else int(np.floor(np.log10(self.target))) + 1
             barstr = '%%%dd/%%%dd [' % (numdigits, numdigits)
             bar = barstr % (current, self.target)
             prog = float(current) / self.target
