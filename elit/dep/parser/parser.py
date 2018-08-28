@@ -87,10 +87,12 @@ class DependencyParser(NLPComponent):
                 if global_step % config.validate_every == 0:
                     bar = Progbar(target=min(config.validate_every, config.train_iters - global_step))
                     batch_id = 0
-                    UAS, LAS = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
-                                                        config.dev_file,
-                                                        os.path.join(config.save_dir, 'score.txt'), documents=dev_docs)
-                    logger.info('Dev: UAS %.2f%% LAS %.2f%%' % (UAS, LAS))
+                    UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid,
+                                                               config.test_batch_size,
+                                                               config.dev_file,
+                                                               os.path.join(config.save_dir, 'score.txt'),
+                                                               documents=dev_docs)
+                    logger.info('Dev: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
                     epoch += 1
                     if global_step < config.train_iters:
                         logger.info("Epoch {} out of {}".format(epoch, total_epoch))
@@ -133,13 +135,13 @@ class DependencyParser(NLPComponent):
         Evaluation on test set
         :param docs: gold test set
         :param kwargs: None
-        :return: (UAS, LAS)
+        :return: (UAS, LAS, speed) speed is measured in sentences per second
         """
-        UAS, LAS = evaluate_official_script(self._parser, self._vocab, self._config.num_buckets_valid,
-                                            self._config.test_batch_size,
-                                            self._config.dev_file,
-                                            None, documents=docs)
-        return UAS, LAS
+        UAS, LAS, speed = evaluate_official_script(self._parser, self._vocab, self._config.num_buckets_valid,
+                                                   self._config.test_batch_size,
+                                                   self._config.dev_file,
+                                                   None, documents=docs)
+        return UAS, LAS, speed
 
     def load(self, model_path: str, **kwargs):
         self._config = ParserConfig(os.path.join(model_path, 'config.ini'))
