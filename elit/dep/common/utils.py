@@ -80,7 +80,7 @@ class Progbar(object):
             numdigits = 0 if self.target == 0 else int(np.floor(np.log10(self.target))) + 1
             barstr = '%%%dd/%%%dd [' % (numdigits, numdigits)
             bar = barstr % (current, self.target)
-            prog = float(current) / self.target
+            prog = 0 if self.target == 0 else float(current) / self.target
             prog_width = int(self.width * prog)
             if prog_width > 0:
                 bar += ('=' * (prog_width - 1))
