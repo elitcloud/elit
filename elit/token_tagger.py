@@ -396,15 +396,14 @@ class TokenTaggerCLI(ComponentCLI):
         # data
         data_group = parser.add_argument_group("data arguments")
 
-        data_group.add_argument('-t', '--trn_path', type=str, metavar='filepath',
+        data_group.add_argument('trn_path', type=str, metavar='TRN_PATH',
                            help='filepath to the training data (input)')
-        data_group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
+        data_group.add_argument('dev_path', type=str, metavar='DEV_PATH',
                            help='filepath to the development data (input)')
         data_group.add_argument(
-            '-m',
-            '--model_path',
+            'model_path',
             type=str,
-            metavar='filepath',
+            metavar='MODEL_PATH',
             default=None,
             help='filepath to the model data (output); if not set, the model is not saved')
         data_group.add_argument(
