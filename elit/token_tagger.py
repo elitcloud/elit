@@ -394,34 +394,34 @@ class TokenTaggerCLI(ComponentCLI):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
         # data
-        group = parser.add_argument_group("data arguments")
+        data_group = parser.add_argument_group("data arguments")
 
-        group.add_argument('-t', '--trn_path', type=str, metavar='filepath',
+        data_group.add_argument('-t', '--trn_path', type=str, metavar='filepath',
                            help='filepath to the training data (input)')
-        group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
+        data_group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
                            help='filepath to the development data (input)')
-        group.add_argument(
+        data_group.add_argument(
             '-m',
             '--model_path',
             type=str,
             metavar='filepath',
             default=None,
             help='filepath to the model data (output); if not set, the model is not saved')
-        group.add_argument(
+        data_group.add_argument(
             '-r',
             '--reader',
             type=args_reader,
             metavar='json or tsv=(str:int)(,#1)*',
             default=args_reader('json'),
             help='type of the reader and its configuration to match the data format (default: json)')
-        group.add_argument(
+        data_group.add_argument(
             '-v',
             '--vsm_list',
             type=args_vsm,
             metavar='(fasttext|word2vec:key:filepath)( #1)*',
             nargs='+',
             help='list of (type of vector space model, key, filepath)')
-        group.add_argument(
+        data_group.add_argument(
             '-l',
             '--log',
             type=str,
@@ -430,63 +430,63 @@ class TokenTaggerCLI(ComponentCLI):
             help='filepath to the logging file; if not set, use stdout')
 
         # tagger
-        group = parser.add_argument_group("tagger arguments")
+        tagger_group = parser.add_argument_group("tagger arguments")
 
-        group.add_argument(
+        tagger_group.add_argument(
             '-key',
             '--key',
             type=str,
             metavar='str',
             help='key to the document dictionary where the predicted tags are to be stored')
-        group.add_argument(
+        tagger_group.add_argument(
             '-seq',
             '--sequence',
             action='store_true',
             help='if set, run in sequence mode; otherwise, batch mode')
-        group.add_argument(
+        tagger_group.add_argument(
             '-chu',
             '--chunking',
             action='store_true',
             help='if set, tag chunks (e.g., named entities); otherwise, tag tokens (e.g., part-of-speech tags)')
-        group.add_argument(
+        tagger_group.add_argument(
             '-fw',
             '--feature_windows',
             type=args_tuple_int,
             metavar='int(,int)*',
             default=args_tuple_int('3,2,1,0,-1,-2,-3'),
             help='content windows for feature extraction (default: 3,2,1,0,-1,-2,-3)')
-        group.add_argument('-pe', '--position_embedding', action='store_true',
+        tagger_group.add_argument('-pe', '--position_embedding', action='store_true',
                            help='if set, use position embeddings as features')
-        group.add_argument('-le', '--label_embedding', action='store_true',
+        tagger_group.add_argument('-le', '--label_embedding', action='store_true',
                            help='if set, use label embeddings as features')
 
         # network
-        group = parser.add_argument_group("network arguments")
+        network_group = parser.add_argument_group("network arguments")
 
-        group.add_argument('-nc', '--num_class', type=int, metavar='int',
+        network_group.add_argument('-nc', '--num_class', type=int, metavar='int',
                            help='number of classes')
-        group.add_argument(
+        network_group.add_argument(
             '-ir',
             '--input_dropout',
             type=float,
             metavar='float',
             default=0.0,
             help='dropout rate applied to the input layer (default: 0.0)')
-        group.add_argument(
+        network_group.add_argument(
             '-fc',
             '--fuse_conv_config',
             type=args_fuse_conv,
             metavar='(filters:activation:dropout)',
             default=None,
             help='configuration for the fuse convolution layer (default: None)')
-        group.add_argument(
+        network_group.add_argument(
             '-cc',
             '--ngram_conv_config',
             type=args_ngram_conv,
             metavar='(ngrams:filters:activation:pool:dropout)',
             default=args_ngram_conv('1,2,3,4,5:128:relu:none:0.2'),
             help='configuration for the n-gram convolution layer (default: 1,2,3,4,5:128:relu:none:0.2)')
-        group.add_argument(
+        network_group.add_argument(
             '-hc',
             '--hidden_configs',
             type=args_hidden,
@@ -496,9 +496,9 @@ class TokenTaggerCLI(ComponentCLI):
             help='configuration for the hidden layers (default: None)')
 
         # training
-        group = parser.add_argument_group("arguments for training")
+        training_group = parser.add_argument_group("arguments for training")
 
-        group.add_argument(
+        training_group.add_argument(
             '-cx',
             '--context',
             type=args_context,
@@ -506,42 +506,42 @@ class TokenTaggerCLI(ComponentCLI):
             nargs='+',
             default=mx.cpu(),
             help='device context(s)')
-        group.add_argument(
+        training_group.add_argument(
             '-ep',
             '--epoch',
             type=int,
             metavar='int',
             default=100,
             help='number of epochs')
-        group.add_argument(
+        training_group.add_argument(
             '-tb',
             '--trn_batch',
             type=int,
             metavar='int',
             default=64,
             help='batch size for the training data')
-        group.add_argument(
+        training_group.add_argument(
             '-db',
             '--dev_batch',
             type=int,
             metavar='int',
             default=2048,
             help='batch size for the development data')
-        group.add_argument(
+        training_group.add_argument(
             '-lo',
             '--loss',
             type=args_loss,
             metavar='str',
             default=None,
             help='loss function')
-        group.add_argument(
+        training_group.add_argument(
             '-op',
             '--optimizer',
             type=str,
             metavar='str',
             default='adagrad',
             help='optimizer')
-        group.add_argument(
+        training_group.add_argument(
             '-opp',
             '--optimizer_params',
             type=args_dict_str_float,
