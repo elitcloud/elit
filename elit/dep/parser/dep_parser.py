@@ -3,17 +3,17 @@
 # Author：hankcs
 # Date: 2018-02-28 12:39
 import argparse
-import os
-
 import math
-import numpy as np
+import os
+import time
 
-from elit.dep.common.utils import file_newer, init_logger, Progbar, make_sure_path_exists
+import numpy as np
+from elit.dep.common.utils import init_logger, Progbar, make_sure_path_exists, human_time
+from elit.dep.common.utils import stdchannel_redirected
 from elit.dep.parser.biaffine_parser import BiaffineParser
 from elit.dep.parser.common import ParserVocabulary, DataLoader, sys, ConllWord, ConllSentence, get_word_id
 from elit.dep.parser.evaluate import evaluate_official_script
 from elit.dep.parser.parser_config import ParserConfig
-from elit.dep.common.utils import stdchannel_redirected
 
 with stdchannel_redirected(sys.stderr, os.devnull):
     import dynet as dy
@@ -63,6 +63,7 @@ class DepParser(object):
         total_epoch = math.ceil(config.train_iters / config.validate_every)
         logger.info("Epoch {} out of {}".format(epoch, total_epoch))
         bar = Progbar(target=min(config.validate_every, data_loader.samples))
+        seconds = time.time()
         while global_step < config.train_iters:
             for chars, cased_words, words, tags, arcs, rels in data_loader.get_batches(
                     batch_size=config.train_batch_size,
@@ -100,7 +101,8 @@ class DepParser(object):
                         logger.info('- new best score!')
                         best_UAS = UAS
                         parser.save(config.save_model_path)
-
+        seconds = time.time() - seconds
+        logger.info('Training time %d h %d min %d s' % human_time(seconds))
         # When validate_every is too big
         if not os.path.isfile(config.save_model_path):
             parser.save(config.save_model_path)

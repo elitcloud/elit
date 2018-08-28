@@ -621,6 +621,13 @@ def convert_word_tag_corpus(input_file, output_file, seg=True):
             output_data.write("\n")
 
 
+def human_time(secs):
+    hours = secs // 3600
+    minutes = (secs - hours * 3600) // 60
+    seconds = secs - hours * 3600 - minutes * 60
+    return hours, minutes, seconds
+
+
 if __name__ == '__main__':
     for part in 'train', 'dev', 'test':
         convert_word_tag_corpus('data/cnc/{}.txt'.format(part), 'data/cnc/seg/{}.tsv'.format(part))
