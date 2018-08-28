@@ -8,7 +8,7 @@ import os
 import math
 import numpy as np
 
-from elit.dep.common.utils import file_newer, init_logger, Progbar
+from elit.dep.common.utils import file_newer, init_logger, Progbar, make_sure_path_exists
 from elit.dep.parser.biaffine_parser import BiaffineParser
 from elit.dep.parser.common import ParserVocabulary, DataLoader, sys, ConllWord, ConllSentence, get_word_id
 from elit.dep.parser.evaluate import evaluate_official_script
@@ -35,6 +35,7 @@ class DepParser(object):
         self._vocab = vocab = ParserVocabulary(config.train_file,
                                                None if config.debug else config.pretrained_embeddings_file,
                                                config.min_occur_count)
+        make_sure_path_exists(config.save_dir)
         vocab.save(self._config.save_vocab_path)
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
@@ -87,10 +88,11 @@ class DepParser(object):
                 if global_step % config.validate_every == 0:
                     bar = Progbar(target=min(config.validate_every, config.train_iters - global_step))
                     batch_id = 0
-                    UAS, LAS = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
-                                                        config.dev_file,
-                                                        os.path.join(config.save_dir, 'valid_tmp'))
-                    logger.info('Dev: UAS %.2f%% LAS %.2f%%' % (UAS, LAS))
+                    UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid,
+                                                               config.test_batch_size,
+                                                               config.dev_file,
+                                                               os.path.join(config.save_dir, 'valid_tmp'))
+                    logger.info('Dev: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
                     epoch += 1
                     if global_step < config.train_iters:
                         logger.info("Epoch {} out of {}".format(epoch, total_epoch))
@@ -120,11 +122,11 @@ class DepParser(object):
         parser = self._parser
         vocab = self._vocab
         config = self._config
-        UAS, LAS = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
-                                            config.dev_file, os.path.join(config.save_dir, 'valid_tmp'))
+        UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
+                                                   config.dev_file, os.path.join(config.save_dir, 'valid_tmp'))
         if logger is None:
             logger = init_logger(config.save_dir, 'test.log')
-        logger.info('UAS %.2f%% LAS %.2f%%' % (UAS, LAS))
+        logger.info('UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
 
         return UAS, LAS
 
@@ -159,7 +161,7 @@ class DepParser(object):
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--config_file', default='data/model/ptb/dep/config.ini')
+    arg_parser.add_argument('--config_file', default='data/ptb/dep/config-debug.ini')
     args, extra_args = arg_parser.parse_known_args()
     parser = DepParser(args.config_file, extra_args)
     parser.train()
