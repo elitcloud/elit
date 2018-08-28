@@ -36,6 +36,7 @@ class DepParser(object):
                                                None if config.debug else config.pretrained_embeddings_file,
                                                config.min_occur_count)
         make_sure_path_exists(config.save_dir)
+        config.save()
         vocab.save(self._config.save_vocab_path)
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
