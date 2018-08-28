@@ -156,7 +156,7 @@ class SequenceTagger(nn.Block):
             config = pickle.load(f)
             embedding_types = [
 
-                WordEmbeddings('glove'),
+                WordEmbeddings('data/embedding/fasttext100.vec.txt'),
 
                 # comment in this line to use character embeddings
                 # CharacterEmbeddings(),
@@ -175,7 +175,7 @@ class SequenceTagger(nn.Block):
                 use_crf=config['use_crf'],
                 use_rnn=config['use_rnn'],
                 rnn_layers=config['rnn_layers'])
-            model.load_parameters(os.path.join(model_folder, 'model.bin'))
+            model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
             return model
 
     def forward(self, sentences: List[Sentence]) -> Tuple[nd.NDArray, nd.NDArray, List]:

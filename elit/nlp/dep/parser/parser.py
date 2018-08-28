@@ -45,7 +45,7 @@ class DependencyParser(NLPComponent):
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
         # training
-        with mx.Context(mxnet_prefer_gpu()):
+        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
 
             self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
                                                    config.dropout_emb,
@@ -73,6 +73,7 @@ class DependencyParser(NLPComponent):
                     with autograd.record():
                         arc_accuracy, rel_accuracy, overall_accuracy, loss = parser.run(words, tags, arcs,
                                                                                         rels)
+                        loss = loss * 0.5
                         loss_value = loss.asscalar()
                     loss.backward()
                     trainer.step(config.train_batch_size)

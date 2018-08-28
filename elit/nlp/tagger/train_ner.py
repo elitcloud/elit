@@ -13,6 +13,7 @@ from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 if __name__ == '__main__':
     # use your own data path
     # data_folder = 'data/conll-03/debug'
+    # data_folder = 'data/conll-03'
     data_folder = 'data/dat'
 
     # get training, test and dev data
@@ -24,7 +25,6 @@ if __name__ == '__main__':
                                                     dev_file='en-ner.dev',
                                                     tag_to_biloes='ner',
                                                     source_scheme='ioblu')
-
     # 2. what tag do we want to predict?
     tag_type = 'ner'
 
@@ -44,6 +44,8 @@ if __name__ == '__main__':
             # comment in these lines to use contextual string embeddings
             CharLMEmbeddings('data/model/lm-news-forward'),
             CharLMEmbeddings('data/model/lm-news-backward'),
+            # CharLMEmbeddings('data/model/lm-jumbo-forward256'),
+            # CharLMEmbeddings('data/model/lm-jumbo-backward256'),
         ]
 
         embeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -59,7 +61,7 @@ if __name__ == '__main__':
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
-        trainer.train('data/model/ner/en-fasttext100',
+        trainer.train('data/model/ner/jumbo',
                       learning_rate=0.1,
                       mini_batch_size=32,
                       max_epochs=150,
