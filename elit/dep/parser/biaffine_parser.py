@@ -29,7 +29,12 @@ class BiaffineParser(object):
                  debug=False
                  ):
         pc = dy.ParameterCollection()
-
+        self.pret_word_embs = pc.lookup_parameters_from_numpy(
+            vocab.get_pret_embs(word_dims)) if vocab.has_pret_embs() else None
+        if self.pret_word_embs:
+            # now create a subset of parameters, which will be saved and loaded, so that pre-trained embeddings are
+            # excluded
+            pc = pc.add_subcollection('savable')
         self._vocab = vocab
         self.word_embs = pc.lookup_parameters_from_numpy(vocab.get_word_embs(word_dims))
         self.word_dims = word_dims
@@ -39,8 +44,6 @@ class BiaffineParser(object):
             self.char_w = pc.add_parameters((word_dims // 2,), init=dy.ConstInitializer(0.))
         else:
             self.char_lstm = None
-        self.pret_word_embs = pc.lookup_parameters_from_numpy(
-            vocab.get_pret_embs(word_dims)) if vocab.has_pret_embs() else None
         self.tag_embs = pc.lookup_parameters_from_numpy(vocab.get_tag_embs(tag_dims))
 
         self.LSTM_builders = []
