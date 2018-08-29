@@ -111,6 +111,8 @@ class DepParser(object):
         return self
 
     def load(self):
+        if self._parser:  # already loaded, ignore
+            return self
         config = self._config
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
         self._parser = BiaffineParser(vocab, config.char_dims, config.word_dims, config.tag_dims, config.dropout_emb,
