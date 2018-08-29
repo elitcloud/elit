@@ -144,6 +144,8 @@ class DependencyParser(NLPComponent):
         return UAS, LAS, speed
 
     def load(self, model_path: str, **kwargs):
+        if self._parser:  # already loaded, ignore
+            return self
         self._config = ParserConfig(os.path.join(model_path, 'config.ini'))
         self._vocab = ParserVocabulary.load(self._config.save_vocab_path)
         self._parser = self._create_parser(self._config, self._vocab)
