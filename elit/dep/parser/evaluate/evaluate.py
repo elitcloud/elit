@@ -44,9 +44,14 @@ def evaluate_official_script(parser: BiaffineParser, vocab, num_buckets_test, te
             for line in f:
                 info = line.strip().split()
                 if info:
-                    assert len(info) == 10, 'Illegal line: %s' % line
-                    info[6] = str(arcs[idx])
-                    info[7] = vocab.id2rel(rels[idx])
+                    arc_offset = 5
+                    rel_offset = 6
+                    if len(info) == 10:  # conll or conllx
+                        arc_offset = 6
+                        rel_offset = 7
+                    # assert len(info) == 10, 'Illegal line: %s' % line
+                    info[arc_offset] = str(arcs[idx])
+                    info[rel_offset] = vocab.id2rel(rels[idx])
                     fo.write('\t'.join(info) + '\n')
                     idx += 1
                 else:

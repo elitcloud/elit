@@ -628,7 +628,14 @@ def human_time(secs):
     return hours, minutes, seconds
 
 
+def validate_conll(path, colums=8):
+    with open(path) as src:
+        for idx, line in enumerate(src):
+            cells = line.strip().split()
+            if len(cells) and len(cells) >= 10:
+                print('[ % s %d] Illegal line: %s' % (path, idx + 1, line.strip()))
+                break
+
+
 if __name__ == '__main__':
-    for part in 'train', 'dev', 'test':
-        convert_word_tag_corpus('data/cnc/{}.txt'.format(part), 'data/cnc/seg/{}.tsv'.format(part))
-        convert_word_tag_corpus('data/cnc/{}.txt'.format(part), 'data/cnc/pos/{}.tsv'.format(part), seg=False)
+    validate_conll('/home/jdchoi/elit/dat/en-ddr.dev')
