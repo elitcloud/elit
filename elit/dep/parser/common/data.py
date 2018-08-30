@@ -84,8 +84,15 @@ class ParserVocabulary(Savable):
                 for line in f:
                     info = line.strip().split()
                     if info:
-                        assert (len(info) == 10), 'Illegal line: %s' % line
-                        word, tag, head, rel = info[1].lower(), info[3], int(info[6]), info[7]
+                        if len(info) == 10:
+                            arc_offset = 6
+                            rel_offset = 7
+                        elif len(info) == 8:
+                            arc_offset = 5
+                            rel_offset = 6
+                        # else:
+                        #     raise RuntimeError('Illegal line: %s' % line)
+                        word, tag, head, rel = info[1].lower(), info[3], int(info[arc_offset]), info[rel_offset]
                         char_set.update(info[1])
                         word_counter[word] += 1
                         tag_set.add(tag)
@@ -263,10 +270,17 @@ class DataLoader(object):
                 for line in f:
                     info = line.strip().split()
                     if info:
-                        assert (len(info) == 10), 'Illegal line: %s' % line
-                        assert info[7] in vocab._rel2id, 'Relation OOV: %s' % line
+                        if len(info) == 10:
+                            arc_offset = 6
+                            rel_offset = 7
+                        elif len(info) == 8:
+                            arc_offset = 5
+                            rel_offset = 6
+                        # else:
+                        #     raise RuntimeError('Illegal line: %s' % line)
+                        assert info[rel_offset] in vocab._rel2id, 'Relation OOV: %s' % line
                         word, tag, head, rel = vocab.word2id(info[1].lower()), vocab.tag2id(info[3]), int(
-                            info[6]), vocab.rel2id(info[7])
+                            info[arc_offset]), vocab.rel2id(info[rel_offset])
                         sent.append([self.cased_word_id(info[1]), word, tag, head, rel])
                     else:
                         sents.append(sent)
