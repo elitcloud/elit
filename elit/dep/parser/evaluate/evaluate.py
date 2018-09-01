@@ -1,3 +1,4 @@
+import numpy as np
 import os
 import tempfile
 import time
@@ -11,7 +12,7 @@ from elit.dep.parser.biaffine_parser import BiaffineParser
 with stdchannel_redirected(sys.stderr, os.devnull):
     import dynet as dy
 
-from elit.dep.parser.common import DataLoader
+from elit.dep.parser.common.data import DataLoader
 
 
 def evaluate_official_script(parser: BiaffineParser, vocab, num_buckets_test, test_batch_size, test_file, output_file,
@@ -31,6 +32,7 @@ def evaluate_official_script(parser: BiaffineParser, vocab, num_buckets_test, te
             sent_idx = record[idx]
             results[sent_idx] = output
             idx += 1
+    assert idx == len(results), 'parser swallowed some sentences'
     seconds = time.time() - seconds
     speed = len(record) / seconds
 

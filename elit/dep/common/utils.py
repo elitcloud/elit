@@ -8,6 +8,8 @@ import time
 
 import numpy as np
 
+from elit.dep.parser.common.data import ParserVocabulary, DataLoader
+
 UNK_TAG = "<UNK>"
 NONE_TAG = "<NONE>"
 START_TAG = "<START>"
@@ -628,13 +630,13 @@ def human_time(secs):
     return hours, minutes, seconds
 
 
-def validate_conll(path, colums=8):
+def validate_conll(path):
+    column = set()
     with open(path) as src:
         for idx, line in enumerate(src):
             cells = line.strip().split()
-            if len(cells) and len(cells) >= 10:
-                print('[ % s %d] Illegal line: %s' % (path, idx + 1, line.strip()))
-                break
+            column.add(len(cells))
+    return column
 
 
 if __name__ == '__main__':

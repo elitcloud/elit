@@ -6,12 +6,13 @@ import argparse
 import math
 import os
 import time
+import sys
 
 import numpy as np
 from elit.dep.common.utils import init_logger, Progbar, make_sure_path_exists, human_time
 from elit.dep.common.utils import stdchannel_redirected
 from elit.dep.parser.biaffine_parser import BiaffineParser
-from elit.dep.parser.common import ParserVocabulary, DataLoader, sys, ConllWord, ConllSentence, get_word_id
+from elit.dep.parser.common.data import ParserVocabulary, DataLoader, ConllWord, ConllSentence, get_word_id
 from elit.dep.parser.evaluate import evaluate_official_script
 from elit.dep.parser.parser_config import ParserConfig
 
@@ -93,7 +94,7 @@ class DepParser(object):
                     UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid,
                                                                config.test_batch_size,
                                                                config.dev_file,
-                                                               os.path.join(config.save_dir, 'valid_tmp'))
+                                                               os.path.join(config.save_dir, 'output.conllx'))
                     logger.info('Dev : UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
                     epoch += 1
                     if global_step < config.train_iters:
