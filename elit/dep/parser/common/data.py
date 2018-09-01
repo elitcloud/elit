@@ -270,12 +270,11 @@ class DataLoader(object):
                 for line in f:
                     info = line.strip().split()
                     if info:
+                        arc_offset = 5
+                        rel_offset = 6
                         if len(info) == 10:
                             arc_offset = 6
                             rel_offset = 7
-                        elif len(info) == 8:
-                            arc_offset = 5
-                            rel_offset = 6
                         # else:
                         #     raise RuntimeError('Illegal line: %s' % line)
                         assert info[rel_offset] in vocab._rel2id, 'Relation OOV: %s' % line
@@ -287,6 +286,8 @@ class DataLoader(object):
                         sent = [
                             [ParserVocabulary.ROOT, ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0,
                              ParserVocabulary.ROOT]]
+                if len(sent) > 1: # last sent in file without '\n'
+                    sents.append(sent)
 
         self.samples = len(sents)
         len_counter = Counter()
@@ -340,7 +341,7 @@ class DataLoader(object):
         for bkt_idx, bucket in enumerate(self._buckets):
             bucket_size = bucket.shape[1]
             n_tokens = bucket_size * self._bucket_lengths[bkt_idx]
-            n_splits = max(n_tokens // batch_size, 1)
+            n_splits = min(max(n_tokens // batch_size, 1), bucket_size)
             range_func = np.random.permutation if shuffle else np.arange
             for bkt_batch in np.array_split(range_func(bucket_size), n_splits):
                 batches.append((bkt_idx, bkt_batch))
