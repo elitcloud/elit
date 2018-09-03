@@ -29,7 +29,7 @@ from elit.util.structure import TOK, Document
 __author__ = 'Jinho D. Choi'
 
 
-class LabelMap:
+class LabelMap(object):
     """
     :class:`LabelMap` provides the mapping between string labels and their unique integer IDs.
     """
@@ -77,7 +77,8 @@ class LabelMap:
         :param scores: the prediction scores of all labels.
         :return: the label with the maximum score.
         """
-        if self.__len__() < len(scores): scores = scores[:self.__len__()]
+        if self.__len__() < len(scores):
+            scores = scores[:self.__len__()]
         n = nd.argmax(scores, axis=0).asscalar() if isinstance(scores, NDArray) else np.argmax(scores)
         return self.get(int(n))
 
@@ -129,7 +130,8 @@ class VectorSpaceModel(abc.ABC):
         """
         :param document: the input document.
         :param key: the key to the values in each sentence to retrieve the embeddings for.
-        :return: the list of embedding lists, where each embedding list contains the embeddings for the values in the corresponding sentence.
+        :return: the list of embedding lists, where each embedding list contains the embeddings for
+        the values in the corresponding sentence.
         """
         return [self.embedding_list(s[key]) for s in document]
 
@@ -137,8 +139,10 @@ class VectorSpaceModel(abc.ABC):
         """
         :param values: the sequence of values (e.g., words).
         :param maxlen: the maximum length of the output list;
-                       if ``> len(values)``, the bottom part of the matrix is padded with zero embeddings;
-                       if ``< len(values)``, embeddings of the exceeding values are discarded from the resulting matrix.
+                       if ``> len(values)``, the bottom part of the matrix is padded with zero
+                       embeddings;
+                       if ``< len(values)``, embeddings of the exceeding values are discarded from
+                       the resulting matrix.
         :return: the matrix where each row is the embedding of the corresponding value.
         """
         return [self.embedding(values[i]) if i < len(values) else self.pad for i in range(maxlen)]

@@ -41,6 +41,7 @@ def tsv_reader(tsv_directory: str,
                key: str = None) -> Tuple[List[Document], int]:
     documents = []
     wc = sc = 0
+    num_class = set()
 
     if TOK not in cols:
         raise ValueError('The column index of "%s" must be specified' % TOK)
@@ -50,7 +51,7 @@ def tsv_reader(tsv_directory: str,
             cols = cols.copy()
             cols[to_gold(key)] = cols.pop(key)
         else:
-            raise ValueError('Key mismatch: %s is not a key in %s' %(key, str(cols)))
+            raise ValueError('Key mismatch: %s is not a key in %s' % (key, str(cols)))
 
     logging.info('Reading tsv from:')
     logging.info('- directory: %s' % tsv_directory)
@@ -64,7 +65,6 @@ def tsv_reader(tsv_directory: str,
         sentences = []
         sid = 0
         fields = {k: [] for k in cols.keys()}
-        num_class = set()
 
         fin = open(filename)
         for line in fin:

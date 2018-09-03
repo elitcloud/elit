@@ -18,20 +18,18 @@ import json
 import logging
 import pickle
 import sys
-from configparser import ParsingError
 from types import SimpleNamespace
-from typing import Tuple, Optional, Union, Sequence, List
+from typing import Tuple, Optional, Union, Sequence
 
 import mxnet as mx
 import numpy as np
 from mxnet.ndarray import NDArray
 from pkg_resources import resource_filename
 
-from elit.cli import ComponentCLI, set_logger, namespace_vsm, mx_loss
+from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
-from elit.config import Config
 from elit.eval import Accuracy, F1
-from elit.model import FFNNModel, NLPModel
+from elit.model import FFNNModel
 from elit.state import NLPState
 from elit.util.io import pkl, gln, group_states, json_reader, tsv_reader
 from elit.util.iterator import SequenceIterator, BatchIterator
@@ -71,19 +69,14 @@ class TokenTaggerState(NLPState):
 
         # initialize gold-standard labels if available
         key_gold = to_gold(key)
-        self.gold = [s[key_gold]
-                     for s in document] if key_gold in document.sentences[0] else None
+        self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
 
         # initialize output and predicted tags
         self.output = []
         self.pred = []
 
         # initialize embeddings
-        self.embs = [
-            (vsm.model.sentence_embedding_list(
-                document,
-                vsm.key),
-                vsm.model.pad) for vsm in vsm_list]
+        self.embs = [(vsm.model.sentence_embedding_list(document, vsm.key), vsm.model.pad) for vsm in vsm_list]
         if padout is not None:
             self.embs.append((self.output, padout))
 
@@ -131,8 +124,7 @@ class TokenTaggerState(NLPState):
         """
         :return: the feature matrix of the current token.
         """
-        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad)
-              for w in self.feature_windows] for emb, pad in self.embs)
+        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad) for w in self.feature_windows] for emb, pad in self.embs)
         return np.column_stack(l)
 
     @property
@@ -140,8 +132,7 @@ class TokenTaggerState(NLPState):
         """
         :return: the class ID of the current token's gold-standard label if available; otherwise, None.
         """
-        return self.label_map.add(
-            self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
+        return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
 
 
 # ======================================== EvalMetric ====================
@@ -182,14 +173,14 @@ class TokenTagger(MXNetComponent):
 
     def __init__(self,
                  ctx: mx.Context,
-                 vsm_list: List[SimpleNamespace]):
+                 vsm_path: list):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         :param vsm_list: the sequence of namespace(model, key),
                          where the key indicates the key of the values to retrieve embeddings for (e.g., tok).
         """
         super().__init__(ctx)
-        self.vsm_list = vsm_list
+        self.vsm_list = [self.namespace_vsm(n) for n in vsm_path]
 
         # to be loaded/saved
         self.key = None
@@ -204,6 +195,7 @@ class TokenTagger(MXNetComponent):
         self.fuse_conv_config = None
         self.ngram_conv_config = None
         self.hidden_configs = None
+        self.initializer = None
 
     def __str__(self):
         s = ('Token Tagger',
@@ -224,13 +216,15 @@ class TokenTagger(MXNetComponent):
              feature_windows: Tuple[int, ...],
              position_embedding: bool,
              label_embedding: bool,
-             input_dropout: float = 0.0,
+             input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
+             output_config: Optional[SimpleNamespace] = None,
              fuse_conv_config: Optional[SimpleNamespace] = None,
              ngram_conv_config: Optional[SimpleNamespace] = None,
              hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
-             initializer: mx.init.Initializer = None,
+             initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
              **kwargs):
         """
+        :param output_config:
         :param key: the key to each sentence where the tags are to be saved.
         :param sequence: if ``True``, run in sequence mode; otherwise, batch mode.
         :param chunking: if ``True``, run chunking instead of tagging.
@@ -238,7 +232,7 @@ class TokenTagger(MXNetComponent):
         :param feature_windows: the content windows for feature extraction.
         :param position_embedding: if ``True``, use position embeddings as features.
         :param label_embedding: if ``True``, use label embeddings as features.
-        :param input_dropout: the dropout rate to be applied to the input layer.
+        :param input_config: the dropout rate to be applied to the input layer.
         :param fuse_conv_config: the configuration for the fuse convolution layer.
         :param ngram_conv_config: the configuration for the n-gram convolution layer.
         :param hidden_configs: the configurations for the hidden layers.
@@ -247,19 +241,15 @@ class TokenTagger(MXNetComponent):
         """
         # configuration
         if position_embedding:
-            self.vsm_list.append(
-                SimpleNamespace(
-                    model=Position2Vec(),
-                    key=None))
+            self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
 
         input_dim = sum([vsm.model.dim for vsm in self.vsm_list])
         if label_embedding:
             input_dim += num_class
-        input_config = NLPModel.namespace_input_layer(
-            row=len(feature_windows), col=input_dim, dropout=input_dropout)
-        output_config = NLPModel.namespace_output_layer(num_class)
-        if initializer is None:
-            initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
+        input_config.col = input_dim
+        input_config.row = len(feature_windows)
+        output_config.dim = num_class
+        self.initializer = initializer
 
         # initialization
         self.key = key
@@ -268,8 +258,7 @@ class TokenTagger(MXNetComponent):
         self.label_map = LabelMap()
         self.feature_windows = feature_windows
         self.position_embedding = position_embedding
-        self.padout = np.zeros(num_class).astype(
-            'float32') if label_embedding else None
+        self.padout = np.zeros(num_class).astype('float32') if label_embedding else None
         self.input_config = input_config
         self.output_config = output_config
         self.fuse_conv_config = fuse_conv_config
@@ -277,13 +266,13 @@ class TokenTagger(MXNetComponent):
         self.hidden_configs = hidden_configs
 
         self.model = FFNNModel(
-            self.input_config,
-            self.output_config,
-            self.fuse_conv_config,
-            self.ngram_conv_config,
-            self.hidden_configs,
+            input_config=self.input_config,
+            output_config=self.output_config,
+            fuse_conv_config=self.fuse_conv_config,
+            ngram_conv_config=self.ngram_conv_config,
+            hidden_configs=self.hidden_configs,
             **kwargs)
-        self.model.collect_params().initialize(initializer, ctx=self.ctx)
+        self.model.collect_params().initialize(self.initializer, ctx=self.ctx)
         logging.info(self.__str__())
 
     # override
@@ -307,18 +296,15 @@ class TokenTagger(MXNetComponent):
             self.hidden_configs = pickle.load(fin)
 
         self.model = FFNNModel(
-            self.input_config,
-            self.output_config,
-            self.fuse_conv_config,
-            self.ngram_conv_config,
-            self.hidden_configs,
+            input_config=self.input_config,
+            output_config=self.output_config,
+            fuse_conv_config=self.fuse_conv_config,
+            ngram_conv_config=self.ngram_conv_config,
+            hidden_configs=self.hidden_configs,
             **kwargs)
         self.model.collect_params().load(gln(model_path), self.ctx)
         if self.position_embedding:
-            self.vsm_list.append(
-                SimpleNamespace(
-                    model=Position2Vec(),
-                    key=None))
+            self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
         logging.info(self.__str__())
 
     # override
@@ -344,32 +330,16 @@ class TokenTagger(MXNetComponent):
         self.model.collect_params().save(gln(model_path))
 
     # override
-    def data_iterator(self,
-                      documents: Sequence[Document],
-                      batch_size: int,
-                      shuffle: bool,
-                      label: bool,
-                      **kwargs) -> Union[BatchIterator,
-                                         SequenceIterator]:
+    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool,
+                      label: bool, **kwargs) -> Union[BatchIterator, SequenceIterator]:
         if self.sequence:
             def create(d: Document) -> TokenTaggerState:
-                return TokenTaggerState(
-                    d,
-                    self.key,
-                    self.label_map,
-                    self.vsm_list,
-                    self.feature_windows,
-                    self.padout)
+                return TokenTaggerState(d, self.key, self.label_map, self.vsm_list,
+                                        self.feature_windows, self.padout)
 
             states = group_states(documents, create)
         else:
-            states = [
-                TokenTaggerState(
-                    d,
-                    self.key,
-                    self.label_map,
-                    self.vsm_list,
-                    self.feature_windows) for d in documents]
+            states = [TokenTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows) for d in documents]
 
         iterator = SequenceIterator if self.sequence else BatchIterator
         return iterator(states, batch_size, shuffle, label, **kwargs)
@@ -380,258 +350,6 @@ class TokenTagger(MXNetComponent):
         :return: :class:`ChunkF1` if self.chunking else :class:`TokenAccuracy`.
         """
         return ChunkF1(self.key) if self.chunking else TokenAccuracy(self.key)
-
-
-# ======================================== Command-Line Interface ========
-
-class TokenTaggerConfig(Config):
-
-    def __init__(self, config_file=resource_filename(
-                'elit.resources.token_tagger',
-                'token_tagger.ini')):
-        self._conf_file = config_file
-        super().__init__(config_file=self._conf_file)
-
-    @property
-    def reader(self):
-        """
-        type of the reader and its configuration to match the data format
-
-        :return:
-        """
-        reader = self._config.get('Data', 'reader')
-        if reader.lower() == 'json':
-            return json_reader
-        elif reader.lower() == 'tsv':
-            return tsv_reader
-        else:
-            raise ParsingError('{} is not support. use json or tsv'.format(reader))
-
-    @property
-    def tsv_heads(self):
-        """
-        tsv format
-
-        :return:
-        """
-        # return ltod(json.loads(self._config.get('Data', 'tsv_heads')))
-        return json.loads(self._config.get('Data', 'tsv_heads'))
-
-    @property
-    def log_path(self):
-        """
-        filepath to the logging file; if not set, use stdout
-
-        :return:
-        """
-        if self._config.get('Data', 'log_path'):
-            return self._config.get('Data', 'log_path')
-        return None
-
-    @property
-    def key(self):
-        """
-        key to the document dictionary where the predicted tags are to be stored
-
-        :return:
-        """
-        return self._config.get('Tagger', 'key')
-
-    @property
-    def sqeuence(self):
-        """
-        if true, run in sequence mode; otherwise, batch mode
-
-        :return:
-        """
-        return self._config.getboolean('Tagger', 'sqeuence')
-
-    @property
-    def chunking(self):
-        """
-        if true, tag chunks (e.g., named entities); otherwise, tag tokens (e.g.,
-        part-of-speech tags)
-
-        :return:
-        """
-        return self._config.getboolean('Tagger', 'chunking')
-
-    @property
-    def feature_windows(self):
-        """
-        content windows for feature extraction
-
-        :return:
-        """
-        return json.loads(self._config.get('Tagger', 'feature_windows'))
-
-    @property
-    def position_embedding(self):
-        """
-        if true, use position embeddings as features
-
-        :return:
-        """
-        return self._config.getboolean('Tagger', 'position_embedding')
-
-    @property
-    def label_embedding(self):
-        """
-        if true, use label embeddings as features
-
-        :return:
-        """
-        return self._config.getboolean('Tagger', 'label_embedding')
-
-    @property
-    def input_dropout(self):
-        """
-        dropout rate applied to the input layer
-
-        :return:
-        """
-        return self._config.getfloat('Network', 'input_dropout')
-
-    @property
-    def fuse_conv_config(self):
-        """
-        configuration for the fuse convolution layer
-        format: [filters, activation, dropout]
-        :return:
-        """
-        config = self._config.get('Network', 'fuse_conv_config')
-        if config:
-            config = json.loads(config)
-            return NLPModel.namespace_fuse_conv_layer(
-                filters=int(config[0]),
-                activation=config[1],
-                dropout=float(config[2])
-            )
-        return None
-
-    @property
-    def ngrams_conv_config(self):
-        """
-        configuration for the n-gram convolution layer
-        format: [ngrams, filters, activation, pool, dropout]
-
-        :return:
-        """
-        config = self._config.get('Network', 'ngrams_conv_config')
-        if config:
-            config = json.loads(config)
-        else:
-            raise ParsingError('Please specify ngrams_conv_config in the config.')
-        config[3] = None if config[3].lower() == 'none' else config[3]
-        return NLPModel.namespace_ngram_conv_layer(
-            ngrams=tuple(config[0]),
-            filters=int(config[1]),
-            activation=config[2],
-            pool=config[3],
-            dropout=float(config[4]))
-
-    @property
-    def hidden_configs(self):
-        """
-        configuration for the hidden layers
-        [[dim, activation, dropout], ...]
-
-        :return:
-        """
-        config = self._config.get('Network', 'hidden_configs')
-        if config:
-            config = json.loads(config)
-            return SimpleNamespace(
-                dim=int(config[0]),
-                activation=config[1],
-                dropout=float(config[2]))
-        return None
-
-    @property
-    def context(self):
-        """
-        context
-
-        :return:
-        """
-        return getattr(mx, self.device)(self.core)
-
-    @property
-    def device(self):
-        """
-        device: cpu or gpu
-
-        :return:
-        """
-        device = self._config.get('Training', 'device')
-        if device in ['cpu', 'gpu']:
-            return device
-        raise ParsingError('{} is not support. use cpu or gpu'.format(device))
-
-    @property
-    def core(self):
-        """
-        device core(s)
-
-        :return:
-        """
-        return self._config.getint('Training', 'core')
-
-    @property
-    def epoch(self):
-        """
-        number of epochs
-
-        :return:
-        """
-        return self._config.getint('Training', 'epoch')
-
-    @property
-    def trn_batch(self):
-        """
-        batch size for the training data
-
-        :return:
-        """
-        return self._config.getint('Training', 'trn_batch')
-
-    @property
-    def dev_batch(self):
-        """
-        batch size for the development data
-
-        :return:
-        """
-        return self._config.getint('Training', 'dev_batch')
-
-    @property
-    def loss(self):
-        """
-        loss function
-
-        :return:
-        """
-        if self._config.get('Training', 'loss'):
-            return mx_loss(self._config.get('Training', 'loss'))
-        return None
-
-    @property
-    def optimizer(self):
-        """
-        optimizer
-
-        :return:
-        """
-        return self._config.get('Training', 'optimizer')
-
-    @property
-    def optimizer_params(self):
-        """
-        optimizer parameters
-
-        :return:
-        """
-        return json.loads(self._config.get('Training', 'optimizer_params'))
 
 
 class TokenTaggerCLI(ComponentCLI):
@@ -665,12 +383,12 @@ class TokenTaggerCLI(ComponentCLI):
             default=None,
             help='filepath to the model data (output); if not set, the model is not saved')
         data_group.add_argument(
-            '--vsm_list',
+            '--vsm_path',
             action='append',
             nargs='+',
-            metavar='VSM_LIST',
+            metavar='VSM_PATH',
             required=True,
-            help='type of vector vector model, key, model_path'
+            help='vsm path'
         )
 
         # tagger
@@ -695,48 +413,51 @@ class TokenTaggerCLI(ComponentCLI):
 
         # arguments
         args = parser.parse_args(sys.argv[3:])
-        if args.config:
-            config = TokenTaggerConfig(config_file=args.config)
-        else:
-            config = TokenTaggerConfig()
+        json_config = args.config if args.config else resource_filename('elit.resources.token_tagger', 'pos.json')
+        with open(json_config, 'r') as d:
+            config = json.load(d, object_hook=lambda d: SimpleNamespace(**d))
 
-        set_logger(config.log_path)
+        set_logger(config.data.log_path)
 
-        trn_docs, trn_num_class = config.reader(args.trn_path, config.tsv_heads, args.key)
-        dev_docs, dev_num_class = config.reader(args.dev_path, config.tsv_heads, args.key)
+        reader = tsv_reader if config.data.reader == 'tsv' else json_reader
 
-        vsm_list = [namespace_vsm(n) for n in args.vsm_list]
+        trn_docs, trn_num_class = reader(args.trn_path, config.data.tsv_heads.__dict__, args.key)
+        dev_docs, dev_num_class = reader(args.dev_path, config.data.tsv_heads.__dict__, args.key)
 
-        initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
+
+        ctx = mx.gpu(config.training.core) if config.training.device == 'gpu' else mx.cpu(config.training.core)
 
         # component
-        comp = TokenTagger(config.context, vsm_list)
+        comp = TokenTagger(ctx, args.vsm_path)
         comp.init(
             key=args.key,
-            sequence=config.sqeuence,
-            chunking=config.chunking,
+            sequence=config.tagger.sqeuence,
+            chunking=config.tagger.chunking,
             num_class=trn_num_class,
-            feature_windows=config.feature_windows,
-            position_embedding=config.position_embedding,
-            label_embedding=config.label_embedding,
-            input_dropout=config.input_dropout,
-            fuse_conv_config=config.fuse_conv_config,
-            ngram_conv_config=config.ngrams_conv_config,
-            hidden_configs=config.hidden_configs,
-            initializer=initializer)
+            feature_windows=config.tagger.feature_windows,
+            position_embedding=config.tagger.position_embedding,
+            label_embedding=config.tagger.label_embedding,
+            input_config=config.network.input,
+            output_config=config.network.output,
+            fuse_conv_config=config.network.fuse_conv,
+            ngram_conv_config=config.network.ngrams_conv,
+            hidden_configs=config.network.hiddens,
+        )
+
+        print(comp)
 
         # train
-        comp.train(
-            trn_docs,
-            dev_docs,
-            args.model_path,
-            config.trn_batch,
-            config.dev_batch,
-            config.epoch,
-            config.loss,
-            config.optimizer,
-            config.optimizer_params)
-        logging.info('# of classes: %d' % len(comp.label_map))
+        # comp.train(
+        #     trn_docs,
+        #     dev_docs,
+        #     args.model_path,
+        #     config.trn_batch,
+        #     config.dev_batch,
+        #     config.epoch,
+        #     config.loss,
+        #     config.optimizer,
+        #     config.optimizer_params)
+        # logging.info('# of classes: %d' % len(comp.label_map))
 
     # override
     @classmethod

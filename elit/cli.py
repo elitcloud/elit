@@ -167,92 +167,6 @@ def args_tuple_int(a: list) -> Tuple[int, ...]:
     """
     return tuple(a)
 
-# def args_tuple_int(s: str) -> Tuple[int, ...]:
-#     """
-#     :param s: int(, int)*
-#     :return: tuple of integers
-#     """
-#     r = re.compile(r'-?\d+(,-?\d+)*$')
-#     if r.match(s):
-#         return tuple(map(int, s.split(',')))
-#     else:
-#         raise argparse.ArgumentTypeError
-
-
-def args_reader(s: str) -> SimpleNamespace:
-    """
-    :param s: json or tsv=(str:int)(,#1)*
-    :return: the output of namespace_reader().
-    """
-    if s == 'json':
-        return namespace_reader(reader_type=json_reader)
-    if s.startswith('tsv='):
-        return namespace_reader(reader_type=tsv_reader,
-                                params=args_dict_str(s[4:], int))
-    raise argparse.ArgumentTypeError
-
-
-def args_vsm(s: list) -> SimpleNamespace:
-    """
-    :param s: fasttext|word2vec key filepath
-    :return: the output of namespace_vsm().
-    """
-
-    # if len(s) != s:
-    #     raise argparse.ArgumentTypeError()
-
-    if s[0] == 'fasttext':
-        vsm = FastText
-    elif s[0] == 'word2vec':
-        vsm = Word2Vec
-    else:
-        raise argparse.ArgumentTypeError(
-            "Unsupported vector space model: " + s[0])
-
-    key = s[1]
-    filepath = s[2]
-
-    return namespace_vsm(vsm_type=vsm, key=key, filepath=filepath)
-
-def args_ngram_conv(s: list) -> Optional[SimpleNamespace]:
-    """
-    :param s: [ngram, filters, activation, pool, dropout]
-    :return: the output of namespace_conf2d().
-    """
-    ngrams = args_tuple_int(s[0].split(':'))
-    filters = int(s[1])
-    activation = s[2]
-    pool = s[3]
-    dropout = float(s[4])
-    return NLPModel.namespace_ngram_conv_layer(ngrams=ngrams,
-                                               filters=filters,
-                                               activation=activation,
-                                               pool=pool,
-                                               dropout=dropout)
-
-
-def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
-    """
-    :param s: filters:activation:dropout
-    :return: the output of namespace_conf2d().
-    """
-    return NLPModel.namespace_fuse_conv_layer(filters=int(s[0]),
-                                              activation=s[1],
-                                              dropout=float(s[2]))
-
-
-def args_hidden_configs(s: str) -> Optional[SimpleNamespace]:
-    """
-    :param s: dim:activation:dropout
-    :return: the output of namespace_hidden()
-    """
-    hidden_config = s.split(':')
-    dim = int(hidden_config[0])
-    activation = hidden_config[1]
-    dropout = float(hidden_config[2])
-    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
-
-
 def args_context(s: list) -> mx.Context:
     """
     :param s: ['ctx', core]
@@ -293,19 +207,6 @@ def mx_loss(s: str) -> mx.gluon.loss.Loss:
         return mx.gluon.loss.CTCLoss()
 
     raise argparse.ArgumentTypeError("Unsupported loss: " + s)
-
-
-def namespace_reader(type: Union[json_reader, tsv_reader],
-                     params: Optional[Dict] = None) -> SimpleNamespace:
-    return SimpleNamespace(type=type, params=params)
-
-
-def namespace_vsm(l: list) -> SimpleNamespace:
-    type = Word2Vec if l[0].lower() == 'word2vec' else FastText
-    key = l[1]
-    filepath = l[2]
-    model = type(filepath)
-    return SimpleNamespace(model=model, key=key)
 
 
 if __name__ == '__main__':

@@ -17,15 +17,19 @@ import abc
 import inspect
 import logging
 import time
-from typing import Union, Sequence, Dict, Any
+from types import SimpleNamespace
+from typing import Union, Sequence, Dict, Any, Optional
 
 import mxnet as mx
+
+from elit.util.io import json_reader, tsv_reader
 from mxnet import nd, gluon, autograd
 from mxnet.ndarray import NDArray
 
 from elit.eval import EvalMetric
 from elit.util.iterator import BatchIterator, NLPIterator
 from elit.util.structure import Document
+from elit.util.vsm import FastText, Word2Vec
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -575,3 +579,11 @@ class MXNetComponent(NLPComponent):
         for state in iterator.states:
             metric.update(state.document)
         return metric
+
+    @staticmethod
+    def namespace_vsm(l: list) -> SimpleNamespace:
+        type = Word2Vec if l[0].lower() == 'word2vec' else FastText
+        key = l[1]
+        filepath = l[2]
+        model = type(filepath)
+        return SimpleNamespace(model=model, key=key)

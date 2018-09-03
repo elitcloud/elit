@@ -83,8 +83,10 @@ class BatchIterator(NLPIterator):
 
         for state in states:
             for x, y, in state:
-                if label: batch.append((x, y))
-                else: batch.append(x)
+                if label:
+                    batch.append((x, y))
+                else:
+                    batch.append(x)
                 count += 1
 
                 if count == batch_size:
@@ -92,7 +94,8 @@ class BatchIterator(NLPIterator):
                     batch = []
                     count = 0
 
-        if batch: batches.append(batch)
+        if batch:
+            batches.append(batch)
         self._batches = batches
         self._shuffle = shuffle
         self._kwargs = kwargs
@@ -100,7 +103,8 @@ class BatchIterator(NLPIterator):
         self._iter = 0
 
         x = batches[0][0]
-        if isinstance(x, tuple): x = x[0]
+        if isinstance(x, tuple):
+            x = x[0]
         self.x1 = not isinstance(x, tuple)
 
     # override

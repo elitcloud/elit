@@ -1,0 +1,47 @@
+{
+  "data": {
+     "reader": "tsv",
+     "tsv_heads": {
+        "tok": 0,
+        "pos": 1
+     },
+    "log_path": null
+  },
+  "tagger": {
+    "key": "pos",
+    "sqeuence": false,
+    "chunking": false,
+    "feature_windows": [3, 2, 1, 0, -1, -2, -3],
+    "position_embedding": false,
+    "label_embedding": false
+  },
+  "network": {
+    "input": {
+      "dropout": 0.0
+    },
+    "fuse_conv": null,
+    "ngrams_conv": {
+      "ngrams": [1, 2, 3, 4, 5],
+      "filters": 128,
+      "activation": "relu",
+      "pool": null,
+      "dropout": 0.2
+    },
+    "hiddens": null,
+    "output": {
+      "dropout": 0.2
+    }
+  },
+  "training": {
+    "device": "cpu",
+    "core": 1,
+    "epoch": 100,
+    "trn_batch": 64,
+    "dev_batch": 2048,
+    "loss": "softmaxcrossentropyloss",
+    "optimizer": "adagrad",
+    "optimizer_params": {
+      "learning_rate": 0.01
+    }
+  }
+}
