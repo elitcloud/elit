@@ -17,20 +17,23 @@ import argparse
 import json
 import logging
 import pickle
+import sys
+from configparser import ParsingError
 from types import SimpleNamespace
 from typing import Tuple, Optional, Union, Sequence, List
 
 import mxnet as mx
 import numpy as np
 from mxnet.ndarray import NDArray
+from pkg_resources import resource_filename
 
-from elit.cli import ComponentCLI, set_logger, args_dict_str_float, args_tuple_int, args_reader, args_vsm, args_hidden, args_context, args_loss, args_ngram_conv, \
-    args_fuse_conv
+from elit.cli import ComponentCLI, set_logger, namespace_vsm, mx_loss
 from elit.component import MXNetComponent
+from elit.config import Config
 from elit.eval import Accuracy, F1
 from elit.model import FFNNModel, NLPModel
 from elit.state import NLPState
-from elit.util.io import pkl, gln, group_states
+from elit.util.io import pkl, gln, group_states, json_reader, tsv_reader
 from elit.util.iterator import SequenceIterator, BatchIterator
 from elit.util.structure import Document, to_gold, BILOU
 from elit.util.vsm import LabelMap, x_extract, Position2Vec
@@ -381,25 +384,280 @@ class TokenTagger(MXNetComponent):
 
 # ======================================== Command-Line Interface ========
 
+class TokenTaggerConfig(Config):
+
+    def __init__(self, config_file=resource_filename(
+                'elit.resources.token_tagger',
+                'token_tagger.ini')):
+        self._conf_file = config_file
+        super().__init__(config_file=self._conf_file)
+
+    @property
+    def reader(self):
+        """
+        type of the reader and its configuration to match the data format
+
+        :return:
+        """
+        reader = self._config.get('Data', 'reader')
+        if reader.lower() == 'json':
+            return json_reader
+        elif reader.lower() == 'tsv':
+            return tsv_reader
+        else:
+            raise ParsingError('{} is not support. use json or tsv'.format(reader))
+
+    @property
+    def tsv_heads(self):
+        """
+        tsv format
+
+        :return:
+        """
+        # return ltod(json.loads(self._config.get('Data', 'tsv_heads')))
+        return json.loads(self._config.get('Data', 'tsv_heads'))
+
+    @property
+    def log_path(self):
+        """
+        filepath to the logging file; if not set, use stdout
+
+        :return:
+        """
+        if self._config.get('Data', 'log_path'):
+            return self._config.get('Data', 'log_path')
+        return None
+
+    @property
+    def key(self):
+        """
+        key to the document dictionary where the predicted tags are to be stored
+
+        :return:
+        """
+        return self._config.get('Tagger', 'key')
+
+    @property
+    def sqeuence(self):
+        """
+        if true, run in sequence mode; otherwise, batch mode
+
+        :return:
+        """
+        return self._config.getboolean('Tagger', 'sqeuence')
+
+    @property
+    def chunking(self):
+        """
+        if true, tag chunks (e.g., named entities); otherwise, tag tokens (e.g.,
+        part-of-speech tags)
+
+        :return:
+        """
+        return self._config.getboolean('Tagger', 'chunking')
+
+    @property
+    def feature_windows(self):
+        """
+        content windows for feature extraction
+
+        :return:
+        """
+        return json.loads(self._config.get('Tagger', 'feature_windows'))
+
+    @property
+    def position_embedding(self):
+        """
+        if true, use position embeddings as features
+
+        :return:
+        """
+        return self._config.getboolean('Tagger', 'position_embedding')
+
+    @property
+    def label_embedding(self):
+        """
+        if true, use label embeddings as features
+
+        :return:
+        """
+        return self._config.getboolean('Tagger', 'label_embedding')
+
+    @property
+    def input_dropout(self):
+        """
+        dropout rate applied to the input layer
+
+        :return:
+        """
+        return self._config.getfloat('Network', 'input_dropout')
+
+    @property
+    def fuse_conv_config(self):
+        """
+        configuration for the fuse convolution layer
+        format: [filters, activation, dropout]
+        :return:
+        """
+        config = self._config.get('Network', 'fuse_conv_config')
+        if config:
+            config = json.loads(config)
+            return NLPModel.namespace_fuse_conv_layer(
+                filters=int(config[0]),
+                activation=config[1],
+                dropout=float(config[2])
+            )
+        return None
+
+    @property
+    def ngrams_conv_config(self):
+        """
+        configuration for the n-gram convolution layer
+        format: [ngrams, filters, activation, pool, dropout]
+
+        :return:
+        """
+        config = self._config.get('Network', 'ngrams_conv_config')
+        if config:
+            config = json.loads(config)
+        else:
+            raise ParsingError('Please specify ngrams_conv_config in the config.')
+        config[3] = None if config[3].lower() == 'none' else config[3]
+        return NLPModel.namespace_ngram_conv_layer(
+            ngrams=tuple(config[0]),
+            filters=int(config[1]),
+            activation=config[2],
+            pool=config[3],
+            dropout=float(config[4]))
+
+    @property
+    def hidden_configs(self):
+        """
+        configuration for the hidden layers
+        [[dim, activation, dropout], ...]
+
+        :return:
+        """
+        config = self._config.get('Network', 'hidden_configs')
+        if config:
+            config = json.loads(config)
+            return SimpleNamespace(
+                dim=int(config[0]),
+                activation=config[1],
+                dropout=float(config[2]))
+        return None
+
+    @property
+    def context(self):
+        """
+        context
+
+        :return:
+        """
+        return getattr(mx, self.device)(self.core)
+
+    @property
+    def device(self):
+        """
+        device: cpu or gpu
+
+        :return:
+        """
+        device = self._config.get('Training', 'device')
+        if device in ['cpu', 'gpu']:
+            return device
+        raise ParsingError('{} is not support. use cpu or gpu'.format(device))
+
+    @property
+    def core(self):
+        """
+        device core(s)
+
+        :return:
+        """
+        return self._config.getint('Training', 'core')
+
+    @property
+    def epoch(self):
+        """
+        number of epochs
+
+        :return:
+        """
+        return self._config.getint('Training', 'epoch')
+
+    @property
+    def trn_batch(self):
+        """
+        batch size for the training data
+
+        :return:
+        """
+        return self._config.getint('Training', 'trn_batch')
+
+    @property
+    def dev_batch(self):
+        """
+        batch size for the development data
+
+        :return:
+        """
+        return self._config.getint('Training', 'dev_batch')
+
+    @property
+    def loss(self):
+        """
+        loss function
+
+        :return:
+        """
+        if self._config.get('Training', 'loss'):
+            return mx_loss(self._config.get('Training', 'loss'))
+        return None
+
+    @property
+    def optimizer(self):
+        """
+        optimizer
+
+        :return:
+        """
+        return self._config.get('Training', 'optimizer')
+
+    @property
+    def optimizer_params(self):
+        """
+        optimizer parameters
+
+        :return:
+        """
+        return json.loads(self._config.get('Training', 'optimizer_params'))
+
+
 class TokenTaggerCLI(ComponentCLI):
     def __init__(self):
         super().__init__('token_tagger', 'Token Tagger')
 
     # override
     @classmethod
-    def train(cls, args):
+    def train(cls):
         # create a arg-parser
         parser = argparse.ArgumentParser(
             description='Train a token tagger',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
         # data
         data_group = parser.add_argument_group("data arguments")
 
-        data_group.add_argument('trn_path', type=str, metavar='TRN_PATH',
-                           help='filepath to the training data (input)')
-        data_group.add_argument('dev_path', type=str, metavar='DEV_PATH',
-                           help='filepath to the development data (input)')
+        data_group.add_argument(
+            'trn_path',
+            type=str,
+            metavar='TRN_PATH',
+            help='filepath to the training data (input)')
+        data_group.add_argument(
+            'dev_path',
+            type=str,
+            metavar='DEV_PATH',
+            help='filepath to the development data (input)')
         data_group.add_argument(
             'model_path',
             type=str,
@@ -407,365 +665,250 @@ class TokenTaggerCLI(ComponentCLI):
             default=None,
             help='filepath to the model data (output); if not set, the model is not saved')
         data_group.add_argument(
-            '-r',
-            '--reader',
-            type=args_reader,
-            metavar='json or tsv=(str:int)(,#1)*',
-            default=args_reader('json'),
-            help='type of the reader and its configuration to match the data format (default: json)')
-        data_group.add_argument(
-            '-v',
             '--vsm_list',
-            type=args_vsm,
-            metavar='(fasttext|word2vec:key:filepath)( #1)*',
+            action='append',
             nargs='+',
-            help='list of (type of vector space model, key, filepath)')
-        data_group.add_argument(
-            '-l',
-            '--log',
-            type=str,
-            metavar='filepath',
-            default=None,
-            help='filepath to the logging file; if not set, use stdout')
+            metavar='VSM_LIST',
+            required=True,
+            help='type of vector vector model, key, model_path'
+        )
 
         # tagger
         tagger_group = parser.add_argument_group("tagger arguments")
 
         tagger_group.add_argument(
-            '-key',
-            '--key',
+            'key',
             type=str,
-            metavar='str',
+            metavar='KEY',
             help='key to the document dictionary where the predicted tags are to be stored')
-        tagger_group.add_argument(
-            '-seq',
-            '--sequence',
-            action='store_true',
-            help='if set, run in sequence mode; otherwise, batch mode')
-        tagger_group.add_argument(
-            '-chu',
-            '--chunking',
-            action='store_true',
-            help='if set, tag chunks (e.g., named entities); otherwise, tag tokens (e.g., part-of-speech tags)')
-        tagger_group.add_argument(
-            '-fw',
-            '--feature_windows',
-            type=args_tuple_int,
-            metavar='int(,int)*',
-            default=args_tuple_int('3,2,1,0,-1,-2,-3'),
-            help='content windows for feature extraction (default: 3,2,1,0,-1,-2,-3)')
-        tagger_group.add_argument('-pe', '--position_embedding', action='store_true',
-                           help='if set, use position embeddings as features')
-        tagger_group.add_argument('-le', '--label_embedding', action='store_true',
-                           help='if set, use label embeddings as features')
 
         # network
         network_group = parser.add_argument_group("network arguments")
 
-        network_group.add_argument('-nc', '--num_class', type=int, metavar='int',
-                           help='number of classes')
         network_group.add_argument(
-            '-ir',
-            '--input_dropout',
-            type=float,
-            metavar='float',
-            default=0.0,
-            help='dropout rate applied to the input layer (default: 0.0)')
-        network_group.add_argument(
-            '-fc',
-            '--fuse_conv_config',
-            type=args_fuse_conv,
-            metavar='(filters:activation:dropout)',
-            default=None,
-            help='configuration for the fuse convolution layer (default: None)')
-        network_group.add_argument(
-            '-cc',
-            '--ngram_conv_config',
-            type=args_ngram_conv,
-            metavar='(ngrams:filters:activation:pool:dropout)',
-            default=args_ngram_conv('1,2,3,4,5:128:relu:none:0.2'),
-            help='configuration for the n-gram convolution layer (default: 1,2,3,4,5:128:relu:none:0.2)')
-        network_group.add_argument(
-            '-hc',
-            '--hidden_configs',
-            type=args_hidden,
-            metavar='(dim:activation:dropout)( #1)*',
-            nargs='+',
-            default=None,
-            help='configuration for the hidden layers (default: None)')
-
-        # training
-        training_group = parser.add_argument_group("arguments for training")
-
-        training_group.add_argument(
-            '-cx',
-            '--context',
-            type=args_context,
-            metavar='[cg]int',
-            nargs='+',
-            default=mx.cpu(),
-            help='device context(s)')
-        training_group.add_argument(
-            '-ep',
-            '--epoch',
-            type=int,
-            metavar='int',
-            default=100,
-            help='number of epochs')
-        training_group.add_argument(
-            '-tb',
-            '--trn_batch',
-            type=int,
-            metavar='int',
-            default=64,
-            help='batch size for the training data')
-        training_group.add_argument(
-            '-db',
-            '--dev_batch',
-            type=int,
-            metavar='int',
-            default=2048,
-            help='batch size for the development data')
-        training_group.add_argument(
-            '-lo',
-            '--loss',
-            type=args_loss,
-            metavar='str',
-            default=None,
-            help='loss function')
-        training_group.add_argument(
-            '-op',
-            '--optimizer',
+            '-c',
+            '--config',
             type=str,
-            metavar='str',
-            default='adagrad',
-            help='optimizer')
-        training_group.add_argument(
-            '-opp',
-            '--optimizer_params',
-            type=args_dict_str_float,
-            metavar='([A-Za-z0-9_-]+):(\\d+)',
-            default=args_dict_str_float('learning_rate:0.01'),
-            help='optimizer parameters')
+            metavar='CONFIG',
+            help="config file"
+        )
 
         # arguments
-        args = parser.parse_args(args)
-        set_logger(args.log)
+        args = parser.parse_args(sys.argv[3:])
+        if args.config:
+            config = TokenTaggerConfig(config_file=args.config)
+        else:
+            config = TokenTaggerConfig()
 
-        args.vsm_list = [
-            SimpleNamespace(
-                model=n.type(
-                    n.filepath),
-                key=n.key) for n in args.vsm_list]
-        if isinstance(args.context, list) and len(args.context) == 1:
-            args.context = args.context[0]
-        if args.loss is None:
-            args.loss = mx.gluon.loss.SoftmaxCrossEntropyLoss()
+        set_logger(config.log_path)
+
+        trn_docs, trn_num_class = config.reader(args.trn_path, config.tsv_heads, args.key)
+        dev_docs, dev_num_class = config.reader(args.dev_path, config.tsv_heads, args.key)
+
+        vsm_list = [namespace_vsm(n) for n in args.vsm_list]
+
         initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian')
 
         # component
-        comp = TokenTagger(args.context, args.vsm_list)
+        comp = TokenTagger(config.context, vsm_list)
         comp.init(
-            args.key,
-            args.sequence,
-            args.chunking,
-            args.num_class,
-            args.feature_windows,
-            args.position_embedding,
-            args.label_embedding,
-            args.input_dropout,
-            args.fuse_conv_config,
-            args.ngram_conv_config,
-            args.hidden_configs,
-            initializer)
-
-        # data
-        trn_docs = args.reader.type(
-            args.trn_path, args.reader.params, args.key)
-        dev_docs = args.reader.type(
-            args.dev_path, args.reader.params, args.key)
+            key=args.key,
+            sequence=config.sqeuence,
+            chunking=config.chunking,
+            num_class=trn_num_class,
+            feature_windows=config.feature_windows,
+            position_embedding=config.position_embedding,
+            label_embedding=config.label_embedding,
+            input_dropout=config.input_dropout,
+            fuse_conv_config=config.fuse_conv_config,
+            ngram_conv_config=config.ngrams_conv_config,
+            hidden_configs=config.hidden_configs,
+            initializer=initializer)
 
         # train
         comp.train(
             trn_docs,
             dev_docs,
             args.model_path,
-            args.trn_batch,
-            args.dev_batch,
-            args.epoch,
-            args.loss,
-            args.optimizer,
-            args.optimizer_params)
+            config.trn_batch,
+            config.dev_batch,
+            config.epoch,
+            config.loss,
+            config.optimizer,
+            config.optimizer_params)
         logging.info('# of classes: %d' % len(comp.label_map))
 
     # override
     @classmethod
-    def decode(cls, args):
-        # create a arg-parser
-        parser = argparse.ArgumentParser(
-            description='Decode with the token tagger',
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-        # data
-        group = parser.add_argument_group("data arguments")
-
-        group.add_argument('-i', '--input_path', type=str, metavar='filepath',
-                           help='filepath to the input data')
-        group.add_argument(
-            '-o',
-            '--output_path',
-            type=str,
-            metavar='filepath',
-            default=None,
-            help='filepath to the output data (default: input_path.json)')
-        group.add_argument('-m', '--model_path', type=str, metavar='filepath',
-                           default=None,
-                           help='filepath to the model data')
-        group.add_argument(
-            '-r',
-            '--reader',
-            type=args_reader,
-            metavar='json or tsv=(str:int)(,#1)*',
-            default=args_reader('json'),
-            help='type of the reader and its configuration to match the data format (default: json)')
-        group.add_argument(
-            '-v',
-            '--vsm_list',
-            type=args_vsm,
-            metavar='(fasttext|word2vec:key:filepath)( #1)*',
-            nargs='+',
-            help='list of (type of vector space model, key, filepath)')
-        group.add_argument(
-            '-l',
-            '--log',
-            type=str,
-            metavar='filepath',
-            default=None,
-            help='filepath to the logging file; if not set, use stdout')
-
-        # evaluation
-        group = parser.add_argument_group("arguments for decoding")
-
-        group.add_argument(
-            '-cx',
-            '--context',
-            type=args_context,
-            metavar='[cg]int',
-            nargs='+',
-            default=mx.cpu(),
-            help='device context(s)')
-        group.add_argument(
-            '-ib',
-            '--input_batch',
-            type=int,
-            metavar='int',
-            default=2048,
-            help='batch size for the input data')
-
-        # arguments
-        args = parser.parse_args(args)
-        set_logger(args.log)
-
-        args.vsm_list = [
-            SimpleNamespace(
-                model=n.type(
-                    n.filepath),
-                key=n.key) for n in args.vsm_list]
-        if isinstance(args.context, list) and len(args.context) == 1:
-            args.context = args.context[0]
-        if args.output_path is None:
-            args.output_path = args.input_path + '.json'
-
-        # component
-        comp = TokenTagger(args.context, args.vsm_list)
-        comp.load(args.model_path)
-
-        # data
-        docs = args.reader.type(args.input_path, args.reader.params)
-
-        # evaluate
-        comp.decode(docs, args.input_batch)
-
-        with open(args.output_path, 'w') as fout:
-            json.dump(docs, fout)
+    def decode(cls):
+        pass
+    #     # create a arg-parser
+    #     parser = argparse.ArgumentParser(
+    #         description='Decode with the token tagger',
+    #         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    #     args = parser.parse_args(sys.argv[3:])
+    #
+    #     # data
+    #     group = parser.add_argument_group("data arguments")
+    #
+    #     group.add_argument('-i', '--input_path', type=str, metavar='filepath',
+    #                        help='filepath to the input data')
+    #     group.add_argument(
+    #         '-o',
+    #         '--output_path',
+    #         type=str,
+    #         metavar='filepath',
+    #         default=None,
+    #         help='filepath to the output data (default: input_path.json)')
+    #     group.add_argument('-m', '--model_path', type=str, metavar='filepath',
+    #                        default=None,
+    #                        help='filepath to the model data')
+    #     group.add_argument(
+    #         '-r',
+    #         '--reader',
+    #         type=args_reader,
+    #         metavar='json or tsv=(str:int)(,#1)*',
+    #         default=args_reader('json'),
+    #         help='type of the reader and its configuration to match the data format (default: json)')
+    #     group.add_argument(
+    #         '-v',
+    #         '--vsm_list',
+    #         type=args_vsm,
+    #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
+    #         nargs='+',
+    #         help='list of (type of vector space model, key, filepath)')
+    #     group.add_argument(
+    #         '-l',
+    #         '--log',
+    #         type=str,
+    #         metavar='filepath',
+    #         default=None,
+    #         help='filepath to the logging file; if not set, use stdout')
+    #
+    #     # evaluation
+    #     group = parser.add_argument_group("arguments for decoding")
+    #
+    #     group.add_argument(
+    #         '-cx',
+    #         '--context',
+    #         type=args_context,
+    #         metavar='[cg]int',
+    #         nargs='+',
+    #         default=mx.cpu(),
+    #         help='device context(s)')
+    #     group.add_argument(
+    #         '-ib',
+    #         '--input_batch',
+    #         type=int,
+    #         metavar='int',
+    #         default=2048,
+    #         help='batch size for the input data')
+    #
+    #     # arguments
+    #     args = parser.parse_args(args)
+    #     set_logger(args.log)
+    #
+    #     args.vsm_list = [
+    #         SimpleNamespace(
+    #             model=n.type(
+    #                 n.filepath),
+    #             key=n.key) for n in args.vsm_list]
+    #     if isinstance(args.context, list) and len(args.context) == 1:
+    #         args.context = args.context[0]
+    #     if args.output_path is None:
+    #         args.output_path = args.input_path + '.json'
+    #
+    #     # component
+    #     comp = TokenTagger(args.context, args.vsm_list)
+    #     comp.load(args.model_path)
+    #
+    #     # data
+    #     docs = args.reader.type(args.input_path, args.reader.params)
+    #
+    #     # evaluate
+    #     comp.decode(docs, args.input_batch)
+    #
+    #     with open(args.output_path, 'w') as fout:
+    #         json.dump(docs, fout)
 
     # override
     @classmethod
-    def evaluate(cls, args):
-        # create a arg-parser
-        parser = argparse.ArgumentParser(
-            description='Evaluate the token tagger',
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-        # data
-        group = parser.add_argument_group("data arguments")
-
-        group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
-                           help='filepath to the development data (input)')
-        group.add_argument('-m', '--model_path', type=str, metavar='filepath',
-                           default=None,
-                           help='filepath to the model data')
-        group.add_argument(
-            '-r',
-            '--reader',
-            type=args_reader,
-            metavar='json or tsv=(str:int)(,#1)*',
-            default=args_reader('json'),
-            help='type of the reader and its configuration to match the data format (default: json)')
-        group.add_argument(
-            '-v',
-            '--vsm_list',
-            type=args_vsm,
-            metavar='(fasttext|word2vec:key:filepath)( #1)*',
-            nargs='+',
-            help='list of (type of vector space model, key, filepath)')
-        group.add_argument(
-            '-l',
-            '--log',
-            type=str,
-            metavar='filepath',
-            default=None,
-            help='filepath to the logging file; if not set, use stdout')
-
-        # evaluation
-        group = parser.add_argument_group("arguments for evaluation")
-
-        group.add_argument(
-            '-cx',
-            '--context',
-            type=args_context,
-            metavar='[cg]int',
-            nargs='+',
-            default=mx.cpu(),
-            help='device context(s)')
-        group.add_argument(
-            '-db',
-            '--dev_batch',
-            type=int,
-            metavar='int',
-            default=2048,
-            help='batch size for the development data')
-
-        # arguments
-        args = parser.parse_args(args)
-        set_logger(args.log)
-
-        args.vsm_list = [
-            SimpleNamespace(
-                model=n.type(
-                    n.filepath),
-                key=n.key) for n in args.vsm_list]
-        if isinstance(args.context, list) and len(args.context) == 1:
-            args.context = args.context[0]
-
-        # component
-        comp = TokenTagger(args.context, args.vsm_list)
-        comp.load(args.model_path)
-
-        # data
-        dev_docs = args.reader.type(
-            args.dev_path, args.reader.params, comp.key)
-
-        # evaluate
-        comp.evaluate(dev_docs, args.dev_batch)
-
+    def evaluate(cls):
+        pass
+    #     # create a arg-parser
+    #     parser = argparse.ArgumentParser(
+    #         description='Evaluate the token tagger',
+    #         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    #     args = parser.parse_args(sys.argv[3:])
+    #
+    #     # data
+    #     group = parser.add_argument_group("data arguments")
+    #
+    #     group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
+    #                        help='filepath to the development data (input)')
+    #     group.add_argument('-m', '--model_path', type=str, metavar='filepath',
+    #                        default=None,
+    #                        help='filepath to the model data')
+    #     group.add_argument(
+    #         '-r',
+    #         '--reader',
+    #         type=args_reader,
+    #         metavar='json or tsv=(str:int)(,#1)*',
+    #         default=args_reader('json'),
+    #         help='type of the reader and its configuration to match the data format (default: json)')
+    #     group.add_argument(
+    #         '-v',
+    #         '--vsm_list',
+    #         type=args_vsm,
+    #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
+    #         nargs='+',
+    #         help='list of (type of vector space model, key, filepath)')
+    #     group.add_argument(
+    #         '-l',
+    #         '--log',
+    #         type=str,
+    #         metavar='filepath',
+    #         default=None,
+    #         help='filepath to the logging file; if not set, use stdout')
+    #
+    #     # evaluation
+    #     group = parser.add_argument_group("arguments for evaluation")
+    #
+    #     group.add_argument(
+    #         '-cx',
+    #         '--context',
+    #         type=args_context,
+    #         metavar='[cg]int',
+    #         nargs='+',
+    #         default=mx.cpu(),
+    #         help='device context(s)')
+    #     group.add_argument(
+    #         '-db',
+    #         '--dev_batch',
+    #         type=int,
+    #         metavar='int',
+    #         default=2048,
+    #         help='batch size for the development data')
+    #
+    #     # arguments
+    #     args = parser.parse_args(args)
+    #     set_logger(args.log)
+    #
+    #     args.vsm_list = [
+    #         SimpleNamespace(
+    #             model=n.type(
+    #                 n.filepath),
+    #             key=n.key) for n in args.vsm_list]
+    #     if isinstance(args.context, list) and len(args.context) == 1:
+    #         args.context = args.context[0]
+    #
+    #     # component
+    #     comp = TokenTagger(args.context, args.vsm_list)
+    #     comp.load(args.model_path)
+    #
+    #     # data
+    #     dev_docs = args.reader.type(
+    #         args.dev_path, args.reader.params, comp.key)
+    #
+    #     # evaluate
+    #     comp.evaluate(dev_docs, args.dev_batch)

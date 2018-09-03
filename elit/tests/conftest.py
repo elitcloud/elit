@@ -13,13 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import os
+
 import pytest
 
 from elit.eval import Accuracy, F1
-from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 from elit.lemmatizer import EnglishLemmatizer
+from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.util.io import tsv_reader, json_reader
 
 __author__ = "Gary Lai"
+
+current_path = os.path.abspath(os.path.dirname(__file__))
 
 
 @pytest.fixture()
@@ -50,3 +55,13 @@ def f1():
 @pytest.fixture()
 def english_lemmatizer():
     return EnglishLemmatizer()
+
+
+@pytest.fixture()
+def tsv_reader():
+    return tsv_reader
+
+
+@pytest.fixture()
+def json_reader():
+    return json_reader

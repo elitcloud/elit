@@ -1,0 +1,11 @@
+John	U-PER
+bought	O
+a	B-IT
+car	L-IT
+.	.
+
+A	O
+boy	O
+is	B-P
+here	I-P
+?	L-P
