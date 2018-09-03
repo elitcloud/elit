@@ -17,6 +17,7 @@ import abc
 import argparse
 import inspect
 import logging
+import os
 import re
 import sys
 from types import SimpleNamespace
@@ -59,17 +60,18 @@ class ComponentCLI(abc.ABC):
         if not description:
             description = name
         parser = argparse.ArgumentParser(usage=usage, description=description)
-        command = sys.argv[2]
+        parser.add_argument('command', help='{} command to run'.format(name))
+        args = parser.parse_args(sys.argv[2:3])
 
-        if not hasattr(self, command):
-            logging.info('Unrecognized command: ' + command)
+        if not hasattr(self, args.command):
+            logging.info('Unrecognized command: ' + args.command)
             parser.print_help()
             exit(1)
-        getattr(self, command)(sys.argv[3:])
+        getattr(self, args.command)()
 
     @classmethod
     @abc.abstractmethod
-    def train(cls, args):
+    def train(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
@@ -81,7 +83,7 @@ class ComponentCLI(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def decode(cls, args):
+    def decode(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
@@ -93,7 +95,7 @@ class ComponentCLI(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def evaluate(cls, args):
+    def evaluate(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
@@ -145,13 +147,8 @@ def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
     """
     r = re.compile(r'([A-Za-z0-9_-]+):([-]?[\d.]+)')
     d = {}
-
-    for t in s.split(','):
-        m = r.match(t)
-        if m:
-            d[m.group(1)] = const(m.group(2))
-        else:
-            raise argparse.ArgumentTypeError
+    for i in re.findall(r, s):
+        d[i[0]] = const(i[1])
 
     if not d:
         raise argparse.ArgumentTypeError
@@ -162,16 +159,24 @@ def args_dict_str_float(s: str) -> Dict[str, float]:
     return args_dict_str(s, float)
 
 
-def args_tuple_int(s: str) -> Tuple[int, ...]:
+def args_tuple_int(a: list) -> Tuple[int, ...]:
     """
-    :param s: int(, int)*
-    :return: tuple of integers
+
+    :param a: list of int
+    :return: tuple of int
     """
-    r = re.compile(r'-?\d+(,-?\d+)*$')
-    if r.match(s):
-        return tuple(map(int, s.split(',')))
-    else:
-        raise argparse.ArgumentTypeError
+    return tuple(a)
+
+# def args_tuple_int(s: str) -> Tuple[int, ...]:
+#     """
+#     :param s: int(, int)*
+#     :return: tuple of integers
+#     """
+#     r = re.compile(r'-?\d+(,-?\d+)*$')
+#     if r.match(s):
+#         return tuple(map(int, s.split(',')))
+#     else:
+#         raise argparse.ArgumentTypeError
 
 
 def args_reader(s: str) -> SimpleNamespace:
@@ -187,51 +192,43 @@ def args_reader(s: str) -> SimpleNamespace:
     raise argparse.ArgumentTypeError
 
 
-def args_vsm(s: str) -> SimpleNamespace:
+def args_vsm(s: list) -> SimpleNamespace:
     """
-    :param s: (fasttext|word2vec):_key:filepath
+    :param s: fasttext|word2vec key filepath
     :return: the output of namespace_vsm().
     """
-    i = s.find(':')
-    if i < 1:
-        raise argparse.ArgumentTypeError
 
-    v = s[:i]
-    if v == 'fasttext':
+    # if len(s) != s:
+    #     raise argparse.ArgumentTypeError()
+
+    if s[0] == 'fasttext':
         vsm = FastText
-    elif v == 'word2vec':
+    elif s[0] == 'word2vec':
         vsm = Word2Vec
     else:
         raise argparse.ArgumentTypeError(
-            "Unsupported vector space model: " + v)
+            "Unsupported vector space model: " + s[0])
 
-    s = s[i + 1:]
-    i = s.find(':')
-    if i < 1:
-        raise argparse.ArgumentTypeError
-
-    key = s[:i]
-    filepath = s[i + 1:]
-    if not filepath:
-        raise argparse.ArgumentTypeError
+    key = s[1]
+    filepath = s[2]
 
     return namespace_vsm(vsm_type=vsm, key=key, filepath=filepath)
 
-
-def args_ngram_conv(s: str) -> Optional[SimpleNamespace]:
+def args_ngram_conv(s: list) -> Optional[SimpleNamespace]:
     """
-    :param s: ngram:filters:activation:pool:dropout
+    :param s: [ngram, filters, activation, pool, dropout]
     :return: the output of namespace_conf2d().
     """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    pool = c[3] if c[3].lower() != 'none' else None
-    return NLPModel.namespace_ngram_conv_layer(ngrams=args_tuple_int(c[0]),
-                                               filters=int(c[1]),
-                                               activation=c[2],
+    ngrams = args_tuple_int(s[0].split(':'))
+    filters = int(s[1])
+    activation = s[2]
+    pool = s[3]
+    dropout = float(s[4])
+    return NLPModel.namespace_ngram_conv_layer(ngrams=ngrams,
+                                               filters=filters,
+                                               activation=activation,
                                                pool=pool,
-                                               dropout=float(c[4]))
+                                               dropout=dropout)
 
 
 def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
@@ -239,39 +236,37 @@ def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
     :param s: filters:activation:dropout
     :return: the output of namespace_conf2d().
     """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    return NLPModel.namespace_fuse_conv_layer(filters=int(c[0]),
-                                              activation=c[1],
-                                              dropout=float(c[2]))
+    return NLPModel.namespace_fuse_conv_layer(filters=int(s[0]),
+                                              activation=s[1],
+                                              dropout=float(s[2]))
 
 
-def args_hidden(s: str) -> Optional[SimpleNamespace]:
+def args_hidden_configs(s: str) -> Optional[SimpleNamespace]:
     """
     :param s: dim:activation:dropout
     :return: the output of namespace_hidden()
     """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
+    hidden_config = s.split(':')
+    dim = int(hidden_config[0])
+    activation = hidden_config[1]
+    dropout = float(hidden_config[2])
+    return SimpleNamespace(dim=dim, activation=activation, dropout=dropout)
 
 
-def args_context(s: str) -> mx.Context:
+def args_context(s: list) -> mx.Context:
     """
-    :param s: [cg]int
+    :param s: ['ctx', core]
     :return: a device context
     """
-    m = re.match(r'([cg])(\d*)', s)
-    if m:
-        d = int(m.group(2))
-        return mx.cpu(d) if m.group(1) == 'c' else mx.gpu(d)
+    if s[0] == 'c':
+        return mx.cpu(int(s[1]))
+    elif s[0] == 'g':
+        return mx.gpu(int(s[1]))
     else:
         raise argparse.ArgumentTypeError
 
 
-def args_loss(s: str) -> mx.gluon.loss.Loss:
+def mx_loss(s: str) -> mx.gluon.loss.Loss:
     s = s.lower()
 
     if s == 'softmaxcrossentropyloss':
@@ -300,17 +295,17 @@ def args_loss(s: str) -> mx.gluon.loss.Loss:
     raise argparse.ArgumentTypeError("Unsupported loss: " + s)
 
 
-def namespace_reader(reader_type: Union[json_reader,
-                                        tsv_reader],
+def namespace_reader(type: Union[json_reader, tsv_reader],
                      params: Optional[Dict] = None) -> SimpleNamespace:
-    return SimpleNamespace(type=reader_type, params=params)
+    return SimpleNamespace(type=type, params=params)
 
 
-def namespace_vsm(
-        vsm_type: Type[VectorSpaceModel],
-        key: str,
-        filepath: str) -> SimpleNamespace:
-    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
+def namespace_vsm(l: list) -> SimpleNamespace:
+    type = Word2Vec if l[0].lower() == 'word2vec' else FastText
+    key = l[1]
+    filepath = l[2]
+    model = type(filepath)
+    return SimpleNamespace(model=model, key=key)
 
 
 if __name__ == '__main__':
