@@ -1,79 +1,56 @@
 # -*- coding: UTF-8 -*-
-from elit.dep.common.utils import stdchannel_redirected
-import numpy as np
 import sys
-import os
 
-with stdchannel_redirected(sys.stderr, os.devnull):
-    import dynet as dy
+import mxnet as mx
+import numpy as np
+import mxnet.ndarray as nd
+from mxnet.gluon import rnn
+from mxnet.gluon.contrib.rnn import VariationalDropoutCell
+from mxnet.gluon.rnn import BidirectionalCell
 
 from .data import ParserVocabulary
 from .tarjan import Tarjan
 
 
-def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc, debug=False):
-    builder = dy.VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc)
-    for layer, params in enumerate(builder.get_parameters()):
-        W = orthonormal_initializer(lstm_hiddens, lstm_hiddens + (lstm_hiddens if layer > 0 else input_dims), debug)
-        W_h, W_x = W[:, :lstm_hiddens], W[:, lstm_hiddens:]
-        params[0].set_value(np.concatenate([W_x] * 4, 0))
-        params[1].set_value(np.concatenate([W_h] * 4, 0))
-        b = np.zeros(4 * lstm_hiddens, dtype=np.float32)
-        b[lstm_hiddens:2 * lstm_hiddens] = -1.0
-        params[2].set_value(b)
-    return builder
+def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x=0., dropout_h=0., debug=False):
+    assert lstm_layers == 1, 'only accept one layer lstm'
+    W = orthonormal_initializer(lstm_hiddens, lstm_hiddens + input_dims, debug)
+    W_h, W_x = W[:, :lstm_hiddens], W[:, lstm_hiddens:]
+    b = nd.zeros((4 * lstm_hiddens,))
+    b[lstm_hiddens:2 * lstm_hiddens] = -1.0
+    lstm_cell = rnn.LSTMCell(input_size=input_dims, hidden_size=lstm_hiddens,
+                             i2h_weight_initializer=mx.init.Constant(np.concatenate([W_x] * 4, 0)),
+                             h2h_weight_initializer=mx.init.Constant(np.concatenate([W_h] * 4, 0)),
+                             h2h_bias_initializer=mx.init.Constant(b))
+    wrapper = VariationalDropoutCell(lstm_cell, drop_states=dropout_h)
+    return wrapper
 
 
-def biLSTM(builders, inputs, batch_size=None, dropout_x=0., dropout_h=0.):
+def orthonormal_VanillaBiLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x=0., dropout_h=0., debug=False):
+    return BidirectionalCell(
+        orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x, dropout_h, debug),
+        orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x, dropout_h, debug),
+    )
+
+
+def biLSTM(f_lstm, b_lstm, inputs, batch_size=None, dropout_x=0., dropout_h=0.):
     """
     Feature extraction
-    :param builders: BiLSTM layers
     :param inputs: # seq_len x batch_size
     :param batch_size:
-    :param dropout_x:
-    :param dropout_h:
     :return: Outputs of BiLSTM layers, seq_len x 2 hidden_dims x batch_size
     """
-    for fb, bb in builders:
-        f, b = fb.initial_state(), bb.initial_state()
-        fb.set_dropouts(dropout_x, dropout_h)
-        bb.set_dropouts(dropout_x, dropout_h)
-        if batch_size is not None:
-            fb.set_dropout_masks(batch_size)
-            bb.set_dropout_masks(batch_size)
-        fs, bs = f.transduce(inputs), b.transduce(reversed(inputs))
-        inputs = [dy.concatenate([f, b]) for f, b in zip(fs, reversed(bs))]
+    for f, b in zip(f_lstm, b_lstm):
+        inputs = nd.Dropout(inputs, dropout_x, axes=[0])
+        fo, fs = f.unroll(length=inputs.shape[0], inputs=inputs, layout='TNC', merge_outputs=True)
+        bo, bs = b.unroll(length=inputs.shape[0], inputs=inputs.flip(axis=0), layout='TNC', merge_outputs=True)
+        f.reset(), b.reset()
+        inputs = nd.concat(fo, bo.flip(axis=0), dim=2)
     return inputs
 
 
-def LSTM(lstm, inputs, batch_size=None, dropout_x=0., dropout_h=0.):
-    """
-    unidirectional LSTM
-    :param lstm: one LSTM layer
-    :param inputs: # seq_len x batch_size
-    :param batch_size:
-    :param dropout_x:
-    :param dropout_h:
-    :return: Output of LSTM layer, seq_len x hidden_dim x batch_size
-    """
-    s = lstm.initial_state()
-    lstm.set_dropouts(dropout_x, dropout_h)
-    if batch_size is not None:
-        lstm.set_dropout_masks(batch_size)
-    # hs = s.transduce(inputs)
-    hs = s.add_inputs(inputs)
-    return hs
-
-
-def attention(hs, w):
-    H = dy.concatenate_cols(hs)
-    a = dy.softmax(dy.transpose(w) * H)
-    h = H * dy.transpose(a)
-    return h
-
-
 def leaky_relu(x):
-    return dy.bmax(.1 * x, x)
+    return nd.LeakyReLU(x, slope=.1)
 
 
 def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=False, bias_y=False):
@@ -92,6 +69,48 @@ def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=Fal
     :return: [seq_len_y x seq_len_x if output_size == 1 else seq_len_y x num_outputs x seq_len_x] x batch_size
     """
     if bias_x:
+        x = nd.concat(x, nd.ones((1, seq_len, batch_size)), dim=0)
+    if bias_y:
+        y = nd.concat(y, nd.ones((1, seq_len, batch_size)), dim=0)
+
+    nx, ny = input_size + bias_x, input_size + bias_y
+    # W: (num_outputs x ny) x nx
+    lin = nd.dot(W, x)
+    if num_outputs > 1:
+        lin = reshape_fortran(lin, (ny, num_outputs * seq_len, batch_size))
+    y = y.transpose([2, 1, 0])
+    lin = lin.transpose([2, 1, 0])
+    blin = nd.batch_dot(lin, y, transpose_b=True)
+    blin = blin.transpose([2, 1, 0])
+    if num_outputs > 1:
+        blin = reshape_fortran(blin, (seq_len, num_outputs, seq_len, batch_size))
+    return blin
+
+
+def dynet_bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=False, bias_y=False):
+    """
+    Do xWy
+
+    :param x: (input_size x seq_len) x batch_size
+    :param W:
+    :param y: (input_size x seq_len) x batch_size
+    :param input_size:
+    :param seq_len:
+    :param batch_size:
+    :param num_outputs:
+    :param bias_x:
+    :param bias_y:
+    :return: [seq_len_y x seq_len_x if output_size == 1 else seq_len_y x num_outputs x seq_len_x] x batch_size
+    """
+    import dynet as dy
+    if isinstance(x, np.ndarray):
+        x = dy.inputTensor(x, batched=True)
+    if isinstance(y, np.ndarray):
+        y = dy.inputTensor(y, batched=True)
+    if isinstance(W, np.ndarray):
+        W = dy.inputTensor(W)
+
+    if bias_x:
         x = dy.concatenate([x, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
     if bias_y:
         y = dy.concatenate([y, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
@@ -107,11 +126,74 @@ def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=Fal
     return blin
 
 
+def debug_bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=False, bias_y=False):
+    """
+    Do xWy
+
+    :param x: (input_size x seq_len) x batch_size
+    :param W:
+    :param y: (input_size x seq_len) x batch_size
+    :param input_size:
+    :param seq_len:
+    :param batch_size:
+    :param num_outputs:
+    :param bias_x:
+    :param bias_y:
+    :return: [seq_len_y x seq_len_x if output_size == 1 else seq_len_y x num_outputs x seq_len_x] x batch_size
+    """
+    import dynet as dy
+    xd = dy.inputTensor(x, batched=True)
+    xm = nd.array(x)
+    yd = dy.inputTensor(y, batched=True)
+    ym = nd.array(y)
+    Wd = dy.inputTensor(W)
+    Wm = nd.array(W)
+
+    def allclose(dyarray, mxarray):
+        a = dyarray.npvalue()
+        b = mxarray.asnumpy()
+        return np.allclose(a, b)
+
+    if bias_x:
+        xd = dy.concatenate([xd, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
+        xm = nd.concat(xm, nd.ones((1, seq_len, batch_size)), dim=0)
+        # print(allclose(xd, xm))
+    if bias_y:
+        yd = dy.concatenate([yd, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
+        ym = nd.concat(ym, nd.ones((1, seq_len, batch_size)), dim=0)
+        # print(allclose(yd, ym))
+
+    nx, ny = input_size + bias_x, input_size + bias_y
+    # W: (num_outputs x ny) x nx
+    lind = Wd * xd
+    linm = nd.dot(Wm, xm)
+    # print(allclose(lind, linm))
+    if num_outputs > 1:
+        lind = dy.reshape(lind, (ny, num_outputs * seq_len), batch_size=batch_size)
+        # linm = nd.reshape(linm, (ny, num_outputs * seq_len, batch_size))
+        linm = reshape_fortran(linm, (ny, num_outputs * seq_len, batch_size))
+        # print(allclose(lind, linm))
+
+    blind = dy.transpose(yd) * lind
+    ym = ym.transpose([2, 1, 0])
+    linm = linm.transpose([2, 1, 0])
+    blinm = nd.batch_dot(linm, ym, transpose_b=True)
+    blinm = blinm.transpose([2, 1, 0])
+
+    print(np.allclose(blind.npvalue(), blinm.asnumpy()))
+
+    if num_outputs > 1:
+        blind = dy.reshape(blind, (seq_len, num_outputs, seq_len), batch_size=batch_size)
+        blinm = reshape_fortran(blinm, (seq_len, num_outputs, seq_len, batch_size))
+        print(allclose(blind, blinm))
+    return blind
+
+
 def orthonormal_initializer(output_size, input_size, debug=False):
     """
     adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/linalg.py
     """
-    # print((output_size, input_size))
+    print((output_size, input_size))
     if debug:
         Q = np.random.randn(input_size, output_size) / np.sqrt(output_size)
         return np.transpose(Q.astype(np.float32))
@@ -127,17 +209,16 @@ def orthonormal_initializer(output_size, input_size, debug=False):
             loss = np.sum(QTQmI ** 2 / 2)
             Q2 = Q ** 2
             Q -= lr * Q.dot(QTQmI) / (
-                np.abs(Q2 + Q2.sum(axis=0, keepdims=True) + Q2.sum(axis=1, keepdims=True) - 1) + eps)
+                    np.abs(Q2 + Q2.sum(axis=0, keepdims=True) + Q2.sum(axis=1, keepdims=True) - 1) + eps)
             if np.max(Q) > 1e6 or loss > 1e6 or not np.isfinite(loss):
                 tries += 1
                 lr /= 2
                 break
         success = True
-    # if success:
-    #     print(('Orthogonal pretrainer loss: %.2e' % loss))
-    # else:
-    #     print('Orthogonal pretrainer failed, using non-orthogonal random matrix')
-    if not success:
+    if success:
+        print(('Orthogonal pretrainer loss: %.2e' % loss))
+    else:
+        print('Orthogonal pretrainer failed, using non-orthogonal random matrix')
         Q = np.random.randn(input_size, output_size) / np.sqrt(output_size)
     return np.transpose(Q.astype(np.float32))
 
@@ -262,14 +343,32 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def one_hot(id_vector, vocabulary_size):
-    """
-    Generate one hot vector for every id in id_vector
+def reshape_fortran(tensor, shape):
+    return tensor.T.reshape(tuple(reversed(shape))).T
 
-    :param id_vector: A vector of ids
-    :param vocabulary_size: How big the vocabulary is
-    :return: A matrix of (len(id_vector), vocabulary_size)
-    """
-    b = np.zeros((len(id_vector), vocabulary_size), dtype=np.int32)
-    b[np.arange(len(id_vector)), id_vector] = 1
-    return b
+
+if __name__ == '__main__':
+    C = 2
+    T = 3
+    N = 4
+    O = 5
+
+    x = np.random.normal(0, 1, (C, T, N))
+    W = np.random.normal(0, 1, (C, C + 1))
+    U = np.random.normal(0, 1, ((C + 1) * O, C + 1))
+    y = np.random.normal(0, 1, (C, T, N))
+    # single output
+    # zmxnet = bilinear(nd.array(x), nd.array(W), nd.array(y), C, T, N, 1, True, False).asnumpy()
+    # zdynet = dynet_bilinear(x, W, y, C, T, N, 1, True, False).npvalue()
+    # print(zmxnet.shape)
+    # print(zdynet.shape)
+    # print(np.allclose(zmxnet, zdynet))
+
+    # multiple output
+    zmxnet = bilinear(nd.array(x), nd.array(U), nd.array(y), C, T, N, O, True, True).asnumpy()
+    zdynet = dynet_bilinear(x, U, y, C, T, N, O, True, True).npvalue()
+    print(zmxnet.shape)
+    print(zdynet.shape)
+    print(np.allclose(zmxnet, zdynet))
+
+    # debug_bilinear(x, U, y, C, T, N, O, True, True)

@@ -249,23 +249,16 @@ class DataLoader(object):
         :param vocab: vocabulary object
         """
         self.vocab = vocab
-        self._cased_word_id = dict()
-        self._cased_id_word = []
-        for special_word in ['\0', '\1', '\2']:
-            self.cased_word_id(special_word)
         sents = []
         if documents:
             for d in documents:
                 for s in d:
-                    sent = [
-                        [ParserVocabulary.ROOT, ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
+                    sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
                     for word, tag, head, rel in zip(s.tokens, s.part_of_speech_tags, s[HEA], s[DEP]):
-                        sent.append(
-                            [self.cased_word_id(word), vocab.word2id(word.lower()), vocab.tag2id(tag), int(head),
-                             vocab.rel2id(rel)])
+                        sent.append([vocab.word2id(word.lower()), vocab.tag2id(tag), int(head), vocab.rel2id(rel)])
                     sents.append(sent)
         else:
-            sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
+            sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
             with open(input_file) as f:
                 for line in f:
                     info = line.strip().split()
@@ -280,13 +273,11 @@ class DataLoader(object):
                         assert info[rel_offset] in vocab._rel2id, 'Relation OOV: %s' % line
                         word, tag, head, rel = vocab.word2id(info[1].lower()), vocab.tag2id(info[3]), int(
                             info[arc_offset]), vocab.rel2id(info[rel_offset])
-                        sent.append([self.cased_word_id(info[1]), word, tag, head, rel])
+                        sent.append([word, tag, head, rel])
                     else:
                         sents.append(sent)
-                        sent = [
-                            [ParserVocabulary.ROOT, ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0,
-                             ParserVocabulary.ROOT]]
-                if len(sent) > 1: # last sent in file without '\n'
+                        sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
+                if len(sent) > 1:  # last sent in file without '\n'
                     sents.append(sent)
 
         self.samples = len(sents)
@@ -309,28 +300,10 @@ class DataLoader(object):
             self._buckets[bkt_idx].append(sent)
             self._record.append((bkt_idx, idx))
 
-        self._buckets_word2id = []
         for bkt_idx, (bucket, length) in enumerate(zip(self._buckets, self._bucket_lengths)):
-            word2id_bucket = dict()
-            for sent in bucket:
-                for word in sent:
-                    wid = word2id_bucket.get(word[0])
-                    if wid is None:
-                        wid = len(word2id_bucket)
-                        word2id_bucket[word[0]] = wid
-                    word[0] = wid
-            self._buckets_word2id.append(word2id_bucket)
-            self._buckets[bkt_idx] = np.zeros((length, len(bucket), 5), dtype=np.int32)
+            self._buckets[bkt_idx] = np.zeros((length, len(bucket), 4), dtype=np.int32)
             for idx, sent in enumerate(bucket):
                 self._buckets[bkt_idx][:len(sent), idx, :] = np.array(sent, dtype=np.int32)
-
-    def cased_word_id(self, word):
-        wid = self._cased_word_id.get(word)
-        if wid is None:
-            wid = len(self._cased_word_id)
-            self._cased_word_id[word] = wid
-            self._cased_id_word.append(word)
-        return wid
 
     @property
     def idx_sequence(self):
@@ -350,24 +323,11 @@ class DataLoader(object):
             np.random.shuffle(batches)
 
         for bkt_idx, bkt_batch in batches:
-            cased_word_inputs = self._buckets[bkt_idx][:, bkt_batch, 0]  # seq_len x batch_size
-            word_inputs = self._buckets[bkt_idx][:, bkt_batch, 1]
-            tag_inputs = self._buckets[bkt_idx][:, bkt_batch, 2]
-            arc_targets = self._buckets[bkt_idx][:, bkt_batch, 3]
-            rel_targets = self._buckets[bkt_idx][:, bkt_batch, 4]
-            cased_w2i_batch = dict()
-            cased_i2w_batch = []
-            id_map = dict()
-            for word_id in set(np.reshape(cased_word_inputs, (-1,)).tolist()):
-                id_map[word_id] = get_word_id(self._cased_id_word[word_id], cased_w2i_batch, cased_i2w_batch)
-            cased_word_inputs = np.copy(cased_word_inputs)
-            cased_word_inputs = np.vectorize(id_map.get)(cased_word_inputs)
-            # max_word_length = max(map(len, cased_w2i_batch))
-            char_vocab_inputs = []
-            for word in cased_i2w_batch:
-                char_vocab_inputs.append([self.vocab.char2id(char) for char in word])
-
-            yield char_vocab_inputs, cased_word_inputs, word_inputs, tag_inputs, arc_targets, rel_targets
+            word_inputs = self._buckets[bkt_idx][:, bkt_batch, 0]  # word_id x sent_id
+            tag_inputs = self._buckets[bkt_idx][:, bkt_batch, 1]
+            arc_targets = self._buckets[bkt_idx][:, bkt_batch, 2]
+            rel_targets = self._buckets[bkt_idx][:, bkt_batch, 3]
+            yield word_inputs, tag_inputs, arc_targets, rel_targets
 
 
 def get_word_id(word, w2i, i2w=None):

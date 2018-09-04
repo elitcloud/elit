@@ -1,17 +1,9 @@
-import numpy as np
 import os
 import tempfile
 import time
 from functools import reduce
 
-import sys
-
-from elit.dep.common.utils import stdchannel_redirected
 from elit.dep.parser.biaffine_parser import BiaffineParser
-
-with stdchannel_redirected(sys.stderr, os.devnull):
-    import dynet as dy
-
 from elit.dep.parser.common.data import DataLoader
 
 
@@ -24,10 +16,9 @@ def evaluate_official_script(parser: BiaffineParser, vocab, num_buckets_test, te
     results = [None] * len(record)
     idx = 0
     seconds = time.time()
-    for chars, cased_words, words, tags, arcs, rels in data_loader.get_batches(batch_size=test_batch_size,
-                                                                               shuffle=False):
-        dy.renew_cg()
-        outputs = parser.run(chars, cased_words, words, tags, is_train=False)
+    for words, tags, arcs, rels in data_loader.get_batches(batch_size=test_batch_size,
+                                                           shuffle=False):
+        outputs = parser.run(words, tags, is_train=False)
         for output in outputs:
             sent_idx = record[idx]
             results[sent_idx] = output
