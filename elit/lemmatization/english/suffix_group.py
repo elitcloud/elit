@@ -35,7 +35,7 @@ class SuffixGroup:
         If pos_types contains the input pos, get base form by enumerating each rule.
         :param lower:
         :param pos:
-        :return:
+        :return:base, suffix
         """
         # Check if pos matches this group
         if pos not in self.pos_types:
@@ -54,7 +54,7 @@ class SuffixGroup:
         If pos_types contains the input pos, get base form by enumerating each rule.
         :param lower:
         :param pos:
-        :return:
+        :return:base, suffix, replacement_type
         """
         # Check if pos matches this group
         if pos not in self.pos_types:

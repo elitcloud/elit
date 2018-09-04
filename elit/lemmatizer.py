@@ -184,17 +184,17 @@ class EnglishLemmatizer(Lemmatizer):
         Get the base form from corresponding inflection.
         :param lower:
         :param pos:
-        :return: base form or None
+        :return: base form, suffix or None,None
         """
         inflection = self.inf_by_base_pos.get(pos[:2], None)
         return (None, None) if inflection is None else inflection.get_base_form(lower, pos)
 
     def get_base_form_from_derivation(self, lower: str, pos: str):
         """
-        Get the base form from corresponding inflection.
+        Get the base form from corresponding derivation.
         :param lower:
         :param pos:
-        :return: base form or None
+        :return: base form, suffix, replacement_type or None, None, None
         """
         return self.derivation.get_base_form(lower, pos)
 
@@ -320,9 +320,7 @@ class EnglishLemmatizer(Lemmatizer):
     @classmethod
     def __build_derivation(cls, root) -> Derivation:
         """
-        Initialize inflection for a certain word type/basePOS.
-        :param base_pos:
-        :param type:
+        Initialize derivation for a certain word type/basePOS.
         :param root:
         :return:
         """
