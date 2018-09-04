@@ -39,12 +39,33 @@ class SuffixGroup:
         """
         # Check if pos matches this group
         if pos not in self.pos_types:
-            return None
+            return None, None
 
         # Enumerate each rule
         for rule in self.rules:
-            base = rule.get_base_form(lower)
+            base, suffix = rule.get_base_form(lower)
             if base is not None:
-                return base
+                return base, suffix
 
-        return None
+        return None, None
+
+    def get_base_form_tag(self, lower: str, pos: str):
+        """
+        If pos_types contains the input pos, get base form by enumerating each rule.
+        :param lower:
+        :param pos:
+        :return:
+        """
+        # Check if pos matches this group
+        if pos not in self.pos_types:
+            return None, None, None
+
+        # Enumerate each rule
+        for rule in self.rules:
+            base, suffix, suffix_tag = rule.get_base_form_pos(lower)
+            if base is not None:
+                return base, suffix, suffix_tag
+
+        return None, None, None
+
+

@@ -19,7 +19,7 @@ __author__ = "Liyan Xu"
 
 
 class SuffixRule:
-    def __init__(self, suffix_form: str, replacements: Sequence[str], double_consonants: bool, set_base: set):
+    def __init__(self, suffix_form: str, replacements: Sequence[str], replacement_form:str, double_consonants: bool, set_base: set):
         """
         :param suffix_form:
         :param replacements:
@@ -28,6 +28,7 @@ class SuffixRule:
         """
         self.suffix_form = suffix_form
         self.replacements = replacements
+        self.replacement_form = replacement_form
         self.double_consonants = double_consonants
         self.set_base = set_base
 
@@ -39,17 +40,26 @@ class SuffixRule:
         """
         # Check if input matches this rule's suffix form
         if not lower.endswith(self.suffix_form):
-            return None
+            return None, None
 
         # Get base form without considering double consonants
         stem = lower[:len(lower) - len(self.suffix_form)]
         base = self.__get_valid_base_by_rules__(stem)
 
+
         # If applicable, consider double consonants
         if base is None and self.double_consonants and self.__is_double_consonants__(stem):
             base = self.__get_valid_base_by_rules__(stem[:len(stem) - 1])
+        return base, self.suffix_form
 
-        return base
+    def get_base_form_pos(self, lower: str):
+        """
+        Get base form by enumerating each replacements.
+        :param lower:
+        :return:
+        """
+        base, suffix = self.get_base_form(lower)
+        return base, self.suffix_form, self.replacement_form
 
     def __get_valid_base_by_rules__(self, stem: str):
         """

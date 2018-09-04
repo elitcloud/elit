@@ -20,6 +20,7 @@ from elit.component import NLPComponent
 from pkg_resources import resource_filename
 from typing import Sequence
 from elit.lemmatization.english.inflection import Inflection
+from elit.lemmatization.english.derivation import Derivation
 from elit.lemmatization.english.suffix_group import SuffixGroup
 from elit.lemmatization.english.suffix_rule import SuffixRule
 
@@ -88,6 +89,7 @@ class EnglishLemmatizer(Lemmatizer):
     FILENAME_CARDINAL = "cardinal.base"
     FILENAME_ORDINAL = "ordinal.base"
     FILENAME_INFLECTION = "inflection_suffix.xml"
+    FILRENAME_DERIVATION = "derivation_suffix.xml"
 
     BASE_POS_VERB = "VB"
     BASE_POS_NOUN = "NN"
@@ -117,11 +119,13 @@ class EnglishLemmatizer(Lemmatizer):
             resource_filename(self.PATH_ROOT, self.FILENAME_ORDINAL))
         self.inf_by_base_pos = self.__load_inflections_from_xml__(
             resource_filename(self.PATH_ROOT, self.FILENAME_INFLECTION))
+        self.derivation = self.__load_derivation_from_xml__((
+            resource_filename(self.PATH_ROOT, self.FILRENAME_DERIVATION)))
 
     def decode(self, docs: Sequence[Sequence[str]], **kwargs):
-        return [self.get_lemma(doc[0], doc[1]) for doc in docs]
+        return [self.get_lemma(doc[0],doc[1])for doc in docs]
 
-    def get_lemma(self, form: str, pos: str) -> str:
+    def get_lemma(self, form: str, pos: str) :
         """
         :param form:
         :param pos:
@@ -131,17 +135,32 @@ class EnglishLemmatizer(Lemmatizer):
 
         # Get base form from abbreviation and inflection
         lemma = self.get_abbreviation(form, pos)
-        lemma = lemma if lemma is not None else self.get_base_form_from_inflection(form, pos)
+        suffix = None
+        if lemma is None:
+            lemma, suffix = self.get_base_form_from_inflection(form, pos)
+        SuffixList = list()
+        if suffix is not None:
+            SuffixList.append(suffix)
+        lemmatmp,  suffix, suffix_tag= self.get_base_form_from_derivation(lemma, pos) if lemma is not None else self.get_base_form_from_derivation(form,pos)
+        lemmatmp2 = None
+        suffix2= None
+        while(lemmatmp is not None):
+            lemmatmp2, suffix2, pos = lemmatmp, suffix, suffix_tag
+            if suffix2 is not None:
+                SuffixList.append(suffix2)
+            lemmatmp, suffix, suffix_tag = self.get_base_form_from_derivation(lemmatmp, pos)
+        lemma = lemmatmp2 if lemmatmp2 is not None else lemma
+        lemma = lemmatmp if lemmatmp is not None else lemma
         lemma = lemma if lemma is not None else form
 
         # Mark cardinal or ordinal if applicable
         if self.is_cardinal(lemma):
-            return self.CONST_CARDINAL
+            return self.CONST_CARDINAL, SuffixList
         if self.is_ordinal(lemma):
-            return self.CONST_ORDINAL
+            return self.CONST_ORDINAL, SuffixList
 
-        return lemma
-
+        return lemma, SuffixList
+        #return lemma
     @classmethod
     def simplify_form(cls, form: str) -> str:
         """
@@ -160,7 +179,7 @@ class EnglishLemmatizer(Lemmatizer):
         """
         return self.rule_abbreviation.get(self.__generate_abbreviation_key__(lower, pos), None)
 
-    def get_base_form_from_inflection(self, lower: str, pos: str) -> str:
+    def get_base_form_from_inflection(self, lower: str, pos: str):
         """
         Get the base form from corresponding inflection.
         :param lower:
@@ -168,7 +187,16 @@ class EnglishLemmatizer(Lemmatizer):
         :return: base form or None
         """
         inflection = self.inf_by_base_pos.get(pos[:2], None)
-        return None if inflection is None else inflection.get_base_form(lower, pos)
+        return (None, None) if inflection is None else inflection.get_base_form(lower, pos)
+
+    def get_base_form_from_derivation(self, lower: str, pos: str):
+        """
+        Get the base form from corresponding inflection.
+        :param lower:
+        :param pos:
+        :return: base form or None
+        """
+        return self.derivation.get_base_form(lower, pos)
 
     def is_cardinal(self, lower: str) -> bool:
         """
@@ -246,6 +274,18 @@ class EnglishLemmatizer(Lemmatizer):
         d[cls.BASE_POS_ADVERB] = cls.__build_inflection_by_pos__(cls.BASE_POS_ADVERB, cls.ADVERB, root)
         return d
 
+
+    @classmethod
+    def __load_derivation_from_xml__(cls, file_path: str) -> Derivation:
+        """
+        :param file_path:
+        :return:
+        """
+
+        root = ElementTree.parse(file_path).getroot()
+
+        return cls.__build_derivation(root)
+
     @classmethod
     def __build_inflection_by_pos__(cls, base_pos: str, type: str, root) -> Inflection:
         """
@@ -269,12 +309,44 @@ class EnglishLemmatizer(Lemmatizer):
                 suffix_rule = SuffixRule(
                     rule.get("affix_form"),
                     [r.strip() for r in rule.get("replacements").split(",")],
+                    rule.get("base_pos"),
                     cls.str_to_bool(rule.get("doubleConsonants")),
                     set_base
                 )
                 suffix_group.rules.append(suffix_rule)
 
         return inflection
+
+    @classmethod
+    def __build_derivation(cls, root) -> Derivation:
+        """
+        Initialize inflection for a certain word type/basePOS.
+        :param base_pos:
+        :param type:
+        :param root:
+        :return:
+        """
+        set_base = set()
+        for type in {"adjective", "adverb", "noun", "verb"}:
+            set_base.update(cls.read_word_set(resource_filename(cls.PATH_ROOT, type + ".base")))
+        derivation = Derivation(list())
+        for child in root:
+            affixes = child.findall("affix")
+            for affix in affixes:
+                suffix_group = SuffixGroup(affix.get("form"), affix.get("org_pos"), list())
+                derivation.suffix_groups.append(suffix_group)
+                rules = affix.findall("rule")
+                for rule in rules:
+                    suffix_rule = SuffixRule(
+                        rule.get("affix_form"),
+                        [r.strip() for r in rule.get("replacements").split(",")],
+                        rule.get("base_pos"),
+                        cls.str_to_bool(rule.get("doubleConsonants")),
+                        set_base
+                )
+                    suffix_group.rules.append(suffix_rule)
+
+        return derivation
 
     @classmethod
     def str_to_bool(cls, s: str) -> bool:
@@ -285,33 +357,75 @@ class EnglishLemmatizer(Lemmatizer):
         """
         return s is not None and s.lower() == "true"
 
+if __name__ == "__main__":
+        lemmatizer = EnglishLemmatizer()
 
-'''if __name__ == "__main__":
-    lemmatizer = EnglishLemmatizer()
+        docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("has", "VBZ"), ("one", "CD"), ("paper", "NN")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("has", "VBZ"), ("one", "CD"), ("paper", "NN")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("is", "VBZ"), ("the", "DT"), ("first", "JJ"), ("winner", "NN")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("the", "DT"), ("first", "JJ"), ("winner", "NN")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("is", "VBZ"), ("lying", "VBG")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("lying", "VBG")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("is", "VBZ"), ("running", "VBG")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("running", "VBG")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("is", "VBZ"), ("feeling", "VBG"), ("cold", "JJ")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("is", "VBZ"), ("feeling", "VBG"), ("cold", "JJ")]
-    print(lemmatizer.decode(docs))
+        docs = [("They", "PRP"), ("are", "VBP"), ("gentlemen", "NNS")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("They", "PRP"), ("are", "VBP"), ("gentlemen", "NNS")]
-    print(lemmatizer.decode(docs))
+        docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
+        print(lemmatizer.decode(docs))
 
-    docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
-    print(lemmatizer.decode(docs))'''
+        docs =  [("n't", "RB", "not"),
+             ("na", "TO", "to"),
+
+                # ordinal
+                ("1st", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("12nd", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("23rd", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("34th", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("first", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("third", "XX", EnglishLemmatizer.CONST_ORDINAL),
+                 ("fourth", "XX", EnglishLemmatizer.CONST_ORDINAL),
+
+                #verb: 3rd-person singular
+                 ("studies", "VBZ", "study"),
+                 ("pushes", "VBZ", "push"),
+                 ("takes", "VBZ", "take"),
+
+                # verb: gerund
+                 ("lying", "VBG", "lie"),
+                 ("feeling", "VBG", "feel"),
+                 ("running", "VBG", "run"),
+                 ("taking", "VBG", "take"),
+
+                # verb: past (participle)
+                 ("denied", "VBD", "deny"),
+                 ("entered", "VBD", "enter"),
+                 ("zipped", "VBD", "zip"),
+                 ("heard", "VBD", "hear"),
+                 ("drawn", "VBN", "draw"),
+                 ("clung", "VBN", "cling"),
+
+                # ntov
+                 ("useless","JJ","use" ),
+                 ("bearish","JJ","bear")]
+        print(lemmatizer.decode(docs))
+
+        docs = [("useless","JJ","use" ),
+                 ("bearish","JJ","bear"),
+                ("religious","JJ"),
+                ("beautifully","RB")]
+
+        print(lemmatizer.decode(docs))

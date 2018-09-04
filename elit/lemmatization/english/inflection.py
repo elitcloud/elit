@@ -40,13 +40,13 @@ class Inflection:
         :return:
         """
         # Get base form from exceptions
-        base = self.__get_base_from_exceptions__(lower)
+        base,suffix = self.__get_base_from_exceptions__(lower)
 
         # Get base form from suffixes
         if base is None:
-            base = self.__get_base_from_suffixes__(lower, pos)
+            base,suffix = self.__get_base_from_suffixes__(lower, pos)
 
-        return base
+        return base,suffix
 
     def __get_base_from_exceptions__(self, lower: str):
         """
@@ -54,7 +54,7 @@ class Inflection:
         :param lower:
         :return:
         """
-        return self.dict_exc.get(lower, None)
+        return self.dict_exc.get(lower, None), list()
 
     def __get_base_from_suffixes__(self, lower: str, pos: str):
         """
@@ -64,8 +64,8 @@ class Inflection:
         :return:
         """
         for suffix_group in self.suffix_groups:
-            base = suffix_group.get_base_form(lower, pos)
+            base,suffix = suffix_group.get_base_form(lower, pos)
             if base is not None:
-                return base
+                return base, suffix
 
-        return None
+        return None, None
