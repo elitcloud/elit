@@ -13,7 +13,7 @@ from elit.dep.parser.common.data import ParserVocabulary, DataLoader, np, get_wo
 from elit.dep.parser.common.exponential_scheduler import ExponentialScheduler
 from elit.dep.parser.evaluate import evaluate_official_script
 from elit.dep.parser.parser_config import ParserConfig
-from elit.util.structure import Document, Sentence, HEA, DEP, POS, SEN
+from elit.util.structure import Document, Sentence, DEP, POS, SEN
 from mxnet import gluon, autograd
 import mxnet as mx
 
@@ -124,11 +124,9 @@ class DependencyParser(NLPComponent):
         idx = 0
         for d in docs:
             for s in d:
-                s[HEA] = []
                 s[DEP] = []
                 for head, rel in zip(results[idx][0], results[idx][1]):
-                    s[HEA].append(head)
-                    s[DEP].append(self._vocab.id2rel(rel))
+                    s[DEP].append((head, self._vocab.id2rel(rel)))
                 idx += 1
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
@@ -138,9 +136,10 @@ class DependencyParser(NLPComponent):
         :param kwargs: None
         :return: (UAS, LAS, speed) speed is measured in sentences per second
         """
+        assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
         UAS, LAS, speed = evaluate_official_script(self._parser, self._vocab, self._config.num_buckets_valid,
                                                    self._config.test_batch_size,
-                                                   self._config.dev_file,
+                                                   self._config.test_file,
                                                    None, documents=docs)
         return UAS, LAS, speed
 
@@ -184,7 +183,7 @@ class DependencyParser(NLPComponent):
         return ConllSentence(words)
 
     def _create_parser(self, config, vocab):
-        return BiaffineParser(vocab, config.char_dims, config.word_dims, config.tag_dims,
+        return BiaffineParser(vocab, config.word_dims, config.tag_dims,
                               config.dropout_emb,
                               config.lstm_layers,
                               config.lstm_hiddens, config.dropout_lstm_input,
@@ -203,7 +202,6 @@ def _load_conll(path) -> Document:
     def create_sentence() -> Sentence:
         sent = Sentence()
         sent[POS] = []
-        sent[HEA] = []
         sent[DEP] = []
         return sent
 
@@ -214,11 +212,10 @@ def _load_conll(path) -> Document:
             info = line.strip().split()
             if info:
                 assert (len(info) == 10), 'Illegal line: %s' % line
-                word, tag, head, rel = info[1], info[3], info[6], info[7]
+                word, tag, head, rel = info[1], info[3], int(info[6]), info[7]
                 sent.tokens.append(word)
                 sent.part_of_speech_tags.append(tag)
-                sent[HEA].append(head)
-                sent[DEP].append(rel)
+                sent[DEP].append((head, rel))
             else:
                 sents.append(sent)
                 sent = create_sentence()
@@ -234,7 +231,7 @@ if __name__ == '__main__':
     parser.load(model_path)
     parser.decode([dev])
     test = _load_conll('data/ptb/dep/test-debug.conllx')
-    UAS, LAS, speed = parser.evaluate(test)
+    UAS, LAS, speed = parser.evaluate([test])
     print('UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
     sentence = [('Is', 'VBZ'), ('this', 'DT'), ('the', 'DT'), ('future', 'NN'), ('of', 'IN'), ('chamber', 'NN'),
                 ('music', 'NN'), ('?', '.')]
