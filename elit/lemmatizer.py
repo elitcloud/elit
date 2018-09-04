@@ -150,7 +150,7 @@ class EnglishLemmatizer(Lemmatizer):
                 SuffixList.append(suffix2)
             lemmatmp, suffix, suffix_tag = self.get_base_form_from_derivation(lemmatmp, pos)
         lemma = lemmatmp2 if lemmatmp2 is not None else lemma
-        lemma = lemmatmp if lemmatmp is not None else lemma
+        #lemma = lemmatmp if lemmatmp is not None else lemma
         lemma = lemma if lemma is not None else form
 
         # Mark cardinal or ordinal if applicable
