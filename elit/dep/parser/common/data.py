@@ -6,7 +6,7 @@ from typing import Union, Sequence, Dict, Any
 import numpy as np
 
 from elit.dep.common.savable import Savable
-from elit.util.structure import Document, DEP, HEA
+from elit.util.structure import Document, DEP
 
 from .k_means import KMeans
 
@@ -72,7 +72,8 @@ class ParserVocabulary(Savable):
         if documents:
             for d in documents:
                 for s in d:
-                    for word, tag, head, rel in zip(s.tokens, s.part_of_speech_tags, s[HEA], s[DEP]):
+                    for word, tag, head_rel in zip(s.tokens, s.part_of_speech_tags, s[DEP]):
+                        rel = head_rel[1]
                         char_set.update(word)
                         word.lower()
                         word_counter[word] += 1
@@ -254,7 +255,8 @@ class DataLoader(object):
             for d in documents:
                 for s in d:
                     sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
-                    for word, tag, head, rel in zip(s.tokens, s.part_of_speech_tags, s[HEA], s[DEP]):
+                    for word, tag, head_rel in zip(s.tokens, s.part_of_speech_tags, s[DEP]):
+                        head, rel = head_rel
                         sent.append([vocab.word2id(word.lower()), vocab.tag2id(tag), int(head), vocab.rel2id(rel)])
                     sents.append(sent)
         else:

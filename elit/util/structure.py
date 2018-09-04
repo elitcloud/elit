@@ -27,7 +27,6 @@ LEM = 'lem'
 POS = 'pos'
 NER = 'ner'
 DEP = 'dep'
-HEA = 'hea'         # head
 COREF = 'coref'
 SENTI = 'senti'
 
