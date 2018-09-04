@@ -1,21 +1,18 @@
 # -*- coding: UTF-8 -*-
 # Adopted from https://github.com/jcyk/Dynet-Biaffine-dependency-parser
 # With some modifications, added the char lstm layer
-import os
-import sys
 
-from elit.dep.common.utils import stdchannel_redirected
+import mxnet as mx
 import numpy as np
+from mxnet import nd
+from mxnet.gluon import nn
+from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 from elit.dep.parser.common.utils import biLSTM, leaky_relu, bilinear, orthonormal_initializer, arc_argmax, rel_argmax, \
-    orthonormal_VanillaLSTMBuilder, attention, LSTM, one_hot
-
-with stdchannel_redirected(sys.stderr, os.devnull):
-    import dynet as dy
+    orthonormal_VanillaLSTMBuilder, reshape_fortran
 
 
-class BiaffineParser(object):
+class BiaffineParser(nn.Block):
     def __init__(self, vocab,
-                 char_dims,
                  word_dims,
                  tag_dims,
                  dropout_dim,
@@ -28,76 +25,88 @@ class BiaffineParser(object):
                  dropout_mlp,
                  debug=False
                  ):
-        pc = dy.ParameterCollection()
-        self.pret_word_embs = pc.lookup_parameters_from_numpy(
-            vocab.get_pret_embs(word_dims)) if vocab.has_pret_embs() else None
-        if self.pret_word_embs:
-            # now create a subset of parameters, which will be saved and loaded, so that pre-trained embeddings are
-            # excluded
-            pc = pc.add_subcollection('savable')
-        self._vocab = vocab
-        self.word_embs = pc.lookup_parameters_from_numpy(vocab.get_word_embs(word_dims))
-        self.word_dims = word_dims
-        if char_dims > 0:
-            self.char_embs = pc.lookup_parameters_from_numpy(vocab.get_char_embs(char_dims))
-            self.char_lstm = orthonormal_VanillaLSTMBuilder(1, char_dims, word_dims // 2, pc, debug)
-            self.char_w = pc.add_parameters((word_dims // 2,), init=dy.ConstInitializer(0.))
-        else:
-            self.char_lstm = None
-        self.tag_embs = pc.lookup_parameters_from_numpy(vocab.get_tag_embs(tag_dims))
+        super(BiaffineParser, self).__init__()
 
-        self.LSTM_builders = []
-        f = orthonormal_VanillaLSTMBuilder(1, word_dims + tag_dims, lstm_hiddens, pc, debug)
-        b = orthonormal_VanillaLSTMBuilder(1, word_dims + tag_dims, lstm_hiddens, pc, debug)
-        self.LSTM_builders.append((f, b))
+        def embedding_from_numpy(_we, trainable=True):
+            word_embs = nn.Embedding(_we.shape[0], _we.shape[1], weight_initializer=mx.init.Constant(_we))
+            if not trainable:
+                word_embs.collect_params().setattr('grad_req', 'null')
+            return word_embs
+
+        self._vocab = vocab
+        self.word_embs = embedding_from_numpy(vocab.get_word_embs(word_dims))
+        self.pret_word_embs = embedding_from_numpy(vocab.get_pret_embs(),
+                                                   trainable=False) if vocab.has_pret_embs() else None
+        self.tag_embs = embedding_from_numpy(vocab.get_tag_embs(tag_dims))
+
+        self.f_lstm = nn.Sequential()
+        self.b_lstm = nn.Sequential()
+        self.f_lstm.add(orthonormal_VanillaLSTMBuilder(1, word_dims + tag_dims, lstm_hiddens, dropout_lstm_input,
+                                                       dropout_lstm_hidden, debug))
+        self.b_lstm.add(orthonormal_VanillaLSTMBuilder(1, word_dims + tag_dims, lstm_hiddens, dropout_lstm_input,
+                                                       dropout_lstm_hidden, debug))
         for i in range(lstm_layers - 1):
-            f = orthonormal_VanillaLSTMBuilder(1, 2 * lstm_hiddens, lstm_hiddens, pc, debug)
-            b = orthonormal_VanillaLSTMBuilder(1, 2 * lstm_hiddens, lstm_hiddens, pc, debug)
-            self.LSTM_builders.append((f, b))
+            self.f_lstm.add(orthonormal_VanillaLSTMBuilder(1, 2 * lstm_hiddens, lstm_hiddens, dropout_lstm_input,
+                                                           dropout_lstm_hidden, debug))
+            self.b_lstm.add(orthonormal_VanillaLSTMBuilder(1, 2 * lstm_hiddens, lstm_hiddens, dropout_lstm_input,
+                                                           dropout_lstm_hidden, debug))
         self.dropout_lstm_input = dropout_lstm_input
         self.dropout_lstm_hidden = dropout_lstm_hidden
 
         mlp_size = mlp_arc_size + mlp_rel_size
         W = orthonormal_initializer(mlp_size, 2 * lstm_hiddens, debug)
-        self.mlp_dep_W = pc.parameters_from_numpy(W)
-        self.mlp_head_W = pc.parameters_from_numpy(W)
-        self.mlp_dep_b = pc.add_parameters((mlp_size,), init=dy.ConstInitializer(0.))
-        self.mlp_head_b = pc.add_parameters((mlp_size,), init=dy.ConstInitializer(0.))
+        self.mlp_dep_W = self.parameter_from_numpy('mlp_dep_W', W)
+        self.mlp_head_W = self.parameter_from_numpy('mlp_head_W', W)
+        self.mlp_dep_b = self.parameter_init('mlp_dep_b', (mlp_size,), mx.init.Zero())
+        self.mlp_head_b = self.parameter_init('mlp_head_b', (mlp_size,), mx.init.Zero())
         self.mlp_arc_size = mlp_arc_size
         self.mlp_rel_size = mlp_rel_size
         self.dropout_mlp = dropout_mlp
 
-        self.arc_W = pc.add_parameters((mlp_arc_size, mlp_arc_size + 1), init=dy.ConstInitializer(0.))
-        self.rel_W = pc.add_parameters((vocab.rel_size * (mlp_rel_size + 1), mlp_rel_size + 1),
-                                       init=dy.ConstInitializer(0.))
+        self.arc_W = self.parameter_init('arc_W', (mlp_arc_size, mlp_arc_size + 1), init=mx.init.Zero())
+        self.rel_W = self.parameter_init('rel_W', (vocab.rel_size * (mlp_rel_size + 1), mlp_rel_size + 1),
+                                         init=mx.init.Zero())
+        self.softmax_loss = SoftmaxCrossEntropyLoss(axis=0, batch_axis=-1)
+        # for k, v in self.collect_params().items():
+        #     print(k)
+        #     v.initialize(ctx=mx.cpu())
 
-        self._pc = pc
+        self.initialize()
 
         def _emb_mask_generator(seq_len, batch_size):
-            ret = []
+            wm, tm = nd.zeros((seq_len, batch_size, 1)), nd.zeros((seq_len, batch_size, 1))
             for i in range(seq_len):
                 word_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
                 tag_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
                 scale = 3. / (2. * word_mask + tag_mask + 1e-12)
                 word_mask *= scale
                 tag_mask *= scale
-                word_mask = dy.inputTensor(word_mask, batched=True)
-                tag_mask = dy.inputTensor(tag_mask, batched=True)
-                ret.append((word_mask, tag_mask))
-            return ret
+                word_mask = nd.array(word_mask)
+                tag_mask = nd.array(tag_mask)
+                wm[i, :, 0] = word_mask
+                tm[i, :, 0] = tag_mask
+            return wm, tm
 
         self.generate_emb_mask = _emb_mask_generator
 
-    @property
-    def parameter_collection(self):
-        return self._pc
+    def parameter_from_numpy(self, name, array):
+        p = self.params.get(name, shape=array.shape, init=mx.init.Constant(array))
+        return p
+        # p.initialize()
+        # return p.data()
 
-    def run(self, char_vocab, cased_word_inputs, word_inputs, tag_inputs, arc_targets=None, rel_targets=None,
-            is_train=True):
+    def parameter_init(self, name, shape, init):
+        p = self.params.get(name, shape=shape, init=init)
+        return p
+        # p.initialize()
+        # return p.data()
+
+    def forward(self, *args):
+        pass
+
+    def run(self, word_inputs, tag_inputs, arc_targets=None, rel_targets=None, is_train=True):
         """
         Train or test
-        :param char_vocab:
-        :param cased_word_inputs: seq_len x batch_size
         :param word_inputs: seq_len x batch_size
         :param tag_inputs: seq_len x batch_size
         :param arc_targets: seq_len x batch_size
@@ -105,6 +114,8 @@ class BiaffineParser(object):
         :param is_train: is training or test
         :return:
         """
+
+        # return 0, 0, 0, nd.dot(self.junk.data(), nd.ones((3, 1))).sum()
 
         def flatten_numpy(ndarray):
             """
@@ -121,110 +132,94 @@ class BiaffineParser(object):
 
         if is_train or arc_targets is not None:
             mask_1D = flatten_numpy(mask)
-            mask_1D_tensor = dy.inputTensor(mask_1D, batched=True)
+            # mask_1D_tensor = nd.inputTensor(mask_1D, batched=True)
+            mask_1D_tensor = nd.array(mask_1D)
+
             #  if batched=True, the last dimension is used as a batch dimension if arr is a list of numpy ndarrays
 
-        if self.char_lstm:
-            # Subword model
-            char_w = dy.parameter(self.char_w)
-
-            def LSTM_attention(lstm, inputs, dropout_x=0., dropout_h=0.):
-                ss = LSTM(lstm, inputs, None, dropout_x, dropout_h)
-                hs = [s.h()[0] for s in ss]
-                return dy.concatenate([attention(hs, char_w), ss[-1].s()[0]])
-
-            subword_embs = []
-            for char_ids in char_vocab:
-                char_inputs = [dy.lookup(self.char_embs, char) for char in char_ids]
-                subword_embs.append(
-                    LSTM_attention(self.char_lstm, char_inputs, self.dropout_lstm_input if is_train else 0.,
-                                   self.dropout_lstm_hidden if is_train else 0.))
-            subword_embs = dy.concatenate_cols(subword_embs)
-
-            word_embs = [dy.lookup_batch(self.word_embs, np.where(w < self._vocab.words_in_train, w, self._vocab.UNK)) +
-                         subword_embs * dy.inputTensor(one_hot(cw, len(char_vocab)).T, batched=True) +
-                         0 if self.pret_word_embs is None else dy.lookup_batch(self.pret_word_embs, w, update=False)
-                         for cw, w in zip(cased_word_inputs, word_inputs)]
-        else:
-            word_embs = [dy.lookup_batch(self.word_embs, np.where(w < self._vocab.words_in_train, w, self._vocab.UNK))
-                         + 0 if self.pret_word_embs is None else dy.lookup_batch(self.pret_word_embs, w, update=False)
-                         for w
-                         in word_inputs]
-
-        tag_embs = [dy.lookup_batch(self.tag_embs, pos) for pos in tag_inputs]
+        unked_words = np.where(word_inputs < self._vocab.words_in_train, word_inputs, self._vocab.UNK)
+        word_embs = self.word_embs(nd.array(unked_words, dtype='int'))
+        if self.pret_word_embs:
+            word_embs = word_embs + self.pret_word_embs(nd.array(word_inputs))
+        tag_embs = self.tag_embs(nd.array(tag_inputs))
 
         # Dropout
         if is_train:
-            emb_masks = self.generate_emb_mask(seq_len, batch_size)
-            emb_inputs = [dy.concatenate([dy.cmult(w, wm), dy.cmult(pos, posm)]) for w, pos, (wm, posm) in
-                          zip(word_embs, tag_embs, emb_masks)]
+            wm, tm = self.generate_emb_mask(seq_len, batch_size)
+            emb_inputs = nd.concat(nd.multiply(wm, word_embs), nd.multiply(tm, tag_embs), dim=2)
         else:
-            emb_inputs = [dy.concatenate([w, pos]) for w, pos in zip(word_embs, tag_embs)]  # seq_len x batch_size
+            emb_inputs = nd.concat(word_embs, tag_embs, dim=2)  # seq_len x batch_size
 
-        top_recur = dy.concatenate_cols(
-            biLSTM(self.LSTM_builders, emb_inputs, batch_size, self.dropout_lstm_input if is_train else 0.,
-                   self.dropout_lstm_hidden if is_train else 0.))
+        top_recur = biLSTM(self.f_lstm, self.b_lstm, emb_inputs, batch_size,
+                           dropout_x=self.dropout_lstm_input if is_train else 0)
         if is_train:
-            top_recur = dy.dropout_dim(top_recur, 1, self.dropout_mlp)
+            top_recur = nd.Dropout(data=top_recur, axes=[0], p=self.dropout_mlp)
 
-        W_dep, b_dep = dy.parameter(self.mlp_dep_W), dy.parameter(self.mlp_dep_b)
-        W_head, b_head = dy.parameter(self.mlp_head_W), dy.parameter(self.mlp_head_b)
-        dep, head = leaky_relu(dy.affine_transform([b_dep, W_dep, top_recur])), leaky_relu(
-            dy.affine_transform([b_head, W_head, top_recur]))
+        W_dep, b_dep = self.mlp_dep_W.data(), self.mlp_dep_b.data()
+        W_head, b_head = self.mlp_head_W.data(), self.mlp_head_b.data()
+        dep, head = leaky_relu(nd.dot(top_recur, W_dep.T) + b_dep), leaky_relu(nd.dot(top_recur, W_head.T) + b_head)
         if is_train:
-            dep, head = dy.dropout_dim(dep, 1, self.dropout_mlp), dy.dropout_dim(head, 1, self.dropout_mlp)
-
+            dep, head = nd.Dropout(data=dep, axes=[0], p=self.dropout_mlp), nd.Dropout(data=head, axes=[0],
+                                                                                       p=self.dropout_mlp)
+        dep, head = nd.transpose(dep, axes=[2, 0, 1]), nd.transpose(head, axes=[2, 0, 1])
         dep_arc, dep_rel = dep[:self.mlp_arc_size], dep[self.mlp_arc_size:]
         head_arc, head_rel = head[:self.mlp_arc_size], head[self.mlp_arc_size:]
+        # return 0, 0, 0, dep_arc.sum() + head_arc.sum()
 
-        W_arc = dy.parameter(self.arc_W)
+        W_arc = self.arc_W.data()
         arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size, num_outputs=1,
                               bias_x=True, bias_y=False)
+        # return 0, 0, 0, arc_logits.sum()
         # (#head x #dep) x batch_size
 
-        flat_arc_logits = dy.reshape(arc_logits, (seq_len,), seq_len * batch_size)
+        flat_arc_logits = reshape_fortran(arc_logits, (seq_len, seq_len * batch_size))
         # (#head ) x (#dep x batch_size)
 
-        arc_preds = arc_logits.npvalue().argmax(0)
+        arc_preds = arc_logits.argmax(0)
         if len(arc_preds.shape) == 1:  # dynet did unnecessary jobs
             arc_preds = np.expand_dims(arc_preds, axis=1)
         # seq_len x batch_size
 
         if is_train or arc_targets is not None:
-            arc_correct = np.equal(arc_preds, arc_targets).astype(np.float32) * mask
+            correct = np.equal(arc_preds.asnumpy(), arc_targets)
+            arc_correct = correct.astype(np.float32) * mask
             arc_accuracy = np.sum(arc_correct) / num_tokens
             targets_1D = flatten_numpy(arc_targets)
-            losses = dy.pickneglogsoftmax_batch(flat_arc_logits, targets_1D)
-            arc_loss = dy.sum_batches(losses * mask_1D_tensor) / num_tokens
+            losses = self.softmax_loss(flat_arc_logits, nd.array(targets_1D))
+            arc_loss = nd.sum(losses * mask_1D_tensor) / num_tokens
 
         if not is_train:
             arc_probs = np.transpose(
-                np.reshape(dy.softmax(flat_arc_logits).npvalue(), (seq_len, seq_len, batch_size), 'F'))
+                np.reshape(nd.softmax(flat_arc_logits, axis=0).asnumpy(), (seq_len, seq_len, batch_size), 'F'))
         # #batch_size x #dep x #head
 
-        W_rel = dy.parameter(self.rel_W)
-        # dep_rel = dy.concatenate([dep_rel, dy.inputTensor(np.ones((1, seq_len),dtype=np.float32))])
-        # head_rel = dy.concatenate([head_rel, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
+        W_rel = self.rel_W.data()
+        # dep_rel = nd.concat([dep_rel, nd.inputTensor(np.ones((1, seq_len),dtype=np.float32))])
+        # head_rel = nd.concat([head_rel, nd.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
         rel_logits = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, seq_len, batch_size,
                               num_outputs=self._vocab.rel_size, bias_x=True, bias_y=True)
         # (#head x rel_size x #dep) x batch_size
 
-        flat_rel_logits = dy.reshape(rel_logits, (seq_len, self._vocab.rel_size), seq_len * batch_size)
+        flat_rel_logits = reshape_fortran(rel_logits, (seq_len, self._vocab.rel_size, seq_len * batch_size))
         # (#head x rel_size) x (#dep x batch_size)
 
-        partial_rel_logits = dy.pick_batch(flat_rel_logits, targets_1D if is_train else flatten_numpy(arc_preds))
+        _target_vec = nd.array(targets_1D if is_train else flatten_numpy(arc_preds.asnumpy())).reshape(
+            seq_len * batch_size, 1)
+        _target_mat = _target_vec * nd.ones((1, self._vocab.rel_size))
+
+        partial_rel_logits = nd.pick(flat_rel_logits, _target_mat.T, axis=0)
         # (rel_size) x (#dep x batch_size)
 
         if is_train or arc_targets is not None:
-            rel_preds = partial_rel_logits.npvalue().argmax(0)
+            rel_preds = partial_rel_logits.argmax(0)
             targets_1D = flatten_numpy(rel_targets)
-            rel_correct = np.equal(rel_preds, targets_1D).astype(np.float32) * mask_1D
+            rel_correct = np.equal(rel_preds.asnumpy(), targets_1D).astype(np.float32) * mask_1D
             rel_accuracy = np.sum(rel_correct) / num_tokens
-            losses = dy.pickneglogsoftmax_batch(partial_rel_logits, targets_1D)
-            rel_loss = dy.sum_batches(losses * mask_1D_tensor) / num_tokens
+            losses = self.softmax_loss(partial_rel_logits, nd.array(targets_1D))
+            rel_loss = nd.sum(losses * mask_1D_tensor) / num_tokens
 
         if not is_train:
-            rel_probs = np.transpose(np.reshape(dy.softmax(dy.transpose(flat_rel_logits)).npvalue(),
+            rel_probs = np.transpose(np.reshape(nd.softmax(flat_rel_logits.transpose([1, 0, 2]), axis=0).asnumpy(),
                                                 (self._vocab.rel_size, seq_len, seq_len, batch_size), 'F'))
         # batch_size x #dep x #head x #nclasses
 
@@ -234,7 +229,7 @@ class BiaffineParser(object):
             overall_accuracy = np.sum(correct) / num_tokens
 
         if is_train:
-            return arc_accuracy * 100., rel_accuracy * 100., overall_accuracy * 100., loss
+            return arc_accuracy, rel_accuracy, overall_accuracy, loss
 
         outputs = []
 
@@ -248,11 +243,11 @@ class BiaffineParser(object):
             outputs.append((arc_pred[1:sent_len], rel_pred[1:sent_len]))
 
         if arc_targets is not None:
-            return arc_accuracy * 100., rel_accuracy * 100., overall_accuracy * 100., outputs
+            return arc_accuracy, rel_accuracy, overall_accuracy, outputs
         return outputs
 
     def save(self, save_path):
-        self._pc.save(save_path)
+        self.save_parameters(save_path)
 
     def load(self, load_path):
-        self._pc.populate(load_path)
+        self.load_parameters(load_path)
