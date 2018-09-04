@@ -326,9 +326,13 @@ class EnglishLemmatizer(Lemmatizer):
         :param root:
         :return:
         """
+        d = dict()
         set_base = set()
-        for type in {"adjective", "adverb", "noun", "verb"}:
-            set_base.update(cls.read_word_set(resource_filename(cls.PATH_ROOT, type + ".base")))
+        d[cls.BASE_POS_VERB] = cls.read_word_set(resource_filename(cls.PATH_ROOT, cls.VERB+".base"))
+        d[cls.BASE_POS_NOUN] = cls.read_word_set(resource_filename(cls.PATH_ROOT, cls.NOUN + ".base"))
+        d[cls.BASE_POS_ADJECTIVE] = cls.read_word_set(resource_filename(cls.PATH_ROOT, cls.ADJECTIVE + ".base"))
+        d[cls.BASE_POS_ADVERB] = cls.read_word_set(resource_filename(cls.PATH_ROOT, cls.ADVERB + ".base"))
+
         derivation = Derivation(list())
         for child in root:
             affixes = child.findall("affix")
@@ -342,7 +346,7 @@ class EnglishLemmatizer(Lemmatizer):
                         [r.strip() for r in rule.get("replacements").split(",")],
                         rule.get("base_pos"),
                         cls.str_to_bool(rule.get("doubleConsonants")),
-                        set_base
+                        d[rule.get("base_pos")]
                 )
                     suffix_group.rules.append(suffix_rule)
 
