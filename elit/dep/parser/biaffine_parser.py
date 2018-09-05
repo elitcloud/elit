@@ -4,7 +4,7 @@
 
 import mxnet as mx
 import numpy as np
-from mxnet import nd
+from mxnet import nd, ndarray
 from mxnet.gluon import nn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 from elit.dep.parser.common.utils import biLSTM, leaky_relu, bilinear, orthonormal_initializer, arc_argmax, rel_argmax, \
@@ -246,8 +246,15 @@ class BiaffineParser(nn.Block):
             return arc_accuracy, rel_accuracy, overall_accuracy, outputs
         return outputs
 
+    def save_parameters(self, filename):
+        params = self._collect_params_with_prefix()
+        if self.pret_word_embs:
+            params.pop('pret_word_embs.weight', None)
+        arg_dict = {key: val._reduce() for key, val in params.items()}
+        ndarray.save(filename, arg_dict)
+
     def save(self, save_path):
         self.save_parameters(save_path)
 
     def load(self, load_path):
-        self.load_parameters(load_path)
+        self.load_parameters(load_path, allow_missing=True)
