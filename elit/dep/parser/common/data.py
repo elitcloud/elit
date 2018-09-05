@@ -6,9 +6,8 @@ from typing import Union, Sequence, Dict, Any
 import numpy as np
 
 from elit.dep.common.savable import Savable
+from elit.dep.parser.common.k_means import KMeans
 from elit.util.structure import Document, DEP
-
-from .k_means import KMeans
 
 
 class ConllWord(object):
@@ -347,3 +346,22 @@ def get_word_id(word, w2i, i2w=None):
         if i2w is not None:
             i2w.append(word)
     return wid
+
+
+def convert_conll_to_conllx(conll, conllx=None):
+    if not conllx:
+        conllx = conll + '.conllx'
+    with open(conll) as src, open(conllx, 'w') as out:
+        for line in src:
+            cells = line.strip().split()
+            if cells:
+                cells = [cells[0], cells[1], cells[2], cells[3], '_', '_', cells[5], cells[6], '_', '_']
+                out.write('\t'.join(cells) + '\n')
+            else:
+                out.write('\n')
+
+
+if __name__ == '__main__':
+    convert_conll_to_conllx('data/dat/en-ddr.trn')
+    convert_conll_to_conllx('data/dat/en-ddr.tst')
+    convert_conll_to_conllx('data/dat/en-ddr.dev')
