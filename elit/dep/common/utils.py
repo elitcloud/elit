@@ -463,8 +463,7 @@ class WSEvaluator(Evaluator):
 
 
 def init_logger(root_dir, name="train.log"):
-    if not os.path.exists(root_dir):
-        os.mkdir(root_dir)
+    make_sure_path_exists(root_dir)
     log_formatter = logging.Formatter("%(message)s")
     logger = logging.getLogger(name)
     file_handler = logging.FileHandler("{0}/{1}".format(root_dir, name), mode='w')

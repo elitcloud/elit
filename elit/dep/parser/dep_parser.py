@@ -31,11 +31,11 @@ class DepParser(object):
 
     def train(self):
         config = self._config
+        logger = init_logger(config.save_dir)
         self._vocab = vocab = ParserVocabulary(config.train_file,
                                                None if config.debug else config.pretrained_embeddings_file,
                                                config.min_occur_count)
         vocab.save(self._config.save_vocab_path)
-        logger = init_logger(config.save_dir)
         vocab.log_info(logger)
 
         with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
