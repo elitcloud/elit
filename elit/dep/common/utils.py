@@ -2,6 +2,7 @@
 import codecs
 import errno
 import logging
+import math
 import os
 import sys
 import time
@@ -79,7 +80,7 @@ class Progbar(object):
             sys.stdout.write("\b" * prev_total_width)
             sys.stdout.write("\r")
 
-            numdigits = 0 if self.target == 0 else int(np.floor(np.log10(self.target))) + 1
+            numdigits = 0 if self.target == 0 or math.isnan(self.target) else int(np.floor(np.log10(self.target))) + 1
             barstr = '%%%dd/%%%dd [' % (numdigits, numdigits)
             bar = barstr % (current, self.target)
             prog = 0 if self.target == 0 else float(current) / self.target
