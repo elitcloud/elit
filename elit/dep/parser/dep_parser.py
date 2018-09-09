@@ -120,8 +120,9 @@ class DepParser(object):
         parser = self._parser
         vocab = self._vocab
         config = self._config
-        UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
-                                                   config.test_file, os.path.join(config.save_dir, 'valid_tmp'))
+        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+            UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
+                                                       config.test_file, os.path.join(config.save_dir, 'valid_tmp'))
         if logger is None:
             logger = init_logger(config.save_dir, 'test.log')
         logger.info('Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
