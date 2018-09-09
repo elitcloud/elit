@@ -67,13 +67,11 @@ class ParserVocabulary(Savable):
         word_counter = Counter()
         tag_set = set()
         rel_set = set()
-        char_set = set()
         if documents:
             for d in documents:
                 for s in d:
                     for word, tag, head_rel in zip(s.tokens, s.part_of_speech_tags, s[DEP]):
                         rel = head_rel[1]
-                        char_set.update(word)
                         word.lower()
                         word_counter[word] += 1
                         tag_set.add(tag)
@@ -93,7 +91,6 @@ class ParserVocabulary(Savable):
                         # else:
                         #     raise RuntimeError('Illegal line: %s' % line)
                         word, tag, head, rel = info[1].lower(), info[3], int(info[arc_offset]), info[rel_offset]
-                        char_set.update(info[1])
                         word_counter[word] += 1
                         tag_set.add(tag)
                         if rel != 'root':
@@ -106,10 +103,6 @@ class ParserVocabulary(Savable):
         for word, count in word_counter.most_common():
             if count > min_occur_count:
                 self._id2word.append(word)
-
-        # Map word to sequence of char
-        self._id2char = ['\0', '\1', '\2'] + list(char_set)
-        self._char2id = reverse(self._id2char)
 
         self._pret_file = pret_file
         self._words_in_train_data = len(self._id2word)
@@ -174,9 +167,6 @@ class ParserVocabulary(Savable):
             return np.random.randn(self.words_in_train, word_dims).astype(np.float32)
         return np.zeros((self.words_in_train, word_dims), dtype=np.float32)
 
-    def get_char_embs(self, char_dims):
-        return np.random.randn(len(self._id2char), char_dims).astype(np.float32)
-
     def get_tag_embs(self, tag_dims):
         return np.random.randn(self.tag_size, tag_dims).astype(np.float32)
 
@@ -184,16 +174,6 @@ class ParserVocabulary(Savable):
         if isinstance(xs, list):
             return [self._word2id.get(x, self.UNK) for x in xs]
         return self._word2id.get(xs, self.UNK)
-
-    def word2char_ids(self, word):
-        char_ids = [self._char2id.get(c, self.UNK) for c in word]
-        return char_ids
-
-    def get_word2char_ids(self):
-        return self._word2char_ids
-
-    def char2id(self, char):
-        return self._char2id.get(char, self.UNK)
 
     def id2word(self, xs):
         if isinstance(xs, list):
