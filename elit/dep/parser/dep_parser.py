@@ -32,6 +32,7 @@ class DepParser(object):
     def train(self):
         config = self._config
         logger = init_logger(config.save_dir)
+        config.save()
         self._vocab = vocab = ParserVocabulary(config.train_file,
                                                config.pretrained_embeddings_file,
                                                config.min_occur_count)
