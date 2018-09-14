@@ -6,9 +6,6 @@ import pickle
 
 
 class Savable(object):
-    def __init__(self) -> None:
-        super().__init__()
-
     def save(self, path):
         with open(path, 'wb') as f:
             pickle.dump(self, f)

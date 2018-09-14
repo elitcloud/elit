@@ -7,7 +7,7 @@ import numpy as np
 from mxnet import nd, ndarray
 from mxnet.gluon import nn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from elit.dep.parser.common.utils import biLSTM, leaky_relu, bilinear, orthonormal_initializer, arc_argmax, rel_argmax, \
+from elit.nlp.dep.parser.common.utils import biLSTM, leaky_relu, bilinear, orthonormal_initializer, arc_argmax, rel_argmax, \
     orthonormal_VanillaLSTMBuilder, reshape_fortran
 
 
