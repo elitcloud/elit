@@ -2,9 +2,16 @@
 # Filename: corpus.py
 # Author：hankcs
 # Date: 2018-02-21 14:51
+import math
+import random
+
 import numpy as np
 import pickle
 import os
+from typing import Sequence, Tuple, Dict, List
+import mxnet as mx
+import mxnet.ndarray as nd
+from elit.nlp.dep.common.utils import make_sure_path_exists
 
 
 class StringIdMapper(object):
@@ -197,9 +204,286 @@ class TSVCorpus(object):
         return self.sentences[idx]
 
 
+class Dictionary:
+    """
+    This class holds a dictionary that maps strings to IDs, used to generate one-hot encodings of strings.
+    """
+
+    def __init__(self, add_unk=True):
+        # init dictionaries
+        self.item2idx = {}  # Dict[str, int]
+        self.idx2item = []  # List[str]
+
+        # in order to deal with unknown tokens, add <unk>
+        if add_unk:
+            self.add_item('<unk>')
+
+    def add_item(self, item: str) -> int:
+        """
+        add string - if already in dictionary returns its ID. if not in dictionary, it will get a new ID.
+        :param item: a string for which to assign an id
+        :return: ID of string
+        """
+        item = item.encode('utf-8')
+        if item not in self.item2idx:
+            self.idx2item.append(item)
+            self.item2idx[item] = len(self.idx2item) - 1
+        return self.item2idx[item]
+
+    def get_idx_for_item(self, item: str) -> int:
+        """
+        returns the ID of the string, otherwise 0
+        :param item: string for which ID is requested
+        :return: ID of string, otherwise 0
+        """
+        item = item.encode('utf-8')
+        if item in self.item2idx.keys():
+            return self.item2idx[item]
+        else:
+            return 0
+
+    def get_items(self) -> List[str]:
+        items = []
+        for item in self.idx2item:
+            items.append(item.decode('UTF-8'))
+        return items
+
+    def __len__(self) -> int:
+        return len(self.idx2item)
+
+    def get_item_for_index(self, idx):
+        return self.idx2item[idx].decode('UTF-8')
+
+    def save(self, savefile):
+        import pickle
+        with open(savefile, 'wb') as f:
+            mappings = {
+                'idx2item': self.idx2item,
+                'item2idx': self.item2idx
+            }
+            pickle.dump(mappings, f)
+
+    @classmethod
+    def load_from_file(cls, filename: str):
+        import pickle
+        dictionary = Dictionary()  # Dictionary
+        with open(filename, 'rb') as f:
+            mappings = pickle.load(f, encoding='latin1')
+            idx2item = mappings['idx2item']
+            item2idx = mappings['item2idx']
+            dictionary.item2idx = item2idx
+            dictionary.idx2item = idx2item
+        return dictionary
+
+    @classmethod
+    def load(cls, name: str):
+
+        return Dictionary.load_from_file(name)
+
+    @classmethod
+    def create(cls, path: str, char=True):
+        print('Creating dictionary from {}'.format(path))
+        d = Dictionary()
+        files = []
+        if os.path.isdir(path):
+            files = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        elif os.path.isfile(path):
+            files = [path]
+        if len(files) == 0:
+            raise IOError('No file found in {}'.format(path))
+        for n, f in enumerate(files):
+            print('{}/{}'.format(n + 1, len(files)))
+            with open(f) as src:
+                for line in src:
+                    for c in line if char else line.split():
+                        d.add_item(c)
+        return d
+
+
+class TextCorpus(object):
+    def __init__(self, path, dictionary: Dictionary = None, forward: bool = True, character_level: bool = True):
+
+        self.forward = forward
+        self.split_on_char = character_level
+        self.train_path = os.path.join(path, 'train')
+
+        self.train_files = sorted(
+            [f for f in os.listdir(self.train_path) if os.path.isfile(os.path.join(self.train_path, f))])
+
+        if dictionary is None:
+            dictionary = Dictionary.create(self.train_path)
+
+        self.dictionary = dictionary  # Dictionary
+
+        self.current_train_file_index = len(self.train_files)
+
+        self.valid = self.charsplit(os.path.join(path, 'valid.txt'),
+                                    forward=forward,
+                                    split_on_char=self.split_on_char)
+
+        self.test = self.charsplit(os.path.join(path, 'test.txt'),
+                                   forward=forward,
+                                   split_on_char=self.split_on_char)
+
+    @property
+    def is_last_slice(self) -> bool:
+        if self.current_train_file_index >= len(self.train_files) - 1:
+            return True
+        return False
+
+    def get_next_train_slice(self):
+
+        self.current_train_file_index += 1
+
+        if self.current_train_file_index >= len(self.train_files):
+            self.current_train_file_index = 0
+            random.shuffle(self.train_files)
+
+        current_train_file = self.train_files[self.current_train_file_index]
+
+        train_slice = self.charsplit(os.path.join(self.train_path, current_train_file),
+                                     expand_vocab=False,
+                                     forward=self.forward,
+                                     split_on_char=self.split_on_char)
+
+        return train_slice
+
+    def charsplit(self, path: str, expand_vocab=False, forward=True, split_on_char=True) -> nd.NDArray:
+
+        """Tokenizes a text file on character basis."""
+        assert os.path.exists(path)
+        print('loading {}'.format(path))
+
+        #
+        with open(path, 'r', encoding="utf-8") as f:
+            tokens = 0
+            for line in f:
+
+                if split_on_char:
+                    chars = list(line)
+                else:
+                    chars = line.split()
+
+                # print(chars)
+                tokens += len(chars)
+
+                # Add chars to the dictionary
+                if expand_vocab:
+                    for char in chars:
+                        self.dictionary.add_item(char)
+                if tokens % 1000000:
+                    print('\r{}m tokens'.format(tokens // 1000000), end='')
+        print()
+
+        def percent(current, total):
+            log_every = math.ceil(total / 10000)
+            if current % log_every == 0:
+                print('\r%.2f%%' % (current / total), end='')
+            elif total - current < 2:
+                print('\r100%%')
+
+        if forward:
+            # charsplit file content
+            with open(path, 'r', encoding="utf-8") as f:
+                ids = nd.zeros((tokens), dtype='int')
+                token = 0
+                for line in f:
+                    line = self.random_casechange(line)
+
+                    if split_on_char:
+                        chars = list(line)
+                    else:
+                        chars = line.split()
+
+                    for char in chars:
+                        if token >= tokens: break
+                        ids[token] = self.dictionary.get_idx_for_item(char)
+                        token += 1
+                    percent(token, tokens)
+        else:
+            # charsplit file content
+            with open(path, 'r', encoding="utf-8") as f:
+                ids = nd.zeros((tokens), dtype='int')
+                token = tokens - 1
+                for line in f:
+                    line = self.random_casechange(line)
+
+                    if split_on_char:
+                        chars = list(line)
+                    else:
+                        chars = line.split()
+
+                    for char in chars:
+                        if token >= tokens: break
+                        ids[token] = self.dictionary.get_idx_for_item(char)
+                        token -= 1
+                    percent(token, tokens)
+
+        return ids
+
+    @staticmethod
+    def random_casechange(line: str) -> str:
+        no = random.randint(0, 99)
+        if no is 0:
+            line = line.lower()
+        if no is 1:
+            line = line.upper()
+        return line
+
+    def tokenize(self, path):
+        """Tokenizes a text file."""
+        assert os.path.exists(path)
+        # Add words to the dictionary
+        with open(path, 'r') as f:
+            tokens = 0
+            for line in f:
+                words = line.split() + ['<eos>']
+                tokens += len(words)
+                for word in words:
+                    self.dictionary.add_word(word)
+
+        # Tokenize file content
+        with open(path, 'r') as f:
+            ids = nd.zeros((tokens), dtype='int')
+            token = 0
+            for line in f:
+                words = line.split() + ['<eos>']
+                for word in words:
+                    ids[token] = self.dictionary.word2idx[word]
+                    token += 1
+
+        return ids
+
+
+def make_language_model_dataset(text_file, output_folder):
+    nline = 0
+    with open(text_file) as src:
+        for line in src:
+            nline += 1
+    print('{} lines in {}'.format(nline, text_file))
+    make_sure_path_exists(os.path.join(output_folder, 'train'))
+    train = int(0.8 * nline)
+    split_every = int(train / 10)
+    split = 0
+    dev = int(0.9 * nline)
+    out = None
+    with open(text_file) as src:
+        for n, line in enumerate(src):
+            if n < train:
+                if n % split_every == 0:
+                    if out:
+                        out.close()
+                    split += 1
+                    out = open(os.path.join(output_folder, 'train', 'train_split_{}'.format(split)), 'w')
+            elif n == train:
+                out.close()
+                out = open(os.path.join(output_folder, 'valid.txt'), 'w')
+            elif n == dev:
+                out.close()
+                out = open(os.path.join(output_folder, 'test.txt'), 'w')
+            out.write(line)
+    out.close()
+
+
 if __name__ == '__main__':
-    vocab = Vocabulary()
-    dev = TSVCorpus('data/pku/bmes/dev.txt', vocab)
-    # vocab.add_pret_words('data/character/character-bi.vec', False)
-    print(vocab.word_vocab.size())
-    print(dev[0].to_str(vocab))
+    make_language_model_dataset('data/test.txt', 'data/wiki')

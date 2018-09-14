@@ -9,8 +9,6 @@ import time
 
 import numpy as np
 
-from elit.dep.parser.common.data import ParserVocabulary, DataLoader
-
 UNK_TAG = "<UNK>"
 NONE_TAG = "<NONE>"
 START_TAG = "<START>"
