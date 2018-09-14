@@ -1,7 +1,7 @@
 <morphology>
     <verb>
         <affix type="suffix" form="ify" pos="DSV" org_pos="VB">
-            <rule base_pos="NN" affix_form="ify" replacements=",y,or,ity" examples="fortify, glorify, terrify, qualify"/>
+            <rule base_pos="NN" affix_form="ify" replacements=",or,y,ity" examples="fortify, terrify, glorify, qualify"/>
             <rule base_pos="JJ" affix_form="ify" replacements="e,y"       examples="simplify, fancify"/>
         </affix>
         
@@ -25,7 +25,7 @@
             <rule base_pos="JJ" affix_form="ancy"  replacements="ant"    examples="pregnancy"/>
             <rule base_pos="JJ" affix_form="ence"  replacements="ent"    examples="difference"/>
             <rule base_pos="JJ" affix_form="ency"  replacements="ent"    examples="fluency"/>
-            <rule base_pos="JJ" affix_form="acy"   replacements="ate"    examples="accurate"/>
+            <rule base_pos="JJ" affix_form="acy"   replacements="ate"    examples="accuracy"/>
         </affix>
         
         <affix type="suffix" form="ant" pos="DSN" org_pos="NN">
@@ -128,7 +128,7 @@
         
         <affix type="suffix" form="ic" pos="DSJ" org_pos="JJ">
             <rule base_pos="NN" affix_form="tic" replacements="e,y" examples="diagnostic, fantastic"/>
-            <rule base_pos="JJ" affix_form="ic"  replacements=",y"  examples="alcoholic, academic"/>
+            <rule base_pos="NN" affix_form="ic"  replacements=",y"  examples="alcoholic, academic"/>
         </affix>
         
         <affix type="suffix" form="ish" pos="DSJ" org_pos="JJ">
@@ -180,7 +180,7 @@
         </affix>
         
         <affix type="suffix" form="y" pos="DSJ" org_pos="JJ">
-            <rule base_pos="NN" affix_form="y" replacements=",e" examples="easy, runny, messy"/>
+            <rule base_pos="NN" affix_form="y" replacements="e," examples="easy, runny, messy"/>
         </affix>
     </adjective>
     

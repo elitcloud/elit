@@ -58,7 +58,16 @@ class SuffixRule:
         :param lower:
         :return:
         """
-        base, suffix = self.get_base_form(lower)
+        if not lower.endswith(self.suffix_form):
+            return None, None, None
+
+        # Get base form without considering double consonants
+        stem = lower[:len(lower) - len(self.suffix_form)]
+        base = self.__get_valid_base_by_rules__(stem)
+        # If applicable, consider double consonants
+        if base is None and self.double_consonants and self.__is_double_consonants__(stem):
+            base = self.__get_valid_base_by_rules__(stem[:len(stem) - 1])
+
         return base, self.suffix_form, self.replacement_form
 
     def __get_valid_base_by_rules__(self, stem: str):

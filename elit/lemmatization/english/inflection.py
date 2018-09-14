@@ -54,7 +54,7 @@ class Inflection:
         :param lower:
         :return:
         """
-        return self.dict_exc.get(lower, None), list()
+        return self.dict_exc.get(lower, None), None
 
     def __get_base_from_suffixes__(self, lower: str, pos: str):
         """

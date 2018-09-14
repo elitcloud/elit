@@ -24,8 +24,7 @@ from elit.lemmatization.english.derivation import Derivation
 from elit.lemmatization.english.suffix_group import SuffixGroup
 from elit.lemmatization.english.suffix_rule import SuffixRule
 
-__author__ = "Liyan Xu"
-
+__author__ = "Liyan Xu, Xinyi Jiang"
 
 class Lemmatizer(NLPComponent):
     def __init__(self):
@@ -187,7 +186,10 @@ class EnglishLemmatizer(Lemmatizer):
         :return: base form, suffix or None,None
         """
         inflection = self.inf_by_base_pos.get(pos[:2], None)
-        return (None, None) if inflection is None else inflection.get_base_form(lower, pos)
+        if inflection is None:
+            return None,None
+        else:
+            return inflection.get_base_form(lower, pos)
 
     def get_base_form_from_derivation(self, lower: str, pos: str):
         """
@@ -343,7 +345,7 @@ class EnglishLemmatizer(Lemmatizer):
                         rule.get("affix_form"),
                         [r.strip() for r in rule.get("replacements").split(",")],
                         rule.get("base_pos"),
-                        cls.str_to_bool(rule.get("doubleConsonants")),
+                        True,
                         d[rule.get("base_pos")]
                 )
                     suffix_group.rules.append(suffix_rule)
@@ -361,8 +363,10 @@ class EnglishLemmatizer(Lemmatizer):
 
 if __name__ == "__main__":
         lemmatizer = EnglishLemmatizer()
+        docs = [("zipped", "VBD"),("crystallize", "VB"),("academically","RB")]
+        print(lemmatizer.decode(docs))
 
-        docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
+        docs = [("zipped", "VBD"), ("is", "VBZ"), ("tall", "JJ")]
         print(lemmatizer.decode(docs))
 
         docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
@@ -374,19 +378,20 @@ if __name__ == "__main__":
         docs = [("He", "PRP"), ("is", "VBZ"), ("the", "DT"), ("first", "JJ"), ("winner", "NN")]
         print(lemmatizer.decode(docs))
 
-        docs = [("He", "PRP"), ("is", "VBZ"), ("lying", "VBG")]
+        docs = [("He", "PRP"), ("is", "VBZ"), ("lying", "VBG"),("accidentally","RB" ), ("beautifully","RB"), ("academically","RB"),( "gloriously","RB"),
+                ("easily", "RB"), ("electronically", "RB")]
         print(lemmatizer.decode(docs))
 
-        docs = [("He", "PRP"), ("is", "VBZ"), ("running", "VBG")]
+        docs = [("He", "PRP"), ("is", "VBZ"), ("running", "VBG"),("readability","NN")]
         print(lemmatizer.decode(docs))
 
         docs = [("He", "PRP"), ("is", "VBZ"), ("feeling", "VBG"), ("cold", "JJ")]
         print(lemmatizer.decode(docs))
 
-        docs = [("They", "PRP"), ("are", "VBP"), ("gentlemen", "NNS")]
+        docs = [("They", "PRP"), ("are", "VBP"), ("gentlemen", "NNS"),("accuracy", "NN")]
         print(lemmatizer.decode(docs))
 
-        docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
+        docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN"),("fancify","VB"),("terrify","VB"),("crystallize","VB"),("accidentally","RB")]
         print(lemmatizer.decode(docs))
 
         docs =  [("n't", "RB", "not"),
