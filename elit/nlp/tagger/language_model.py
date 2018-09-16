@@ -11,10 +11,13 @@ import mxnet.ndarray as nd
 from elit.nlp.dep.common.savable import Savable
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.corpus import Dictionary, TextCorpus
+from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 from typing import List
+
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 
 class LanguageModel(nn.Block):
@@ -178,14 +181,15 @@ class LanguageModelTrainer:
         savefile = os.path.join(base_path, 'best-lm.pt')
 
         try:
-            with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+            with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
                 epoch = 0
                 best_val_loss = 100000000
+                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                                                                 patience=patience)
+                optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
                 trainer = gluon.Trainer(self.model.collect_params(),
-                                        optimizer=mx.optimizer.SGD(learning_rate=learning_rate))
-                # scheduler: ReduceLROnPlateau = ReduceLROnPlateau(optimizer, verbose=True, factor=anneal_factor,
-                #                                                  patience=patience)
+                                        optimizer=optimizer)
 
                 for split in range(1, max_epochs + 1):
 
@@ -229,7 +233,7 @@ class LanguageModelTrainer:
                         with autograd.record():
                             output, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
                             # try to predict the targets
-                            loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).sum()
+                            loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
 
                         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -257,14 +261,14 @@ class LanguageModelTrainer:
                     ###############################################################################
                     # self.model.eval()
                     val_loss = self.evaluate(val_data, mini_batch_size, sequence_length)
-                    # optimizer.step(val_loss)
-
-                    print('best loss so far {:5.2f}'.format(best_val_loss))
+                    scheduler.step(val_loss)
 
                     # Save the model if the validation loss is the best we've seen so far.
                     if val_loss < best_val_loss:
                         self.model.save(savefile)
                         best_val_loss = val_loss
+
+                    print('best loss so far {:5.2f}'.format(best_val_loss))
 
                     ###############################################################################
                     # print info
@@ -300,7 +304,7 @@ class LanguageModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss = 0
+        total_loss: nd.NDArray = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)
@@ -310,10 +314,10 @@ class LanguageModelTrainer:
             data, targets = self._get_batch(data_source, i, sequence_length)
             prediction, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
             output_flat = prediction.reshape(-1, ntokens)
-            total_loss += self.loss_function(output_flat, targets).sum()
+            total_loss += len(data) * self.loss_function(output_flat, targets).mean()
             hidden = self._repackage_hidden(hidden)
             cell = cell.detach()
-        return total_loss / len(data_source)
+        return total_loss.asscalar() / len(data_source)
 
     @staticmethod
     def _batchify(data: nd.NDArray, batch_size):
