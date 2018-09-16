@@ -12,6 +12,7 @@ from typing import Sequence, Tuple, Dict, List
 import mxnet as mx
 import mxnet.ndarray as nd
 from elit.nlp.dep.common.utils import make_sure_path_exists
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 
 class StringIdMapper(object):
@@ -283,7 +284,7 @@ class Dictionary:
         d = Dictionary()
         files = []
         if os.path.isdir(path):
-            files = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+            files = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.startswith('train_split')]
         elif os.path.isfile(path):
             files = [path]
         if len(files) == 0:
@@ -305,7 +306,7 @@ class TextCorpus(object):
         self.train_path = os.path.join(path, 'train')
 
         self.train_files = sorted(
-            [f for f in os.listdir(self.train_path) if os.path.isfile(os.path.join(self.train_path, f))])
+            [f for f in os.listdir(self.train_path) if os.path.isfile(os.path.join(self.train_path, f)) and f.startswith('train_split')])
 
         if dictionary is None:
             dictionary = Dictionary.create(self.train_path)
@@ -314,13 +315,14 @@ class TextCorpus(object):
 
         self.current_train_file_index = len(self.train_files)
 
-        self.valid = self.charsplit(os.path.join(path, 'valid.txt'),
-                                    forward=forward,
-                                    split_on_char=self.split_on_char)
+        with mx.Context(mxnet_prefer_gpu()):
+            self.valid = self.charsplit(os.path.join(path, 'valid.txt'),
+                                        forward=forward,
+                                        split_on_char=self.split_on_char)
 
-        self.test = self.charsplit(os.path.join(path, 'test.txt'),
-                                   forward=forward,
-                                   split_on_char=self.split_on_char)
+            self.test = self.charsplit(os.path.join(path, 'test.txt'),
+                                       forward=forward,
+                                       split_on_char=self.split_on_char)
 
     @property
     def is_last_slice(self) -> bool:
@@ -349,7 +351,7 @@ class TextCorpus(object):
 
         """Tokenizes a text file on character basis."""
         assert os.path.exists(path)
-        print('loading {}'.format(path))
+        # print('loading {}'.format(path))
 
         #
         with open(path, 'r', encoding="utf-8") as f:
@@ -368,9 +370,9 @@ class TextCorpus(object):
                 if expand_vocab:
                     for char in chars:
                         self.dictionary.add_item(char)
-                if tokens % 1000000:
-                    print('\r{}m tokens'.format(tokens // 1000000), end='')
-        print('\nconverting to tensor...')
+                # if tokens % 1000000:
+                #     print('\r{}m tokens'.format(tokens // 1000000), end='')
+        # print('\nconverting to tensor...')
 
         def percent(current, total):
             log_every = math.ceil(total / 10000)
@@ -396,7 +398,7 @@ class TextCorpus(object):
                         if token >= tokens: break
                         id_list[token] = self.dictionary.get_idx_for_item(char)
                         token += 1
-                    percent(token, tokens)
+                    # percent(token, tokens)
                 ids = nd.array(id_list)
         else:
             # charsplit file content
@@ -415,7 +417,7 @@ class TextCorpus(object):
                         if token >= tokens: break
                         id_list[token] = self.dictionary.get_idx_for_item(char)
                         token -= 1
-                    percent(token, tokens)
+                    # percent(token, tokens)
 
         return ids
 
@@ -484,4 +486,4 @@ def make_language_model_dataset(text_file, output_folder):
 
 
 if __name__ == '__main__':
-    make_language_model_dataset('data/test.txt', 'data/wiki')
+    make_language_model_dataset('/Users/hankcs/Downloads/test.txt', 'data/wiki-debug')
