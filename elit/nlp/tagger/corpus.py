@@ -224,7 +224,7 @@ class Dictionary:
         :param item: a string for which to assign an id
         :return: ID of string
         """
-        item = item.encode('utf-8')
+        # item = item.encode('utf-8')
         if item not in self.item2idx:
             self.idx2item.append(item)
             self.item2idx[item] = len(self.idx2item) - 1
@@ -236,23 +236,20 @@ class Dictionary:
         :param item: string for which ID is requested
         :return: ID of string, otherwise 0
         """
-        item = item.encode('utf-8')
-        if item in self.item2idx.keys():
-            return self.item2idx[item]
-        else:
-            return 0
+        # item = item.encode('utf-8')
+        return self.item2idx.get(item, 0)
 
     def get_items(self) -> List[str]:
         items = []
         for item in self.idx2item:
-            items.append(item.decode('UTF-8'))
+            items.append(item)
         return items
 
     def __len__(self) -> int:
         return len(self.idx2item)
 
     def get_item_for_index(self, idx):
-        return self.idx2item[idx].decode('UTF-8')
+        return self.idx2item[idx]
 
     def save(self, savefile):
         import pickle
@@ -373,20 +370,20 @@ class TextCorpus(object):
                         self.dictionary.add_item(char)
                 if tokens % 1000000:
                     print('\r{}m tokens'.format(tokens // 1000000), end='')
-        print()
+        print('\nconverting to tensor...')
 
         def percent(current, total):
             log_every = math.ceil(total / 10000)
             if current % log_every == 0:
-                print('\r%.2f%%' % (current / total), end='')
+                print('\r%.2f%%' % (current / total) * 100, end='')
             elif total - current < 2:
-                print('\r100%%')
+                print('\r100%   ')
 
         if forward:
             # charsplit file content
             with open(path, 'r', encoding="utf-8") as f:
-                ids = nd.zeros((tokens), dtype='int')
                 token = 0
+                id_list = [None] * tokens
                 for line in f:
                     line = self.random_casechange(line)
 
@@ -397,13 +394,14 @@ class TextCorpus(object):
 
                     for char in chars:
                         if token >= tokens: break
-                        ids[token] = self.dictionary.get_idx_for_item(char)
+                        id_list[token] = self.dictionary.get_idx_for_item(char)
                         token += 1
                     percent(token, tokens)
+                ids = nd.array(id_list)
         else:
             # charsplit file content
             with open(path, 'r', encoding="utf-8") as f:
-                ids = nd.zeros((tokens), dtype='int')
+                id_list = [None] * tokens
                 token = tokens - 1
                 for line in f:
                     line = self.random_casechange(line)
@@ -415,7 +413,7 @@ class TextCorpus(object):
 
                     for char in chars:
                         if token >= tokens: break
-                        ids[token] = self.dictionary.get_idx_for_item(char)
+                        id_list[token] = self.dictionary.get_idx_for_item(char)
                         token -= 1
                     percent(token, tokens)
 
