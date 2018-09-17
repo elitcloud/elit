@@ -110,13 +110,13 @@ class LanguageModel(nn.HybridBlock):
     @classmethod
     def load_language_model(cls, model_file):
         config = Config.load(os.path.join(model_file, 'config.pkl'))
-        model = LanguageModel(config['dictionary'],
-                              config['is_forward_lm'],
-                              config['hidden_size'],
-                              config['nlayers'],
-                              config['embedding_size'],
-                              config['nout'],
-                              config['dropout'])
+        model = LanguageModel(config.dictionary,
+                              config.is_forward_lm,
+                              config.hidden_size,
+                              config.nlayers,
+                              config.embedding_size,
+                              config.nout,
+                              config.dropout)
         model.load_parameters(os.path.join(model_file, 'model.bin'))
         return model
 
@@ -366,3 +366,4 @@ if __name__ == '__main__':
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
+    # LanguageModel.load_language_model('data/model/lm')
