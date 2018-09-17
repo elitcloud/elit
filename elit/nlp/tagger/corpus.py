@@ -284,7 +284,8 @@ class Dictionary:
         d = Dictionary()
         files = []
         if os.path.isdir(path):
-            files = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.startswith('train_split')]
+            files = [os.path.join(path, f) for f in os.listdir(path) if
+                     os.path.isfile(os.path.join(path, f)) and f.startswith('train_split')]
         elif os.path.isfile(path):
             files = [path]
         if len(files) == 0:
@@ -306,7 +307,8 @@ class TextCorpus(object):
         self.train_path = os.path.join(path, 'train')
 
         self.train_files = sorted(
-            [f for f in os.listdir(self.train_path) if os.path.isfile(os.path.join(self.train_path, f)) and f.startswith('train_split')])
+            [f for f in os.listdir(self.train_path) if
+             os.path.isfile(os.path.join(self.train_path, f)) and f.startswith('train_split')])
 
         if dictionary is None:
             dictionary = Dictionary.create(self.train_path)
@@ -372,6 +374,7 @@ class TextCorpus(object):
                         self.dictionary.add_item(char)
                 # if tokens % 1000000:
                 #     print('\r{}m tokens'.format(tokens // 1000000), end='')
+
         # print('\nconverting to tensor...')
 
         def percent(current, total):
@@ -486,4 +489,4 @@ def make_language_model_dataset(text_file, output_folder):
 
 
 if __name__ == '__main__':
-    make_language_model_dataset('/Users/hankcs/Downloads/test.txt', 'data/wiki-debug')
+    make_language_model_dataset('data/wiki/test.txt', 'data/wiki-debug')
