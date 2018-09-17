@@ -178,7 +178,7 @@ class LanguageModelTrainer:
 
         os.makedirs(base_path, exist_ok=True)
         loss_txt = os.path.join(base_path, 'loss.txt')
-        savefile = os.path.join(base_path, 'best-lm.pt')
+        savefile = base_path
 
         try:
             with mx.Context(mxnet_prefer_gpu()):
