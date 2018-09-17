@@ -20,7 +20,7 @@ from typing import List
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 
-class LanguageModel(nn.Block):
+class LanguageModel(nn.HybridBlock):
     """
     Container module with an encoder, a recurrent module, and a decoder.
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
@@ -68,7 +68,7 @@ class LanguageModel(nn.Block):
     def set_hidden(self, hidden):
         self.hidden = hidden
 
-    def forward(self, input, hidden, cell, ordered_sequence_lengths=None):
+    def hybrid_forward(self, F, input, hidden, cell):
         encoded = self.encoder(input)
         emb = self.drop(encoded)
 
@@ -80,9 +80,8 @@ class LanguageModel(nn.Block):
 
         output: nd.NDArray = self.drop(output)
 
-        decoded = self.decoder(output.reshape(-1, output.shape[2]))
-
-        return decoded.reshape(output.shape[0], output.shape[1], decoded.shape[1]), output, hidden, cell
+        decoded = self.decoder(output.reshape((-1, self.hidden_size)))
+        return decoded, output, hidden, cell
 
     def get_representation(self, strings: List[str], detach_from_lm=True):
 
@@ -157,6 +156,7 @@ class LanguageModelTrainer:
 
     def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
         self.model: LanguageModel = model
+        model.hybridize()
         self.corpus: TextCorpus = corpus
         self.test_mode: bool = test_mode
 
@@ -231,7 +231,7 @@ class LanguageModelTrainer:
 
                         # do the forward pass in the model
                         with autograd.record():
-                            output, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
+                            output, rnn_output, hidden, cell = self.run(data, hidden, cell)
                             # try to predict the targets
                             loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
@@ -297,6 +297,10 @@ class LanguageModelTrainer:
             print('-' * 89)
             print('Exiting from training early')
 
+    def run(self, data, hidden, cell):
+        decoded, output, hidden, cell = self.model(data, hidden, cell)
+        return decoded.reshape((data.shape[0], data.shape[1], len(self.model.dictionary))), output, hidden, cell
+
     @staticmethod
     def _safe_exp(val_loss):
         return float('nan') if val_loss > 100 else math.exp(val_loss)
@@ -312,7 +316,7 @@ class LanguageModelTrainer:
 
         for i in range(0, len(data_source) - 1, sequence_length):
             data, targets = self._get_batch(data_source, i, sequence_length)
-            prediction, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
+            prediction, rnn_output, hidden, cell = self.run(data, hidden, cell)
             output_flat = prediction.reshape(-1, ntokens)
             total_loss += len(data) * self.loss_function(output_flat, targets).mean().asscalar()
             hidden = self._repackage_hidden(hidden)
@@ -351,7 +355,7 @@ class LanguageModelTrainer:
 
 
 if __name__ == '__main__':
-    corpus = TextCorpus('data/wiki/')
+    corpus = TextCorpus('data/wiki-debug/')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
                                    hidden_size=1024,
