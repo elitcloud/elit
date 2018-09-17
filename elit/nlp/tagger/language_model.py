@@ -304,7 +304,7 @@ class LanguageModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss: nd.NDArray = 0
+        total_loss: float = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)
@@ -314,10 +314,10 @@ class LanguageModelTrainer:
             data, targets = self._get_batch(data_source, i, sequence_length)
             prediction, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
             output_flat = prediction.reshape(-1, ntokens)
-            total_loss += len(data) * self.loss_function(output_flat, targets).mean()
+            total_loss += len(data) * self.loss_function(output_flat, targets).mean().asscalar()
             hidden = self._repackage_hidden(hidden)
             cell = cell.detach()
-        return total_loss.asscalar() / len(data_source)
+        return total_loss / len(data_source)
 
     @staticmethod
     def _batchify(data: nd.NDArray, batch_size):
@@ -351,7 +351,7 @@ class LanguageModelTrainer:
 
 
 if __name__ == '__main__':
-    corpus = TextCorpus('data/wiki-debug/')
+    corpus = TextCorpus('data/wiki/')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
                                    hidden_size=1024,
