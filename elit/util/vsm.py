@@ -16,6 +16,7 @@
 import abc
 import inspect
 import logging
+from types import SimpleNamespace
 from typing import List, Optional, Union, Sequence
 
 import fastText
@@ -181,7 +182,8 @@ class Word2Vec(VectorSpaceModel):
         """
         logging.info('Word2Vec')
         logging.info('- model: %s' % filepath)
-        self.model = KeyedVectors.load(filepath) if filepath.lower().endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
+        self.model = KeyedVectors.load(filepath) if filepath.lower().endswith(
+            '.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
         dim = self.model.syn0.shape[1]
         super().__init__(dim)
         logging.info('- vocab = %d, dim = %d' % (len(self.model.vocab), dim))
@@ -254,3 +256,9 @@ def x_extract(index: int, offset: int, embedding_list: Sequence[np.ndarray], pad
     """
     i = index + offset
     return embedding_list[i] if 0 <= i < len(embedding_list) else pad
+
+
+def init_vsm(l: list) -> SimpleNamespace:
+    model, key, path = l
+    model = Word2Vec if model == 'word2vec' else FastText
+    return SimpleNamespace(model=model(path), key=key)

@@ -48,7 +48,8 @@ class Sentence(dict):
         super().__init__()
         self._iter = -1
 
-        if d is not None: self.update(d)
+        if d is not None:
+            self.update(d)
         self.update(kwargs)
         self._tokens = self.setdefault(TOK, [])
 
@@ -824,13 +825,7 @@ class Node(object):
         :return: the list of second order elements according to the getter.
         :rtype: list
         """
-        return list(
-            itertools.chain.from_iterable(
-                list(
-                    filter(
-                        lambda n: getattr(
-                            n, getter) if n is not self else None, getattr(
-                            self, getter)))))
+        return list(itertools.chain.from_iterable(list(filter(lambda n: getattr(n, getter) if n is not self else None, getattr(self, getter)))))
 
     def _siblings(self, left_node, right_node):
         """
@@ -853,7 +848,7 @@ def to_out(key: str) -> str:
     return key + '-out'
 
 
-class BILOU:
+class BILOU(object):
     B = 'B'  # beginning
     I = 'I'  # inside
     L = 'L'  # last
@@ -867,7 +862,8 @@ class BILOU:
         :param fix: if True, fixes potential mismatches in BILOU (see :meth:`heuristic_fix`).
         :return: a list of tuples where each tuple contains (begin index (inclusive), end index (exclusive), label) of the chunk.
         """
-        if fix: cls.heuristic_fix(tags)
+        if fix:
+            cls.heuristic_fix(tags)
         chunks = []
         begin = -1
 
@@ -938,7 +934,8 @@ class BILOU:
                 elif c == cls.L:
                     fix(i, pt, ct, cls.B, cls.B)  # UL -> BL or UB
 
-        for idx in range(1, len(tags)): aux(idx)
+        for idx in range(1, len(tags)):
+            aux(idx)
         prev = tags[-1][0]
 
         if prev == cls.B:

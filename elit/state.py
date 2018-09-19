@@ -61,9 +61,7 @@ class NLPState(abc.ABC):
         """
         Initializes the state of the input document.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def process(self, *args):
@@ -71,18 +69,14 @@ class NLPState(abc.ABC):
         :param args: parameters to be applied to the current state.
         Applies the parameters to the current state, then processes onto the next state.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def has_next(self) -> bool:
         """
         :return: ``True`` if there exists the next state to be processed; otherwise, ``False``.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @property
     def x(self) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
@@ -90,9 +84,7 @@ class NLPState(abc.ABC):
         :return: the feature vector or the tuple of feature vectors extracted from the current state.
         :rtype: numpy.ndarray or tuple(numpy.ndarray, ....)
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @property
     @abc.abstractmethod
@@ -101,6 +93,4 @@ class NLPState(abc.ABC):
         :return: the class ID of the gold label for the current state if available; otherwise ``None``.
         :rtype: int or tuple(int, ....) or None
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))

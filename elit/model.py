@@ -18,126 +18,137 @@ import inspect
 from types import SimpleNamespace
 from typing import Optional, Sequence, List
 
-import mxnet as mx
 from mxnet import gluon, nd
-from mxnet.ndarray import NDArray
 
-__author__ = 'Jinho D. Choi'
+__author__ = 'Jinho D. Choi, Gary Lai'
 
 
-class NLPModel(gluon.Block):
+class NLPModel(gluon.HybridBlock):
     """
     :class:`NLPModel` is an abstract class providing helper methods to implement a neural network model.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, input_config, output_config,
+                 fuse_conv_config=None, ngram_conv_config=None,  hidden_configs=None, **kwargs):
         super().__init__(**kwargs)
+        # initialize
+        self.input_layer = self._init_input_layer(input_config)
+        self.output_layer = self._init_output_layer(output_config)
+        self.fuse_conv_layer = self._init_fuse_conv_layer(fuse_conv_config)
+        self.ngram_conv_layers = self._init_ngram_conv_layers(ngram_conv_config)
+        self.hidden_layers = self._init_hidden_layers(hidden_configs)
 
     @abc.abstractmethod
-    def forward(self, *args):
-        raise NotImplementedError(
-            '%s.%s()' %
-            (self.__class__.__name__, inspect.stack()[0][3]))
+    def hybrid_forward(self, F, x, *args, **kwargs):
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
-    # ======================================== create_layers =================
+    # ======================================== create_layers ========================================
 
-    def init_input_layer(self, config: SimpleNamespace) -> SimpleNamespace:
+    def _init_input_layer(self, config: SimpleNamespace) -> SimpleNamespace:
         """
         :param config: the output of :meth:`FFNNModel.namespace_input_layer`.
         :return: the namespace of (dropout) for the input layer.
         """
-        layer = SimpleNamespace(dropout=mx.gluon.nn.Dropout(config.dropout))
+        layer = SimpleNamespace(
+            col=config.col,
+            row=config.row,
+            dropout=gluon.nn.Dropout(config.dropout)
+        )
 
         with self.name_scope():
-            self.__setattr__('input_dropout', layer.dropout)
+            self.__setattr__(layer.dropout.name, layer.dropout)
 
         return layer
 
-    def init_output_layer(self, config: SimpleNamespace) -> SimpleNamespace:
+    def _init_output_layer(self, config: SimpleNamespace) -> SimpleNamespace:
         """
         :param config: the output of :meth:`FFNNModel.namespace_output_layer`.
         :return: the namespace of (dense) for the output layer.
         """
-        layer = SimpleNamespace(dense=mx.gluon.nn.Dense(config.dim))
+        layer = SimpleNamespace(dense=gluon.nn.Dense(config.num_class))
 
         with self.name_scope():
-            self.__setattr__('output', layer.dense)
+            self.__setattr__(layer.dense.name, layer.dense)
 
         return layer
 
-    def init_fuse_conv_layer(self, config: SimpleNamespace, input_col: int) -> SimpleNamespace:
+    def _init_fuse_conv_layer(self, config: SimpleNamespace) -> SimpleNamespace:
         """
         :param config: the output of :meth:`FFNNModel.namespace_input_conv_layer`.
         :param input_col: the column dimension of the input matrix.
         :return: the namespace of (conv, dropout) for the fuse convolution layer.
         """
+        if config is None:
+            return None
         layer = SimpleNamespace(
-            conv=mx.gluon.nn.Conv2D(
+            conv=gluon.nn.Conv2D(
                 channels=config.filters,
-                kernel_size=(1, input_col),
-                strides=(1, input_col),
+                kernel_size=(1, self.input_layer.col),
+                strides=(1, self.input_layer.col),
                 activation=config.activation),
-            dropout=mx.gluon.nn.Dropout(config.dropout))
+            dropout=gluon.nn.Dropout(config.dropout))
 
         with self.name_scope():
-            self.__setattr__('de_conv', layer.conv)
-            self.__setattr__('de_dropout', layer.dropout)
+            self.__setattr__(layer.conv.name, layer.conv)
+            self.__setattr__(layer.dropout.name, layer.dropout)
 
         return layer
 
-    def init_ngram_conv_layer(self, config: SimpleNamespace, input_row: int, input_col: int) -> List[SimpleNamespace]:
-        """
-        :param config: the output of :meth:`FFNNModel.namespace_ngram_conv_layer`.
-        :param input_row: the row dimension of the input matrix.
-        :param input_col: the column dimension of the input matrix.
-        :return: the namespace of (conv, dropout, pool) for the n-gram convolution layer.
-        """
+    def _init_ngram_conv_layers(self, config: SimpleNamespace) -> List[SimpleNamespace]:
 
-        def pool(pool_type: str, n: int):
-            if pool_type is None:
-                return None
-            p = mx.gluon.nn.MaxPool2D if pool_type == 'max' else mx.gluon.nn.AvgPool2D
-            return p(pool_size=(n, 1), strides=(n, 1))
+        if config is None:
+            return None
 
-        def conv(n: int):
+        def conv(ngram):
+            return gluon.nn.Conv2D(
+                channels=config.filters,
+                kernel_size=(ngram, self.input_layer.col if self.fuse_conv_layer is None else self.fuse_conv_layer._channels),
+                strides=(1, config.input_col),
+                activation=config.activation)
+
+        def pool(ngram):
+            pool_model = gluon.nn.MaxPool2D if config.pool == 'max' else gluon.nn.AvgPool2D
+            return pool_model(pool_size=(ngram, 1), strides=(ngram, 1))
+
+        def layers(ngram):
             layer = SimpleNamespace(
-                conv=mx.gluon.nn.Conv2D(
-                    channels=config.filters,
-                    kernel_size=(n, input_col),
-                    strides=(1, input_col),
-                    activation=config.activation),
-                dropout=mx.gluon.nn.Dropout(config.dropout),
-                pool=pool(config.pool, input_row - n + 1)
+                conv=conv(ngram),
+                dropout=gluon.nn.Dropout(config.dropout),
+                pool=pool(ngram) if config.pool is not None else None
             )
 
             with self.name_scope():
-                self.__setattr__('ngram_conv_%d' % n, layer.conv)
-                self.__setattr__('ngram_conv_%d_dropout' % n, layer.dropout)
-                if layer.pool:
-                    self.__setattr__('ngram_conv_%d_pool' % n, layer.pool)
+                self.__setattr__(layer.conv.name, layer.conv)
+                self.__setattr__(layer.dropout.name, layer.dropout)
+                if config.pool is not None:
+                    self.__setattr__(layer.pool.name, layer.pool)
 
             return layer
 
-        return [conv(ngram) for ngram in config.ngrams]
+        return [layers(ngram) for ngram in config.ngrams]
 
-    def init_hidden_layers(self, configs: Sequence[SimpleNamespace]) -> List[SimpleNamespace]:
+    def _init_hidden_layers(self, configs: Sequence[SimpleNamespace]) -> List[SimpleNamespace]:
         """
         :param configs: the sequence of outputs of :meth:`FFNNModel.namespace_hidden_layers`.
         :return: the namespace of (dense, dropout) for the hidden layers.
         """
 
-        def hidden(n: int, c: SimpleNamespace) -> SimpleNamespace:
+        if configs is None:
+            return None
+
+        def hidden(c: SimpleNamespace) -> SimpleNamespace:
             layer = SimpleNamespace(
-                dense=mx.gluon.nn.Dense(units=c.dim, activation=c.activation),
-                dropout=mx.gluon.nn.Dropout(c.dropout))
+                dense=gluon.nn.Dense(units=c.dim,
+                                     activation=c.activation),
+                dropout=gluon.nn.Dropout(c.dropout))
 
             with self.name_scope():
-                self.__setattr__('hidden_%d' % n, layer.dense)
-                self.__setattr__('hidden_%d_dropout' % n, layer.dropout)
+                self.__setattr__('hidden_{}'.format(layer.dense.name), layer.dense)
+                self.__setattr__('hidden_{}'.format(layer.dropout.name), layer.dropout)
 
             return layer
 
-        return [hidden(i, config) for i, config in enumerate(configs)]
+        return [hidden(config) for config in configs]
 
 
 class FFNNModel(NLPModel):
@@ -161,46 +172,34 @@ class FFNNModel(NLPModel):
         :param ngram_conv_config: the configuration for the n-gram convolution layer; see :meth:`FFNNModel.namespace_ngram_conv_layer`.
         :param hidden_configs: the configurations for the hidden layers; see :meth:`FFNNModel.namespace_hidden_layer`.
         """
-        super().__init__(**kwargs)
+        super().__init__(input_config, output_config, fuse_conv_config, ngram_conv_config, hidden_configs, **kwargs)
 
-        # initialize
-        self._input = self.init_input_layer(input_config)
+    def hybrid_forward(self, F, x, *args, **kwargs):
+        # x: batch_size, window size, features
 
-        if fuse_conv_config:
-            self._fuse_conv = self.init_fuse_conv_layer(
-                fuse_conv_config, input_config.col)
-            col = fuse_conv_config.filters
-        else:
-            self._fuse_conv = None
-            col = input_config.col
-
-        self._ngram_convs = self.init_ngram_conv_layer(ngram_conv_config, input_config.row, col) if ngram_conv_config else None
-        self._hiddens = self.init_hidden_layers(hidden_configs) if hidden_configs else None
-        self._output = self.init_output_layer(output_config)
-
-    def forward(self, x: NDArray) -> NDArray:
         # input layer
-        x = self._input.dropout(x)
+        x = self.input_layer.dropout(x)
 
         # dimensionality reduction layer
-        if self._fuse_conv:
-            x = x.reshape((0, 1, x.shape[1], x.shape[2]))
-            x = self._fuse_conv.dropout(self._fuse_conv.conv(x))
+        if self.fuse_conv_layer is not None:
+            x = F.reshape(x, (0, 1, self.input_layer.row, self.input_layer.col))
+            x = self.fuse_conv_layer.dropout(self.fuse_conv_layer.conv(x))
 
         # convolution layer
-        if self._ngram_convs:
-            x = mx.nd.transpose(
-                x, (0, 3, 2, 1)) if self._fuse_conv else x.reshape(
-                (0, 1, x.shape[1], x.shape[2]))
-            t = [c.dropout(c.pool(c.conv(x))) if c.pool else c.dropout(c.conv(x).reshape((0, -1))) for c in self._ngram_convs]
-            x = nd.concat(*t, dim=1)
+        if self.ngram_conv_layers is not None:
+            if self.fuse_conv_layer is not None:
+                x = F.transpose(x, (0, 3, 2, 1))
+            else:
+                x = F.reshape(x, (0, 1, self.input_layer.row, self.input_layer.col))
+            c = [layer.dropout(layer.pool(layer.conv(x))) if layer.pool else layer.dropout(layer.conv(x).reshape((0, -1))) for layer in self.ngram_conv_layers]
+            x = F.concat(*c, dim=1)
 
         # hidden layers
-        if self._hiddens:
-            for h in self._hiddens:
-                x = h.dense(x)
-                x = h.dropout(x)
+        if self.hidden_layers is not None:
+            for layer in self.hidden_layers:
+                x = layer.dense(x)
+                x = layer.dropout(x)
 
         # output layer
-        output = self._output.dense(x)
-        return output
+        x = self.output_layer.dense(x)
+        return x

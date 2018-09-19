@@ -19,10 +19,11 @@ import glob
 import json
 import logging
 import os
-from typing import List, Dict, Callable, Sequence, Any, Tuple, Generator
+from typing import List, Dict, Callable, Sequence, Any, Tuple
 
 from elit.state import NLPState
 from elit.util.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
+from elit.util.vsm import LabelMap
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
@@ -38,10 +39,10 @@ def tsv_cols(tsv_heads: list) -> Dict[str, int]:
 
 def tsv_reader(tsv_directory: str,
                cols: Dict[str, int],
-               key: str = None) -> Tuple[List[Document], int]:
+               key: str = None) -> Tuple[List[Document], LabelMap]:
     documents = []
     wc = sc = 0
-    num_class = set()
+    label_map = LabelMap()
 
     if TOK not in cols:
         raise ValueError('The column index of "%s" must be specified' % TOK)
@@ -85,14 +86,14 @@ def tsv_reader(tsv_directory: str,
             sentences.append(Sentence(fields))
         fin.close()
 
-        [[num_class.add(i) for i in sent[to_gold(key)]]for sent in sentences]
+        [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
         [sent.update({SEN_ID: i}) for i, sent in enumerate(sentences)]
         sc += len(sentences)
         documents.append(Document(sen=sentences))
 
     [sent.update({DOC_ID: i}) for i, sent in enumerate(documents)]
     logging.info('- dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
-    return documents, len(num_class)
+    return documents, label_map
 
 
 def json_reader(filepath: str,

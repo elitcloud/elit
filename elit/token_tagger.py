@@ -14,182 +14,125 @@
 # limitations under the License.
 # ========================================================================
 import argparse
+import datetime
 import json
 import logging
 import pickle
 import sys
+import time
 from types import SimpleNamespace
-from typing import Tuple, Optional, Union, Sequence
+from typing import Tuple, Optional, Sequence, List
 
 import mxnet as mx
-import numpy as np
-from mxnet.ndarray import NDArray
-from pkg_resources import resource_filename
+from mxnet import nd, gluon, autograd
+from mxnet.gluon import Trainer
+from mxnet.gluon.data import Dataset, DataLoader
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
-from elit.eval import Accuracy, F1
+from elit.eval import MxF1
 from elit.model import FFNNModel
-from elit.state import NLPState
-from elit.util.io import pkl, gln, group_states, json_reader, tsv_reader
-from elit.util.iterator import SequenceIterator, BatchIterator
-from elit.util.structure import Document, to_gold, BILOU
-from elit.util.vsm import LabelMap, x_extract, Position2Vec
+from elit.util.io import pkl, gln, json_reader, tsv_reader
+from elit.util.mx import mxloss
+from elit.util.structure import Document, to_gold, BILOU, TOK, Sentence, SEN
+from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi'
 
 
-# ======================================== State =========================
+# ======================================== Dataset ========================================
+class TokenTaggerDataset(Dataset):
 
-class TokenTaggerState(NLPState):
-    """
-    :class:`TokenTaggingState` generates a state per token using the one-pass left-to-right decoding strategy
-    and predicts tags for individual tokens.
-    """
-
-    def __init__(self,
-                 document: Document,
-                 key: str,
+    def __init__(self, vsms: List[SimpleNamespace],
+                 key,
+                 docs,
+                 feature_windows,
                  label_map: LabelMap,
-                 vsm_list: Sequence[SimpleNamespace],
-                 feature_windows: Tuple[int, ...],
-                 padout: np.ndarray = None):
-        """
-        :param document: the input document.
-        :param key: the key to each sentence in the document where predicted tags are to be saved.
-        :param label_map: collects labels during training and maps them to unique class IDs.
-        :param vsm_list: the sequence of namespace(:class:`elit.vsm.VectorSpaceModel`, key).
-        :param feature_windows: the contextual windows for feature extraction.
-        :param padout: the zero-vector whose dimension is the number of classes; if not ``None``, label embeddings are used as features.
-        """
-        super().__init__(document, key)
-        self.label_map = label_map
-        self.feature_windows = feature_windows
-        self.padout = padout
+                 ctx=None,
+                 transform=None):
+        self._vsms = vsms
+        self._key = key
+        self._doc = docs
+        self._feature_windows = feature_windows
+        self._label_map = label_map
+        self._transform = transform
+        self._ctx = ctx
+        self._init_data(docs)
 
-        # initialize gold-standard labels if available
-        key_gold = to_gold(key)
-        self.gold = [s[key_gold] for s in document] if key_gold in document.sentences[0] else None
+    def __getitem__(self, idx):
+        x, y = self._data[idx]
+        if self._transform is not None:
+            return self._transform(x, y)
+        else:
+            return x, y
 
-        # initialize output and predicted tags
-        self.output = []
-        self.pred = []
+    def __len__(self):
+        return len(self._data)
 
-        # initialize embeddings
-        self.embs = [(vsm.model.sentence_embedding_list(document, vsm.key), vsm.model.pad) for vsm in vsm_list]
-        if padout is not None:
-            self.embs.append((self.output, padout))
-
-        # the followings are initialized in self.init()
-        self.sen_id = 0
-        self.tok_id = 0
-        self.init()
-
-    def init(self):
-        del self.output[:]
-        del self.pred[:]
-        self.sen_id = 0
-        self.tok_id = 0
-
-        for s in self.document:
-            self.output.append([self.padout] * len(s))
-            self.pred.append([None] * len(s))
-            s[self.key] = self.pred[-1]
-
-    def process(self, output: Optional[NDArray] = None):
-        """
-        :param output: the predicted output of the current token.
-
-        Assigns the predicted output to the current token, then processes to the next token.
-        """
-        # apply the output to the current token
-        if output is not None:
-            self.output[self.sen_id][self.tok_id] = output.asnumpy()
-            self.pred[self.sen_id][self.tok_id] = self.label_map.argmax(output)
-
-        # process to the next token
-        self.tok_id += 1
-        if self.tok_id == len(self.document.sentences[self.sen_id]):
-            self.sen_id += 1
-            self.tok_id = 0
-
-    def has_next(self) -> bool:
-        """
-        :return: ``False`` if no more token is left to be tagged; otherwise, ``True``.
-        """
-        return 0 <= self.sen_id < len(self.document)
-
-    @property
-    def x(self) -> np.ndarray:
-        """
-        :return: the feature matrix of the current token.
-        """
-        l = ([x_extract(self.tok_id, w, emb[self.sen_id], pad) for w in self.feature_windows] for emb, pad in self.embs)
-        return np.column_stack(l)
-
-    @property
-    def y(self) -> Optional[int]:
-        """
-        :return: the class ID of the current token's gold-standard label if available; otherwise, None.
-        """
-        return self.label_map.add(self.gold[self.sen_id][self.tok_id]) if self.gold is not None else None
+    def _init_data(self, docs):
+        self._data = []
+        pad = nd.zeros(sum([vsm.model.dim for vsm in self._vsms]), ctx=self._ctx)
+        for doc in docs:
+            for sen in doc:
+                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self._vsms])]).reshape(0, -1)
+                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self._key)])):
+                    x = nd.stack(
+                        *[w[idx + window] if 0 <= (idx + window) < len(w) else pad for window in self._feature_windows])
+                    y = self._label_map.cid(label)
+                    self._data.append((x, y))
 
 
-# ======================================== EvalMetric ====================
+# # ======================================== EvalMetric ========================================
+#
+# class TokenAccuracy(Accuracy):
+#     def __init__(self, key: str):
+#         super().__init__()
+#         self.key = key
+#
+#     def update(self, document: Document):
+#         for sentence in document:
+#             gold = sentence[to_gold(self.key)]
+#             pred = sentence[self.key]
+#             self.correct += len([1 for g, p in zip(gold, pred) if g == p])
+#             self.total += len(sentence)
+#
+#
+# class ChunkF1(F1):
+#     def __init__(self, key: str):
+#         super().__init__()
+#         self.key = key
+#
+#     def update(self, document: Document):
+#         for sentence in document:
+#             gold = BILOU.to_chunks(sentence[to_gold(self.key)])
+#             pred = BILOU.to_chunks(sentence[self.key])
+#             self.correct += len(set.intersection(set(gold), set(pred)))
+#             self.p_total += len(pred)
+#             self.r_total += len(gold)
 
-class TokenAccuracy(Accuracy):
-    def __init__(self, key: str):
-        super().__init__()
-        self.key = key
 
-    def update(self, document: Document):
-        for sentence in document:
-            gold = sentence[to_gold(self.key)]
-            pred = sentence[self.key]
-            self.correct += len([1 for g, p in zip(gold, pred) if g == p])
-            self.total += len(sentence)
-
-
-class ChunkF1(F1):
-    def __init__(self, key: str):
-        super().__init__()
-        self.key = key
-
-    def update(self, document: Document):
-        for sentence in document:
-            gold = BILOU.to_chunks(sentence[to_gold(self.key)])
-            pred = BILOU.to_chunks(sentence[self.key])
-            self.correct += len(set.intersection(set(gold), set(pred)))
-            self.p_total += len(pred)
-            self.r_total += len(gold)
-
-
-# ======================================== Component =====================
+# ======================================== Component ========================================
 
 class TokenTagger(MXNetComponent):
     """
     :class:`TokenTagger` provides an abstract class to implement a tagger that predicts a tag for every token.
     """
 
-    def __init__(self,
-                 ctx: mx.Context,
-                 vsm_path: list):
+    def __init__(self, ctx: mx.Context, vsm_path: list):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
-        :param vsm_list: the sequence of namespace(model, key),
+        :param vsms: the sequence of namespace(model, key),
                          where the key indicates the key of the values to retrieve embeddings for (e.g., tok).
         """
         super().__init__(ctx)
-        self.vsm_list = [self.namespace_vsm(n) for n in vsm_path]
+        self.vsms = [init_vsm(n) for n in vsm_path]
 
         # to be loaded/saved
         self.key = None
-        self.sequence = None
+        self.model = None
+        self.label_map = LabelMap()
         self.chunking = None
-        self.label_map = None
         self.feature_windows = None
-        self.position_embedding = None
-        self.padout = None
         self.input_config = None
         self.output_config = None
         self.fuse_conv_config = None
@@ -199,23 +142,16 @@ class TokenTagger(MXNetComponent):
 
     def __str__(self):
         s = ('Token Tagger',
-             '- type: %s' % ('chunking' if self.chunking else 'tagging'),
-             '- sequence: %r' % self.sequence,
              '- feature windows: %s' % str(self.feature_windows),
-             '- label embedding: %r' % (self.padout is not None),
-             '- position embedding: %r' % self.position_embedding,
              '- %s' % str(self.model))
         return '\n'.join(s)
 
     # override
     def init(self,
              key: str,
-             sequence: bool,
-             chunking: bool,
-             num_class: int,
              feature_windows: Tuple[int, ...],
-             position_embedding: bool,
-             label_embedding: bool,
+             label_map: LabelMap,
+             chunking: bool,
              input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
              output_config: Optional[SimpleNamespace] = None,
              fuse_conv_config: Optional[SimpleNamespace] = None,
@@ -224,15 +160,11 @@ class TokenTagger(MXNetComponent):
              initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
              **kwargs):
         """
-        :param output_config:
         :param key: the key to each sentence where the tags are to be saved.
-        :param sequence: if ``True``, run in sequence mode; otherwise, batch mode.
-        :param chunking: if ``True``, run chunking instead of tagging.
-        :param num_class: the number of classes (part-of-speech tags).
         :param feature_windows: the content windows for feature extraction.
-        :param position_embedding: if ``True``, use position embeddings as features.
-        :param label_embedding: if ``True``, use label embeddings as features.
+        :param label_map:
         :param input_config: the dropout rate to be applied to the input layer.
+        :param output_config:
         :param fuse_conv_config: the configuration for the fuse convolution layer.
         :param ngram_conv_config: the configuration for the n-gram convolution layer.
         :param hidden_configs: the configurations for the hidden layers.
@@ -240,25 +172,17 @@ class TokenTagger(MXNetComponent):
         :param kwargs: extra parameters to initialize :class:`mxnet.gluon.Block`.
         """
         # configuration
-        if position_embedding:
-            self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
-
-        input_dim = sum([vsm.model.dim for vsm in self.vsm_list])
-        if label_embedding:
-            input_dim += num_class
-        input_config.col = input_dim
-        input_config.row = len(feature_windows)
-        output_config.dim = num_class
+        self.key = key
+        self.label_map = label_map
+        self.chunking = chunking
+        self.feature_windows = feature_windows
         self.initializer = initializer
 
+        input_config.col = sum([vsm.model.dim for vsm in self.vsms])
+        input_config.row = len(feature_windows)
+        output_config.num_class = len(self.label_map)
+
         # initialization
-        self.key = key
-        self.sequence = sequence
-        self.chunking = chunking
-        self.label_map = LabelMap()
-        self.feature_windows = feature_windows
-        self.position_embedding = position_embedding
-        self.padout = np.zeros(num_class).astype('float32') if label_embedding else None
         self.input_config = input_config
         self.output_config = output_config
         self.fuse_conv_config = fuse_conv_config
@@ -283,12 +207,9 @@ class TokenTagger(MXNetComponent):
         """
         with open(pkl(model_path), 'rb') as fin:
             self.key = pickle.load(fin)
-            self.sequence = pickle.load(fin)
-            self.chunking = pickle.load(fin)
             self.label_map = pickle.load(fin)
             self.feature_windows = pickle.load(fin)
-            self.position_embedding = pickle.load(fin)
-            self.padout = pickle.load(fin)
+            self.chunking = pickle.load(fin)
             self.input_config = pickle.load(fin)
             self.output_config = pickle.load(fin)
             self.fuse_conv_config = pickle.load(fin)
@@ -303,8 +224,6 @@ class TokenTagger(MXNetComponent):
             hidden_configs=self.hidden_configs,
             **kwargs)
         self.model.collect_params().load(gln(model_path), self.ctx)
-        if self.position_embedding:
-            self.vsm_list.append(SimpleNamespace(model=Position2Vec(), key=None))
         logging.info(self.__str__())
 
     # override
@@ -315,12 +234,9 @@ class TokenTagger(MXNetComponent):
         """
         with open(pkl(model_path), 'wb') as fout:
             pickle.dump(self.key, fout)
-            pickle.dump(self.sequence, fout)
-            pickle.dump(self.chunking, fout)
             pickle.dump(self.label_map, fout)
+            pickle.dump(self.chunking, fout)
             pickle.dump(self.feature_windows, fout)
-            pickle.dump(self.position_embedding, fout)
-            pickle.dump(self.padout, fout)
             pickle.dump(self.input_config, fout)
             pickle.dump(self.output_config, fout)
             pickle.dump(self.fuse_conv_config, fout)
@@ -329,27 +245,232 @@ class TokenTagger(MXNetComponent):
 
         self.model.collect_params().save(gln(model_path))
 
-    # override
-    def data_iterator(self, documents: Sequence[Document], batch_size: int, shuffle: bool,
-                      label: bool, **kwargs) -> Union[BatchIterator, SequenceIterator]:
-        if self.sequence:
-            def create(d: Document) -> TokenTaggerState:
-                return TokenTaggerState(d, self.key, self.label_map, self.vsm_list,
-                                        self.feature_windows, self.padout)
+    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
+              label_map: LabelMap = None,
+              epoch=100,
+              trn_batch=64,
+              dev_batch=2048,
+              loss_fn=gluon.loss.SoftmaxCrossEntropyLoss(),
+              optimizer='adagrad',
+              optimizer_params=None,
+              **kwargs):
+        if optimizer_params is None:
+            optimizer_params = {'learning_rate': 0.01}
 
-            states = group_states(documents, create)
+        log = ('Configuration',
+               '- context(s): {}'.format(self.ctx),
+               '- trn_batch size: {}'.format(trn_batch),
+               '- dev_batch size: {}'.format(dev_batch),
+               '- max epoch : {}'.format(epoch),
+               '- loss func : {}'.format(loss_fn),
+               '- optimizer : {} <- {}'.format(optimizer, optimizer_params))
+        logging.info('\n'.join(log))
+        logging.info("Load trn data")
+        trn_data = DataLoader(TokenTaggerDataset(self.vsms, self.key, trn_docs, self.feature_windows, self.label_map),
+                              batch_size=trn_batch,
+                              shuffle=True)
+        logging.info("Load dev data")
+        dev_data = DataLoader(TokenTaggerDataset(self.vsms, self.key, dev_docs, self.feature_windows, self.label_map),
+                              batch_size=dev_batch,
+                              shuffle=False)
+        trainer = Trainer(self.model.collect_params(),
+                          optimizer=optimizer,
+                          optimizer_params=optimizer_params)
+        smoothing_constant = .01
+        moving_loss = 0
+
+        logging.info('Training')
+        best_e, best_eval = -1, -1
+        self.model.hybridize()
+        for e in range(1, epoch + 1):
+            st = time.time()
+            for i, (data, label) in enumerate(trn_data):
+                data = data.as_in_context(self.ctx)
+                label = label.as_in_context(self.ctx)
+                with autograd.record():
+                    output = self.model(data)
+                    loss = loss_fn(output, label)
+                loss.backward()
+                trainer.step(data.shape[0])
+                ##########################
+                #  Keep a moving average of the losses
+                ##########################
+                curr_loss = nd.mean(loss).asscalar()
+                moving_loss = (curr_loss if ((i == 0) and (e == 0))
+                               else (1 - smoothing_constant) * moving_loss + smoothing_constant * curr_loss)
+            et = time.time()
+            if self.chunking:
+                trn_acc = self.chunk_accuracy(trn_data)
+                dev_acc = self.chunk_accuracy(dev_data)
+            else:
+                trn_acc = self.token_accuracy(trn_data)
+                dev_acc = self.token_accuracy(dev_data)
+            if best_eval < dev_acc:
+                best_e, best_eval = e, dev_acc
+                self.save(model_path=model_path)
+
+            desc = ("epoch: {}".format(e),
+                    "time: {}".format(datetime.timedelta(seconds=(et - st))),
+                    "loss: {}".format(moving_loss),
+                    "train_acc: {}".format(trn_acc),
+                    "dev_acc: {}".format(dev_acc),
+                    "best epoch: {}".format(best_e),
+                    "best eval: {}".format(best_eval))
+            logging.info(" ".join(desc))
+
+    def token_accuracy(self, data_iterator):
+        acc = mx.metric.Accuracy()
+        for data, label in data_iterator:
+            data = data.as_in_context(self.ctx)
+            label = label.as_in_context(self.ctx)
+            output = self.model(data)
+            preds = nd.argmax(output, axis=1)
+            acc.update(preds=preds, labels=label)
+        return acc.get()[1]
+
+    def chunk_accuracy(self, data_iterator):
+        acc = ChunkF1()
+        for data, label in data_iterator:
+            data = data.as_in_context(self.ctx)
+            label = label.as_in_context(self.ctx)
+            output = self.model(data)
+            predictions = nd.argmax(output, axis=1)
+            label = [self.label_map.get(cid=int(l.asscalar())) for l in label]
+            preds = [self.label_map.get(cid=int(pred.asscalar())) for pred in predictions]
+            acc.update(preds=preds, labels=label)
+        return acc.get()[1]
+
+
+class ChunkF1(MxF1):
+
+    def update(self, labels, preds):
+        labels = Sentence({SEN: labels})
+        preds = Sentence({SEN: preds})
+        gold = BILOU.to_chunks(labels)
+        pred = BILOU.to_chunks(preds)
+        self.correct += len(set.intersection(set(gold), set(pred)))
+        self.p_total += len(pred)
+        self.r_total += len(gold)
+
+
+class TokenTaggerConfig(object):
+
+    def __init__(self, source: dict):
+        self.source = source
+
+    @property
+    def reader(self):
+        return tsv_reader if self.source.get('reader', 'tsv').lower() == 'tsv' else json_reader
+
+    @property
+    def log_path(self):
+        return self.source.get('log_path', None)
+
+    @property
+    def tsv_heads(self):
+        return self.source['tsv_heads'] if self.source.get('reader', 'tsv').lower() == 'tsv' else None
+
+    @property
+    def sqeuence(self):
+        return self.source.get('sequence', False)
+
+    @property
+    def chunking(self):
+        return self.source.get('chunking', False)
+
+    @property
+    def feature_windows(self):
+        return self.source.get('feature_windows', [3, 2, 1, 0, -1, -2, -3])
+
+    @property
+    def position_embedding(self):
+        return self.source.get('position_embedding', False)
+
+    @property
+    def label_embedding(self):
+        return self.source.get('label_embedding', False)
+
+    @property
+    def input_config(self):
+        assert self.source.get('input_config') is not None
+
+        return SimpleNamespace(
+            dropout=self.source['input_config'].get('dropout', 0.0)
+        )
+
+    @property
+    def output_config(self):
+        assert self.source.get('output_config') is not None
+
+        return SimpleNamespace(
+            dropout=self.source['output_config'].get('dropout', 0.0)
+        )
+
+    @property
+    def fuse_conv_config(self):
+        if self.source.get('fuse_conv_config') is None:
+            return None
+        return SimpleNamespace(
+            filters=self.source['fuse_conv_config'].get('filters', 128),
+            activation=self.source['fuse_conv_config'].get('activation', 'relu'),
+            pool=self.source['fuse_conv_config'].get('pool', None),
+            dropout=self.source['fuse_conv_config'].get('dropout', 0.2)
+        )
+
+    @property
+    def ngram_conv_cofig(self):
+        if self.source.get('ngram_conv_config') is None:
+            return None
+        return SimpleNamespace(
+            ngrams=self.source['ngram_conv_config'].get('ngrams', [1, 2, 3, 4, 5]),
+            filters=self.source['ngram_conv_config'].get('filters', 128),
+            activation=self.source['ngram_conv_config'].get('activation', 'relu'),
+            pool=self.source['ngram_conv_config'].get('pool', None),
+            dropout=self.source['ngram_conv_config'].get('dropout', 0.2)
+        )
+
+    @property
+    def hidden_configs(self):
+        if self.source.get('hidden_configs') is None:
+            return None
+
+        def hidden_layer(config):
+            return SimpleNamespace(**config)
+
+        return [hidden_layer(config) for config in self.source.get('hidden_configs')]
+
+    @property
+    def ctx(self):
+        device = self.source.get('device', 'cpu')
+        core = self.source.get('device', 0)
+        if device.lower() == 'cpu':
+            return mx.cpu()
         else:
-            states = [TokenTaggerState(d, self.key, self.label_map, self.vsm_list, self.feature_windows) for d in documents]
+            return mx.gpu()
 
-        iterator = SequenceIterator if self.sequence else BatchIterator
-        return iterator(states, batch_size, shuffle, label, **kwargs)
+    @property
+    def epoch(self):
+        return self.source.get('epoch', 100)
 
-    # override
-    def eval_metric(self) -> Union[TokenAccuracy, ChunkF1]:
-        """
-        :return: :class:`ChunkF1` if self.chunking else :class:`TokenAccuracy`.
-        """
-        return ChunkF1(self.key) if self.chunking else TokenAccuracy(self.key)
+    @property
+    def trn_batch(self):
+        return self.source.get('trn_batch', 64)
+
+    @property
+    def dev_batch(self):
+        return self.source.get('dev_batch', 2048)
+
+    @property
+    def loss(self):
+        return mxloss(self.source.get('loss', 'softmaxcrossentropyloss'))
+
+    @property
+    def optimizer(self):
+        return self.source.get('optimizer', 'adagrad')
+
+    @property
+    def optimizer_params(self):
+        return self.source.get('optimizer_params', {})
 
 
 class TokenTaggerCLI(ComponentCLI):
@@ -360,109 +481,68 @@ class TokenTaggerCLI(ComponentCLI):
     @classmethod
     def train(cls):
         # create a arg-parser
-        parser = argparse.ArgumentParser(
-            description='Train a token tagger',
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser = argparse.ArgumentParser(description='Train a token tagger',
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         # data
         data_group = parser.add_argument_group("data arguments")
 
-        data_group.add_argument(
-            'trn_path',
-            type=str,
-            metavar='TRN_PATH',
-            help='filepath to the training data (input)')
-        data_group.add_argument(
-            'dev_path',
-            type=str,
-            metavar='DEV_PATH',
-            help='filepath to the development data (input)')
-        data_group.add_argument(
-            'model_path',
-            type=str,
-            metavar='MODEL_PATH',
-            default=None,
-            help='filepath to the model data (output); if not set, the model is not saved')
-        data_group.add_argument(
-            '--vsm_path',
-            action='append',
-            nargs='+',
-            metavar='VSM_PATH',
-            required=True,
-            help='vsm path'
-        )
+        data_group.add_argument('trn_path', type=str, metavar='TRN_PATH', help='filepath to the training data (input)')
+        data_group.add_argument('dev_path', type=str, metavar='DEV_PATH',
+                                help='filepath to the development data (input)')
+        data_group.add_argument('model_path', type=str, metavar='MODEL_PATH', default=None,
+                                help='filepath to the model data (output); if not set, the model is not saved')
+        data_group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
+                                help='vsm path')
 
         # tagger
         tagger_group = parser.add_argument_group("tagger arguments")
 
-        tagger_group.add_argument(
-            'key',
-            type=str,
-            metavar='KEY',
-            help='key to the document dictionary where the predicted tags are to be stored')
+        tagger_group.add_argument('key', type=str, metavar='KEY',
+                                  help='key to the document dictionary where the predicted tags are to be stored')
 
         # network
         network_group = parser.add_argument_group("network arguments")
-
-        network_group.add_argument(
-            '-c',
-            '--config',
-            type=str,
-            metavar='CONFIG',
-            help="config file"
-        )
+        network_group.add_argument('config', type=str, metavar='CONFIG', help="config file")
 
         # arguments
         args = parser.parse_args(sys.argv[3:])
-        json_config = args.config if args.config else resource_filename('elit.resources.token_tagger', 'pos.json')
-        with open(json_config, 'r') as d:
-            config = json.load(d, object_hook=lambda d: SimpleNamespace(**d))
+        # print(args)
+        with open(args.config, 'r') as d:
+            config = TokenTaggerConfig(json.load(d))
 
-        set_logger(config.data.log_path)
+        set_logger(config.log_path)
 
-        reader = tsv_reader if config.data.reader == 'tsv' else json_reader
+        trn_docs, label_map = config.reader(args.trn_path, config.tsv_heads, args.key)
+        dev_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
 
-        trn_docs, trn_num_class = reader(args.trn_path, config.data.tsv_heads.__dict__, args.key)
-        dev_docs, dev_num_class = reader(args.dev_path, config.data.tsv_heads.__dict__, args.key)
-
-
-        ctx = mx.gpu(config.training.core) if config.training.device == 'gpu' else mx.cpu(config.training.core)
+        ctx = config.ctx
 
         # component
         comp = TokenTagger(ctx, args.vsm_path)
+
         comp.init(
             key=args.key,
-            sequence=config.tagger.sqeuence,
-            chunking=config.tagger.chunking,
-            num_class=trn_num_class,
-            feature_windows=config.tagger.feature_windows,
-            position_embedding=config.tagger.position_embedding,
-            label_embedding=config.tagger.label_embedding,
-            input_config=config.network.input,
-            output_config=config.network.output,
-            fuse_conv_config=config.network.fuse_conv,
-            ngram_conv_config=config.network.ngrams_conv,
-            hidden_configs=config.network.hiddens,
-        )
-
-        print(comp)
-
+            feature_windows=config.feature_windows,
+            label_map=label_map,
+            chunking=config.chunking,
+            input_config=config.input_config,
+            output_config=config.output_config,
+            fuse_conv_config=config.fuse_conv_config,
+            ngram_conv_config=config.ngram_conv_cofig,
+            hidden_configs=config.hidden_configs)
         # train
-        # comp.train(
-        #     trn_docs,
-        #     dev_docs,
-        #     args.model_path,
-        #     config.trn_batch,
-        #     config.dev_batch,
-        #     config.epoch,
-        #     config.loss,
-        #     config.optimizer,
-        #     config.optimizer_params)
-        # logging.info('# of classes: %d' % len(comp.label_map))
+        comp.train(
+            trn_docs=trn_docs,
+            dev_docs=dev_docs,
+            model_path=args.model_path,
+            label_map=label_map)
+        logging.info('# of classes: %d' % len(comp.label_map))
 
     # override
     @classmethod
     def decode(cls):
         pass
+
     #     # create a arg-parser
     #     parser = argparse.ArgumentParser(
     #         description='Decode with the token tagger',
@@ -493,7 +573,7 @@ class TokenTaggerCLI(ComponentCLI):
     #         help='type of the reader and its configuration to match the data format (default: json)')
     #     group.add_argument(
     #         '-v',
-    #         '--vsm_list',
+    #         '--vsms',
     #         type=args_vsm,
     #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
     #         nargs='+',
@@ -529,18 +609,18 @@ class TokenTaggerCLI(ComponentCLI):
     #     args = parser.parse_args(args)
     #     set_logger(args.log)
     #
-    #     args.vsm_list = [
+    #     args.vsms = [
     #         SimpleNamespace(
     #             model=n.type(
     #                 n.filepath),
-    #             key=n.key) for n in args.vsm_list]
+    #             key=n.key) for n in args.vsms]
     #     if isinstance(args.context, list) and len(args.context) == 1:
     #         args.context = args.context[0]
     #     if args.output_path is None:
     #         args.output_path = args.input_path + '.json'
     #
     #     # component
-    #     comp = TokenTagger(args.context, args.vsm_list)
+    #     comp = TokenTagger(args.context, args.vsms)
     #     comp.load(args.model_path)
     #
     #     # data
@@ -579,7 +659,7 @@ class TokenTaggerCLI(ComponentCLI):
     #         help='type of the reader and its configuration to match the data format (default: json)')
     #     group.add_argument(
     #         '-v',
-    #         '--vsm_list',
+    #         '--vsms',
     #         type=args_vsm,
     #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
     #         nargs='+',
@@ -615,16 +695,16 @@ class TokenTaggerCLI(ComponentCLI):
     #     args = parser.parse_args(args)
     #     set_logger(args.log)
     #
-    #     args.vsm_list = [
+    #     args.vsms = [
     #         SimpleNamespace(
     #             model=n.type(
     #                 n.filepath),
-    #             key=n.key) for n in args.vsm_list]
+    #             key=n.key) for n in args.vsms]
     #     if isinstance(args.context, list) and len(args.context) == 1:
     #         args.context = args.context[0]
     #
     #     # component
-    #     comp = TokenTagger(args.context, args.vsm_list)
+    #     comp = TokenTagger(args.context, args.vsms)
     #     comp.load(args.model_path)
     #
     #     # data

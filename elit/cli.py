@@ -17,17 +17,11 @@ import abc
 import argparse
 import inspect
 import logging
-import os
 import re
 import sys
-from types import SimpleNamespace
-from typing import Callable, Any, Dict, Tuple, Optional, Union, Type
+from typing import Callable, Any, Dict, Tuple
 
 import mxnet as mx
-
-from elit.model import NLPModel
-from elit.util.io import json_reader, tsv_reader
-from elit.util.vsm import FastText, Word2Vec, VectorSpaceModel
 
 __author__ = "Gary Lai, Jinho D. Choi"
 
@@ -77,9 +71,7 @@ class ComponentCLI(abc.ABC):
 
         Trains a model for this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
@@ -89,9 +81,7 @@ class ComponentCLI(abc.ABC):
 
         Predicts labels using this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
@@ -101,9 +91,7 @@ class ComponentCLI(abc.ABC):
 
         Evaluates the current model of this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
 
 class ELITCLI(object):
@@ -178,35 +166,6 @@ def args_context(s: list) -> mx.Context:
         return mx.gpu(int(s[1]))
     else:
         raise argparse.ArgumentTypeError
-
-
-def mx_loss(s: str) -> mx.gluon.loss.Loss:
-    s = s.lower()
-
-    if s == 'softmaxcrossentropyloss':
-        return mx.gluon.loss.SoftmaxCrossEntropyLoss()
-    if s == 'sigmoidbinarycrossentropyloss':
-        return mx.gluon.loss.SigmoidBinaryCrossEntropyLoss()
-    if s == 'l2loss':
-        return mx.gluon.loss.L2Loss()
-    if s == 'l2loss':
-        return mx.gluon.loss.L1Loss()
-    if s == 'kldivloss':
-        return mx.gluon.loss.KLDivLoss()
-    if s == 'huberloss':
-        return mx.gluon.loss.HuberLoss()
-    if s == 'hingeloss':
-        return mx.gluon.loss.HingeLoss()
-    if s == 'squaredhingeloss':
-        return mx.gluon.loss.SquaredHingeLoss()
-    if s == 'logisticloss':
-        return mx.gluon.loss.LogisticLoss()
-    if s == 'tripletloss':
-        return mx.gluon.loss.TripletLoss()
-    if s == 'ctcloss':
-        return mx.gluon.loss.CTCLoss()
-
-    raise argparse.ArgumentTypeError("Unsupported loss: " + s)
 
 
 if __name__ == '__main__':
