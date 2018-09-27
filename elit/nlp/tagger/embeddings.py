@@ -1,6 +1,8 @@
 # -*- coding:utf-8 -*-
 # Author：modified from flair: https://github.com/zalandoresearch/flair
 # Date: 2018-09-21 20:58
+import os
+
 import numpy as np
 import re
 
@@ -81,7 +83,7 @@ class WordEmbeddings(TokenEmbeddings):
         # GLOVE embeddings
         if embeddings.lower() == 'glove' or embeddings.lower() == 'en-glove':
             self.precomputed_word_embeddings = gensim.models.KeyedVectors.load(
-                '/Users/hankcs/.flair/embeddings/glove.gensim')
+                os.path.join(os.path.expanduser("~"), '.flair/embeddings/glove.gensim'))
             self.__embedding_length: int = self.precomputed_word_embeddings.vector_size
         else:
             raise RuntimeError('only support glove')

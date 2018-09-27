@@ -10,7 +10,8 @@ from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 
 if __name__ == '__main__':
     # use your own data path
-    data_folder = 'data/conll-03/debug'
+    # data_folder = 'data/conll-03/debug'
+    data_folder = 'data/conll-03'
 
     # get training, test and dev data
     columns = {0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}

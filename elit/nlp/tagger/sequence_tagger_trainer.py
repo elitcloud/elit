@@ -148,9 +148,6 @@ class SequenceTaggerTrainer:
 
                     current_loss /= len(train_data)
 
-                    # switch to eval mode
-                    self.model.eval()
-
                     if not train_with_dev:
                         print('.. evaluating... dev... ')
                         dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
@@ -164,9 +161,6 @@ class SequenceTaggerTrainer:
                     test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
                                                                      evaluation_method=evaluation_method,
                                                                      embeddings_in_memory=embeddings_in_memory)
-
-                    # switch back to train mode
-                    self.model.train()
 
                     # anneal against train loss if training with dev, otherwise anneal against dev score
                     scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)

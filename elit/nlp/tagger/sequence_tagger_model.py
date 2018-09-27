@@ -42,7 +42,7 @@ def argmax_batch(vecs: nd.NDArray):
 
 
 def log_sum_exp_batch(vecs):
-    maxi: nd.NDArray = nd.max(vecs, 1)[0]
+    maxi: nd.NDArray = nd.max(vecs, 1)
     maxi_bc = maxi.expand_dims(1).tile((1, vecs.shape[1]))
     recti_ = nd.log(nd.sum(nd.exp(vecs - maxi_bc), 1))
     return maxi + recti_
@@ -281,33 +281,26 @@ class SequenceTagger(nn.Block):
 
     def viterbi_decode(self, feats):
         backpointers = []
-        init_vvars = torch.Tensor(1, self.tagset_size).fill_(-10000.)
+        init_vvars = nd.full((1, self.tagset_size), -10000.)
         init_vvars[0][self.tag_dictionary.get_idx_for_item(START_TAG)] = 0
-        forward_var = autograd.Variable(init_vvars)
-        if torch.cuda.is_available():
-            forward_var = forward_var.cuda()
+        forward_var = init_vvars
 
         for feat in feats:
-            next_tag_var = forward_var.view(1, -1).expand(self.tagset_size, self.tagset_size) + self.transitions
-            _, bptrs_t = torch.max(next_tag_var, dim=1)
-            bptrs_t = bptrs_t.squeeze().data.cpu().numpy()
-            next_tag_var = next_tag_var.data.cpu().numpy()
-            viterbivars_t = next_tag_var[range(len(bptrs_t)), bptrs_t]
-            viterbivars_t = autograd.Variable(torch.FloatTensor(viterbivars_t))
-            if torch.cuda.is_available():
-                viterbivars_t = viterbivars_t.cuda()
+            next_tag_var = forward_var.reshape((1, -1)).tile((self.tagset_size, 1)) + self.transitions.data()
+            bptrs_t = nd.argmax(next_tag_var, axis=1)
+            viterbivars_t = next_tag_var[list(range(len(bptrs_t))), bptrs_t]
             forward_var = viterbivars_t + feat
             backpointers.append(bptrs_t)
 
-        terminal_var = forward_var + self.transitions[self.tag_dictionary.get_idx_for_item(STOP_TAG)]
-        terminal_var.data[self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000.
-        terminal_var.data[self.tag_dictionary.get_idx_for_item(START_TAG)] = -10000.
-        best_tag_id = argmax(terminal_var.unsqueeze(0))
+        terminal_var = forward_var + self.transitions.data()[self.tag_dictionary.get_idx_for_item(STOP_TAG)]
+        terminal_var[self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000.
+        terminal_var[self.tag_dictionary.get_idx_for_item(START_TAG)] = -10000.
+        best_tag_id = int(terminal_var.argmax(axis=0).asscalar())
         path_score = terminal_var[best_tag_id]
         best_path = [best_tag_id]
         for bptrs_t in reversed(backpointers):
             best_tag_id = bptrs_t[best_tag_id]
-            best_path.append(best_tag_id)
+            best_path.append(int(best_tag_id.asscalar()))
         start = best_path.pop()
         assert start == self.tag_dictionary.get_idx_for_item(START_TAG)
         best_path.reverse()
@@ -387,13 +380,13 @@ class SequenceTagger(nn.Block):
         return alpha
 
     def predict_scores(self, sentence: Sentence):
-        feats, tags = self.forward([sentence])
+        feats, tags, lengths = self.forward([sentence])
         feats = feats[0]
         tags = tags[0]
         if self.use_crf:
             score, tag_seq = self.viterbi_decode(feats)
         else:
-            score, tag_seq = torch.max(feats, 1)
+            score, tag_seq = nd.max(feats, 1)
             tag_seq = list(tag_seq.cpu().data)
 
         return score, tag_seq
