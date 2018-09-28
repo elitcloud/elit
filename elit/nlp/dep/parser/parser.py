@@ -45,7 +45,7 @@ class DependencyParser(NLPComponent):
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
         # training
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
 
             self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
                                                    config.dropout_emb,

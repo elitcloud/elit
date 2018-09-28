@@ -1,25 +1,24 @@
 # -*- coding:utf-8 -*-
-# Author：hankcs
+# Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-13 18:55
 import datetime
 import math
 import os
 import pickle
 import time
+from typing import List, Dict
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.nlp.dep.common.savable import Savable
-from elit.nlp.dep.common.utils import make_sure_path_exists
-from elit.nlp.tagger.corpus import Dictionary, TextCorpus
-from elit.nlp.tagger.lm_config import LanguageModelConfig
-from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from typing import List, Dict
 
+from elit.nlp.dep.common.utils import make_sure_path_exists
+from elit.nlp.tagger.corpus import Dictionary, TextCorpus
+from elit.nlp.tagger.lm_config import LanguageModelConfig
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
 class LanguageModel(nn.Block):
@@ -41,7 +40,7 @@ class LanguageModel(nn.Block):
         super(LanguageModel, self).__init__()
 
         self.dictionary = dictionary
-        self.is_forward_lm: bool = is_forward_lm
+        self.is_forward_lm = is_forward_lm
 
         self.dropout = dropout
         self.hidden_size = hidden_size
@@ -54,8 +53,6 @@ class LanguageModel(nn.Block):
                 init_params['encoder.weight']) if init_params else mx.initializer.Uniform(0.1))
 
             if nlayers == 1:
-                self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
-            else:
                 if init_params:
                     self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size,
                                         i2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_ih_l0']),
@@ -64,7 +61,9 @@ class LanguageModel(nn.Block):
                                         h2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_hh_l0'])
                                         )
                 else:
-                    self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
+                    self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
+            else:
+                self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
 
             self.hidden = None
 
@@ -94,7 +93,7 @@ class LanguageModel(nn.Block):
         if self.proj is not None:
             output = self.proj(output)
 
-        output: nd.NDArray = self.drop(output)
+        output = self.drop(output)
 
         decoded = self.decoder(output.reshape(-1, output.shape[2]))
 
@@ -102,7 +101,7 @@ class LanguageModel(nn.Block):
 
     def get_representation(self, strings: List[str], detach_from_lm=True):
 
-        sequences_as_char_indices: List[List[int]] = []
+        sequences_as_char_indices = []
         for string in strings:
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
@@ -223,7 +222,7 @@ class LanguageModelTrainer:
                 self.model.initialize()
                 epoch = 0
                 best_val_loss = 100000000
-                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
                 trainer = gluon.Trainer(self.model.collect_params(),
@@ -271,7 +270,7 @@ class LanguageModelTrainer:
                         with autograd.record():
                             output, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
                             # try to predict the targets
-                            loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).mean()
+                            loss = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
 
                         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -396,18 +395,18 @@ def _convert_dumped_model():
 
 
 def _train():
-    corpus = TextCorpus('data/wiki-debug/')
+    corpus = TextCorpus('data/raw')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
-                                   hidden_size=1024,
+                                   hidden_size=256,
                                    nlayers=1,
                                    dropout=0.25)
     trainer = LanguageModelTrainer(language_model, corpus)
-    trainer.train('data/model/lm',
+    trainer.train('data/model/lm-jumbo-forward256',
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
-    LanguageModel.load_language_model('data/model/lm')
+    # LanguageModel.load_language_model('data/model/lm')
 
 
 def _load():
@@ -415,6 +414,6 @@ def _load():
 
 
 if __name__ == '__main__':
-    # _train()
-    _convert_dumped_model()
-    _load()
+    _train()
+    # _convert_dumped_model()
+    # _load()
