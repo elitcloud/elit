@@ -4,6 +4,7 @@
 import datetime
 import math
 import os
+import pickle
 import time
 
 import mxnet as mx
@@ -15,7 +16,7 @@ from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from typing import List
+from typing import List, Dict
 
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
@@ -33,7 +34,8 @@ class LanguageModel(nn.HybridBlock):
                  nlayers: int,
                  embedding_size: int = 100,
                  nout=None,
-                 dropout=0.5):
+                 dropout=0.5,
+                 init_params: Dict = None):
 
         super(LanguageModel, self).__init__()
 
@@ -46,12 +48,21 @@ class LanguageModel(nn.HybridBlock):
         self.nlayers = nlayers
 
         self.drop = nn.Dropout(dropout)
-        self.encoder = nn.Embedding(len(dictionary), embedding_size, weight_initializer=mx.initializer.Uniform(0.1))
+        self.encoder = nn.Embedding(len(dictionary), embedding_size, weight_initializer=mx.initializer.Constant(
+            init_params['encoder.weight']) if init_params else mx.initializer.Uniform(0.1))
 
         if nlayers == 1:
             self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
         else:
-            self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
+            if init_params:
+                self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size,
+                                    i2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_ih_l0']),
+                                    h2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_hh_l0']),
+                                    i2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_ih_l0']),
+                                    h2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_hh_l0'])
+                                    )
+            else:
+                self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
 
         self.hidden = None
 
@@ -62,8 +73,10 @@ class LanguageModel(nn.HybridBlock):
                                     bias_initializer='zero', in_units=nout)
         else:
             self.proj = None
-            self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Uniform(0.1),
-                                    bias_initializer='zero', in_units=hidden_size)
+            self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Constant(
+                init_params['decoder.weight']) if init_params else mx.initializer.Uniform(0.1),
+                                    bias_initializer=mx.initializer.Constant(
+                                        init_params['decoder.bias']) if init_params else 'zero', in_units=hidden_size)
 
     def set_hidden(self, hidden):
         self.hidden = hidden
@@ -119,6 +132,25 @@ class LanguageModel(nn.HybridBlock):
                               config.dropout)
         model.load_parameters(os.path.join(model_file, 'model.bin'))
         return model
+
+    @staticmethod
+    def load_dumped_model(pkl_file):
+        with open(pkl_file, 'rb') as f:
+            params = pickle.load(f)
+            dictionary = Dictionary()
+            dictionary.item2idx = params['dictionary'][0]
+            dictionary.idx2item = params['dictionary'][1]
+            config = Config(dictionary, params['is_forward_lm'], params['hidden_size'],
+                            params['nlayers'], params['embedding_size'], params['nout'], params['dropout'])
+            model = LanguageModel(config.dictionary,
+                                  config.is_forward_lm,
+                                  config.hidden_size,
+                                  config.nlayers,
+                                  config.embedding_size,
+                                  config.nout,
+                                  config.dropout,
+                                  params)
+            return model
 
     def save(self, file):
         config = Config(
@@ -354,7 +386,14 @@ class LanguageModelTrainer:
         return h.detach()
 
 
-if __name__ == '__main__':
+def _convert_dumped_model():
+    for path in ['data/model/lm-news-forward', 'data/model/lm-news-backward']:
+        model = LanguageModel.load_dumped_model(path + '/params.pkl')
+        model.initialize()
+        model.save(path)
+
+
+def _train():
     corpus = TextCorpus('data/wiki-debug/')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
@@ -366,4 +405,14 @@ if __name__ == '__main__':
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
-    # LanguageModel.load_language_model('data/model/lm')
+    LanguageModel.load_language_model('data/model/lm')
+
+
+def _load():
+    lm = LanguageModel.load_language_model('data/model/lm-news-forward')
+
+
+if __name__ == '__main__':
+    # _train()
+    # _convert_dumped_model()
+    _load()
