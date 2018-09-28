@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-# Author：modified from flair: https://github.com/zalandoresearch/flair
+# Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-21 21:10
 
 import warnings

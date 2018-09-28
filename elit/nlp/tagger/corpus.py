@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # Filename: corpus.py
-# Author：hankcs
+# Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-02-21 14:51
 import math
 import random
