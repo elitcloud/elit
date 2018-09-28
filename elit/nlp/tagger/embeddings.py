@@ -140,11 +140,12 @@ class CharLMEmbeddings(TokenEmbeddings):
                 if set to false, the gradient will propagate into the language model. this dramatically slows down
                 training and often leads to worse results, so not recommended.
         """
-        self.name = model
         self.static_embeddings = detach
 
         self.lm = LanguageModel.load_language_model(model)
         self.detach = detach
+        if detach:
+            self.lm.freeze()
 
         self.is_forward_lm: bool = self.lm.is_forward_lm
 
