@@ -4,6 +4,7 @@
 import datetime
 import math
 import os
+import pickle
 import time
 
 import mxnet as mx
@@ -11,11 +12,12 @@ import mxnet.ndarray as nd
 from elit.nlp.dep.common.savable import Savable
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.corpus import Dictionary, TextCorpus
+from elit.nlp.tagger.lm_config import LanguageModelConfig
 from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from typing import List
+from typing import List, Dict
 
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
@@ -33,7 +35,8 @@ class LanguageModel(nn.Block):
                  nlayers: int,
                  embedding_size: int = 100,
                  nout=None,
-                 dropout=0.5):
+                 dropout=0.5,
+                 init_params: Dict = None):
 
         super(LanguageModel, self).__init__()
 
@@ -45,25 +48,38 @@ class LanguageModel(nn.Block):
         self.embedding_size = embedding_size
         self.nlayers = nlayers
 
-        self.drop = nn.Dropout(dropout)
-        self.encoder = nn.Embedding(len(dictionary), embedding_size, weight_initializer=mx.initializer.Uniform(0.1))
+        with self.name_scope():
+            self.drop = nn.Dropout(dropout)
+            self.encoder = nn.Embedding(len(dictionary), embedding_size, weight_initializer=mx.initializer.Constant(
+                init_params['encoder.weight']) if init_params else mx.initializer.Uniform(0.1))
 
-        if nlayers == 1:
-            self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
-        else:
-            self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
+            if nlayers == 1:
+                self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
+            else:
+                if init_params:
+                    self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size,
+                                        i2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_ih_l0']),
+                                        h2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_hh_l0']),
+                                        i2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_ih_l0']),
+                                        h2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_hh_l0'])
+                                        )
+                else:
+                    self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
 
-        self.hidden = None
+            self.hidden = None
 
-        self.nout = nout
-        if nout is not None:
-            self.proj = nn.Dense(nout, weight_initializer='Xavier', in_units=hidden_size)
-            self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Uniform(0.1),
-                                    bias_initializer='zero', in_units=nout)
-        else:
-            self.proj = None
-            self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Uniform(0.1),
-                                    bias_initializer='zero', in_units=hidden_size)
+            self.nout = nout
+            if nout is not None:
+                self.proj = nn.Dense(nout, weight_initializer='Xavier', in_units=hidden_size)
+                self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Uniform(0.1),
+                                        bias_initializer='zero', in_units=nout)
+            else:
+                self.proj = None
+                self.decoder = nn.Dense(len(dictionary), weight_initializer=mx.initializer.Constant(
+                    init_params['decoder.weight']) if init_params else mx.initializer.Uniform(0.1),
+                                        bias_initializer=mx.initializer.Constant(
+                                            init_params['decoder.bias']) if init_params else 'zero',
+                                        in_units=hidden_size)
 
     def set_hidden(self, hidden):
         self.hidden = hidden
@@ -91,26 +107,33 @@ class LanguageModel(nn.Block):
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
 
-        batch = nd.array(sequences_as_char_indices).transpose(0, 1)
+        batch = nd.array(sequences_as_char_indices).transpose((1, 0))  # (T, N)
 
         hidden = self.init_hidden(len(strings))
-        prediction, rnn_output, hidden = self.forward(batch, hidden, hidden.copy())
+        prediction, rnn_output, hidden, cell = self.forward(batch, hidden, hidden.copy())
 
-        if detach_from_lm: rnn_output = self.repackage_hidden(rnn_output)
+        if detach_from_lm:
+            rnn_output = self.repackage_hidden(rnn_output)
 
         return rnn_output
 
-    def repackage_hidden(self, h):
+    def repackage_hidden(self, h: nd.NDArray):
         """Wraps hidden states in new Variables, to detach them from their history."""
-        return h
+        return h.detach()
         # if type(h) == torch.Tensor:
         #     return Variable(h.data)
         # else:
         #     return tuple(self.repackage_hidden(v) for v in h)
 
+    def freeze(self):
+        """
+        Freeze this model to make it static, thus non trainable
+        """
+        self.collect_params().setattr('grad_req', 'null')
+
     @classmethod
     def load_language_model(cls, model_file):
-        config = Config.load(os.path.join(model_file, 'config.pkl'))
+        config = LanguageModelConfig.load(os.path.join(model_file, 'config.pkl'))
         model = LanguageModel(config.dictionary,
                               config.is_forward_lm,
                               config.hidden_size,
@@ -118,11 +141,37 @@ class LanguageModel(nn.Block):
                               config.embedding_size,
                               config.nout,
                               config.dropout)
-        model.load_parameters(os.path.join(model_file, 'model.bin'))
+        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
         return model
 
+    @staticmethod
+    def load_dumped_model(pkl_file):
+        with open(pkl_file, 'rb') as f:
+            params = pickle.load(f)
+            dictionary = Dictionary(add_unk=False)
+
+            for k, v in params['dictionary'][0].items():
+                k = k.decode('UTF-8')
+                if k in dictionary.item2idx:
+                    print('conflict in char mapping')
+                    k = k + '-'
+                dictionary.item2idx[k] = v
+            for k in params['dictionary'][1]:
+                dictionary.idx2item.append(k.decode('UTF-8'))
+            config = LanguageModelConfig(dictionary, params['is_forward_lm'], params['hidden_size'],
+                                         params['nlayers'], params['embedding_size'], params['nout'], params['dropout'])
+            model = LanguageModel(config.dictionary,
+                                  config.is_forward_lm,
+                                  config.hidden_size,
+                                  config.nlayers,
+                                  config.embedding_size,
+                                  config.nout,
+                                  config.dropout,
+                                  params)
+            return model
+
     def save(self, file):
-        config = Config(
+        config = LanguageModelConfig(
             dictionary=self.dictionary,
             is_forward_lm=self.is_forward_lm,
             hidden_size=self.hidden_size,
@@ -137,17 +186,6 @@ class LanguageModel(nn.Block):
 
     def init_hidden(self, mini_batch_size) -> nd.NDArray:
         return nd.zeros((self.nlayers, mini_batch_size, self.hidden_size))
-
-
-class Config(Savable):
-    def __init__(self, dictionary, is_forward_lm, hidden_size, nlayers, embedding_size, nout, dropout) -> None:
-        self.dictionary = dictionary
-        self.is_forward_lm = is_forward_lm
-        self.hidden_size = hidden_size
-        self.nlayers = nlayers
-        self.embedding_size = embedding_size
-        self.nout = nout
-        self.dropout = dropout
 
 
 class LanguageModelTrainer:
@@ -350,7 +388,14 @@ class LanguageModelTrainer:
         return h.detach()
 
 
-if __name__ == '__main__':
+def _convert_dumped_model():
+    for path in ['data/model/lm-news-forward', 'data/model/lm-news-backward']:
+        model = LanguageModel.load_dumped_model(path + '/params.pkl')
+        model.initialize()
+        model.save(path)
+
+
+def _train():
     corpus = TextCorpus('data/wiki-debug/')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
@@ -362,4 +407,14 @@ if __name__ == '__main__':
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
-    # LanguageModel.load_language_model('data/model/lm')
+    LanguageModel.load_language_model('data/model/lm')
+
+
+def _load():
+    lm = LanguageModel.load_language_model('data/model/lm-news-forward')
+
+
+if __name__ == '__main__':
+    # _train()
+    _convert_dumped_model()
+    _load()

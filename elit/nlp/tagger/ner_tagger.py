@@ -11,7 +11,6 @@ from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_c
 from elit.nlp.tagger.corpus import TaggedCorpus
 from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.structure import Document, NER, SENS
 
@@ -31,6 +30,9 @@ class NERTagger(NLPComponent):
         self.tagger.save(model_path)
 
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
+              pretrained_embeddings,
+              forward_language_model,
+              backward_language_model,
               learning_rate: float = 0.1,
               mini_batch_size: int = 32,
               max_epochs: int = 100,
