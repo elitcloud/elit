@@ -108,7 +108,7 @@ class SequenceTaggerTrainer:
                 self.model.initialize()
                 scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience, mode=anneal_mode)
-                optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
+                optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
                 trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
                 for epoch in range(0, max_epochs):
                     current_loss: float = 0
