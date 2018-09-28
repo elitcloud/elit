@@ -6,13 +6,13 @@ import os
 from typing import Sequence, Tuple
 
 from elit.component import NLPComponent
-from elit.dep.common.utils import init_logger, Progbar
-from elit.dep.parser import DEFAULT_CONFIG_FILE
-from elit.dep.parser.biaffine_parser import BiaffineParser
-from elit.dep.parser.common.data import ParserVocabulary, DataLoader, np, get_word_id, ConllSentence, ConllWord
-from elit.dep.parser.common.exponential_scheduler import ExponentialScheduler
-from elit.dep.parser.evaluate import evaluate_official_script
-from elit.dep.parser.parser_config import ParserConfig
+from elit.nlp.dep.common.utils import init_logger, Progbar
+from elit.nlp.dep.parser import DEFAULT_CONFIG_FILE
+from elit.nlp.dep.parser.biaffine_parser import BiaffineParser
+from elit.nlp.dep.parser.common.data import ParserVocabulary, DataLoader, np, get_word_id, ConllSentence, ConllWord
+from elit.nlp.dep.parser.common.exponential_scheduler import ExponentialScheduler
+from elit.nlp.dep.parser.evaluate import evaluate_official_script
+from elit.nlp.dep.parser.parser_config import ParserConfig
 from elit.util.structure import Document, Sentence, DEP, POS, SEN
 from mxnet import gluon, autograd
 import mxnet as mx
