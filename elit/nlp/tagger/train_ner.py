@@ -54,7 +54,7 @@ if __name__ == '__main__':
                                                 use_crf=True)
 
         # 6. initialize trainer
-        trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
+        trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
         trainer.train('resources/taggers/example-ner',
