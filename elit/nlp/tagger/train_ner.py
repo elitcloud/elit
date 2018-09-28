@@ -5,8 +5,10 @@ from typing import List
 
 from elit.nlp.tagger.corpus import NLPTaskDataFetcher
 from elit.nlp.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
+import mxnet as mx
 
 if __name__ == '__main__':
     # use your own data path
@@ -29,32 +31,33 @@ if __name__ == '__main__':
     print(tag_dictionary.idx2item)
 
     # 4. initialize embeddings
-    embedding_types: List[TokenEmbeddings] = [
+    with mx.Context(mxnet_prefer_gpu()):
+        embedding_types: List[TokenEmbeddings] = [
 
-        WordEmbeddings('glove'),
+            WordEmbeddings('glove'),
 
-        # comment in this line to use character embeddings
-        # CharacterEmbeddings(),
+            # comment in this line to use character embeddings
+            # CharacterEmbeddings(),
 
-        # comment in these lines to use contextual string embeddings
-        CharLMEmbeddings('data/model/lm-news-forward'),
-        CharLMEmbeddings('data/model/lm-news-backward'),
-    ]
+            # comment in these lines to use contextual string embeddings
+            CharLMEmbeddings('data/model/lm-news-forward'),
+            CharLMEmbeddings('data/model/lm-news-backward'),
+        ]
 
-    embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+        embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
 
-    # 5. initialize sequence tagger
-    tagger: SequenceTagger = SequenceTagger(hidden_size=256,
-                                            embeddings=embeddings,
-                                            tag_dictionary=tag_dictionary,
-                                            tag_type=tag_type,
-                                            use_crf=True)
+        # 5. initialize sequence tagger
+        tagger: SequenceTagger = SequenceTagger(hidden_size=256,
+                                                embeddings=embeddings,
+                                                tag_dictionary=tag_dictionary,
+                                                tag_type=tag_type,
+                                                use_crf=True)
 
-    # 6. initialize trainer
-    trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
+        # 6. initialize trainer
+        trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
 
-    # 7. start training
-    trainer.train('resources/taggers/example-ner',
-                  learning_rate=0.1,
-                  mini_batch_size=32,
-                  max_epochs=150)
+        # 7. start training
+        trainer.train('resources/taggers/example-ner',
+                      learning_rate=0.1,
+                      mini_batch_size=32,
+                      max_epochs=150)

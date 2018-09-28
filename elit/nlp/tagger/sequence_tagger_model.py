@@ -328,10 +328,7 @@ class SequenceTagger(nn.Block):
                 sentence_feats = feats[i]
                 sentence_tags = tags[i]
 
-                if torch.cuda.is_available():
-                    tag_tensor = autograd.Variable(torch.cuda.LongTensor(sentence_tags))
-                else:
-                    tag_tensor = autograd.Variable(torch.LongTensor(sentence_tags))
+                tag_tensor = nd.array(sentence_tags)
                 score += nn.functional.cross_entropy(sentence_feats, tag_tensor)
 
             return score
