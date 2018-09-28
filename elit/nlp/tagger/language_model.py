@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-# Author：hankcs
+# Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-13 18:55
 import datetime
 import math
