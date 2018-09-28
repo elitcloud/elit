@@ -13,7 +13,8 @@ def mxnet_prefer_gpu():
     '''
     if 'cuda' not in os.environ['PATH']:
         return mx.cpu()
-    return mx.gpu(0)
+    gpu = os.environ.get('MXNET_GPU', default=0)
+    return mx.gpu(gpu)
 
 
 def mxnet_gpus():
