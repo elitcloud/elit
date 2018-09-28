@@ -37,8 +37,8 @@ if __name__ == '__main__':
         # CharacterEmbeddings(),
 
         # comment in these lines to use contextual string embeddings
-        # CharLMEmbeddings('news-forward'),
-        # CharLMEmbeddings('news-backward'),
+        CharLMEmbeddings('data/model/lm-news-forward'),
+        CharLMEmbeddings('data/model/lm-news-backward'),
     ]
 
     embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
