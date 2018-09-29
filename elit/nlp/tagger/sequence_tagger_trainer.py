@@ -178,16 +178,17 @@ class SequenceTaggerTrainer:
 
                     # save if model is current best and we use dev data for model selection
                     if save_model and not train_with_dev and dev_score == scheduler.best:
-                        self.model.save(base_path + "/best-model.pt")
+                        self.model.save(base_path)
 
             # if we do not use dev data for model selection, save final model
-            if save_model and train_with_dev: self.model.save(base_path + "/final-model.pt")
+            if save_model and train_with_dev:
+                self.model.save(base_path)
 
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
             print('saving model')
-            self.model.save(base_path + "/final-model.pt")
+            self.model.save(base_path + "/final-model")
             print('done')
 
     def evaluate(self, evaluation: List[Sentence], out_path=None, evaluation_method: str = 'F1',
