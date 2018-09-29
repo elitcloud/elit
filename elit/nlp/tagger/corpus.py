@@ -543,6 +543,7 @@ class Token:
                  idx: int = None,
                  head_id: int = None,
                  whitespace_after: bool = True,
+                 pos=None
                  ):
         self.text: str = text
         self.idx: int = idx
@@ -552,6 +553,8 @@ class Token:
         self.sentence: Sentence = None
         self._embeddings: Dict = {}
         self.tags: Dict[str, str] = {}
+        if pos:
+            self.add_tag('pos', pos)
 
     def add_tag(self, tag_type: str, tag_value: str):
         self.tags[tag_type] = tag_value
@@ -753,19 +756,22 @@ class Sentence:
                 list.append(all_tags)
         return ' '.join(list)
 
-    def convert_tag_scheme(self, tag_type: str = 'ner', target_scheme: str = 'iob'):
+    def convert_tag_scheme(self, tag_type: str = 'ner', target_scheme: str = 'iob', source_scheme='iob'):
 
         tags: List[str] = []
         for token in self.tokens:
             token: Token = token
             tags.append(token.get_tag(tag_type))
 
-        if target_scheme == 'iob':
+        if target_scheme == 'iob' and source_scheme == 'iob':
             iob2(tags)
 
         if target_scheme == 'iobes':
-            iob2(tags)
-            tags = iob_iobes(tags)
+            if source_scheme == 'ioblu':
+                tags = ioblu_iobes(tags)
+            else:
+                iob2(tags)
+                tags = iob_iobes(tags)
 
         for index, tag in enumerate(tags):
             self.tokens[index].add_tag(tag_type, tag)
@@ -842,6 +848,22 @@ def iob_iobes(tags):
                 new_tags.append(tag)
             else:
                 new_tags.append(tag.replace('I-', 'E-'))
+        else:
+            raise Exception('Invalid IOB format!')
+    return new_tags
+
+
+def ioblu_iobes(tags):
+    new_tags = []
+    for i, tag in enumerate(tags):
+        if tag == 'O':
+            new_tags.append(tag)
+        elif tag.split('-')[0] == 'L':
+            new_tags.append(tag.replace('L-', 'E-'))
+        elif tag.split('-')[0] == 'U':
+            new_tags.append(tag.replace('U-', 'S-'))
+        elif tag.split('-')[0] in ['I', 'B']:
+            new_tags.append(tag)
         else:
             raise Exception('Invalid IOB format!')
     return new_tags
@@ -1167,7 +1189,8 @@ class NLPTaskDataFetcher:
             train_file: str,
             test_file: str,
             dev_file=None,
-            tag_to_biloes=None) -> TaggedCorpus:
+            tag_to_biloes=None,
+            source_scheme='iob') -> TaggedCorpus:
         """
         Helper function to get a TaggedCorpus from CoNLL column-formatted task data such as CoNLL03 or CoNLL2000.
 
@@ -1198,7 +1221,7 @@ class NLPTaskDataFetcher:
             # convert tag scheme to iobes
             for sentence in sentences_train + sentences_test + sentences_dev:
                 sentence: Sentence = sentence
-                sentence.convert_tag_scheme(tag_type=tag_to_biloes, target_scheme='iobes')
+                sentence.convert_tag_scheme(tag_type=tag_to_biloes, target_scheme='iobes', source_scheme=source_scheme)
 
         return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 

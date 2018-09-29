@@ -13,16 +13,18 @@ import mxnet as mx
 if __name__ == '__main__':
     # use your own data path
     # data_folder = 'data/conll-03/debug'
-    data_folder = 'data/conll-03'
+    data_folder = 'data/dat'
 
     # get training, test and dev data
-    columns = {0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}
+    columns = {0: 'text', 1: 'pos', 2: 'ner'}
     corpus = NLPTaskDataFetcher.fetch_column_corpus(data_folder,
                                                     columns,
-                                                    train_file='eng.trn',
-                                                    test_file='eng.tst',
-                                                    dev_file='eng.dev',
-                                                    tag_to_biloes='ner')
+                                                    train_file='en-ner.trn',
+                                                    test_file='en-ner.tst',
+                                                    dev_file='en-ner.dev',
+                                                    tag_to_biloes='ner',
+                                                    source_scheme='ioblu')
+
     # 2. what tag do we want to predict?
     tag_type = 'ner'
 
@@ -57,7 +59,7 @@ if __name__ == '__main__':
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
-        trainer.train('resources/taggers/example-ner',
+        trainer.train('data/model/ner/en',
                       learning_rate=0.1,
                       mini_batch_size=32,
                       max_epochs=150)
