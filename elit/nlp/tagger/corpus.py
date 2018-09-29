@@ -16,6 +16,8 @@ import mxnet as mx
 import mxnet.ndarray as nd
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.structure import Document, NER, POS, SEN
+from elit.util.structure import Sentence as ElitSentence
 
 
 class StringIdMapper(object):
@@ -1201,6 +1203,29 @@ class NLPTaskDataFetcher:
         return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
     @staticmethod
+    def convert_elit_documents(docs: Sequence[Document]) -> List[Sentence]:
+        dataset = []
+        for d in docs:
+            for s in d.sentences:
+                sentence: Sentence = Sentence()
+                for word, pos in zip(s.tokens, s.part_of_speech_tags):
+                    t = Token(word)
+                    t.add_tag('pos', pos)
+                    t.add_tag('ner', 'O')
+                    sentence.add_token(t)
+                for start, end, label in s[NER]:
+                    if end - start == 0:
+                        sentence.tokens[start].tags['ner'] = 'S-' + label
+                    else:
+                        sentence.tokens[start].tags['ner'] = 'B-' + label
+                        for i in range(start + 1, end - 1):
+                            sentence.tokens[i].tags['ner'] = 'I-' + label
+                        sentence.tokens[end - 1].tags['ner'] = 'E-' + label
+                sentence._infer_space_after()
+                dataset.append(sentence)
+        return dataset
+
+    @staticmethod
     def read_column_data(path_to_column_file: str,
                          column_name_map: Dict[int, str],
                          infer_whitespace_after: bool = True):
@@ -1446,22 +1471,55 @@ class NLPTaskDataFetcher:
         return sample
 
 
+def get_chunks(seq: List[str]):
+    chunks = []
+    chunk_type, chunk_start = None, None
+    for i, tok in enumerate(seq):
+        # End of a chunk 1
+        if tok == 'O' and chunk_type is not None:
+            # Add a chunk.
+            chunk = (chunk_start, i, chunk_type)
+            chunks.append(chunk)
+            chunk_type, chunk_start = None, None
+
+        # End of a chunk + start of a chunk!
+        elif tok != 'O':
+            tok_chunk_class, tok_chunk_type = tok.split('-')
+            if chunk_type is None:
+                chunk_type, chunk_start = tok_chunk_type, i
+            elif tok_chunk_type != chunk_type or tok_chunk_class == "B":
+                chunk = (chunk_start, i, chunk_type)
+                chunks.append(chunk)
+                chunk_type, chunk_start = tok_chunk_type, i
+        else:
+            pass
+
+    # end condition
+    if chunk_type is not None:
+        chunk = (chunk_start, len(seq), chunk_type)
+        chunks.append(chunk)
+
+    return chunks
+
+
+def conll_to_documents(path) -> List[Document]:
+    sents = NLPTaskDataFetcher.read_column_data(path, {0: 'text', 1: 'pos', 2: 'np', 3: 'ner'})
+    elit_sents = []
+    for s in sents:
+        sent = ElitSentence()
+        sent[POS] = []
+        ner_tags = [t.tags['ner'] for t in s.tokens]
+        sent[NER] = get_chunks(ner_tags)
+        for t in s.tokens:
+            sent.tokens.append(t.text)
+            sent[POS].append(t.tags['pos'])
+        elit_sents.append(sent)
+    return [Document({SEN: elit_sents})]
+
+
 if __name__ == '__main__':
     # make_language_model_dataset('data/wiki/test.txt', 'data/wiki-debug')
     # use your own data path
-    data_folder = 'data/conll-03'
-
-    # get training, test and dev data
-    columns = {0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}
-    corpus = NLPTaskDataFetcher.fetch_column_corpus(data_folder,
-                                                    columns,
-                                                    train_file='eng.trn',
-                                                    test_file='eng.tst',
-                                                    dev_file='eng.dev',
-                                                    tag_to_biloes='ner')
-    # 2. what tag do we want to predict?
-    tag_type = 'ner'
-
-    # 3. make the tag dictionary from the corpus
-    tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
-    print(tag_dictionary.idx2item)
+    dataset = conll_to_documents('data/conll-03/debug/eng.dev')
+    corpus = NLPTaskDataFetcher.convert_elit_documents(dataset)
+    pass
