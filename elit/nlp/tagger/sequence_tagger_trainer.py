@@ -83,8 +83,20 @@ class SequenceTaggerTrainer:
               patience: int = 2,
               save_model: bool = True,
               embeddings_in_memory: bool = True,
-              train_with_dev: bool = False):
+              train_with_dev: bool = False) -> float:
+        """
 
+        :param base_path: a folder to store model, log etc.
+        :param learning_rate:
+        :param mini_batch_size:
+        :param max_epochs:
+        :param anneal_factor:
+        :param patience:
+        :param save_model:
+        :param embeddings_in_memory:
+        :param train_with_dev:
+        :return: best dev f1
+        """
         evaluation_method = 'F1'
         if self.model.tag_type in ['ner', 'np', 'srl']: evaluation_method = 'span-F1'
         if self.model.tag_type in ['pos', 'upos']: evaluation_method = 'accuracy'
@@ -157,11 +169,6 @@ class SequenceTaggerTrainer:
                         dev_fp = 0
                         dev_result = '_'
 
-                    print('test... ')
-                    test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
-                                                                     evaluation_method=evaluation_method,
-                                                                     embeddings_in_memory=embeddings_in_memory)
-
                     # anneal against train loss if training with dev, otherwise anneal against dev score
                     scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
 
@@ -169,9 +176,6 @@ class SequenceTaggerTrainer:
                               + '\t%f\t%d\t%f\tDEV   %d\t' % (
                                   current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
                     summary = summary.replace('\n', '')
-                    summary += '\tTEST   \t%d\t' % test_fp + test_result
-
-                    print(summary)
                     with open(loss_txt, "a") as loss_file:
                         loss_file.write('%s\n' % summary)
                         loss_file.close()
@@ -180,9 +184,19 @@ class SequenceTaggerTrainer:
                     if save_model and not train_with_dev and dev_score == scheduler.best:
                         self.model.save(base_path)
 
+                    if self.corpus.test and len(self.corpus.test):
+                        print('test... ')
+                        test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
+                                                                         evaluation_method=evaluation_method,
+                                                                         embeddings_in_memory=embeddings_in_memory)
+                        summary += '\tTEST   \t%d\t' % test_fp + test_result
+                    print(summary)
+
             # if we do not use dev data for model selection, save final model
             if save_model and train_with_dev:
                 self.model.save(base_path)
+
+            return scheduler.best  # return maximum dev f1
 
         except KeyboardInterrupt:
             print('-' * 89)
