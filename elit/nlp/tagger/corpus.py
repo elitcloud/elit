@@ -178,6 +178,9 @@ class Sentence(object):
     def to_str(self, vocab: Vocabulary):
         return ' '.join(vocab.word(word_id) + '/' + vocab.tag(tag_id) for word_id, tag_id in zip(self.words, self.tags))
 
+    def __len__(self):
+        return len(self.words)
+
 
 class TSVCorpus(object):
     def __init__(self, path: str, vocab: Vocabulary) -> None:
@@ -1218,10 +1221,13 @@ class NLPTaskDataFetcher:
             sentences_train = [x for x in sentences_train if x not in sentences_dev]
 
         if tag_to_biloes is not None:
+            longest = 0
             # convert tag scheme to iobes
             for sentence in sentences_train + sentences_test + sentences_dev:
                 sentence: Sentence = sentence
                 sentence.convert_tag_scheme(tag_type=tag_to_biloes, target_scheme='iobes', source_scheme=source_scheme)
+                longest = max(longest, len(sentence))
+            print('Longest sentence %d' % longest)
 
         return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
