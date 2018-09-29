@@ -3,16 +3,14 @@
 # Date: 2018-09-21 21:10
 
 import warnings
-
-import numpy as np
-import mxnet.ndarray as nd
-from mxnet.gluon import nn, rnn
-import mxnet as mx
-import numpy as np
 from typing import List, Tuple, Union
 
-from elit.nlp.tagger.corpus import Dictionary, Sentence
+import mxnet as mx
+import mxnet.ndarray as nd
+from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
 from elit.nlp.tagger.embeddings import TokenEmbeddings
+from mxnet import autograd
+from mxnet.gluon import nn, rnn
 
 START_TAG: str = '<START>'
 STOP_TAG: str = '<STOP>'
@@ -91,7 +89,8 @@ class SequenceTagger(nn.Block):
         self.nlayers: int = rnn_layers
         self.hidden_word = None
 
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.5, axes=[0])
+
         # self.dropout: nn.Block = LockedDropout(0.5)
 
         rnn_input_dim: int = self.embeddings.embedding_length
@@ -388,25 +387,14 @@ class SequenceTagger(nn.Block):
 
         return score, tag_seq
 
-    def predict_old(self, sentence: Sentence) -> Sentence:
-
-        score, tag_seq = self.predict_scores(sentence)
-        predicted_id = tag_seq
-        for (token, pred_id) in zip(sentence.tokens, predicted_id):
-            token: Token = token
-            # get the predicted tag
-            predicted_tag = self.tag_dictionary.get_item_for_index(pred_id)
-            token.add_tag(self.tag_type, predicted_tag)
-
-        return sentence
-
     def predict(self, sentences: Union[List[Sentence], Sentence], mini_batch_size=32) -> List[Sentence]:
 
         if type(sentences) is Sentence:
             sentences = [sentences]
 
         # remove previous embeddings
-        clear_embeddings(sentences)
+        for sentence in sentences:
+            sentence.clear_embeddings(also_clear_word_embeddings=True)
 
         # make mini-batches
         batches = [sentences[x:x + mini_batch_size] for x in range(0, len(sentences), mini_batch_size)]
@@ -437,7 +425,7 @@ class SequenceTagger(nn.Block):
             if self.use_crf:
                 score, tag_seq = self.viterbi_decode(feats)
             else:
-                score, tag_seq = torch.max(feats, 1)
+                score, tag_seq = nd.max(feats, 1)
                 tag_seq = list(tag_seq.cpu().data)
 
             # overall_score += score
@@ -447,24 +435,24 @@ class SequenceTagger(nn.Block):
 
     @staticmethod
     def load(model: str):
-        model_file = None
-        if model_file is not None:
-            tagger: SequenceTagger = SequenceTagger.load_from_file(model_file)
-            return tagger
+        tagger: SequenceTagger = SequenceTagger.load_from_file(model)
+        return tagger
 
 
-# class LockedDropout(nn.Module):
-#     def __init__(self, dropout_rate=0.5):
-#         super(LockedDropout, self).__init__()
-#         self.dropout_rate = dropout_rate
-#
-#     def forward(self, x):
-#         if not self.training or not self.dropout_rate:
-#             return x
-#
-#         m = x.data.new(1, x.size(1), x.size(2)).bernoulli_(1 - self.dropout_rate)
-#         mask = torch.autograd.Variable(m, requires_grad=False) / (1 - self.dropout_rate)
-#         mask = mask.expand_as(x)
-#         return mask * x
+class LockedDropout(nn.Block):
+    def __init__(self, dropout_rate=0.5):
+        super(LockedDropout, self).__init__()
+        self.dropout_rate = dropout_rate
+
+    def forward(self, x: nd.NDArray):
+        if not autograd.is_training() or not self.dropout_rate:
+            return x
+
+        keep_rate = 1. - self.dropout_rate
+        m = nd.random.negative_binomial(1, keep_rate, (1, x.shape[1], x.shape[2]))
+        mask: nd.NDArray = m / keep_rate
+        return nd.broadcast_mul(x, mask)
+
+
 if __name__ == '__main__':
     pass
