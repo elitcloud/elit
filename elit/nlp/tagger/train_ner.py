@@ -62,4 +62,5 @@ if __name__ == '__main__':
         trainer.train('data/model/ner/en',
                       learning_rate=0.1,
                       mini_batch_size=32,
-                      max_epochs=150)
+                      max_epochs=150,
+                      embeddings_in_memory=False)
