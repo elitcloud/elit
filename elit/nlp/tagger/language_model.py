@@ -54,8 +54,6 @@ class LanguageModel(nn.HybridBlock):
                 init_params['encoder.weight']) if init_params else mx.initializer.Uniform(0.1))
 
             if nlayers == 1:
-                self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
-            else:
                 if init_params:
                     self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size,
                                         i2h_weight_initializer=mx.initializer.Constant(init_params['rnn.weight_ih_l0']),
@@ -64,7 +62,9 @@ class LanguageModel(nn.HybridBlock):
                                         h2h_bias_initializer=mx.initializer.Constant(init_params['rnn.bias_hh_l0'])
                                         )
                 else:
-                    self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
+                    self.rnn = rnn.LSTM(hidden_size, nlayers, input_size=embedding_size)
+            else:
+                self.rnn = rnn.LSTM(hidden_size, nlayers, dropout=dropout, input_size=embedding_size)
 
             self.hidden = None
 
