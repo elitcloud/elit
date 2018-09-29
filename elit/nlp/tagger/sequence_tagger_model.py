@@ -1,14 +1,15 @@
 # -*- coding:utf-8 -*-
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-21 21:10
-
+import os
+import pickle
 import warnings
 from typing import List, Tuple, Union
 
 import mxnet as mx
 import mxnet.ndarray as nd
 from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
-from elit.nlp.tagger.embeddings import TokenEmbeddings
+from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
 from mxnet import autograd
 from mxnet.gluon import nn, rnn
 
@@ -131,10 +132,10 @@ class SequenceTagger(nn.Block):
             self.transitions = self.params.get('transitions', shape=(self.tagset_size, self.tagset_size),
                                                init=mx.init.Constant(transitions))
 
-    def save(self, model_file: str):
-        model_state = {
-            # 'state_dict': self.state_dict(),
-            'embeddings': self.embeddings,
+    def save(self, model_folder: str):
+        os.makedirs(model_folder, exist_ok=True)
+        config = {
+            # 'embeddings': self.embeddings,
             'hidden_size': self.hidden_size,
             'tag_dictionary': self.tag_dictionary,
             'tag_type': self.tag_type,
@@ -142,32 +143,47 @@ class SequenceTagger(nn.Block):
             'use_rnn': self.use_rnn,
             'rnn_layers': self.rnn_layers,
         }
-        # torch.save(model_state, model_file, pickle_protocol=4)
+        config_path = os.path.join(model_folder, 'config.pkl')
+        with open(config_path, 'wb') as f:
+            pickle.dump(config, f)
+            model_path = os.path.join(model_folder, 'model.bin')
+            self.save_parameters(model_path)
 
     @classmethod
-    def load_from_file(cls, model_file):
+    def load_from_file(cls, model_folder):
+        config_path = os.path.join(model_folder, 'config.pkl')
+        with open(config_path, 'rb') as f:
+            config = pickle.load(f)
+            embedding_types: List[TokenEmbeddings] = [
 
-        warnings.filterwarnings("ignore")
-        # state = torch.load(model_file, map_location={'cuda:0': 'cpu'})
-        warnings.filterwarnings("default")
+                WordEmbeddings('glove'),
 
-        # model = SequenceTagger(
-        #     hidden_size=state['hidden_size'],
-        #     embeddings=state['embeddings'],
-        #     tag_dictionary=state['tag_dictionary'],
-        #     tag_type=state['tag_type'],
-        #     use_crf=state['use_crf'],
-        #     use_rnn=state['use_rnn'],
-        #     rnn_layers=state['rnn_layers'])
+                # comment in this line to use character embeddings
+                # CharacterEmbeddings(),
 
-        # model.load_state_dict(state['state_dict'])
-        # model.eval()
-        # if torch.cuda.is_available():
-        #     model = model.cuda()
-        # return model
+                # comment in these lines to use contextual string embeddings
+                CharLMEmbeddings('data/model/lm-news-forward'),
+                CharLMEmbeddings('data/model/lm-news-backward'),
+            ]
+
+            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+            model = SequenceTagger(
+                hidden_size=config['hidden_size'],
+                embeddings=embeddings,
+                tag_dictionary=config['tag_dictionary'],
+                tag_type=config['tag_type'],
+                use_crf=config['use_crf'],
+                use_rnn=config['use_rnn'],
+                rnn_layers=config['rnn_layers'])
+            model.load_parameters(os.path.join(model_folder, 'model.bin'))
+            return model
 
     def forward(self, sentences: List[Sentence]) -> Tuple[nd.NDArray, nd.NDArray, List]:
+        """
 
+        :param sentences:
+        :return: features, tags, lengths
+        """
         # first, sort sentences by number of tokens
         sentences.sort(key=lambda x: len(x), reverse=True)
         longest_token_sequence_in_batch: int = len(sentences[0])
@@ -415,7 +431,7 @@ class SequenceTagger(nn.Block):
         return sentences
 
     def _predict_scores_batch(self, sentences: List[Sentence]):
-        all_feats, tags = self.forward(sentences)
+        all_feats, tags, lengths = self.forward(sentences)
 
         overall_score = 0
         all_tags_seqs = []
@@ -426,7 +442,7 @@ class SequenceTagger(nn.Block):
                 score, tag_seq = self.viterbi_decode(feats)
             else:
                 score, tag_seq = nd.max(feats, 1)
-                tag_seq = list(tag_seq.cpu().data)
+                tag_seq = list(tag_seq.data())
 
             # overall_score += score
             all_tags_seqs.extend(tag_seq)
@@ -455,4 +471,10 @@ class LockedDropout(nn.Block):
 
 
 if __name__ == '__main__':
-    pass
+    tagger = SequenceTagger.load_from_file('data/model/ner/eng')
+    sent = Sentence()
+    sent.add_token(Token('the', pos='DT'))
+    sent.add_token(Token('European', pos='NNP'))
+    sent.add_token(Token('Union', pos='NNP'))
+    result = tagger.predict(sent)[0]
+    print([t.text + '/' + t.tags['ner'] for t in result])
