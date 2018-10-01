@@ -12,7 +12,7 @@ from typing import Union, List
 
 from mxnet.gluon import nn
 import mxnet.ndarray as nd
-from elit.nlp.tagger.corpus import Sentence, Token
+from elit.nlp.tagger.corpus import Sentence, Token, read_pretrained_embeddings
 from elit.nlp.tagger.language_model import LanguageModel
 
 
@@ -76,17 +76,11 @@ class TokenEmbeddings(Embeddings):
 class WordEmbeddings(TokenEmbeddings):
     """Standard static word embeddings, such as GloVe or FastText."""
 
-    def __init__(self, embeddings):
+    def __init__(self, embedding_file):
         """Init one of: 'glove', 'extvec', 'ft-crawl', 'ft-german'.
         Constructor downloads required files if not there."""
 
-        # GLOVE embeddings
-        if embeddings.lower() == 'glove' or embeddings.lower() == 'en-glove':
-            self.precomputed_word_embeddings = gensim.models.KeyedVectors.load(
-                os.path.join(os.path.expanduser("~"), '.flair/embeddings/glove.gensim'))
-            self.__embedding_length: int = self.precomputed_word_embeddings.vector_size
-        else:
-            raise RuntimeError('only support glove')
+        self.precomputed_word_embeddings, self.__embedding_length = read_pretrained_embeddings(embedding_file)
 
         # self.name = embeddings
         self.static_embeddings = True
