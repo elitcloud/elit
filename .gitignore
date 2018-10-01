@@ -173,3 +173,5 @@ elit/dat/*
 /.pytest_cache/
 # Corpus and models are placed under data
 data
+*.gln
+*.pkl
