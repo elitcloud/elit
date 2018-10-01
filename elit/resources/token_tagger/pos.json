@@ -1,8 +1,8 @@
 {
   "reader": "tsv",
   "tsv_heads": {
-      "tok": 0,
-      "pos": 1
+    "tok": 0,
+    "pos": 1
   },
   "log_path": null,
   "sqeuence": false,
