@@ -36,7 +36,7 @@ if __name__ == '__main__':
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types: List[TokenEmbeddings] = [
 
-            WordEmbeddings('glove'),
+            WordEmbeddings('data/embedding/fasttext100.vec.txt'),
 
             # comment in this line to use character embeddings
             # CharacterEmbeddings(),
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
-        trainer.train('data/model/ner/en',
+        trainer.train('data/model/ner/en-fasttext100',
                       learning_rate=0.1,
                       mini_batch_size=32,
                       max_epochs=150,
