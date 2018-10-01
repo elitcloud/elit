@@ -20,6 +20,25 @@ from elit.util.structure import Document, NER, POS, SEN
 from elit.util.structure import Sentence as ElitSentence
 
 
+def read_pretrained_embeddings(filename):
+    word_to_embed = {}
+    m = 0
+    with open(filename) as f:
+        for line in f:
+            split = line.split()
+            if len(split) == 2:
+                n, m = int(split[0]), int(split[1])
+            if len(split) > 2:
+                word = split[0]
+                vec = split[1:]
+                if m == 0:
+                    m = len(vec)
+                elif len(vec) != m:  # bad line
+                    continue
+                word_to_embed[word] = np.array(vec)
+    return word_to_embed, m
+
+
 class StringIdMapper(object):
     def __init__(self) -> None:
         super().__init__()
@@ -1549,6 +1568,7 @@ def conll_to_documents(path) -> List[Document]:
 if __name__ == '__main__':
     # make_language_model_dataset('data/wiki/test.txt', 'data/wiki-debug')
     # use your own data path
-    dataset = conll_to_documents('data/conll-03/debug/eng.dev')
-    corpus = NLPTaskDataFetcher.convert_elit_documents(dataset)
+    # dataset = conll_to_documents('data/conll-03/debug/eng.dev')
+    # corpus = NLPTaskDataFetcher.convert_elit_documents(dataset)
+    w2v = read_pretrained_embeddings('data/embedding/glove/glove.6B.100d.debug.txt')
     pass
