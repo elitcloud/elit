@@ -67,7 +67,6 @@ class DepParser(object):
                     with autograd.record():
                         arc_accuracy, rel_accuracy, overall_accuracy, loss = parser.run(words, tags, arcs,
                                                                                         rels)
-                        loss = loss * 0.5
                         loss_value = loss.asscalar()
                     loss.backward()
                     trainer.step(config.train_batch_size)
