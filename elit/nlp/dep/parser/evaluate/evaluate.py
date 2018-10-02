@@ -3,8 +3,8 @@ import tempfile
 import time
 from functools import reduce
 
-from elit.dep.parser.biaffine_parser import BiaffineParser
-from elit.dep.parser.common.data import DataLoader
+from elit.nlp.dep.parser.biaffine_parser import BiaffineParser
+from elit.nlp.dep.parser.common.data import DataLoader
 
 
 def evaluate_official_script(parser: BiaffineParser, vocab, num_buckets_test, test_batch_size, test_file, output_file,

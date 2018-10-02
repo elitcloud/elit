@@ -1,4 +1,4 @@
-from elit.dep.common.config import Config
+from elit.nlp.dep.common.config import Config
 
 
 class ParserConfig(Config):

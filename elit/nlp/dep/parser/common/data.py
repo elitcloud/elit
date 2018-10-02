@@ -5,8 +5,8 @@ from collections import Counter
 from typing import Union, Sequence, Dict, Any
 import numpy as np
 
-from elit.dep.common.savable import Savable
-from elit.dep.parser.common.k_means import KMeans
+from elit.nlp.dep.common.savable import Savable
+from elit.nlp.dep.parser.common.k_means import KMeans
 from elit.util.structure import Document, DEP
 
 
