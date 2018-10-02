@@ -14,6 +14,7 @@ from elit.nlp.dep.parser.common.data import ParserVocabulary, DataLoader, ConllW
 from elit.nlp.dep.parser.common.exponential_scheduler import ExponentialScheduler
 from elit.nlp.dep.parser.evaluate import evaluate_official_script
 from elit.nlp.dep.parser.parser_config import ParserConfig
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from mxnet import gluon, autograd
 
 
@@ -39,7 +40,7 @@ class DepParser(object):
         vocab.save(self._config.save_vocab_path)
         vocab.log_info(logger)
 
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
 
             self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
                                                    config.dropout_emb,
@@ -106,7 +107,7 @@ class DepParser(object):
     def load(self):
         config = self._config
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
                                           config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
@@ -119,7 +120,7 @@ class DepParser(object):
         parser = self._parser
         vocab = self._vocab
         config = self._config
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
             UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
                                                        config.test_file, os.path.join(config.save_dir, 'valid_tmp'))
         if logger is None:
@@ -138,7 +139,7 @@ class DepParser(object):
         for i, (word, tag) in enumerate(sentence):
             words[i + 1, 0], tags[i + 1, 0] = vocab.word2id(word.lower()), vocab.tag2id(tag)
 
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
             outputs = self._parser.run(words, tags, is_train=False)
         words = []
         for arc, rel, (word, tag) in zip(outputs[0][0], outputs[0][1], sentence):

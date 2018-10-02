@@ -13,6 +13,7 @@ from elit.nlp.dep.parser.common.data import ParserVocabulary, DataLoader, np, ge
 from elit.nlp.dep.parser.common.exponential_scheduler import ExponentialScheduler
 from elit.nlp.dep.parser.evaluate import evaluate_official_script
 from elit.nlp.dep.parser.parser_config import ParserConfig
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.util.structure import Document, Sentence, DEP, POS, SEN
 from mxnet import gluon, autograd
 import mxnet as mx
@@ -43,7 +44,7 @@ class DependencyParser(NLPComponent):
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
         # training
-        with mx.Context(mx.gpu(0) if 'cuda' in os.environ['PATH'] else mx.cpu()):
+        with mx.Context(mxnet_prefer_gpu()):
 
             self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
                                                    config.dropout_emb,
