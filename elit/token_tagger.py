@@ -36,7 +36,7 @@ from elit.eval import MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
-from elit.util.structure import Document, to_gold, BILOU, TOK, DOC_ID
+from elit.util.structure import Document, to_gold, BILOU, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi'
@@ -305,12 +305,12 @@ class TokenTagger(MXNetComponent):
             output = self.model(data)
             pred = nd.argmax(output, axis=1)
             [preds.append(self.label_map.get(int(p.asscalar()))) for p in pred]
+
         for doc in docs:
             for sen in doc:
                 labels = sen[to_gold(self.key)]
-                preds = preds[idx:idx+len(sen[TOK])]
-                idx += len(sen[TOK])
-                acc.update(labels=labels, preds=preds)
+                acc.update(labels=labels, preds=preds[idx:idx+len(labels)])
+                idx += len(labels)
 
         # for doc in docs:
         #     for sen in doc:
