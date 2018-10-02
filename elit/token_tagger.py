@@ -96,7 +96,7 @@ class TokenTagger(MXNetComponent):
         """
         super().__init__(ctx)
         self.vsms = [init_vsm(n) for n in vsm_path]
-        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
+        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]), ctx=self.ctx)
 
         # to be loaded/saved
         self.key = None
@@ -305,7 +305,7 @@ class TokenTagger(MXNetComponent):
         acc = ChunkF1()
         for doc in docs:
             for sen in doc:
-                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
+                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])], ctx=self.ctx).reshape(0, -1)
                 x_batch = []
                 labels = []
                 for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
