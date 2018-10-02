@@ -27,6 +27,7 @@ import mxnet as mx
 from mxnet import nd, gluon, autograd
 from mxnet.gluon import Trainer
 from mxnet.gluon.data import Dataset, DataLoader
+from tqdm import tqdm, trange
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
@@ -34,7 +35,7 @@ from elit.eval import MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
-from elit.util.structure import Document, to_gold, BILOU, TOK
+from elit.util.structure import Document, to_gold, BILOU, TOK, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi'
@@ -70,8 +71,8 @@ class TokenTaggerDataset(Dataset):
         return len(self.data)
 
     def init_data(self, docs):
-        for doc in docs:
-            for sen in doc:
+        for doc in tqdm(docs):
+            for sen in tqdm(doc, desc="loading doc: {}".format(doc[DOC_ID]), leave=False):
                 w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
                 for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
                     x = nd.stack(
@@ -252,9 +253,10 @@ class TokenTagger(MXNetComponent):
         logging.info('Training')
         best_e, best_eval = -1, -1
         self.model.hybridize()
-        for e in range(1, epoch + 1):
+        epochs = trange(1, epoch + 1)
+        for e in epochs:
             st = time.time()
-            for i, (data, label) in enumerate(trn_data):
+            for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
                 data = data.as_in_context(self.ctx)
                 label = label.as_in_context(self.ctx)
                 with autograd.record():
@@ -286,7 +288,8 @@ class TokenTagger(MXNetComponent):
                     "dev_acc: {}".format(dev_acc),
                     "best epoch: {}".format(best_e),
                     "best eval: {}".format(best_eval))
-            logging.info(" ".join(desc))
+            epochs.set_description(desc=' '.join(desc))
+        return best_eval
 
     def token_accuracy(self, data_iterator):
         acc = mx.metric.Accuracy()
