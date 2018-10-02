@@ -103,7 +103,7 @@ class NLPModel(gluon.HybridBlock):
             return gluon.nn.Conv2D(
                 channels=config.filters,
                 kernel_size=(ngram, self.input_layer.col if self.fuse_conv_layer is None else self.fuse_conv_layer._channels),
-                strides=(1, config.input_col),
+                strides=(1, self.input_layer.col),
                 activation=config.activation)
 
         def pool(ngram):
