@@ -27,6 +27,7 @@ import mxnet as mx
 from mxnet import nd, gluon, autograd
 from mxnet.gluon import Trainer
 from mxnet.gluon.data import Dataset, DataLoader
+from mxnet.metric import Accuracy
 from tqdm import tqdm, trange
 
 from elit.cli import ComponentCLI, set_logger
@@ -54,7 +55,6 @@ class TokenTaggerDataset(Dataset):
         self.vsms = vsms
         self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
         self.key = key
-        self.doc = docs
         self.feature_windows = feature_windows
         self.label_map = label_map
         self.transform = transform
@@ -74,9 +74,10 @@ class TokenTaggerDataset(Dataset):
         for doc in tqdm(docs):
             for sen in tqdm(doc, desc="loading doc: {}".format(doc[DOC_ID]), leave=False):
                 w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
-                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
+                for idx, label in enumerate(sen[to_gold(self.key)]):
                     x = nd.stack(
-                        *[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in self.feature_windows])
+                        *[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in
+                          self.feature_windows])
                     y = self.label_map.cid(label)
                     self.data.append((x, y))
 
@@ -247,15 +248,13 @@ class TokenTagger(MXNetComponent):
         trainer = Trainer(self.model.collect_params(),
                           optimizer=optimizer,
                           optimizer_params=optimizer_params)
-        smoothing_constant = .01
-        moving_loss = 0
 
         logging.info('Training')
         best_e, best_eval = -1, -1
         self.model.hybridize()
         epochs = trange(1, epoch + 1)
         for e in epochs:
-            st = time.time()
+            trn_st = time.time()
             for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
                 data = data.as_in_context(self.ctx)
                 label = label.as_in_context(self.ctx)
@@ -264,35 +263,31 @@ class TokenTagger(MXNetComponent):
                     loss = loss_fn(output, label)
                 loss.backward()
                 trainer.step(data.shape[0])
-                ##########################
-                #  Keep a moving average of the losses
-                ##########################
-                curr_loss = nd.mean(loss).asscalar()
-                moving_loss = (curr_loss if ((i == 0) and (e == 0))
-                               else (1 - smoothing_constant) * moving_loss + smoothing_constant * curr_loss)
-            et = time.time()
-            if self.chunking:
-                trn_acc = self.chunk_accuracy(trn_docs)
-                dev_acc = self.chunk_accuracy(dev_docs)
-            else:
-                trn_acc = self.token_accuracy(trn_data)
-                dev_acc = self.token_accuracy(dev_data)
+
+            trn_et = time.time()
+
+            dev_st = time.time()
+            dev_acc = self.accuracy(dev_data, dev_docs)
+            dev_et = time.time()
+
             if best_eval < dev_acc:
                 best_e, best_eval = e, dev_acc
                 self.save(model_path=model_path)
 
             desc = ("epoch: {}".format(e),
-                    "time: {}".format(datetime.timedelta(seconds=(et - st))),
-                    "loss: {}".format(moving_loss),
-                    "train_acc: {}".format(trn_acc),
-                    "dev_acc: {}".format(dev_acc),
+                    "trn time: {}".format(datetime.timedelta(seconds=(trn_et - trn_st))),
+                    "dev time: {}".format(datetime.timedelta(seconds=(dev_et - dev_st))),
+                    # "train_acc: {}".format(trn_acc),
+                    "dev acc: {}".format(dev_acc),
                     "best epoch: {}".format(best_e),
                     "best eval: {}".format(best_eval))
             epochs.set_description(desc=' '.join(desc))
-        return best_eval
+
+    def accuracy(self, data_iterator, docs=None):
+        return self.chunk_accuracy(data_iterator, docs) if self.chunking else self.token_accuracy(data_iterator)
 
     def token_accuracy(self, data_iterator):
-        acc = mx.metric.Accuracy()
+        acc = Accuracy()
         for data, label in data_iterator:
             data = data.as_in_context(self.ctx)
             label = label.as_in_context(self.ctx)
@@ -301,21 +296,37 @@ class TokenTagger(MXNetComponent):
             acc.update(preds=preds, labels=label)
         return acc.get()[1]
 
-    def chunk_accuracy(self, docs):
+    def chunk_accuracy(self, data_iterator, docs):
         acc = ChunkF1()
+        preds = []
+        idx = 0
+        for data, label in data_iterator:
+            data = data.as_in_context(self.ctx)
+            output = self.model(data)
+            pred = nd.argmax(output, axis=1)
+            [preds.append(self.label_map.get(int(p.asscalar()))) for p in pred]
         for doc in docs:
             for sen in doc:
-                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])], ctx=self.ctx).reshape(0, -1)
-                x_batch = []
-                labels = []
-                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
-                    x = nd.stack(*[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in self.feature_windows])
-                    x_batch.append(x)
-                    labels.append(label)
-                output = self.model(nd.stack(*x_batch))
-                preds = nd.argmax(output, axis=1)
-                preds = [self.label_map.get(int(pred.asscalar())) for pred in preds]
-                acc.update(preds=preds, labels=labels)
+                labels = sen[to_gold(self.key)]
+                preds = preds[idx:idx+len(sen[TOK])]
+                idx += len(sen[TOK])
+                acc.update(labels=labels, preds=preds)
+
+        # for doc in docs:
+        #     for sen in doc:
+        #         w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])],
+        #                      ctx=self.ctx).reshape(0, -1)
+        #         x_batch = []
+        #         labels = []
+        #         for idx, label in enumerate(sen[to_gold(self.key)]):
+        #             x = nd.stack(*[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in
+        #                            self.feature_windows])
+        #             x_batch.append(x)
+        #             labels.append(label)
+        #         output = self.model(nd.stack(*x_batch))
+        #         preds = nd.argmax(output, axis=1)
+        #         preds = [self.label_map.get(int(pred.asscalar())) for pred in preds]
+        #         acc.update(preds=preds, labels=labels)
         return acc.get()[1]
 
 
