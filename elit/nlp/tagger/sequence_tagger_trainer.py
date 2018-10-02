@@ -172,24 +172,22 @@ class SequenceTaggerTrainer:
                     # anneal against train loss if training with dev, otherwise anneal against dev score
                     scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
 
+                    # save if model is current best and we use dev data for model selection
+                    if save_model and not train_with_dev and dev_score == scheduler.best:
+                        self.model.save(base_path)
                     summary = '%d' % epoch + '\t({:%H:%M:%S})'.format(datetime.datetime.now()) \
                               + '\t%f\t%d\t%f\tDEV   %d\t' % (
                                   current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
                     summary = summary.replace('\n', '')
-                    with open(loss_txt, "a") as loss_file:
-                        loss_file.write('%s\n' % summary)
-                        loss_file.close()
-
-                    # save if model is current best and we use dev data for model selection
-                    if save_model and not train_with_dev and dev_score == scheduler.best:
-                        self.model.save(base_path)
-
                     if self.corpus.test and len(self.corpus.test):
                         print('test... ')
                         test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
                                                                          evaluation_method=evaluation_method,
                                                                          embeddings_in_memory=embeddings_in_memory)
                         summary += '\tTEST   \t%d\t' % test_fp + test_result
+                    with open(loss_txt, "a") as loss_file:
+                        loss_file.write('%s\n' % summary)
+                        loss_file.close()
                     print(summary)
 
             # if we do not use dev data for model selection, save final model
