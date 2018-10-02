@@ -2,8 +2,7 @@
   "reader": "tsv",
   "tsv_heads": {
     "tok": 0,
-    "pos": 1,
-    "ner": 2
+    "ner": 1
   },
   "log_path": null,
   "sqeuence": false,

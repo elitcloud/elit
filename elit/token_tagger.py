@@ -34,7 +34,7 @@ from elit.eval import MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
-from elit.util.structure import Document, to_gold, BILOU, TOK, Sentence, SEN
+from elit.util.structure import Document, to_gold, BILOU, TOK
 from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi'
@@ -48,67 +48,36 @@ class TokenTaggerDataset(Dataset):
                  docs,
                  feature_windows,
                  label_map: LabelMap,
-                 ctx=None,
                  transform=None):
-        self._vsms = vsms
-        self._key = key
-        self._doc = docs
-        self._feature_windows = feature_windows
-        self._label_map = label_map
-        self._transform = transform
-        self._ctx = ctx
-        self._init_data(docs)
+        self.data = []
+        self.vsms = vsms
+        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
+        self.key = key
+        self.doc = docs
+        self.feature_windows = feature_windows
+        self.label_map = label_map
+        self.transform = transform
+        self.init_data(docs)
 
     def __getitem__(self, idx):
-        x, y = self._data[idx]
-        if self._transform is not None:
-            return self._transform(x, y)
+        x, y = self.data[idx]
+        if self.transform is not None:
+            return self.transform(x, y)
         else:
             return x, y
 
     def __len__(self):
-        return len(self._data)
+        return len(self.data)
 
-    def _init_data(self, docs):
-        self._data = []
-        pad = nd.zeros(sum([vsm.model.dim for vsm in self._vsms]), ctx=self._ctx)
+    def init_data(self, docs):
         for doc in docs:
             for sen in doc:
-                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self._vsms])]).reshape(0, -1)
-                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self._key)])):
+                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
+                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
                     x = nd.stack(
-                        *[w[idx + window] if 0 <= (idx + window) < len(w) else pad for window in self._feature_windows])
-                    y = self._label_map.cid(label)
-                    self._data.append((x, y))
-
-
-# # ======================================== EvalMetric ========================================
-#
-# class TokenAccuracy(Accuracy):
-#     def __init__(self, key: str):
-#         super().__init__()
-#         self.key = key
-#
-#     def update(self, document: Document):
-#         for sentence in document:
-#             gold = sentence[to_gold(self.key)]
-#             pred = sentence[self.key]
-#             self.correct += len([1 for g, p in zip(gold, pred) if g == p])
-#             self.total += len(sentence)
-#
-#
-# class ChunkF1(F1):
-#     def __init__(self, key: str):
-#         super().__init__()
-#         self.key = key
-#
-#     def update(self, document: Document):
-#         for sentence in document:
-#             gold = BILOU.to_chunks(sentence[to_gold(self.key)])
-#             pred = BILOU.to_chunks(sentence[self.key])
-#             self.correct += len(set.intersection(set(gold), set(pred)))
-#             self.p_total += len(pred)
-#             self.r_total += len(gold)
+                        *[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in self.feature_windows])
+                    y = self.label_map.cid(label)
+                    self.data.append((x, y))
 
 
 # ======================================== Component ========================================
@@ -126,6 +95,7 @@ class TokenTagger(MXNetComponent):
         """
         super().__init__(ctx)
         self.vsms = [init_vsm(n) for n in vsm_path]
+        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
 
         # to be loaded/saved
         self.key = None
@@ -300,8 +270,8 @@ class TokenTagger(MXNetComponent):
                                else (1 - smoothing_constant) * moving_loss + smoothing_constant * curr_loss)
             et = time.time()
             if self.chunking:
-                trn_acc = self.chunk_accuracy(trn_data)
-                dev_acc = self.chunk_accuracy(dev_data)
+                trn_acc = self.chunk_accuracy(trn_docs)
+                dev_acc = self.chunk_accuracy(dev_docs)
             else:
                 trn_acc = self.token_accuracy(trn_data)
                 dev_acc = self.token_accuracy(dev_data)
@@ -328,24 +298,29 @@ class TokenTagger(MXNetComponent):
             acc.update(preds=preds, labels=label)
         return acc.get()[1]
 
-    def chunk_accuracy(self, data_iterator):
+    def chunk_accuracy(self, docs):
         acc = ChunkF1()
-        for data, label in data_iterator:
-            data = data.as_in_context(self.ctx)
-            label = label.as_in_context(self.ctx)
-            output = self.model(data)
-            predictions = nd.argmax(output, axis=1)
-            label = [self.label_map.get(cid=int(l.asscalar())) for l in label]
-            preds = [self.label_map.get(cid=int(pred.asscalar())) for pred in predictions]
-            acc.update(preds=preds, labels=label)
+        for doc in docs:
+            for sen in doc:
+                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
+                x_batch = []
+                labels = []
+                for idx, (tok, label) in enumerate(zip(sen[TOK], sen[to_gold(self.key)])):
+                    x = nd.stack(*[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in self.feature_windows])
+                    x_batch.append(x)
+                    labels.append(label)
+                output = self.model(nd.stack(*x_batch))
+                preds = nd.argmax(output, axis=1)
+                preds = [self.label_map.get(int(pred.asscalar())) for pred in preds]
+                acc.update(preds=preds, labels=labels)
         return acc.get()[1]
 
+
+# ======================================== EvalMetric ========================================
 
 class ChunkF1(MxF1):
 
     def update(self, labels, preds):
-        labels = Sentence({SEN: labels})
-        preds = Sentence({SEN: preds})
         gold = BILOU.to_chunks(labels)
         pred = BILOU.to_chunks(preds)
         self.correct += len(set.intersection(set(gold), set(pred)))

@@ -18,7 +18,7 @@ import inspect
 from types import SimpleNamespace
 from typing import Optional, Sequence, List
 
-from mxnet import gluon, nd
+from mxnet import gluon
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
