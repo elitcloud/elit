@@ -102,6 +102,7 @@ class VectorSpaceModel(abc.ABC):
 
         # for zero padding
         self.pad = np.zeros(dim).astype('float32')
+        self.vs_map = {}
 
     @abc.abstractmethod
     def emb(self, value: str) -> np.ndarray:
@@ -113,12 +114,16 @@ class VectorSpaceModel(abc.ABC):
         """
         raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
+    def lookup(self, value: Optional[str] = None):
+        self.vs_map[value] = self.vs_map.get(value, self.emb(value))
+        return self.vs_map[value]
+
     def embedding(self, value: Optional[str] = None) -> np.ndarray:
         """
         :param value: the value (e.g., a word) to retrieve the embedding for.
         :return: the embedding of the value; if the value is ``None``, the zero embedding.
         """
-        return self.emb(value) if value is not None else self.pad
+        return self.lookup(value) if value is not None else self.pad
 
     def embedding_list(self, values: Sequence[str]) -> List[np.ndarray]:
         """
