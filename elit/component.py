@@ -211,11 +211,11 @@ class MXNetComponent(NLPComponent):
                     loss = loss_fn(output, label)
                 loss.backward()
                 trainer.step(data.shape[0])
-            trn_acc = self.accuracy(trn_data=trn_data, trn_docs=trn_docs)
+            trn_acc = self.accuracy(data_iterator=trn_data, docs=trn_docs)
             trn_et = time.time()
 
             dev_st = time.time()
-            dev_acc = self.accuracy(dev_data=dev_data, dev_docs=dev_docs)
+            dev_acc = self.accuracy(data_iterator=dev_data, docs=dev_docs)
             dev_et = time.time()
 
             if best_eval < dev_acc:

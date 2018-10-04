@@ -219,7 +219,7 @@ class Gaze(VectorSpaceModel):
 
     def embedding_list(self, values: Sequence[str]):
 
-        entity_vectors = [np.zeros(self.dim) for _ in values]
+        entity_vectors = [np.zeros(self.dim).astype('float32') for _ in values]
 
         def normalize(v):
             norm = sum(v)
