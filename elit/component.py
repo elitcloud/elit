@@ -14,8 +14,17 @@
 # limitations under the License.
 # ========================================================================
 import abc
+import datetime
 import inspect
+import logging
+import time
 from typing import Sequence, Any
+
+from mxnet import gluon, autograd, nd
+from mxnet.gluon import Trainer
+from tqdm import trange, tqdm
+
+from elit.util.vsm import LabelMap
 
 from elit.util.structure import Document
 
@@ -147,7 +156,9 @@ class MXNetComponent(NLPComponent):
     def __init__(self, ctx):
         super().__init__()
         self.ctx = ctx
+        self.model = None
 
+    @abc.abstractmethod
     def init(self, **kwargs):
         pass
 
@@ -157,13 +168,94 @@ class MXNetComponent(NLPComponent):
     def save(self, model_path: str, **kwargs):
         pass
 
-    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
-        pass
+    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
+              label_map: LabelMap = None,
+              epoch=100,
+              trn_batch=64,
+              dev_batch=2048,
+              loss_fn=gluon.loss.SoftmaxCrossEntropyLoss(),
+              optimizer='adagrad',
+              optimizer_params=None,
+              **kwargs):
+        if optimizer_params is None:
+            optimizer_params = {'learning_rate': 0.01}
 
-    def decode(self, docs: Sequence[Document], **kwargs):
-        pass
+        log = ('Configuration',
+               '- context(s): {}'.format(self.ctx),
+               '- trn_batch size: {}'.format(trn_batch),
+               '- dev_batch size: {}'.format(dev_batch),
+               '- max epoch : {}'.format(epoch),
+               '- loss func : {}'.format(loss_fn),
+               '- optimizer : {} <- {}'.format(optimizer, optimizer_params))
+        logging.info('\n'.join(log))
+        logging.info("Load trn data")
+        trn_data = self.data_loader(docs=trn_docs, batch_size=trn_batch, shuffle=True)
+        logging.info("Load dev data")
+        dev_data = self.data_loader(docs=dev_docs, batch_size=dev_batch, shuffle=False)
+        trainer = Trainer(self.model.collect_params(),
+                          optimizer=optimizer,
+                          optimizer_params=optimizer_params)
+
+        logging.info('Training')
+        best_e, best_eval = -1, -1
+        self.model.hybridize()
+        epochs = trange(1, epoch + 1)
+
+        for e in epochs:
+            trn_st = time.time()
+            for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
+                data = data.as_in_context(self.ctx)
+                label = label.as_in_context(self.ctx)
+                with autograd.record():
+                    output = self.model(data)
+                    loss = loss_fn(output, label)
+                loss.backward()
+                trainer.step(data.shape[0])
+            trn_acc = self.accuracy(trn_data, trn_docs)
+            trn_et = time.time()
+
+            dev_st = time.time()
+            dev_acc = self.accuracy(dev_data, dev_docs)
+            dev_et = time.time()
+
+            if best_eval < dev_acc:
+                best_e, best_eval = e, dev_acc
+                self.save(model_path=model_path)
+
+            desc = ("epoch: {}".format(e),
+                    "trn time: {}".format(datetime.timedelta(seconds=(trn_et - trn_st))),
+                    "dev time: {}".format(datetime.timedelta(seconds=(dev_et - dev_st))),
+                    "train_acc: {}".format(trn_acc),
+                    "dev acc: {}".format(dev_acc),
+                    "best epoch: {}".format(best_e),
+                    "best eval: {}".format(best_eval))
+            epochs.set_description(desc=' '.join(desc))
+
+    def decode(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
+        data_iterator = self.data_loader(docs=docs, batch_size=batch_size, shuffle=False, label=False)
+        preds = []
+        idx = 0
+        for data, label in data_iterator:
+            data = data.as_in_context(self.ctx)
+            output = self.model(data)
+            pred = nd.argmax(output, axis=1)
+            [preds.append(self.label_map.get(int(p.asscalar()))) for p in pred]
+
+        for doc in docs:
+            for sen in doc:
+                sen[self.key] = preds[idx:idx + len(sen)]
+                idx += len(sen)
+
+        return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
         pass
 
+    @abc.abstractmethod
+    def accuracy(self, **kwargs):
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @abc.abstractmethod
+    def data_loader(self, **kwargs):
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
