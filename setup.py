@@ -137,6 +137,7 @@ def setup_package():
             'ujson==1.35',
             'mxnet==1.2.0',
             'dynet==2.0.3',
+            'marisa_trie==0.7.5',
             'tqdm==4.26.0',
         ],
         tests_require=[

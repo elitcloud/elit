@@ -14,8 +14,12 @@
 # limitations under the License.
 # ========================================================================
 import abc
+import glob
 import inspect
 import logging
+import marisa_trie
+import os
+import pickle
 from types import SimpleNamespace
 from typing import List, Optional, Union, Sequence
 
@@ -165,7 +169,7 @@ class FastText(VectorSpaceModel):
         :type filepath: str
         """
         logging.info('FastText')
-        logging.info('- model: %s' % filepath)
+        logging.info('- model: {}'.format(filepath))
         self.model = fastText.load_model(filepath)
         dim = self.model.get_dimension()
         super().__init__(dim)
@@ -186,7 +190,7 @@ class Word2Vec(VectorSpaceModel):
         :type filepath: str
         """
         logging.info('Word2Vec')
-        logging.info('- model: %s' % filepath)
+        logging.info('- model: {}'.format(filepath))
         self.model = KeyedVectors.load(filepath) if filepath.lower().endswith(
             '.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
         dim = self.model.syn0.shape[1]
@@ -196,6 +200,86 @@ class Word2Vec(VectorSpaceModel):
     def emb(self, value: str) -> np.ndarray:
         vocab = self.model.vocab.get(value, None)
         return self.model.syn0[vocab.index] if vocab else self.pad
+
+
+class Gaze(VectorSpaceModel):
+
+    def __init__(self, filepath: str):
+        with open(filepath, 'rb') as fin:
+            self.model = pickle.load(fin)
+            self.dim = pickle.load(fin)
+            self.num_labels = pickle.load(fin)
+            self.option = pickle.load(fin)
+        super().__init__(dim=self.dim)
+        logging.info('GazeVec')
+        logging.info('- model: {}'.format(filepath))
+
+    def emb(self, value: str) -> np.ndarray:
+        pass
+
+    def embedding_list(self, values: Sequence[str]):
+
+        entity_vectors = [np.zeros(self.dim) for _ in values]
+
+        def normalize(v):
+            norm = sum(v)
+            if norm < 0.0001:
+                return v
+            return v / norm
+
+        for i, word in enumerate(values):
+            entity = ''
+            components = []
+            for j in range(i, len(values)):
+                if j > i:
+                    entity += ' '
+                entity += values[j]
+                components.append(j)
+                if entity not in self.model:
+                    if not self.model.keys(entity):  # subtrie is empty
+                        break
+                    else:
+                        continue
+                for label in self.model[entity]:
+                    for ind in components:
+                        if self.option == 1:
+                            entity_vectors[ind][label] += (j + 1 - i) * (j + 1 - i)
+                        else:
+                            if ind == i:  # first
+                                entity_vectors[ind][self.option * label[0]] += (j + 1 - i) * (j + 1 - i)
+                            elif ind == j:  # last
+                                entity_vectors[ind][self.option * label[0] + 1] += (j + 1 - i) * (j + 1 - i)
+                            if self.option > 2 and i == j:  # unique
+                                entity_vectors[ind][self.option * label[0] + 2] += 1
+                            if self.option > 3 and ind != i and ind != j:  # middle
+                                entity_vectors[ind][self.option * label[0] + 3] += (j + 1 - i) * (j + 1 - i)
+                            if self.option > 4:
+                                entity_vectors[ind][self.option * label[0] + 4] += (j + 1 - i) * (j + 1 - i)
+        entity_vectors = [normalize(vector) for vector in entity_vectors]
+        return entity_vectors
+
+    @staticmethod
+    def create(source_dir: str, model_path: str, option=1):
+        files = glob.glob('{}/*.txt'.format(source_dir))
+        num_labels = len(files)
+        dim = num_labels * option
+        keys, values = [], []
+        for i, file in enumerate(sorted(files)):
+            with open(file, 'r', encoding='latin1') as f:
+                l = ['' + u' '.join(line.split()) for line in f]
+            logging.info('Init: {} - {}'.format(file, len(l)))
+            keys.extend(l)
+            values.extend([[i]] * len(l))
+        model = marisa_trie.RecordTrie("h", zip(keys, values))
+        logging.info('Init: {} (NE-vocab = {}, NE-labels = {}, option = {})'
+                     .format(source_dir, len(model.keys()), dim, option))
+        logging.info('Saving {}'.format(model_path))
+        with open(model_path, 'wb') as fout:
+            pickle.dump(model, fout)
+            pickle.dump(dim, fout)
+            pickle.dump(num_labels, fout)
+            pickle.dump(option, fout)
+
 
 
 # class GloVe(VectorSpaceModel):
@@ -251,19 +335,14 @@ class Position2Vec(VectorSpaceModel):
 # ======================================== Embeddings ========================================
 
 
-def x_extract(index: int, offset: int, embedding_list: Sequence[np.ndarray], pad: np.ndarray) -> np.ndarray:
-    """
-    :param index: the center index of the embedding to be retrived.
-    :param offset: the offset to the center index.
-    :param embedding_list: the sequence of embeddings.
-    :param pad: the zero-pad embedding.
-    :return: the (index + offset)'th embedding if available; otherwise, the zero-pad embedding.
-    """
-    i = index + offset
-    return embedding_list[i] if 0 <= i < len(embedding_list) else pad
-
-
 def init_vsm(l: list) -> SimpleNamespace:
     model, key, path = l
-    model = Word2Vec if model == 'word2vec' else FastText
+    if model.lower() == 'word2vec':
+        model = Word2Vec
+    elif model.lower() == 'fasttext':
+        model = FastText
+    elif model.lower() == 'gaze':
+        model = Gaze
+    else:
+        raise TypeError('model {} is not supported'.format(model))
     return SimpleNamespace(model=model(path), key=key)
