@@ -203,15 +203,19 @@ class MXNetComponent(NLPComponent):
         epochs = trange(1, epoch + 1)
         for e in epochs:
             trn_st = time.time()
+            correct, total, = 0, 0
             for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
                 data = data.as_in_context(self.ctx)
                 label = label.as_in_context(self.ctx)
                 with autograd.record():
                     output = self.model(data)
                     loss = loss_fn(output, label)
-                loss.backward()
+                    loss.backward()
                 trainer.step(data.shape[0])
-            trn_acc = self.accuracy(data_iterator=trn_data, docs=trn_docs)
+                # trn_acc = self.accuracy(data_iterator=trn_data, docs=trn_docs)
+                correct += len([1 for o, y in zip(nd.argmax(output, axis=1), label) if int(o.asscalar()) == int(y.asscalar())])
+                total += len(label)
+            trn_acc = 100.0 * correct / total
             trn_et = time.time()
 
             dev_st = time.time()
