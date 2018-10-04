@@ -14,21 +14,18 @@
 # limitations under the License.
 # ========================================================================
 import argparse
-import datetime
 import json
 import logging
 import pickle
 import sys
-import time
 from types import SimpleNamespace
-from typing import Tuple, Optional, Sequence, List
+from typing import Tuple, Optional, List
 
 import mxnet as mx
-from mxnet import nd, gluon, autograd
-from mxnet.gluon import Trainer
+from mxnet import nd
 from mxnet.gluon.data import Dataset, DataLoader
 from mxnet.metric import Accuracy
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
@@ -36,10 +33,10 @@ from elit.eval import MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
-from elit.util.structure import Document, to_gold, BILOU, DOC_ID
+from elit.util.structure import to_gold, BILOU, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
 
-__author__ = 'Jinho D. Choi'
+__author__ = 'Jinho D. Choi, Gary Lai'
 
 
 # ======================================== Dataset ========================================
@@ -50,14 +47,18 @@ class TokenTaggerDataset(Dataset):
                  docs,
                  feature_windows,
                  label_map: LabelMap,
+                 label: bool,
+                 ctx=None,
                  transform=None):
         self.data = []
         self.vsms = vsms
-        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
         self.key = key
         self.feature_windows = feature_windows
         self.label_map = label_map
+        self.label = label
+        self.ctx = ctx
         self.transform = transform
+        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]), ctx=self.ctx)
         self.init_data(docs)
 
     def __getitem__(self, idx):
@@ -70,16 +71,32 @@ class TokenTaggerDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    def extract_x(self, idx, w):
+        return nd.stack(*[w[idx + win] if 0 <= (idx + win) < len(w) else self.pad for win in self.feature_windows])
+
+    def extract_y(self, label):
+        if label is False:
+            return -1
+        return self.label_map.cid(label)
+
+    def extract_sen(self, sen):
+        return nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])], ctx=self.ctx).reshape(
+            0, -1)
+
     def init_data(self, docs):
         for doc in tqdm(docs):
             for sen in tqdm(doc, desc="loading doc: {}".format(doc[DOC_ID]), leave=False):
-                w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])]).reshape(0, -1)
-                for idx, label in enumerate(sen[to_gold(self.key)]):
-                    x = nd.stack(
-                        *[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in
-                          self.feature_windows])
-                    y = self.label_map.cid(label)
-                    self.data.append((x, y))
+                w = self.extract_sen(sen)
+                if self.label:
+                    for idx, label in enumerate(sen[to_gold(self.key)]):
+                        x = self.extract_x(idx, w)
+                        y = self.extract_y(label)
+                        self.data.append((x, y))
+                else:
+                    for idx, _ in enumerate(sen):
+                        x = self.extract_x(idx, w)
+                        y = self.extract_y(self.label)
+                        self.data.append((x, y))
 
 
 # ======================================== Component ========================================
@@ -118,7 +135,6 @@ class TokenTagger(MXNetComponent):
              '- %s' % str(self.model))
         return '\n'.join(s)
 
-    # override
     def init(self,
              key: str,
              feature_windows: Tuple[int, ...],
@@ -217,72 +233,6 @@ class TokenTagger(MXNetComponent):
 
         self.model.collect_params().save(gln(model_path))
 
-    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
-              label_map: LabelMap = None,
-              epoch=100,
-              trn_batch=64,
-              dev_batch=2048,
-              loss_fn=gluon.loss.SoftmaxCrossEntropyLoss(),
-              optimizer='adagrad',
-              optimizer_params=None,
-              **kwargs):
-        if optimizer_params is None:
-            optimizer_params = {'learning_rate': 0.01}
-
-        log = ('Configuration',
-               '- context(s): {}'.format(self.ctx),
-               '- trn_batch size: {}'.format(trn_batch),
-               '- dev_batch size: {}'.format(dev_batch),
-               '- max epoch : {}'.format(epoch),
-               '- loss func : {}'.format(loss_fn),
-               '- optimizer : {} <- {}'.format(optimizer, optimizer_params))
-        logging.info('\n'.join(log))
-        logging.info("Load trn data")
-        trn_data = DataLoader(TokenTaggerDataset(self.vsms, self.key, trn_docs, self.feature_windows, self.label_map),
-                              batch_size=trn_batch,
-                              shuffle=True)
-        logging.info("Load dev data")
-        dev_data = DataLoader(TokenTaggerDataset(self.vsms, self.key, dev_docs, self.feature_windows, self.label_map),
-                              batch_size=dev_batch,
-                              shuffle=False)
-        trainer = Trainer(self.model.collect_params(),
-                          optimizer=optimizer,
-                          optimizer_params=optimizer_params)
-
-        logging.info('Training')
-        best_e, best_eval = -1, -1
-        self.model.hybridize()
-        epochs = trange(1, epoch + 1)
-        for e in epochs:
-            trn_st = time.time()
-            for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
-                data = data.as_in_context(self.ctx)
-                label = label.as_in_context(self.ctx)
-                with autograd.record():
-                    output = self.model(data)
-                    loss = loss_fn(output, label)
-                loss.backward()
-                trainer.step(data.shape[0])
-
-            trn_et = time.time()
-
-            dev_st = time.time()
-            dev_acc = self.accuracy(dev_data, dev_docs)
-            dev_et = time.time()
-
-            if best_eval < dev_acc:
-                best_e, best_eval = e, dev_acc
-                self.save(model_path=model_path)
-
-            desc = ("epoch: {}".format(e),
-                    "trn time: {}".format(datetime.timedelta(seconds=(trn_et - trn_st))),
-                    "dev time: {}".format(datetime.timedelta(seconds=(dev_et - dev_st))),
-                    # "train_acc: {}".format(trn_acc),
-                    "dev acc: {}".format(dev_acc),
-                    "best epoch: {}".format(best_e),
-                    "best eval: {}".format(best_eval))
-            epochs.set_description(desc=' '.join(desc))
-
     def accuracy(self, data_iterator, docs=None):
         return self.chunk_accuracy(data_iterator, docs) if self.chunking else self.token_accuracy(data_iterator)
 
@@ -309,25 +259,19 @@ class TokenTagger(MXNetComponent):
         for doc in docs:
             for sen in doc:
                 labels = sen[to_gold(self.key)]
-                acc.update(labels=labels, preds=preds[idx:idx+len(labels)])
+                acc.update(labels=labels, preds=preds[idx:idx + len(labels)])
                 idx += len(labels)
-
-        # for doc in docs:
-        #     for sen in doc:
-        #         w = nd.array([i for i in zip(*[vsm.model.embedding_list(sen) for vsm in self.vsms])],
-        #                      ctx=self.ctx).reshape(0, -1)
-        #         x_batch = []
-        #         labels = []
-        #         for idx, label in enumerate(sen[to_gold(self.key)]):
-        #             x = nd.stack(*[w[idx + window] if 0 <= (idx + window) < len(w) else self.pad for window in
-        #                            self.feature_windows])
-        #             x_batch.append(x)
-        #             labels.append(label)
-        #         output = self.model(nd.stack(*x_batch))
-        #         preds = nd.argmax(output, axis=1)
-        #         preds = [self.label_map.get(int(pred.asscalar())) for pred in preds]
-        #         acc.update(preds=preds, labels=labels)
         return acc.get()[1]
+
+    def data_loader(self, docs, batch_size, shuffle, label=True):
+        return DataLoader(TokenTaggerDataset(vsms=self.vsms,
+                                             key=self.key,
+                                             docs=docs,
+                                             feature_windows=self.feature_windows,
+                                             label_map=self.label_map,
+                                             label=label),
+                          batch_size=batch_size,
+                          shuffle=shuffle)
 
 
 # ======================================== EvalMetric ========================================
@@ -358,10 +302,6 @@ class TokenTaggerConfig(object):
     @property
     def tsv_heads(self):
         return self.source['tsv_heads'] if self.source.get('reader', 'tsv').lower() == 'tsv' else None
-
-    @property
-    def sqeuence(self):
-        return self.source.get('sequence', False)
 
     @property
     def chunking(self):
@@ -442,6 +382,10 @@ class TokenTaggerConfig(object):
         return self.source.get('epoch', 100)
 
     @property
+    def batch_size(self):
+        return self.source.get('batch_size', 2048)
+
+    @property
     def trn_batch(self):
         return self.source.get('trn_batch', 64)
 
@@ -504,10 +448,8 @@ class TokenTaggerCLI(ComponentCLI):
         trn_docs, label_map = config.reader(args.trn_path, config.tsv_heads, args.key)
         dev_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
 
-        ctx = config.ctx
-
         # component
-        comp = TokenTagger(ctx, args.vsm_path)
+        comp = TokenTagger(config.ctx, args.vsm_path)
 
         comp.init(
             key=args.key,
@@ -530,175 +472,66 @@ class TokenTaggerCLI(ComponentCLI):
     # override
     @classmethod
     def decode(cls):
-        pass
+        # create a arg-parser
+        parser = argparse.ArgumentParser(
+            description='Decode with the token tagger',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    #     # create a arg-parser
-    #     parser = argparse.ArgumentParser(
-    #         description='Decode with the token tagger',
-    #         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    #     args = parser.parse_args(sys.argv[3:])
-    #
-    #     # data
-    #     group = parser.add_argument_group("data arguments")
-    #
-    #     group.add_argument('-i', '--input_path', type=str, metavar='filepath',
-    #                        help='filepath to the input data')
-    #     group.add_argument(
-    #         '-o',
-    #         '--output_path',
-    #         type=str,
-    #         metavar='filepath',
-    #         default=None,
-    #         help='filepath to the output data (default: input_path.json)')
-    #     group.add_argument('-m', '--model_path', type=str, metavar='filepath',
-    #                        default=None,
-    #                        help='filepath to the model data')
-    #     group.add_argument(
-    #         '-r',
-    #         '--reader',
-    #         type=args_reader,
-    #         metavar='json or tsv=(str:int)(,#1)*',
-    #         default=args_reader('json'),
-    #         help='type of the reader and its configuration to match the data format (default: json)')
-    #     group.add_argument(
-    #         '-v',
-    #         '--vsms',
-    #         type=args_vsm,
-    #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
-    #         nargs='+',
-    #         help='list of (type of vector space model, key, filepath)')
-    #     group.add_argument(
-    #         '-l',
-    #         '--log',
-    #         type=str,
-    #         metavar='filepath',
-    #         default=None,
-    #         help='filepath to the logging file; if not set, use stdout')
-    #
-    #     # evaluation
-    #     group = parser.add_argument_group("arguments for decoding")
-    #
-    #     group.add_argument(
-    #         '-cx',
-    #         '--context',
-    #         type=args_context,
-    #         metavar='[cg]int',
-    #         nargs='+',
-    #         default=mx.cpu(),
-    #         help='device context(s)')
-    #     group.add_argument(
-    #         '-ib',
-    #         '--input_batch',
-    #         type=int,
-    #         metavar='int',
-    #         default=2048,
-    #         help='batch size for the input data')
-    #
-    #     # arguments
-    #     args = parser.parse_args(args)
-    #     set_logger(args.log)
-    #
-    #     args.vsms = [
-    #         SimpleNamespace(
-    #             model=n.type(
-    #                 n.filepath),
-    #             key=n.key) for n in args.vsms]
-    #     if isinstance(args.context, list) and len(args.context) == 1:
-    #         args.context = args.context[0]
-    #     if args.output_path is None:
-    #         args.output_path = args.input_path + '.json'
-    #
-    #     # component
-    #     comp = TokenTagger(args.context, args.vsms)
-    #     comp.load(args.model_path)
-    #
-    #     # data
-    #     docs = args.reader.type(args.input_path, args.reader.params)
-    #
-    #     # evaluate
-    #     comp.decode(docs, args.input_batch)
-    #
-    #     with open(args.output_path, 'w') as fout:
-    #         json.dump(docs, fout)
+        # data
+        group = parser.add_argument_group("data arguments")
+
+        group.add_argument('input_path', type=str, metavar='INPUT_PATH',
+                           help='filepath to the input data')
+        group.add_argument('output_path', type=str, metavar='OUTPUT_PATH',
+                           help='filepath to the output data')
+        group.add_argument('model_path', type=str, metavar='MODEL_PATH',
+                           help='filepath to the model data')
+        group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
+                           help='vsm path')
+
+        args = parser.parse_args(sys.argv[3:])
+
+        with open(args.config, 'r') as d:
+            config = TokenTaggerConfig(json.load(d))
+
+        set_logger(config.log_path)
+
+        # component
+        comp = TokenTagger(config.ctx, args.vsm_path)
+        comp.load(args.model_path)
+        docs, _ = config.reader(args.input_path, config.tsv_heads)
+        result = comp.decode(docs=docs, batch_size=config.batch_size)
+        with open(args.ouput_path, 'w') as fout:
+            json.dump(result, fout)
 
     # override
     @classmethod
     def evaluate(cls):
         pass
-    #     # create a arg-parser
-    #     parser = argparse.ArgumentParser(
-    #         description='Evaluate the token tagger',
-    #         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    #     args = parser.parse_args(sys.argv[3:])
-    #
-    #     # data
-    #     group = parser.add_argument_group("data arguments")
-    #
-    #     group.add_argument('-d', '--dev_path', type=str, metavar='filepath',
-    #                        help='filepath to the development data (input)')
-    #     group.add_argument('-m', '--model_path', type=str, metavar='filepath',
-    #                        default=None,
-    #                        help='filepath to the model data')
-    #     group.add_argument(
-    #         '-r',
-    #         '--reader',
-    #         type=args_reader,
-    #         metavar='json or tsv=(str:int)(,#1)*',
-    #         default=args_reader('json'),
-    #         help='type of the reader and its configuration to match the data format (default: json)')
-    #     group.add_argument(
-    #         '-v',
-    #         '--vsms',
-    #         type=args_vsm,
-    #         metavar='(fasttext|word2vec:key:filepath)( #1)*',
-    #         nargs='+',
-    #         help='list of (type of vector space model, key, filepath)')
-    #     group.add_argument(
-    #         '-l',
-    #         '--log',
-    #         type=str,
-    #         metavar='filepath',
-    #         default=None,
-    #         help='filepath to the logging file; if not set, use stdout')
-    #
-    #     # evaluation
-    #     group = parser.add_argument_group("arguments for evaluation")
-    #
-    #     group.add_argument(
-    #         '-cx',
-    #         '--context',
-    #         type=args_context,
-    #         metavar='[cg]int',
-    #         nargs='+',
-    #         default=mx.cpu(),
-    #         help='device context(s)')
-    #     group.add_argument(
-    #         '-db',
-    #         '--dev_batch',
-    #         type=int,
-    #         metavar='int',
-    #         default=2048,
-    #         help='batch size for the development data')
-    #
-    #     # arguments
-    #     args = parser.parse_args(args)
-    #     set_logger(args.log)
-    #
-    #     args.vsms = [
-    #         SimpleNamespace(
-    #             model=n.type(
-    #                 n.filepath),
-    #             key=n.key) for n in args.vsms]
-    #     if isinstance(args.context, list) and len(args.context) == 1:
-    #         args.context = args.context[0]
-    #
-    #     # component
-    #     comp = TokenTagger(args.context, args.vsms)
-    #     comp.load(args.model_path)
-    #
-    #     # data
-    #     dev_docs = args.reader.type(
-    #         args.dev_path, args.reader.params, comp.key)
-    #
-    #     # evaluate
-    #     comp.evaluate(dev_docs, args.dev_batch)
+        # create a arg-parser
+        parser = argparse.ArgumentParser(
+            description='Evaluate the token tagger',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        # data
+        group = parser.add_argument_group("data arguments")
+
+        group.add_argument('eval_path', type=str, metavar='EVAL_PATH',
+                           help='filepath to the evaluation data')
+        group.add_argument('model_path', type=str, metavar='MODEL_PATH',
+                           help='filepath to the model data')
+        group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
+                           help='vsm path')
+
+        args = parser.parse_args(sys.argv[3:])
+
+        with open(args.config, 'r') as d:
+            config = TokenTaggerConfig(json.load(d))
+
+        set_logger(config.log_path)
+
+        # component
+        comp = TokenTagger(config.ctx, args.vsm_path)
+        comp.load(args.model_path)
+        docs, _ = config.reader(args.eval_path, config.tsv_heads)
+        comp.evaluate(docs=docs, batch_size=config.batch_size)

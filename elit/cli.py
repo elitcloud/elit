@@ -94,7 +94,7 @@ class ComponentCLI(abc.ABC):
         raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
 
-class ELITCLI(object):
+class ElitCli(object):
     def __init__(self):
         parser = argparse.ArgumentParser(
             usage='''
@@ -120,53 +120,11 @@ def set_logger(filename: str = None,
                formatter: logging.Formatter = None):
     log = logging.getLogger()
     log.setLevel(level)
-    ch = logging.StreamHandler(
-        sys.stdout) if filename is None else logging.FileHandler(filename)
+    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
     if formatter is not None:
         ch.setFormatter(formatter)
     log.addHandler(ch)
 
 
-def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
-    """
-    :param s: key:int(,key:int)*
-    :param const: type constructor (e.g., int, float)
-    :return: a dictionary including key-value pairs from the input string.
-    """
-    r = re.compile(r'([A-Za-z0-9_-]+):([-]?[\d.]+)')
-    d = {}
-    for i in re.findall(r, s):
-        d[i[0]] = const(i[1])
-
-    if not d:
-        raise argparse.ArgumentTypeError
-    return d
-
-
-def args_dict_str_float(s: str) -> Dict[str, float]:
-    return args_dict_str(s, float)
-
-
-def args_tuple_int(a: list) -> Tuple[int, ...]:
-    """
-
-    :param a: list of int
-    :return: tuple of int
-    """
-    return tuple(a)
-
-def args_context(s: list) -> mx.Context:
-    """
-    :param s: ['ctx', core]
-    :return: a device context
-    """
-    if s[0] == 'c':
-        return mx.cpu(int(s[1]))
-    elif s[0] == 'g':
-        return mx.gpu(int(s[1]))
-    else:
-        raise argparse.ArgumentTypeError
-
-
 if __name__ == '__main__':
-    ELITCLI()
+    ElitCli()

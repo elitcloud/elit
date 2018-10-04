@@ -199,8 +199,8 @@ class MXNetComponent(NLPComponent):
         logging.info('Training')
         best_e, best_eval = -1, -1
         self.model.hybridize()
-        epochs = trange(1, epoch + 1)
 
+        epochs = trange(1, epoch + 1)
         for e in epochs:
             trn_st = time.time()
             for i, (data, label) in enumerate(tqdm(trn_data, leave=False)):
@@ -211,11 +211,11 @@ class MXNetComponent(NLPComponent):
                     loss = loss_fn(output, label)
                 loss.backward()
                 trainer.step(data.shape[0])
-            trn_acc = self.accuracy(trn_data, trn_docs)
+            trn_acc = self.accuracy(trn_data=trn_data, trn_docs=trn_docs)
             trn_et = time.time()
 
             dev_st = time.time()
-            dev_acc = self.accuracy(dev_data, dev_docs)
+            dev_acc = self.accuracy(dev_data=dev_data, dev_docs=dev_docs)
             dev_et = time.time()
 
             if best_eval < dev_acc:
@@ -248,8 +248,12 @@ class MXNetComponent(NLPComponent):
 
         return docs
 
-    def evaluate(self, docs: Sequence[Document], **kwargs):
-        pass
+    def evaluate(self, docs: Sequence[Document], batch_size: int = 2048, **kwargs):
+        data_iterator = self.data_loader(docs=docs, batch_size=batch_size, shuffle=False, label=False)
+        st = time.time()
+        acc = self.accuracy(data_iterator=data_iterator, docs=docs)
+        et = time.time()
+        logging.info('acc: {} time: {} (sec)'.format(acc, et - st))
 
     @abc.abstractmethod
     def accuracy(self, **kwargs):
