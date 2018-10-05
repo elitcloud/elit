@@ -175,3 +175,5 @@ elit/dat/*
 data
 *.gln
 *.pkl
+*.bin
+*.p
