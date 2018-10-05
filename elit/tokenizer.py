@@ -14,154 +14,161 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import codecs
+import inspect
 import os
 import re
+from typing import Dict, List, Tuple
 
 from pkg_resources import resource_filename
 
 from elit.component import Component
+from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *
-from elit.util.structure import TOK, OFF
+from elit.util.structure import TOK, OFF, Document, Sentence, SEN_ID
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
 
 class Tokenizer(Component):
-    def __init__(self):
-        super(Tokenizer, self).__init__()
+    def init(self, **kwargs):
+        """ Not supported. """
         pass
 
-    def init(self):
+    def save(self, model_path: str, **kwargs):
+        """ Not supported. """
         pass
 
-    def load(self, model_path, **kwargs):
-        """
-
-        :param model_path:
-        :return:
-        """
-        pass
-
-    def save(self, model_path, **kwargs):
-        """
-
-        :param model_path:
-        :param kwargs:
-        :return:
-        """
-        pass
-
-    def train(self, trn_data, dev_data, model_path, **kwargs):
-        """
-
-        :param trn_data:
-        :param dev_data:
-        :param model_path:
-        :return:
-        """
-        pass
-
-    @abc.abstractmethod
-    def decode(self, data, offset=0, **kwargs):
-        """
-
-        :type data: str
-        :type offset: int
-        :param data: the input text.
-        :param offset: the starting offset.
-        :return: the tuple of (tokens, offsets[, custom values]*); see the comments for Tokenizer.offsets() for more details about the offsets.
-        :rtype: json
-        """
+    def train(self, trn_data, dev_data, model_path: str, **kwargs) -> float:
+        """ Not supported. """
         pass
 
     def evaluate(self, data, **kwargs):
-        """
-
-        :param data:
-        :return:
-        """
+        """ Not supported. """
         pass
 
-    @staticmethod
-    def offsets(input_data, tokens, offset=0):
+    @abc.abstractmethod
+    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
         """
+        :param input_text: the input text.
+        :param offset: the offset of the first token.
+        :param segment: if True, segment sentences from the text.
+        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
+                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
-        :type input_data: str
-        :type tokens: list of str
-        :type offset: int
-        :param input_data: the input text.
+    @classmethod
+    def get_offsets(cls, input_text: str, tokens: List[str], offset=0) -> List[Tuple[int, int]]:
+        """
+        :param input_text: the input text.
         :param tokens: the list of tokens split from the input text.
-        :param offset: offset of tokens
-        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end
-        (exclusive) offsets indicate the caret positions of the first and the last characters of the
-        corresponding token, respectively. e.g., text = 'Hello, world!',
-        tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
-        :rtype: json
+        :param offset: the offset of the first token
+        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end (exclusive) offsets indicate
+        the caret positions of the first and the last characters of the corresponding token, respectively.
+        e.g., text = 'Hello, world!', tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
         """
-
         def get_offset(token):
             nonlocal end
-            begin = input_data.index(token, end)
+            begin = input_text.index(token, end)
             end = begin + len(token)
             return begin + offset, end + offset
 
         end = 0
         return [get_offset(token) for token in tokens]
 
+    @classmethod
+    def segment(cls, tok_output: Dict[str, List]) -> Document:
+        """
+        :param tok_output: the output of :meth:`Tokenizer.decode`.
+        :return: a document where sentences are segmented from the input text.
+        """
+        tokens = tok_output[TOK]
+        offsets = tok_output[OFF]
+        document = Document()
+        right_quote = True
+        begin = 0
+        sid = 0
+
+        for i, token in enumerate(tokens):
+            t = token[0]
+            if t == '"':
+                right_quote = not right_quote
+
+            if begin == i:
+                if document.sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
+                    d = document.sentences[-1]
+                    d[TOK].append(token)
+                    d[OFF].append(offsets[i])
+                    begin = i + 1
+            elif all(is_final_mark(c) for c in token):
+                end = i + 1
+                document.add_sentence(Sentence({SEN_ID: sid, TOK: tokens[begin:end], OFF: offsets[begin:end]}))
+                sid += 1
+                begin = end
+
+        if begin < len(tok_output):
+            end = len(tokens)
+            document.add_sentence(Sentence({SEN_ID: sid, TOK: tokens[begin:end], OFF: offsets[begin:end]}))
+
+        return document
+
 
 class SpaceTokenizer(Tokenizer):
-
+    """
+    :class:`SpaceTokenizer` splits tokens by white-spaces.
+    """
     def __init__(self):
         super(SpaceTokenizer, self).__init__()
 
-    def decode(self, input_data, offset=0, **kwargs):
-        """
+    def load(self, model_path: str, **kwargs):
+        """ Not supported. """
+        pass
 
-        :param input_data:
-        :param offset:
-        :param kwargs:
-        :return:
+    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
         """
-        tokens = input_data.split()
-
-        return {
-            TOK: tokens,
-            OFF: self.offsets(input_data, tokens, offset)
-        }
+        :param input_text: the input text.
+        :param offset: the offset of the first token.
+        :param segment: if True, segment sentences from the text.
+        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
+                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
+        """
+        tokens = input_text.split()
+        d = {TOK: tokens, OFF: self.get_offsets(input_text, tokens, offset)}
+        return self.segment(d) if segment else Document(sen=[Sentence(d)])
 
 
 class EnglishTokenizer(Tokenizer):
-
     def __init__(self):
+        """
+        :class:`EnglishTokenizer` splits the input text into linguistic tokens.
+        """
         super(EnglishTokenizer, self).__init__()
-        self.ABBREVIATION_PERIOD = self.read_word_set(resource_filename(
-            'elit.resources.tokenizer', 'english_abbreviation_period.txt'))
-        self.APOSTROPHE_FRONT = self.read_word_set(resource_filename(
-            'elit.resources.tokenizer', 'english_apostrophe_front.txt'))
-        self.MAP_CONCAT_WORD = self.read_concat_word_dict(
-            resource_filename(
-                'elit.resources.tokenizer',
-                'english_concat_words.txt'))
-        self.HYPHEN_PREFIX = self.read_word_set(
-            resource_filename(
-                'elit.resources.tokenizer',
-                'english_hyphen_prefix.txt'))
-        self.HYPHEN_SUFFIX = self.read_word_set(
-            resource_filename(
-                'elit.resources.tokenizer',
-                'english_hyphen_suffix.txt'))
+
+        # lexicons
+        resource_root = 'elit.resources.tokenizer'
+
+        self.ABBREVIATION_PERIOD = read_word_set(resource_filename(
+            resource_root, 'english_abbreviation_period.txt'))
+        self.APOSTROPHE_FRONT = read_word_set(resource_filename(
+            resource_root, 'english_apostrophe_front.txt'))
+        self.MAP_CONCAT_WORD = read_concat_word_dict(resource_filename(
+            resource_root, 'english_concat_words.txt'))
+        self.HYPHEN_PREFIX = read_word_set(resource_filename(
+            resource_root, 'english_hyphen_prefix.txt'))
+        self.HYPHEN_SUFFIX = read_word_set(resource_filename(
+            resource_root, 'english_hyphen_suffix.txt'))
+
         # regular expressions
         self.RE_NETWORK_PROTOCOL = re.compile(
-            r"((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|imap4|sip)(://))")
+            r'((http|https|ftp|sftp|ssh|ssl|telnet|smtp|pop3|imap|imap4|sip)(://))')
         """
-        # :abc:
-        # <3 </3 <\3
-        # (: ): \: *: $: (-: (^: (= (;
-        # :) :( =) B) 8) :-) :^) :3 :D :p :| :(( :---)
+        :abc:
+        <3 </3 <\3
+        (: ): \\: *: $: (-: (^: (= (;
+        :) :( =) B) 8) :-) :^) :3 :D :p :| :(( :---)
         """
         self.RE_EMOTICON = re.compile(
-            r"(:\w+:|<[\\/]?3|[\(\)\\\|\*\$][-\^]?[:=\;]|[:\=\;B8]([-\^]+)?[3DOPp\@\$\*\(\)\\/\|]+)(\W|$)")
+            r'(:\w+:|<[\\/]?3|[()\\|*$][-^]?[:=;]|[:=;B8]([-^]+)?[3DOPp@$*()\\/|]+)(\W|$)')
         """
         jinho@elit.cloud
         jinho.choi@elit.cloud
@@ -169,100 +176,88 @@ class EnglishTokenizer(Tokenizer):
         jinho:choi@127.0.0.1
         """
         self.RE_EMAIL = re.compile(
-            r"[\w\-\.]+(:\S+)?@(([A-Za-z0-9\-]+\.)+[A-Za-z]{2,12}|\d{1,3}(\.\d{1,3}){3})")
+            r'[\w\-.]+(:\S+)?@(([A-Za-z0-9\-]+\.)+[A-Za-z]{2,12}|\d{1,3}(\.\d{1,3}){3})')
         """
         &arrow;
         &#123; &#x123; &#X123;
         """
-        self.RE_HTML_ENTITY = re.compile(r"&([A-Za-z]+|#[Xx]?\d+);")
+        self.RE_HTML_ENTITY = re.compile(r'&([A-Za-z]+|#[Xx]?\d+);')
         """
-        # [1] (1a) {A} <a1> [***] [A.a] [A.1] [1.a] ((---))
+        [1] (1a) {A} <a1> [***] [A.a] [A.1] [1.a] ((---))
         """
         self.RE_LIST_ITEM = re.compile(
-            r"(([\[\(\{\<]+)(\d+[A-Za-z]?|[A-Za-z]\d*|\W+)(\.(\d+|[A-Za-z]))*([\]\)\}\>])+)")
+            r'(([\[({<]+)(\d+[A-Za-z]?|[A-Za-z]\d*|\W+)(\.(\d+|[A-Za-z]))*([\])\}>])+)')
         """
         don't don’t I'll HE'S
         """
         self.RE_APOSTROPHE = re.compile(
-            r"(?i)[a-z](n['\u2019]t|['\u2019](ll|nt|re|ve|[dmstz]))(\W|$)")
+            r'(?i)[a-z](n[\'\u2019]t|[\'\u2019](ll|nt|re|ve|[dmstz]))(\W|$)')
         """
         a.b.c 1-2-3
         """
-        self.RE_ABBREVIATION = re.compile(r"[A-Za-z0-9]([\.-][A-Za-z0-9])*$")
+        self.RE_ABBREVIATION = re.compile(r'[A-Za-z0-9]([.-][A-Za-z0-9])*$')
         """
         10kg 1cm
         """
         self.RE_UNIT = re.compile(
-            r"(?i)(\d)([acdfkmnpyz]?[mg]|[ap]\.m|ch|cwt|d|drc|ft|fur|gr|h|in|lb|lea|mi|ms|oz|pg|qtr|yd)$")
+            r'(?i)(\d)([acdfkmnpyz]?[mg]|[ap]\.m|ch|cwt|d|drc|ft|fur|gr|h|in|lb|lea|mi|ms|oz|pg|qtr|yd)$')
         """
         hello.World
         """
         self.RE_FINAL_MARK_IN_BETWEEN = re.compile(
-            r"([A-Za-z]{3,})([\.\?\!]+)([A-Za-z]{3,})$")
+            r'([A-Za-z]{3,})([.?!]+)([A-Za-z]{3,})$')
 
     def load(self, model_path, *args, **kwargs):
-        self.ABBREVIATION_PERIOD = self.read_word_set(
+        self.ABBREVIATION_PERIOD = read_word_set(
             os.path.join(model_path, 'english_abbreviation_period.txt'))
-        self.APOSTROPHE_FRONT = self.read_word_set(
+        self.APOSTROPHE_FRONT = read_word_set(
             os.path.join(model_path, 'english_apostrophe_front.txt'))
-        self.MAP_CONCAT_WORD = self.read_concat_word_dict(
+        self.MAP_CONCAT_WORD = read_concat_word_dict(
             os.path.join(model_path, 'english_concat_words.txt'))
-        self.HYPHEN_PREFIX = self.read_word_set(
+        self.HYPHEN_PREFIX = read_word_set(
             os.path.join(model_path, 'english_hyphen_prefix.txt'))
-        self.HYPHEN_SUFFIX = self.read_word_set(
+        self.HYPHEN_SUFFIX = read_word_set(
             os.path.join(model_path, 'english_hyphen_suffix.txt'))
 
-    def decode(self, input_data, offset=0, **kwargs):
+    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
+        """
+        :param input_text: the input text.
+        :param offset: the offset of the first token.
+        :param segment: if True, segment sentences from the text.
+        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
+                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
+        """
         tokens = []
         offsets = []
-        result = {
-            TOK: tokens,
-            OFF: offsets
-        }
+        result = {TOK: tokens, OFF: offsets}
+
         # no valid token in the input text
-        if not input_data or input_data.isspace():
-            return result
+        if not input_text or input_text.isspace():
+            return Document()
 
         # skip beginning and ending spaces
-        begin = next(i for i, c in enumerate(input_data) if not c.isspace())
-        last = len(input_data) - next(
-            i for i, c in enumerate(reversed(input_data)) if not c.isspace())
+        begin = next(i for i, c in enumerate(input_text) if not c.isspace())
+        last = len(input_text) - next(i for i, c in enumerate(reversed(input_text)) if not c.isspace())
 
         # search for in-between spaces
-        for end, c in enumerate(input_data[begin + 1:last], begin + 1):
+        for end, c in enumerate(input_text[begin + 1:last], begin + 1):
             if c.isspace():
-                self.tokenize_aux(tokens, offsets, input_data,
-                                  begin, end, offset)
+                self.tokenize_aux(tokens, offsets, input_text, begin, end, offset)
                 begin = end + 1
 
-        self.tokenize_aux(tokens, offsets, input_data, begin, last, offset)
-        return result
+        self.tokenize_aux(tokens, offsets, input_text, begin, last, offset)
+        return self.segment(result) if segment else Document(sen=[Sentence(result)])
 
     def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
-        if begin >= end or end > len(text):
-            return False
+        if begin >= end or end > len(text): return False
         token = text[begin:end]
 
         # handle special cases
         if self.tokenize_trivial(tokens, offsets, token, begin, end, offset):
             return True
-        if self.tokenize_regex(
-                tokens,
-                offsets,
-                text,
-                begin,
-                end,
-                offset,
-                token):
+        if self.tokenize_regex(tokens, offsets, text, begin, end, offset, token):
             return True
-        if self.tokenize_symbol(
-                tokens,
-                offsets,
-                text,
-                begin,
-                end,
-                offset,
-                token):
+        if self.tokenize_symbol(tokens, offsets, text, begin, end, offset, token):
             return True
 
         # add the token as it is
@@ -295,10 +290,8 @@ class EnglishTokenizer(Tokenizer):
             if m:
                 if m.start() > 0:
                     idx = begin + m.start()
-                    self.tokenize_aux(tokens, offsets, text,
-                                      begin, idx, offset)
-                    self.add_token(tokens, offsets,
-                                   token[m.start():], idx, end, offset)
+                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
+                    self.add_token(tokens, offsets, token[m.start():], idx, end, offset)
                 else:
                     self.add_token(tokens, offsets, token, begin, end, offset)
                 return True
@@ -320,15 +313,7 @@ class EnglishTokenizer(Tokenizer):
             return True
         return False
 
-    def tokenize_symbol(
-            self,
-            tokens,
-            offsets,
-            text,
-            begin,
-            end,
-            offset,
-            token):
+    def tokenize_symbol(self, tokens, offsets, text, begin, end, offset, token):
         def index_last_sequence(i, c):
             final_mark = is_final_mark(c)
 
@@ -347,37 +332,12 @@ class EnglishTokenizer(Tokenizer):
             if c == '-':  # -1
                 return i == 0 and self.is_digit(token, i + 1)
             if c == ',':  # 1,000,000
-                return self.is_digit(
-                    token,
-                    i -
-                    1) and self.is_digit(
-                    token,
-                    i +
-                    1,
-                    i +
-                    4) and not self.is_digit(
-                    token,
-                    i +
-                    4)
+                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1, i + 4) and not self.is_digit(token, i + 4)
             if c == ':':
                 # 1:2
-                return self.is_digit(
-                    token,
-                    i -
-                    1) and self.is_digit(
-                    token,
-                    i +
-                    1)
+                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1)
             if is_single_quote(c):
-                return self.is_digit(
-                    token,
-                    i +
-                    1,
-                    i +
-                    3) and not self.is_digit(
-                    token,
-                    i +
-                    3)  # '97
+                return self.is_digit(token, i + 1, i + 3) and not self.is_digit(token, i + 3)  # '97
             return False
 
         def split(i, c, p0, p1):
@@ -388,19 +348,15 @@ class EnglishTokenizer(Tokenizer):
                     idx = begin + i
                     lst = begin + j
 
-                    self.tokenize_aux(tokens, offsets, text,
-                                      begin, idx, offset)
-                    self.add_token(tokens, offsets,
-                                   token[i:j], idx, lst, offset)
+                    self.tokenize_aux(tokens, offsets, text, begin, idx, offset)
+                    self.add_token(tokens, offsets, token[i:j], idx, lst, offset)
                     self.tokenize_aux(tokens, offsets, text, lst, end, offset)
                     return True
 
             return False
 
         def separator_0(c):
-            return c in {',', ';', ':', '~', '&', '|', '/'} or \
-                is_bracket(c) or is_arrow(
-                    c) or is_double_quote(c) or is_hyphen(c)
+            return c in {',', ';', ':', '~', '&', '|', '/'} or is_bracket(c) or is_arrow(c) or is_double_quote(c) or is_hyphen(c)
 
         def edge_symbol_0(c):
             return is_single_quote(c) or is_final_mark(c)
@@ -409,8 +365,7 @@ class EnglishTokenizer(Tokenizer):
             return c == '#' or is_currency(c)
 
         def edge_symbol_1(i, j):
-            return i + 1 < j or i == 0 or j == len(token) or is_punct(token[i - 1]) or is_punct(
-                token[j])
+            return i + 1 < j or i == 0 or j == len(token) or is_punct(token[i - 1]) or is_punct(token[j])
 
         def currency_like_1(i, j):
             return i + 1 < j or j == len(token) or token[j].isdigit()
@@ -428,46 +383,37 @@ class EnglishTokenizer(Tokenizer):
         return False
 
     def add_token(self, tokens, offsets, token, begin, end, offset):
-        if not self.concat_token(
-                tokens,
-                offsets,
-                token,
-                end) and not self.split_token(
-                tokens,
-                offsets,
-                token,
-                begin,
-                end,
-                offset):
+        if not self.concat_token(tokens, offsets, token, end) and not self.split_token(tokens, offsets, token, begin, end, offset):
             self.add_token_aux(tokens, offsets, token, begin, end, offset)
 
     def concat_token(self, tokens, offsets, token, end):
         def apostrophe_front(prev, curr):
-            return len(prev) == 1 and is_single_quote(
-                prev) and curr in self.APOSTROPHE_FRONT
+            return len(prev) == 1 and is_single_quote(prev) and curr in self.APOSTROPHE_FRONT
 
         def abbreviation(prev, curr):
-            return curr == '.' and (self.RE_ABBREVIATION.match(
-                prev) or prev in self.ABBREVIATION_PERIOD)
+            return curr == '.' and (self.RE_ABBREVIATION.match(prev) or prev in self.ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
-            return len(curr) == 1 and curr in {'&', '|', '/'} and (
-                len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
+            return len(curr) == 1 and curr in {'&', '|', '/'} and (len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
 
         def hyphenated(prev, curr, next):
             p = len(prev)
 
             if len(curr) == 1 and is_hyphen(curr):
-                if self.is_digit(prev, p - 3, p) and (p == 3 or is_hyphen(
-                        prev[p - 4])) and next.isdigit():
+                if self.is_digit(prev, p - 3, p) and (p == 3 or is_hyphen(prev[p - 4])) and next.isdigit():
                     # 000-0000, 000-000-0000
                     return True
-                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])
-                                           ) and len(next) == 1 and next.isalnum():
+                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])) and len(next) == 1 and next.isalnum():
                     # p-u-s-h
                     return True
-                return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (
-                    next in self.HYPHEN_SUFFIX and prev.isalnum())
+                return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (next in self.HYPHEN_SUFFIX and prev.isalnum())
+
+            return False
+
+        def coloned(prev, curr, next):
+            if prev == 're' and curr == ':' and next == 'invent':
+                # re:Invent
+                return True
 
             return False
 
@@ -495,11 +441,7 @@ class EnglishTokenizer(Tokenizer):
             curr = tokens[-1].lower()
             next = token.lower()
 
-            if acronym(tokens[-2],
-                       curr,
-                       token) or hyphenated(prev,
-                                            curr,
-                                            next):
+            if acronym(tokens[-2], curr, token) or hyphenated(prev, curr, next) or coloned(prev, curr, next):
                 tokens[-2] += tokens[-1] + token
                 offsets[-2] = (offsets[-2][0], end)
                 del tokens[-1]
@@ -515,10 +457,8 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_UNIT.search(token)
             if m:
                 idx = begin + m.start(2)
-                self.add_token_aux(
-                    tokens, offsets, token[:m.start(2)], begin, idx, offset)
-                self.add_token_aux(
-                    tokens, offsets, m.group(2), idx, end, offset)
+                self.add_token_aux(tokens, offsets, token[:m.start(2)], begin, idx, offset)
+                self.add_token_aux(tokens, offsets, m.group(2), idx, end, offset)
                 return True
             return False
 
@@ -527,8 +467,7 @@ class EnglishTokenizer(Tokenizer):
             if t:
                 i = 0
                 for j in t:
-                    self.add_token_aux(
-                        tokens, offsets, token[i:j], begin + i, begin + j, offset)
+                    self.add_token_aux(tokens, offsets, token[i:j], begin + i, begin + j, offset)
                     i = j
                 return True
             return False
@@ -537,38 +476,11 @@ class EnglishTokenizer(Tokenizer):
             m = self.RE_FINAL_MARK_IN_BETWEEN.match(token)
             if m:
                 for i in range(1, 4):
-                    self.add_token_aux(
-                        tokens,
-                        offsets,
-                        m.group(i),
-                        begin + m.start(i),
-                        begin + m.end(i),
-                        offset)
+                    self.add_token_aux(tokens, offsets, m.group(i), begin + m.start(i), begin + m.end(i), offset)
                 return True
             return False
 
         return unit() or concat_words() or final_mark()
-
-    @staticmethod
-    def read_word_set(filename):
-        fin = codecs.open(filename, mode='r', encoding='utf-8')
-        s = set(line.strip() for line in fin)
-        print('Init: %s(keys=%d)' % (filename, len(s)))
-        return s
-
-    @staticmethod
-    def read_concat_word_dict(filename):
-        def key_value(line):
-            l = [i for i, c in enumerate(line) if c == ' ']
-            l = [i - o for o, i in enumerate(l)]
-            line = line.replace(' ', '')
-            l.append(len(line))
-            return line, l
-
-        fin = codecs.open(filename, mode='r', encoding='utf-8')
-        d = dict(key_value(line.strip()) for line in fin)
-        print('Init: %s(keys=%d)' % (filename, len(d)))
-        return d
 
     @staticmethod
     def add_token_aux(tokens, offsets, token, begin, end, offset):

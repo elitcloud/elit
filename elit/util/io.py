@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import bisect
+import codecs
 import glob
 import json
 import logging
@@ -152,3 +153,33 @@ def group_states(docs: Sequence[Document], create_state: Callable[[Document], NL
         states.append(create_state(document))
 
     return states
+
+
+def read_word_set(filename):
+    """
+    :param filename: the name of the file containing one key per line.
+    :return: a set containing all keys in the file.
+    """
+    fin = codecs.open(filename, mode='r', encoding='utf-8')
+    s = set(line.strip() for line in fin)
+    logging.info('Init: %s (keys = %d)' % (filename, len(s)))
+    return s
+
+
+def read_concat_word_dict(filename):
+    """
+    :param filename: the name of the file containing one key per line.
+    :return: a dictionary whose key is the concatenated word and value is the list of split points.
+    """
+
+    def key_value(line):
+        l = [i for i, c in enumerate(line) if c == ' ']
+        l = [i - o for o, i in enumerate(l)]
+        line = line.replace(' ', '')
+        l.append(len(line))
+        return line, l
+
+    fin = codecs.open(filename, mode='r', encoding='utf-8')
+    d = dict(key_value(line.strip()) for line in fin)
+    logging.info('Init: %s (keys = %d)' % (filename, len(d)))
+    return d

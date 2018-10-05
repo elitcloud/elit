@@ -135,6 +135,9 @@ class Document(dict):
             tokens.extend(sentence.tokens)
         return tokens
 
+    def add_sentence(self, sentence: Sentence):
+        self.sentences.append(sentence)
+
 
 class Node(object):
     """
