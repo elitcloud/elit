@@ -98,11 +98,11 @@ def tsv_reader(tsv_directory: str,
 
 def json_reader(filepath: str,
                 cols: Any = None,
-                key: str = None) -> Tuple[List[Document], int]:
+                key: str = None) -> Tuple[List[Document], LabelMap]:
     # TODO: update this to accept any format (see tsv_reader)
     documents = []
-    num_class = set()
     dc = wc = sc = 0
+    label_map = LabelMap()
 
     logging.info('Reading json file from: ')
     if not os.path.isfile(filepath) and filepath.endswith('.json'):
@@ -120,13 +120,13 @@ def json_reader(filepath: str,
                     sen[to_gold(key)] = sen.pop(key)
                 sentences.append(Sentence(sen))
             sc += len(sentences)
-            [[num_class.add(i) for i in sent[to_gold(key)]] for sent in sentences]
+            [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
             document = Document(sen=sentences)
             document[DOC_ID] = i
             documents.append(document)
             dc += len(documents)
     logging.info('- dc = %d, sc = %d, wc = %d' % (dc, sc, wc))
-    return documents, len(num_class)
+    return documents, label_map
 
 
 def pkl(filepath):

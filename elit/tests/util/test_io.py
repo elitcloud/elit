@@ -29,7 +29,7 @@ def test_tsv_cols():
 
 def test_tsv_reader():
     tsv_heads = [['tok', 0], ['pos', 1]]
-    docs, num_class = tsv_reader(
+    docs, label_map = tsv_reader(
         tsv_directory=resource_filename('elit.tests.resources', 'tsv/pos/trn'),
         cols=tsv_cols(tsv_heads),
         key='pos'
@@ -41,8 +41,8 @@ def test_tsv_reader():
          {'tok': ['A', 'boy', 'is', 'here', '?'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
           'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 7
-    docs, num_class = tsv_reader(
+    assert len(label_map) == 7
+    docs, label_map = tsv_reader(
         tsv_directory=resource_filename('elit.tests.resources', 'tsv/pos/dev'),
         cols=tsv_cols(tsv_heads),
         key='pos'
@@ -53,9 +53,9 @@ def test_tsv_reader():
         {'tok': ['The', 'girl', 'is', 'there', '!'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 7
+    assert len(label_map) == 7
     tsv_heads = [['tok', 0], ['ner', 1]]
-    docs, num_class = tsv_reader(
+    docs, label_map = tsv_reader(
         tsv_directory=resource_filename('elit.tests.resources', 'tsv/ner/trn'),
         cols=tsv_cols(tsv_heads),
         key='ner'
@@ -66,9 +66,9 @@ def test_tsv_reader():
         {'tok': ['A', 'boy', 'is', 'here', '?'], 'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 8
+    assert len(label_map) == 8
     tsv_heads = [['tok', 0], ['ner', 1]]
-    docs, num_class = tsv_reader(
+    docs, label_map = tsv_reader(
         tsv_directory=resource_filename('elit.tests.resources', 'tsv/ner/dev'),
         cols=tsv_cols(tsv_heads),
         key='ner'
@@ -81,11 +81,11 @@ def test_tsv_reader():
          'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 8
+    assert len(label_map) == 8
 
 
 def test_json_reader():
-    docs, num_class = json_reader(
+    docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/pos/trn/sample.json'),
         key='pos'
     )
@@ -95,8 +95,8 @@ def test_json_reader():
          {'tok': ['A', 'boy', 'is', 'here', '?'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
           'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 7
-    docs, num_class = json_reader(
+    assert len(label_map) == 7
+    docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/pos/dev/sample.json'),
         key='pos'
     )
@@ -106,8 +106,8 @@ def test_json_reader():
         {'tok': ['The', 'girl', 'is', 'there', '!'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 7
-    docs, num_class = json_reader(
+    assert len(label_map) == 7
+    docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/ner/trn/sample.json'),
         key='ner'
     )
@@ -117,8 +117,8 @@ def test_json_reader():
         {'tok': ['A', 'boy', 'is', 'here', '?'], 'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 8
-    docs, num_class = json_reader(
+    assert len(label_map) == 8
+    docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/ner/dev/sample.json'),
         key='ner'
     )
@@ -130,4 +130,4 @@ def test_json_reader():
          'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
          'sen_id': 1}],
         'doc_id': 0}]
-    assert num_class == 8
+    assert len(label_map) == 8

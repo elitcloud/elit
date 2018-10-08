@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
-from elit.eval import MxF1
+from elit.eval import F1, MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
@@ -51,6 +51,17 @@ class TokenTaggerDataset(Dataset):
                  label: bool,
                  ctx=None,
                  transform=None):
+        """
+
+        :param vsms:
+        :param key:
+        :param docs:
+        :param feature_windows:
+        :param label_map:
+        :param label:
+        :param ctx:
+        :param transform:
+        """
         self.data = []
         self.vsms = vsms
         self.key = key
