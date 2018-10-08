@@ -95,7 +95,8 @@ class Document(dict):
         super().__init__()
         self._iter = -1
 
-        if d is not None: self.update(d)
+        if d is not None:
+            self.update(d)
         self.update(kwargs)
         self._sentences = self.setdefault(SEN, [])
 

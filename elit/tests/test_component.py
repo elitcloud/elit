@@ -29,8 +29,3 @@ def test_component():
     with pytest.raises(TypeError):
         TestComponent()
 
-
-def test_space_tokenizer(space_tokenizer):
-    result = space_tokenizer.decode("Hello, world")
-    assert result['tok'] == ['Hello,', 'world']
-    assert result['off'] == [(0, 6), (7, 12)]

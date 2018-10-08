@@ -16,7 +16,6 @@
 import pytest
 
 from elit.eval import Accuracy, F1
-from elit.segmenter import EnglishSegmenter
 from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 from elit.lemmatizer import EnglishLemmatizer
 
@@ -36,11 +35,6 @@ def space_tokenizer():
 @pytest.fixture()
 def english_tokenizer():
     return EnglishTokenizer()
-
-
-@pytest.fixture()
-def english_segmenter():
-    return EnglishSegmenter()
 
 
 @pytest.fixture()
