@@ -14,7 +14,9 @@
 # limitations under the License.
 # ========================================================================
 import abc
-from typing import Any
+from typing import Any, Tuple
+
+from mxnet import metric
 
 from elit.util.structure import Document
 
@@ -45,15 +47,15 @@ class Accuracy(EvalMetric):
     def __str__(self):
         return 'ACC:%6.2f (%d/%d)' % (self.get(), self.correct, self.total)
 
-    @abc.abstractmethod
-    def update(self, document: Document):
-        pass
-
     def get(self) -> float:
         """
         :return: accuracy in percentage.
         """
         return 100.0 * self.correct / self.total if self.total > 0 else 0
+
+    @abc.abstractmethod
+    def update(self, document: Document):
+        pass
 
 
 class F1(EvalMetric):
@@ -67,10 +69,6 @@ class F1(EvalMetric):
         return 'F1:%6.2f, P:%6.2f, R:%6.2f' % (
             self.f1(), self.precision(), self.recall())
 
-    @abc.abstractmethod
-    def update(self, document: Document):
-        pass
-
     def precision(self) -> float:
         return 100.0 * self.correct / self.p_total if self.p_total > 0 else 0
 
@@ -82,8 +80,52 @@ class F1(EvalMetric):
         r = self.recall()
         return 2 * p * r / (p + r) if p + r > 0 else 0
 
-    def get(self) -> float:
-        """
-        :return: (F1 score, prediction, recall)
-        """
+    def get(self):
         return self.f1()
+
+    @abc.abstractmethod
+    def update(self, document: Document):
+        pass
+
+
+class MxEvalMetric(metric.EvalMetric):
+
+    @abc.abstractmethod
+    def __init__(self, name, **kwargs):
+        super().__init__(name, **kwargs)
+
+    @abc.abstractmethod
+    def update(self, labels, preds):
+        pass
+
+
+class MxF1(MxEvalMetric):
+
+    def __init__(self):
+        super().__init__(name='f1score')
+        self.correct = 0.0
+        self.p_total = 0.0
+        self.r_total = 0.0
+
+    def precision(self) -> float:
+        return 100.0 * self.correct / self.p_total if self.p_total > 0.0 else 0.0
+
+    def recall(self) -> float:
+        return 100.0 * self.correct / self.r_total if self.r_total > 0.0 else 0.0
+
+    def f1(self) -> float:
+        p = self.precision()
+        r = self.recall()
+        return 2 * p * r / (p + r) if p + r > 0.0 else 0.0
+
+    def reset(self):
+        self.correct = 0.0
+        self.p_total = 0.0
+        self.r_total = 0.0
+
+    def get(self) -> Tuple[str, float]:
+        return self.name, self.f1()
+
+    @abc.abstractmethod
+    def update(self, labels, preds):
+        pass

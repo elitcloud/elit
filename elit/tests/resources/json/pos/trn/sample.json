@@ -1,0 +1,12 @@
+[{
+  "doc_id": 0,
+  "sen": [{
+    "sen_id": 0,
+    "tok": ["John", "bought", "a", "car", "."],
+    "pos": ["NNP", "VBD", "DT", "NN", "."]
+  }, {
+    "sen_id": 1,
+    "tok": ["A", "boy", "is", "here", "?"],
+    "pos": ["DT", "NN", "VBZ", "RB", "."]
+  }]
+}]

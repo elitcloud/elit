@@ -14,17 +14,4 @@
 # limitations under the License.
 # ========================================================================
 
-import pytest
-
-from elit.component import Component
-
 __author__ = "Gary Lai"
-
-
-def test_component():
-    class TestComponent(Component):
-        pass
-
-    with pytest.raises(TypeError):
-        TestComponent()
-

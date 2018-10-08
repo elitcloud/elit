@@ -19,14 +19,9 @@ import inspect
 import logging
 import re
 import sys
-from types import SimpleNamespace
-from typing import Callable, Any, Dict, Tuple, Optional, Union, Type
+from typing import Callable, Any, Dict, Tuple
 
 import mxnet as mx
-
-from elit.model import NLPModel
-from elit.util.io import json_reader, tsv_reader
-from elit.util.vsm import FastText, Word2Vec, VectorSpaceModel
 
 __author__ = "Gary Lai, Jinho D. Choi"
 
@@ -59,52 +54,47 @@ class ComponentCLI(abc.ABC):
         if not description:
             description = name
         parser = argparse.ArgumentParser(usage=usage, description=description)
-        command = sys.argv[2]
+        parser.add_argument('command', help='{} command to run'.format(name))
+        args = parser.parse_args(sys.argv[2:3])
 
-        if not hasattr(self, command):
-            logging.info('Unrecognized command: ' + command)
+        if not hasattr(self, args.command):
+            logging.info('Unrecognized command: ' + args.command)
             parser.print_help()
             exit(1)
-        getattr(self, command)(sys.argv[3:])
+        getattr(self, args.command)()
 
     @classmethod
     @abc.abstractmethod
-    def train(cls, args):
+    def train(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
         Trains a model for this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
-    def decode(cls, args):
+    def decode(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
         Predicts labels using this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
     @classmethod
     @abc.abstractmethod
-    def evaluate(cls, args):
+    def evaluate(cls):
         """
         :param args: the command-line arguments to be parsed by :class:`argparse.ArgumentParser`.
 
         Evaluates the current model of this component.
         """
-        raise NotImplementedError(
-            '%s.%s()' %
-            (cls.__class__.__name__, inspect.stack()[0][3]))
+        raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
 
 
-class ELITCLI(object):
+class ElitCli(object):
     def __init__(self):
         parser = argparse.ArgumentParser(
             usage='''
@@ -130,188 +120,11 @@ def set_logger(filename: str = None,
                formatter: logging.Formatter = None):
     log = logging.getLogger()
     log.setLevel(level)
-    ch = logging.StreamHandler(
-        sys.stdout) if filename is None else logging.FileHandler(filename)
+    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
     if formatter is not None:
         ch.setFormatter(formatter)
     log.addHandler(ch)
 
 
-def args_dict_str(s: str, const: Callable[[str], Any]) -> Dict[str, Any]:
-    """
-    :param s: key:int(,key:int)*
-    :param const: type constructor (e.g., int, float)
-    :return: a dictionary including key-value pairs from the input string.
-    """
-    r = re.compile(r'([A-Za-z0-9_-]+):([-]?[\d.]+)')
-    d = {}
-
-    for t in s.split(','):
-        m = r.match(t)
-        if m:
-            d[m.group(1)] = const(m.group(2))
-        else:
-            raise argparse.ArgumentTypeError
-
-    if not d:
-        raise argparse.ArgumentTypeError
-    return d
-
-
-def args_dict_str_float(s: str) -> Dict[str, float]:
-    return args_dict_str(s, float)
-
-
-def args_tuple_int(s: str) -> Tuple[int, ...]:
-    """
-    :param s: int(, int)*
-    :return: tuple of integers
-    """
-    r = re.compile(r'-?\d+(,-?\d+)*$')
-    if r.match(s):
-        return tuple(map(int, s.split(',')))
-    else:
-        raise argparse.ArgumentTypeError
-
-
-def args_reader(s: str) -> SimpleNamespace:
-    """
-    :param s: json or tsv=(str:int)(,#1)*
-    :return: the output of namespace_reader().
-    """
-    if s == 'json':
-        return namespace_reader(reader_type=json_reader)
-    if s.startswith('tsv='):
-        return namespace_reader(reader_type=tsv_reader,
-                                params=args_dict_str(s[4:], int))
-    raise argparse.ArgumentTypeError
-
-
-def args_vsm(s: str) -> SimpleNamespace:
-    """
-    :param s: (fasttext|word2vec):_key:filepath
-    :return: the output of namespace_vsm().
-    """
-    i = s.find(':')
-    if i < 1:
-        raise argparse.ArgumentTypeError
-
-    v = s[:i]
-    if v == 'fasttext':
-        vsm = FastText
-    elif v == 'word2vec':
-        vsm = Word2Vec
-    else:
-        raise argparse.ArgumentTypeError(
-            "Unsupported vector space model: " + v)
-
-    s = s[i + 1:]
-    i = s.find(':')
-    if i < 1:
-        raise argparse.ArgumentTypeError
-
-    key = s[:i]
-    filepath = s[i + 1:]
-    if not filepath:
-        raise argparse.ArgumentTypeError
-
-    return namespace_vsm(vsm_type=vsm, key=key, filepath=filepath)
-
-
-def args_ngram_conv(s: str) -> Optional[SimpleNamespace]:
-    """
-    :param s: ngram:filters:activation:pool:dropout
-    :return: the output of namespace_conf2d().
-    """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    pool = c[3] if c[3].lower() != 'none' else None
-    return NLPModel.namespace_ngram_conv_layer(ngrams=args_tuple_int(c[0]),
-                                               filters=int(c[1]),
-                                               activation=c[2],
-                                               pool=pool,
-                                               dropout=float(c[4]))
-
-
-def args_fuse_conv(s: str) -> Optional[SimpleNamespace]:
-    """
-    :param s: filters:activation:dropout
-    :return: the output of namespace_conf2d().
-    """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    return NLPModel.namespace_fuse_conv_layer(filters=int(c[0]),
-                                              activation=c[1],
-                                              dropout=float(c[2]))
-
-
-def args_hidden(s: str) -> Optional[SimpleNamespace]:
-    """
-    :param s: dim:activation:dropout
-    :return: the output of namespace_hidden()
-    """
-    if s.lower() == 'none':
-        return None
-    c = s.split(':')
-    return SimpleNamespace(dim=int(c[0]), activation=c[1], dropout=float(c[2]))
-
-
-def args_context(s: str) -> mx.Context:
-    """
-    :param s: [cg]int
-    :return: a device context
-    """
-    m = re.match(r'([cg])(\d*)', s)
-    if m:
-        d = int(m.group(2))
-        return mx.cpu(d) if m.group(1) == 'c' else mx.gpu(d)
-    else:
-        raise argparse.ArgumentTypeError
-
-
-def args_loss(s: str) -> mx.gluon.loss.Loss:
-    s = s.lower()
-
-    if s == 'softmaxcrossentropyloss':
-        return mx.gluon.loss.SoftmaxCrossEntropyLoss()
-    if s == 'sigmoidbinarycrossentropyloss':
-        return mx.gluon.loss.SigmoidBinaryCrossEntropyLoss()
-    if s == 'l2loss':
-        return mx.gluon.loss.L2Loss()
-    if s == 'l2loss':
-        return mx.gluon.loss.L1Loss()
-    if s == 'kldivloss':
-        return mx.gluon.loss.KLDivLoss()
-    if s == 'huberloss':
-        return mx.gluon.loss.HuberLoss()
-    if s == 'hingeloss':
-        return mx.gluon.loss.HingeLoss()
-    if s == 'squaredhingeloss':
-        return mx.gluon.loss.SquaredHingeLoss()
-    if s == 'logisticloss':
-        return mx.gluon.loss.LogisticLoss()
-    if s == 'tripletloss':
-        return mx.gluon.loss.TripletLoss()
-    if s == 'ctcloss':
-        return mx.gluon.loss.CTCLoss()
-
-    raise argparse.ArgumentTypeError("Unsupported loss: " + s)
-
-
-def namespace_reader(reader_type: Union[json_reader,
-                                        tsv_reader],
-                     params: Optional[Dict] = None) -> SimpleNamespace:
-    return SimpleNamespace(type=reader_type, params=params)
-
-
-def namespace_vsm(
-        vsm_type: Type[VectorSpaceModel],
-        key: str,
-        filepath: str) -> SimpleNamespace:
-    return SimpleNamespace(type=vsm_type, key=key, filepath=filepath)
-
-
 if __name__ == '__main__':
-    ELITCLI()
+    ElitCli()

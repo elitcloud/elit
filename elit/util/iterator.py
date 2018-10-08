@@ -83,8 +83,10 @@ class BatchIterator(NLPIterator):
 
         for state in states:
             for x, y, in state:
-                if label: batch.append((x, y))
-                else: batch.append(x)
+                if label:
+                    batch.append((x, y))
+                else:
+                    batch.append(x)
                 count += 1
 
                 if count == batch_size:
@@ -92,7 +94,8 @@ class BatchIterator(NLPIterator):
                     batch = []
                     count = 0
 
-        if batch: batches.append(batch)
+        if batch:
+            batches.append(batch)
         self._batches = batches
         self._shuffle = shuffle
         self._kwargs = kwargs
@@ -100,7 +103,8 @@ class BatchIterator(NLPIterator):
         self._iter = 0
 
         x = batches[0][0]
-        if isinstance(x, tuple): x = x[0]
+        if isinstance(x, tuple):
+            x = x[0]
         self.x1 = not isinstance(x, tuple)
 
     # override
@@ -108,7 +112,8 @@ class BatchIterator(NLPIterator):
         if self._shuffle:
             random.shuffle(self._batches)
         else:
-            for state in self.states: state.init(**self._kwargs)
+            for state in self.states:
+                state.init(**self._kwargs)
 
         self._state_begin = 0
         self._iter = 0
@@ -116,22 +121,27 @@ class BatchIterator(NLPIterator):
 
     # override
     def __next__(self) -> List[Union[np.ndarray, Tuple[np.ndarray, int]]]:
-        if self._iter >= len(self._batches): raise StopIteration
+        if self._iter >= len(self._batches):
+            raise StopIteration
         batch = self._batches[self._iter]
         self._iter += 1
         return batch
 
     # override
     def process(self, *args):
-        if self._shuffle: return -1
+        if self._shuffle:
+            return -1
         o = len(args) == 1
         i = 0
 
         for state in islice(self.states, self._state_begin, None):
             while state.has_next():
-                if i == len(args[0]): return
-                if o: state.process(args[0][i])
-                else: state.process(*[arg[i] for arg in args])
+                if i == len(args[0]):
+                    return
+                if o:
+                    state.process(args[0][i])
+                else:
+                    state.process(*[arg[i] for arg in args])
                 i += 1
 
             self._state_begin += 1
@@ -162,18 +172,22 @@ class SequenceIterator(NLPIterator):
         self._iter = 0
 
     def __iter__(self) -> 'SequenceIterator':
-        for state in self.states: state.init(**self._kwargs)
+        for state in self.states:
+            state.init(**self._kwargs)
 
         self._states = list(self.states)
-        if self._shuffle: random.shuffle(self._states)
+        if self._shuffle:
+            random.shuffle(self._states)
         self.x1 = not isinstance(self.states[0].x, tuple)
         self._state_begin = 0
         self._iter = 0
         return self
 
     def __next__(self) -> List[Union[np.ndarray, Tuple[np.ndarray, int]]]:
-        if not self._states: raise StopIteration
-        batch = [(state.x, state.y) if self.label else state.x for state in islice(self._states, self._iter, self._iter + self._batch_size)]
+        if not self._states:
+            raise StopIteration
+        batch = [(state.x, state.y) if self.label else state.x for state in
+                 islice(self._states, self._iter, self._iter + self._batch_size)]
         self._iter += len(batch)
         return batch
 
@@ -182,13 +196,16 @@ class SequenceIterator(NLPIterator):
         end = self._state_begin + len(args[0])
 
         for i, state in enumerate(islice(self._states, self._state_begin, end)):
-            if o: state.process(args[0][i])
-            else: state.process(*[arg[i] for arg in args])
+            if o:
+                state.process(args[0][i])
+            else:
+                state.process(*[arg[i] for arg in args])
 
         self._state_begin = end
 
         if end >= len(self._states):
             self._states = [state for state in self._states if state.has_next()]
-            if self._shuffle: random.shuffle(self._states)
+            if self._shuffle:
+                random.shuffle(self._states)
             self._state_begin = 0
             self._iter = 0
