@@ -18,17 +18,19 @@ import glob
 import inspect
 import logging
 import marisa_trie
-import os
 import pickle
 from types import SimpleNamespace
 from typing import List, Optional, Union, Sequence
 
+import mxnet as mx
 import fastText
 import numpy as np
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from gensim.models import KeyedVectors
 from mxnet import nd
 from mxnet.ndarray import NDArray
 
+from elit.nlp.tagger.embeddings import CharLMEmbeddings, StackedEmbeddings
 from elit.util.structure import TOK, Document
 
 __author__ = 'Jinho D. Choi'
@@ -279,7 +281,6 @@ class Gaze(VectorSpaceModel):
             pickle.dump(dim, fout)
             pickle.dump(num_labels, fout)
             pickle.dump(option, fout)
-
 
 
 # class GloVe(VectorSpaceModel):

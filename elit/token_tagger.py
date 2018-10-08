@@ -21,8 +21,8 @@ import sys
 from types import SimpleNamespace
 from typing import Tuple, Optional, List
 
-import numpy as np
 import mxnet as mx
+import numpy as np
 from mxnet import nd
 from mxnet.gluon.data import Dataset, DataLoader
 from mxnet.metric import Accuracy
@@ -30,11 +30,11 @@ from tqdm import tqdm
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
-from elit.eval import F1, MxF1
+from elit.eval import MxF1
 from elit.model import FFNNModel
 from elit.util.io import pkl, gln, json_reader, tsv_reader
 from elit.util.mx import mxloss
-from elit.util.structure import to_gold, BILOU, DOC_ID, TOK
+from elit.util.structure import to_gold, BILOU, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi, Gary Lai'
@@ -92,7 +92,7 @@ class TokenTaggerDataset(Dataset):
         return self.label_map.cid(label)
 
     def extract_sen(self, sen):
-        return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen[TOK]) for vsm in self.vsms])], ctx=self.ctx).reshape(
+        return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen.tokens) for vsm in self.vsms])], ctx=self.ctx).reshape(
             0, -1)
 
     def init_data(self, docs):
