@@ -6,7 +6,7 @@
   },
   "log_path": null,
   "sqeuence": false,
-  "chunking": true,
+  "chunking": false,
   "feature_windows": [3, 2, 1, 0, -1, -2, -3],
   "position_embedding": false,
   "label_embedding": false,
