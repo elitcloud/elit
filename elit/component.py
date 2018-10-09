@@ -24,9 +24,8 @@ from mxnet import gluon, autograd, nd
 from mxnet.gluon import Trainer
 from tqdm import trange, tqdm
 
+from elit.util.structure import Document, to_gold
 from elit.util.vsm import LabelMap
-
-from elit.util.structure import Document
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
@@ -212,7 +211,6 @@ class MXNetComponent(NLPComponent):
                     loss = loss_fn(output, label)
                     loss.backward()
                 trainer.step(data.shape[0])
-                # trn_acc = self.accuracy(data_iterator=trn_data, docs=trn_docs)
                 correct += len([1 for o, y in zip(nd.argmax(output, axis=1), label) if int(o.asscalar()) == int(y.asscalar())])
                 total += len(label)
             trn_acc = 100.0 * correct / total
@@ -239,14 +237,18 @@ class MXNetComponent(NLPComponent):
         data_iterator = self.data_loader(docs=docs, batch_size=batch_size, shuffle=False, label=False)
         preds = []
         idx = 0
-        for data, label in data_iterator:
+        for data, _ in data_iterator:
             data = data.as_in_context(self.ctx)
             output = self.model(data)
             pred = nd.argmax(output, axis=1)
             [preds.append(self.label_map.get(int(p.asscalar()))) for p in pred]
 
         for doc in docs:
-            for sen in doc:
+            for sen in doc.sentences:
+                try:
+                    del sen[to_gold(self.key)]
+                except KeyError:
+                    pass
                 sen[self.key] = preds[idx:idx + len(sen)]
                 idx += len(sen)
 

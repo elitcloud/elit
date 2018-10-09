@@ -34,6 +34,7 @@ def tsv_cols(tsv_heads: list) -> Dict[str, int]:
         d[head[0]] = head[1]
     return d
 
+
 # ======================================== Readers =======================
 
 
@@ -137,8 +138,13 @@ def gln(filepath):
     return filepath + '.gln'
 
 
+def params(filepath):
+    return filepath + '.params'
+
+
 def group_states(docs: Sequence[Document], create_state: Callable[[
-                 Document], NLPState], maxlen: int = -1) -> List[NLPState]:
+                                                                      Document], NLPState], maxlen: int = -1) -> List[
+    NLPState]:
     """
     Groups sentences into documents such that each document consists of multiple sentences and the total number of words
     across all sentences within a document is close to the specified maximum length.

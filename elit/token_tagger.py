@@ -32,7 +32,7 @@ from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
 from elit.eval import MxF1
 from elit.model import FFNNModel
-from elit.util.io import pkl, gln, json_reader, tsv_reader
+from elit.util.io import pkl, gln, json_reader, tsv_reader, params
 from elit.util.mx import mxloss
 from elit.util.structure import to_gold, BILOU, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
@@ -92,7 +92,8 @@ class TokenTaggerDataset(Dataset):
         return self.label_map.cid(label)
 
     def extract_sen(self, sen):
-        return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen.tokens) for vsm in self.vsms])], ctx=self.ctx).reshape(
+        return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen.tokens) for vsm in self.vsms])],
+                        ctx=self.ctx).reshape(
             0, -1)
 
     def init_data(self, docs):
@@ -143,7 +144,10 @@ class TokenTagger(MXNetComponent):
 
     def __str__(self):
         s = ('Token Tagger',
-             '- feature windows: %s' % str(self.feature_windows),
+             '- key: {}'.format(self.key),
+             '- label_map: {}'.format(self.label_map),
+             '- chunking: {}'.format(self.chunking),
+             '- feature windows: {}'.format(self.feature_windows),
              '- %s' % str(self.model))
         return '\n'.join(s)
 
@@ -208,8 +212,8 @@ class TokenTagger(MXNetComponent):
         with open(pkl(model_path), 'rb') as fin:
             self.key = pickle.load(fin)
             self.label_map = pickle.load(fin)
-            self.feature_windows = pickle.load(fin)
             self.chunking = pickle.load(fin)
+            self.feature_windows = pickle.load(fin)
             self.input_config = pickle.load(fin)
             self.output_config = pickle.load(fin)
             self.fuse_conv_config = pickle.load(fin)
@@ -223,7 +227,8 @@ class TokenTagger(MXNetComponent):
             ngram_conv_config=self.ngram_conv_config,
             hidden_configs=self.hidden_configs,
             **kwargs)
-        self.model.collect_params().load(gln(model_path), self.ctx)
+        self.model.load_params(params(model_path), self.ctx)
+        # self.model.collect_params().load(gln(model_path), self.ctx)
         logging.info(self.__str__())
 
     # override
@@ -243,7 +248,8 @@ class TokenTagger(MXNetComponent):
             pickle.dump(self.ngram_conv_config, fout)
             pickle.dump(self.hidden_configs, fout)
 
-        self.model.collect_params().save(gln(model_path))
+        self.model.save_params(params(model_path))
+        # self.model.collect_params().save(gln(model_path))
 
     def accuracy(self, data_iterator, docs=None):
         return self.chunk_accuracy(data_iterator, docs) if self.chunking else self.token_accuracy(data_iterator)
@@ -302,6 +308,9 @@ class TokenTaggerConfig(object):
 
     def __init__(self, source: dict):
         self.source = source
+
+    def __str__(self):
+        return str(self.source)
 
     @property
     def reader(self):
@@ -501,6 +510,10 @@ class TokenTaggerCLI(ComponentCLI):
         group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
                            help='vsm path')
 
+        # network
+        network_group = parser.add_argument_group("network arguments")
+        network_group.add_argument('config', type=str, metavar='CONFIG', help="config file")
+
         args = parser.parse_args(sys.argv[3:])
 
         with open(args.config, 'r') as d:
@@ -511,9 +524,10 @@ class TokenTaggerCLI(ComponentCLI):
         # component
         comp = TokenTagger(config.ctx, args.vsm_path)
         comp.load(args.model_path)
-        docs, _ = config.reader(args.input_path, config.tsv_heads)
+        docs, _ = config.reader(args.input_path, config.tsv_heads, comp.key)
         result = comp.decode(docs=docs, batch_size=config.batch_size)
-        with open(args.ouput_path, 'w') as fout:
+
+        with open(args.output_path, 'w') as fout:
             json.dump(result, fout)
 
     # override

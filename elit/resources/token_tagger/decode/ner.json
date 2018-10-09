@@ -7,5 +7,5 @@
   "log_path": null,
   "device": "cpu",
   "core": 1,
-  "batch_size": 2048,
+  "batch_size": 2048
 }
