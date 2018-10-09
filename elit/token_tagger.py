@@ -219,7 +219,7 @@ class TokenTagger(MXNetComponent):
             self.fuse_conv_config = pickle.load(fin)
             self.ngram_conv_config = pickle.load(fin)
             self.hidden_configs = pickle.load(fin)
-
+        logging.info('{} is loaded'.format(pkl(model_path)))
         self.model = FFNNModel(
             input_config=self.input_config,
             output_config=self.output_config,
@@ -228,7 +228,7 @@ class TokenTagger(MXNetComponent):
             hidden_configs=self.hidden_configs,
             **kwargs)
         self.model.load_params(params(model_path), self.ctx)
-        # self.model.collect_params().load(gln(model_path), self.ctx)
+        logging.info('{} is loaded'.format(params(model_path)))
         logging.info(self.__str__())
 
     # override
@@ -247,9 +247,9 @@ class TokenTagger(MXNetComponent):
             pickle.dump(self.fuse_conv_config, fout)
             pickle.dump(self.ngram_conv_config, fout)
             pickle.dump(self.hidden_configs, fout)
-
+        logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_params(params(model_path))
-        # self.model.collect_params().save(gln(model_path))
+        logging.info('{} is saved'.format(params(model_path)))
 
     def accuracy(self, data_iterator, docs=None):
         return self.chunk_accuracy(data_iterator, docs) if self.chunking else self.token_accuracy(data_iterator)
@@ -281,7 +281,7 @@ class TokenTagger(MXNetComponent):
                 idx += len(labels)
         return acc.get()[1]
 
-    def data_loader(self, docs, batch_size, shuffle, label=True):
+    def data_loader(self, docs, batch_size, shuffle=False, label=True):
         return DataLoader(TokenTaggerDataset(vsms=self.vsms,
                                              key=self.key,
                                              docs=docs,
@@ -533,7 +533,6 @@ class TokenTaggerCLI(ComponentCLI):
     # override
     @classmethod
     def evaluate(cls):
-        pass
         # create a arg-parser
         parser = argparse.ArgumentParser(
             description='Evaluate the token tagger',
@@ -549,6 +548,10 @@ class TokenTaggerCLI(ComponentCLI):
         group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
                            help='vsm path')
 
+        # network
+        network_group = parser.add_argument_group("network arguments")
+        network_group.add_argument('config', type=str, metavar='CONFIG', help="config file")
+
         args = parser.parse_args(sys.argv[3:])
 
         with open(args.config, 'r') as d:
@@ -559,5 +562,5 @@ class TokenTaggerCLI(ComponentCLI):
         # component
         comp = TokenTagger(config.ctx, args.vsm_path)
         comp.load(args.model_path)
-        docs, _ = config.reader(args.eval_path, config.tsv_heads)
+        docs, _ = config.reader(args.eval_path, config.tsv_heads, comp.key)
         comp.evaluate(docs=docs, batch_size=config.batch_size)

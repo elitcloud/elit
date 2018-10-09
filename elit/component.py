@@ -260,6 +260,7 @@ class MXNetComponent(NLPComponent):
         acc = self.accuracy(data_iterator=data_iterator, docs=docs)
         et = time.time()
         logging.info('acc: {} time: {} (sec)'.format(acc, et - st))
+        return acc, et - st
 
     @abc.abstractmethod
     def accuracy(self, **kwargs):

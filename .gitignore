@@ -177,3 +177,4 @@ data
 *.pkl
 *.bin
 *.p
+*.params
