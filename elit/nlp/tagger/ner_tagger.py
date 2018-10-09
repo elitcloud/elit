@@ -2,25 +2,24 @@
 # Author：hankcs
 # Date: 2018-09-27 21:03
 import tempfile
-from typing import Sequence, List
+from typing import Sequence
 
 import mxnet as mx
 
 from elit.component import NLPComponent
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, Sentence, Token, get_chunks
+from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_chunks
 from elit.nlp.tagger.corpus import TaggedCorpus
-from elit.nlp.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
+from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.util.structure import Document, NER, SEN
-from elit.util.structure import Sentence as ElitSentence
 
 
 class NERTagger(NLPComponent):
     def __init__(self) -> None:
         super().__init__()
-        self.tagger: SequenceTagger = None
+        self.tagger = None
 
     def init(self, **kwargs):
         pass
@@ -47,7 +46,7 @@ class NERTagger(NLPComponent):
         tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
 
         with mx.Context(mxnet_prefer_gpu()):
-            embedding_types: List[TokenEmbeddings] = [
+            embedding_types = [
 
                 WordEmbeddings('glove'),
 
@@ -59,15 +58,15 @@ class NERTagger(NLPComponent):
                 CharLMEmbeddings('data/model/lm-news-backward'),
             ]
 
-            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+            embeddings = StackedEmbeddings(embeddings=embedding_types)
 
-            self.tagger: SequenceTagger = SequenceTagger(hidden_size=256,
-                                                         embeddings=embeddings,
-                                                         tag_dictionary=tag_dictionary,
-                                                         tag_type=tag_type,
-                                                         use_crf=True)
+            self.tagger = SequenceTagger(hidden_size=256,
+                                         embeddings=embeddings,
+                                         tag_dictionary=tag_dictionary,
+                                         tag_type=tag_type,
+                                         use_crf=True)
 
-            trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus, test_mode=False)
+            trainer = SequenceTaggerTrainer(self.tagger, corpus, test_mode=False)
 
             return trainer.train(model_path, learning_rate,
                                  mini_batch_size,
@@ -84,7 +83,7 @@ class NERTagger(NLPComponent):
         idx = 0
         for d in docs:
             for s in d:
-                s: ElitSentence = s
+                s = s
                 s[NER] = get_chunks([t.tags['ner'] for t in sentences[idx]])
                 idx += 1
         return docs
@@ -92,7 +91,7 @@ class NERTagger(NLPComponent):
     def evaluate(self, docs: Sequence[Document], **kwargs):
         print('test... ')
         with mx.Context(mxnet_prefer_gpu()):
-            trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
+            trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
             test_score, test_fp, test_result = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                                                 tempfile.gettempdir(),
                                                                 evaluation_method='span-F1',

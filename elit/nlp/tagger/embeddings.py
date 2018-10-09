@@ -1,17 +1,15 @@
 # -*- coding:utf-8 -*-
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-21 20:58
-import os
 
-import numpy as np
 import re
-
-import gensim
 from abc import abstractmethod
 from typing import Union, List
 
-from mxnet.gluon import nn
 import mxnet.ndarray as nd
+import numpy as np
+from mxnet.gluon import nn
+
 from elit.nlp.tagger.corpus import Sentence, Token, read_pretrained_embeddings
 from elit.nlp.tagger.language_model import LanguageModel
 
@@ -38,7 +36,7 @@ class Embeddings(nn.Block):
         if type(sentences) is Sentence:
             sentences = [sentences]
 
-        everything_embedded: bool = True
+        everything_embedded = True
 
         if self.embedding_type == 'word-level':
             for sentence in sentences:
@@ -76,6 +74,9 @@ class TokenEmbeddings(Embeddings):
 class WordEmbeddings(TokenEmbeddings):
     """Standard static word embeddings, such as GloVe or FastText."""
 
+    def forward(self, *args):
+        pass
+
     def __init__(self, embedding_file):
         """Init one of: 'glove', 'extvec', 'ft-crawl', 'ft-german'.
         Constructor downloads required files if not there."""
@@ -96,7 +97,7 @@ class WordEmbeddings(TokenEmbeddings):
         for i, sentence in enumerate(sentences):
 
             for token, token_idx in zip(sentence.tokens, range(len(sentence.tokens))):
-                token: Token = token
+                token = token
 
                 if token.text in self.precomputed_word_embeddings:
                     word_embedding = self.precomputed_word_embeddings[token.text]
@@ -118,6 +119,9 @@ class WordEmbeddings(TokenEmbeddings):
 
 class CharLMEmbeddings(TokenEmbeddings):
     """Contextual string embeddings of words, as proposed in Akbik et al., 2018."""
+
+    def forward(self, *args):
+        pass
 
     def __init__(self, model, detach: bool = True):
         super().__init__()
@@ -141,12 +145,12 @@ class CharLMEmbeddings(TokenEmbeddings):
         if detach:
             self.lm.freeze()
 
-        self.is_forward_lm: bool = self.lm.is_forward_lm
+        self.is_forward_lm = self.lm.is_forward_lm
 
-        dummy_sentence: Sentence = Sentence()
+        dummy_sentence = Sentence()
         dummy_sentence.add_token(Token('hello'))
         embedded_dummy = self.embed(dummy_sentence)
-        self.__embedding_length: int = len(embedded_dummy[0].get_token(1).get_embedding())
+        self.__embedding_length = len(embedded_dummy[0].get_token(1).get_embedding())
 
     @property
     def embedding_length(self) -> int:
@@ -157,10 +161,10 @@ class CharLMEmbeddings(TokenEmbeddings):
         # get text sentences
         text_sentences = [sentence.to_tokenized_string() for sentence in sentences]
 
-        longest_character_sequence_in_batch: int = len(max(text_sentences, key=len))
+        longest_character_sequence_in_batch = len(max(text_sentences, key=len))
 
         # pad strings with whitespaces to longest sentence
-        sentences_padded: List[str] = []
+        sentences_padded = []
         append_padded_sentence = sentences_padded.append
 
         end_marker = ' '
@@ -181,11 +185,11 @@ class CharLMEmbeddings(TokenEmbeddings):
         for i, sentence in enumerate(sentences):
             sentence_text = sentence.to_tokenized_string()
 
-            offset_forward: int = extra_offset
-            offset_backward: int = len(sentence_text) + extra_offset
+            offset_forward = extra_offset
+            offset_backward = len(sentence_text) + extra_offset
 
             for token in sentence.tokens:
-                token: Token = token
+                token = token
 
                 offset_forward += len(token.text)
 
@@ -210,6 +214,9 @@ class CharLMEmbeddings(TokenEmbeddings):
 class StackedEmbeddings(TokenEmbeddings):
     """A stack of embeddings, used if you need to combine several different embedding types."""
 
+    def forward(self, *args):
+        pass
+
     def __init__(self, embeddings: List[TokenEmbeddings], detach: bool = True):
         """The constructor takes a list of embeddings to be combined."""
         super().__init__()
@@ -225,9 +232,9 @@ class StackedEmbeddings(TokenEmbeddings):
         # self.name = 'Stack'
         self.static_embeddings = True
 
-        self.__embedding_type: int = embeddings[0].embedding_type
+        self.__embedding_type = embeddings[0].embedding_type
 
-        self.__embedding_length: int = 0
+        self.__embedding_length = 0
         for embedding in embeddings:
             self.__embedding_length += embedding.embedding_length
 

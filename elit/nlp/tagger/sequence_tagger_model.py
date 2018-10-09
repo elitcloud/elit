@@ -3,18 +3,18 @@
 # Date: 2018-09-21 21:10
 import os
 import pickle
-import warnings
 from typing import List, Tuple, Union
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
-from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
 from mxnet import autograd
 from mxnet.gluon import nn, rnn
 
-START_TAG: str = '<START>'
-STOP_TAG: str = '<STOP>'
+from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
+from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
+
+START_TAG = '<START>'
+STOP_TAG = '<STOP>'
 
 
 def to_scalar(var: nd.NDArray):
@@ -29,7 +29,7 @@ def argmax(vec: nd.NDArray):
 
 
 def log_sum_exp(vec: nd.NDArray):
-    max_score: nd.NDArray = vec[0, argmax(vec)]
+    max_score = vec[0, argmax(vec)]
     # max_score_broadcast = max_score.reshape(1, -1).expand(1, vec.size()[1])
     return max_score + nd.log(nd.sum(nd.exp(vec - max_score)))
 
@@ -41,7 +41,7 @@ def argmax_batch(vecs: nd.NDArray):
 
 
 def log_sum_exp_batch(vecs):
-    maxi: nd.NDArray = nd.max(vecs, 1)
+    maxi = nd.max(vecs, 1)
     maxi_bc = maxi.expand_dims(1).tile((1, vecs.shape[1]))
     recti_ = nd.log(nd.sum(nd.exp(vecs - maxi_bc), 1))
     return maxi + recti_
@@ -74,29 +74,29 @@ class SequenceTagger(nn.Block):
 
         self.use_rnn = use_rnn
         self.hidden_size = hidden_size
-        self.use_crf: bool = use_crf
-        self.rnn_layers: int = rnn_layers
+        self.use_crf = use_crf
+        self.rnn_layers = rnn_layers
 
-        self.trained_epochs: int = 0
+        self.trained_epochs = 0
 
         self.embeddings = embeddings
 
         # set the dictionaries
-        self.tag_dictionary: Dictionary = tag_dictionary
-        self.tag_type: str = tag_type
-        self.tagset_size: int = len(tag_dictionary)
+        self.tag_dictionary = tag_dictionary
+        self.tag_type = tag_type
+        self.tagset_size = len(tag_dictionary)
 
         # initialize the network architecture
-        self.nlayers: int = rnn_layers
+        self.nlayers = rnn_layers
         self.hidden_word = None
 
         self.dropout = nn.Dropout(0.5, axes=[0])
 
         # self.dropout: nn.Block = LockedDropout(0.5)
 
-        rnn_input_dim: int = self.embeddings.embedding_length
+        rnn_input_dim = self.embeddings.embedding_length
 
-        self.relearn_embeddings: bool = True
+        self.relearn_embeddings = True
 
         if self.relearn_embeddings:
             self.embedding2nn = nn.Dense(in_units=rnn_input_dim, units=rnn_input_dim, flatten=False)
@@ -154,7 +154,7 @@ class SequenceTagger(nn.Block):
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'rb') as f:
             config = pickle.load(f)
-            embedding_types: List[TokenEmbeddings] = [
+            embedding_types = [
 
                 WordEmbeddings('glove'),
 
@@ -166,7 +166,7 @@ class SequenceTagger(nn.Block):
                 CharLMEmbeddings('data/model/lm-news-backward'),
             ]
 
-            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+            embeddings = StackedEmbeddings(embeddings=embedding_types)
             model = SequenceTagger(
                 hidden_size=config['hidden_size'],
                 embeddings=embeddings,
@@ -191,15 +191,15 @@ class SequenceTagger(nn.Block):
         self.embeddings.embed(sentences)
 
         all_sentence_tensors = []
-        lengths: List[int] = []
-        tag_list: List = []
+        lengths = []
+        tag_list = []
 
         padding = nd.zeros((1, self.embeddings.embedding_length), dtype='float32')
 
         for sentence in sentences:
 
             # get the tags in this sentence
-            tag_idx: List[int] = []
+            tag_idx = []
 
             lengths.append(len(sentence.tokens))
 
@@ -246,7 +246,7 @@ class SequenceTagger(nn.Block):
 
             sentence_tensor = self.dropout(sentence_tensor)
 
-        features: nd.NDArray = self.linear(sentence_tensor)
+        features = self.linear(sentence_tensor)
         tags = nd.zeros((len(tag_list), lengths[0]), dtype='int32')
         for i, (t, l) in enumerate(zip(tag_list, lengths)):
             tags[i, :l] = t
@@ -451,7 +451,7 @@ class SequenceTagger(nn.Block):
 
     @staticmethod
     def load(model: str):
-        tagger: SequenceTagger = SequenceTagger.load_from_file(model)
+        tagger = SequenceTagger.load_from_file(model)
         return tagger
 
 
@@ -466,7 +466,7 @@ class LockedDropout(nn.Block):
 
         keep_rate = 1. - self.dropout_rate
         m = nd.random.negative_binomial(1, keep_rate, (1, x.shape[1], x.shape[2]))
-        mask: nd.NDArray = m / keep_rate
+        mask = m / keep_rate
         return nd.broadcast_mul(x, mask)
 
 
