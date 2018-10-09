@@ -2,7 +2,8 @@
 # Adopted from https://github.com/jcyk/Dynet-Biaffine-dependency-parser
 # With some modifications
 from collections import Counter
-from typing import Union, Sequence, Dict, Any
+from typing import Sequence
+
 import numpy as np
 
 from elit.nlp.dep.common.savable import Savable

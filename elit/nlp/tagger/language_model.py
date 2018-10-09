@@ -6,20 +6,19 @@ import math
 import os
 import pickle
 import time
+from typing import List, Dict
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.nlp.dep.common.savable import Savable
-from elit.nlp.dep.common.utils import make_sure_path_exists
-from elit.nlp.tagger.corpus import Dictionary, TextCorpus
-from elit.nlp.tagger.lm_config import LanguageModelConfig
-from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from typing import List, Dict
 
+from elit.nlp.dep.common.utils import make_sure_path_exists
+from elit.nlp.tagger.corpus import Dictionary, TextCorpus
+from elit.nlp.tagger.lm_config import LanguageModelConfig
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
 class LanguageModel(nn.HybridBlock):
@@ -41,7 +40,7 @@ class LanguageModel(nn.HybridBlock):
         super(LanguageModel, self).__init__()
 
         self.dictionary = dictionary
-        self.is_forward_lm: bool = is_forward_lm
+        self.is_forward_lm = is_forward_lm
 
         self.dropout = dropout
         self.hidden_size = hidden_size
@@ -94,14 +93,14 @@ class LanguageModel(nn.HybridBlock):
         if self.proj is not None:
             output = self.proj(output)
 
-        output: nd.NDArray = self.drop(output)
+        output = self.drop(output)
 
         decoded = self.decoder(output.reshape((-1, self.hidden_size)))
         return decoded, output, hidden, cell
 
     def get_representation(self, strings: List[str], detach_from_lm=True):
 
-        sequences_as_char_indices: List[List[int]] = []
+        sequences_as_char_indices = []
         for string in strings:
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
@@ -193,10 +192,10 @@ class LanguageModelTrainer:
     """
 
     def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
-        self.model: LanguageModel = model
+        self.model = model
         model.hybridize()
-        self.corpus: TextCorpus = corpus
-        self.test_mode: bool = test_mode
+        self.corpus = corpus
+        self.test_mode = test_mode
 
         self.loss_function = SoftmaxCrossEntropyLoss()
         self.log_interval = 100
@@ -223,7 +222,7 @@ class LanguageModelTrainer:
                 self.model.initialize()
                 epoch = 0
                 best_val_loss = 100000000
-                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
                 trainer = gluon.Trainer(self.model.collect_params(),
@@ -271,7 +270,7 @@ class LanguageModelTrainer:
                         with autograd.record():
                             output, rnn_output, hidden, cell = self.run(data, hidden, cell)
                             # try to predict the targets
-                            loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).mean()
+                            loss = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
 
                         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -346,7 +345,7 @@ class LanguageModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss: float = 0
+        total_loss = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)

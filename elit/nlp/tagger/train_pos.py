@@ -1,14 +1,14 @@
 # -*- coding:utf-8 -*-
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-19 15:12
-from typing import List
+
+import mxnet as mx
 
 from elit.nlp.tagger.corpus import NLPTaskDataFetcher
-from elit.nlp.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
+from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-import mxnet as mx
 
 if __name__ == '__main__':
     data_folder = 'data/wsj-pos'
@@ -30,23 +30,23 @@ if __name__ == '__main__':
 
     # 4. initialize embeddings
     with mx.Context(mxnet_prefer_gpu()):
-        embedding_types: List[TokenEmbeddings] = [
+        embedding_types = [
             WordEmbeddings('data/embedding/extvec.txt'),
             CharLMEmbeddings('data/model/lm-news-forward'),
             CharLMEmbeddings('data/model/lm-news-backward'),
         ]
 
-        embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+        embeddings = StackedEmbeddings(embeddings=embedding_types)
 
         # 5. initialize sequence tagger
-        tagger: SequenceTagger = SequenceTagger(hidden_size=256,
+        tagger = SequenceTagger(hidden_size=256,
                                                 embeddings=embeddings,
                                                 tag_dictionary=tag_dictionary,
                                                 tag_type=tag_type,
                                                 use_crf=True)
 
         # 6. initialize trainer
-        trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
+        trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
         trainer.train('data/model/pos/wsj', learning_rate=0.1, mini_batch_size=32, max_epochs=150,

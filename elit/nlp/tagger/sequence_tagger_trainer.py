@@ -7,14 +7,15 @@ import random
 import re
 import sys
 from subprocess import run, PIPE
+from typing import List
 
-from elit.nlp.tagger.corpus import TaggedCorpus, Sentence, Token
+import mxnet as mx
+from mxnet import autograd, gluon
+
+from elit.nlp.tagger.corpus import TaggedCorpus, Sentence
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
-import mxnet as mx
-from mxnet import autograd, gluon
-from typing import List
 
 
 class Metric(object):
@@ -70,9 +71,9 @@ class Metric(object):
 
 class SequenceTaggerTrainer:
     def __init__(self, model: SequenceTagger, corpus: TaggedCorpus, test_mode: bool = False) -> None:
-        self.model: SequenceTagger = model
-        self.corpus: TaggedCorpus = corpus
-        self.test_mode: bool = test_mode
+        self.model  = model
+        self.corpus  = corpus
+        self.test_mode  = test_mode
 
     def train(self,
               base_path: str,
@@ -118,22 +119,22 @@ class SequenceTaggerTrainer:
         try:
             with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
-                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience, mode=anneal_mode)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
                 trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
                 for epoch in range(0, max_epochs):
-                    current_loss: float = 0
+                    current_loss = 0
                     if not self.test_mode:
                         random.shuffle(train_data)
 
                     batches = [train_data[x:x + mini_batch_size] for x in
                                range(0, len(train_data), mini_batch_size)]
 
-                    batch_no: int = 0
+                    batch_no = 0
 
                     for batch in batches:
-                        batch: List[Sentence] = batch
+                        batch = batch
                         batch_no += 1
 
                         if batch_no % 100 == 0:
@@ -206,17 +207,17 @@ class SequenceTaggerTrainer:
     def evaluate(self, evaluation: List[Sentence], out_path=None, evaluation_method: str = 'F1',
                  embeddings_in_memory: bool = True):
 
-        tp: int = 0
-        fp: int = 0
+        tp = 0
+        fp = 0
 
-        batch_no: int = 0
+        batch_no = 0
         mini_batch_size = 32
         batches = [evaluation[x:x + mini_batch_size] for x in
                    range(0, len(evaluation), mini_batch_size)]
 
         metric = Metric('')
 
-        lines: List[str] = []
+        lines = []
 
         for batch in batches:
             batch_no += 1
@@ -225,7 +226,7 @@ class SequenceTaggerTrainer:
 
             for sentence in batch:
 
-                sentence: Sentence = sentence
+                sentence = sentence
 
                 # Step 3. Run our forward pass.
                 score, tag_seq = self.model.predict_scores(sentence)
@@ -233,7 +234,7 @@ class SequenceTaggerTrainer:
                 # Step 5. Compute predictions
                 predicted_id = tag_seq
                 for (token, pred_id) in zip(sentence.tokens, predicted_id):
-                    token: Token = token
+                    token = token
                     # get the predicted tag
                     predicted_tag = self.model.tag_dictionary.get_item_for_index(pred_id)
                     token.add_tag('predicted', predicted_tag)

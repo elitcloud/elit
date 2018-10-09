@@ -3,17 +3,18 @@
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-02-21 14:51
 import math
+import os
+import pickle
 import random
 import re
 from collections import Counter, defaultdict
 from enum import Enum
+from typing import Sequence, Dict, List, Union
 
-import numpy as np
-import pickle
-import os
-from typing import Sequence, Tuple, Dict, List, Union
 import mxnet as mx
 import mxnet.ndarray as nd
+import numpy as np
+
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.util.structure import Document, NER, POS, SEN
@@ -567,14 +568,14 @@ class Token:
                  whitespace_after: bool = True,
                  pos=None
                  ):
-        self.text: str = text
-        self.idx: int = idx
-        self.head_id: int = head_id
-        self.whitespace_after: bool = whitespace_after
+        self.text = text
+        self.idx = idx
+        self.head_id = head_id
+        self.whitespace_after = whitespace_after
 
-        self.sentence: Sentence = None
-        self._embeddings: Dict = {}
-        self.tags: Dict[str, str] = {}
+        self.sentence = None
+        self._embeddings = {}
+        self.tags = {}
         if pos:
             self.add_tag('pos', pos)
 
@@ -582,7 +583,8 @@ class Token:
         self.tags[tag_type] = tag_value
 
     def get_tag(self, tag_type: str) -> str:
-        if tag_type in self.tags: return self.tags[tag_type]
+        if tag_type in self.tags:
+            return self.tags[tag_type]
         return ''
 
     def get_head(self):
@@ -600,7 +602,7 @@ class Token:
         self._embeddings[name] = vector
 
     def clear_embeddings(self):
-        self._embeddings: Dict = {}
+        self._embeddings = {}
 
     def get_embedding(self) -> nd.NDArray:
 
@@ -622,12 +624,12 @@ class Token:
 
 class Sentence:
     def __init__(self, text: str = None, use_tokenizer: bool = False, labels: Union[List[Label], List[str]] = None):
-        self.tokens: List[Token] = []
+        self.tokens = []
 
-        self.labels: List[Label] = []
+        self.labels = []
         if labels is not None: self.add_labels(labels)
 
-        self._embeddings: Dict = {}
+        self._embeddings = {}
 
         # if text is passed, instantiate sentence with tokens (words)
         if text is not None:
@@ -676,7 +678,7 @@ class Sentence:
         :return:
         """
         last_token = None
-        quote_count: int = 0
+        quote_count = 0
         # infer whitespace after field
 
         for token in self.tokens:
@@ -738,7 +740,7 @@ class Sentence:
         self._embeddings[name] = vector.cpu()
 
     def clear_embeddings(self, also_clear_word_embeddings: bool = True):
-        self._embeddings: Dict = {}
+        self._embeddings = {}
 
         if also_clear_word_embeddings:
             for token in self:
@@ -780,9 +782,9 @@ class Sentence:
 
     def convert_tag_scheme(self, tag_type: str = 'ner', target_scheme: str = 'iob', source_scheme='iob'):
 
-        tags: List[str] = []
+        tags = []
         for token in self.tokens:
-            token: Token = token
+            token = token
             tags.append(token.get_tag(tag_type))
 
         if target_scheme == 'iob' and source_scheme == 'iob':
@@ -893,9 +895,9 @@ def ioblu_iobes(tags):
 
 class TaggedCorpus:
     def __init__(self, train: List[Sentence], dev: List[Sentence], test: List[Sentence]):
-        self.train: List[Sentence] = train
-        self.dev: List[Sentence] = dev
-        self.test: List[Sentence] = test
+        self.train = train
+        self.dev = dev
+        self.test = test
 
     def downsample(self, percentage: float = 0.1, only_downsample_train=False):
 
@@ -912,7 +914,7 @@ class TaggedCorpus:
                 token.clear_embeddings()
 
     def get_all_sentences(self) -> List[Sentence]:
-        all_sentences: List[Sentence] = []
+        all_sentences = []
         all_sentences.extend(self.train)
         all_sentences.extend(self.dev)
         all_sentences.extend(self.test)
@@ -921,11 +923,11 @@ class TaggedCorpus:
     def make_tag_dictionary(self, tag_type: str) -> Dictionary:
 
         # Make the tag dictionary
-        tag_dictionary: Dictionary = Dictionary()
+        tag_dictionary = Dictionary()
         tag_dictionary.add_item('O')
         for sentence in self.get_all_sentences():
             for token in sentence.tokens:
-                token: Token = token
+                token = token
                 tag_dictionary.add_item(token.get_tag(tag_type))
         tag_dictionary.add_item('<START>')
         tag_dictionary.add_item('<STOP>')
@@ -939,7 +941,7 @@ class TaggedCorpus:
 
         labels = set(self._get_all_label_names())
 
-        label_dictionary: Dictionary = Dictionary(add_unk=False)
+        label_dictionary = Dictionary(add_unk=False)
         for label in labels:
             label_dictionary.add_item(label)
 
@@ -958,7 +960,7 @@ class TaggedCorpus:
         """
         tokens = self._get_most_common_tokens(max_tokens, min_freq)
 
-        vocab_dictionary: Dictionary = Dictionary()
+        vocab_dictionary = Dictionary()
         for token in tokens:
             vocab_dictionary.add_item(token)
 
@@ -987,7 +989,7 @@ class TaggedCorpus:
 
         counter = 0.0
         last_counter = None
-        downsampled: List = []
+        downsampled = []
 
         for item in list:
             counter += proportion
@@ -1133,74 +1135,74 @@ class NLPTaskDataFetcher:
         # the UD corpora follow the CoNLL-U format, for which we have a special reader
         if task == NLPTask.UD_ENGLISH:
             # get train, test and dev data
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_train = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'en_ewt-ud-train.conllu'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_test = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'en_ewt-ud-test.conllu'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_dev = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'en_ewt-ud-dev.conllu'))
 
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         if task == NLPTask.UD_GERMAN:
             # get train, test and dev data
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_train = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'de_gsd-ud-train.conllu'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_test = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'de_gsd-ud-test.conllu'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_dev = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'de_gsd-ud-dev.conllu'))
 
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         if task == NLPTask.ONTONOTES:
             # get train, test and dev data
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_train = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'train.conllu'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_test = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'test.conllu'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_dev = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'dev.conllu'))
 
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         if task == NLPTask.CONLL_12:
             # get train, test and dev data
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_train = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'train.propbank.conllu'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_test = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'test.propbank.conllu'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_dev = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'dev.propbank.conllu'))
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         if task == NLPTask.PENN:
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_train = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'train.conll'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_dev = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'valid.conll'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_conll_ud(
+            sentences_test = NLPTaskDataFetcher.read_conll_ud(
                 os.path.join(data_folder, 'test.conll'))
 
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         # for text classifiers, we use our own special format
         if task == NLPTask.IMDB:
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_train = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'train.txt'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_dev = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'dev.txt'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_test = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'test.txt'))
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
         # for text classifiers, we use our own special format
         if task == NLPTask.AG_NEWS:
-            sentences_train: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_train = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'train.txt'))
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_dev = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'dev.txt'))
-            sentences_test: List[Sentence] = NLPTaskDataFetcher.read_text_classification_file(
+            sentences_test = NLPTaskDataFetcher.read_text_classification_file(
                 os.path.join(data_folder, 'test.txt'))
             return TaggedCorpus(sentences_train, sentences_dev, sentences_test)
 
@@ -1226,24 +1228,24 @@ class NLPTaskDataFetcher:
         """
 
         # get train and test data
-        sentences_train: List[Sentence] = NLPTaskDataFetcher.read_column_data(
+        sentences_train = NLPTaskDataFetcher.read_column_data(
             os.path.join(data_folder, train_file), column_format)
-        sentences_test: List[Sentence] = NLPTaskDataFetcher.read_column_data(
+        sentences_test = NLPTaskDataFetcher.read_column_data(
             os.path.join(data_folder, test_file), column_format)
 
         if dev_file is not None:
-            sentences_dev: List[Sentence] = NLPTaskDataFetcher.read_column_data(
+            sentences_dev = NLPTaskDataFetcher.read_column_data(
                 os.path.join(data_folder, dev_file), column_format)
         else:
             # sample dev data from train
-            sentences_dev: List[Sentence] = [sentences_train[i] for i in NLPTaskDataFetcher.__sample()]
+            sentences_dev = [sentences_train[i] for i in NLPTaskDataFetcher.__sample()]
             sentences_train = [x for x in sentences_train if x not in sentences_dev]
 
         if tag_to_biloes is not None:
             longest = 0
             # convert tag scheme to iobes
             for sentence in sentences_train + sentences_test + sentences_dev:
-                sentence: Sentence = sentence
+                sentence  = sentence
                 sentence.convert_tag_scheme(tag_type=tag_to_biloes, target_scheme='iobes', source_scheme=source_scheme)
                 longest = max(longest, len(sentence))
             print('Longest sentence %d' % longest)
@@ -1255,7 +1257,7 @@ class NLPTaskDataFetcher:
         dataset = []
         for d in docs:
             for s in d.sentences:
-                sentence: Sentence = Sentence()
+                sentence  = Sentence()
                 for word, pos in zip(s.tokens, s.part_of_speech_tags):
                     t = Token(word)
                     t.add_tag('pos', pos)
@@ -1287,17 +1289,17 @@ class NLPTaskDataFetcher:
         :param infer_whitespace_after: if True, tries to infer whitespace_after field for Token
         :return: list of sentences
         """
-        sentences: List[Sentence] = []
+        sentences = []
 
-        lines: List[str] = open(path_to_column_file).read().strip().split('\n')
+        lines = open(path_to_column_file).read().strip().split('\n')
 
         # most data sets have the token text in the first column, if not, pass 'text' as column
-        text_column: int = 0
+        text_column = 0
         for column in column_name_map:
             if column_name_map[column] == 'text':
                 text_column = column
 
-        sentence: Sentence = Sentence()
+        sentence = Sentence()
         for line in lines:
 
             if line.startswith('#'):
@@ -1307,10 +1309,10 @@ class NLPTaskDataFetcher:
                 if len(sentence) > 0:
                     sentence._infer_space_after()
                     sentences.append(sentence)
-                sentence: Sentence = Sentence()
+                sentence  = Sentence()
 
             else:
-                fields: List[str] = re.split("\s+", line)
+                fields = re.split("\s+", line)
                 token = Token(fields[text_column])
                 for column in column_name_map:
                     if len(fields) > column:
@@ -1331,19 +1333,19 @@ class NLPTaskDataFetcher:
        :param path_to_conll_file: the path to the conll-u file
        :return: list of sentences
        """
-        sentences: List[Sentence] = []
+        sentences = []
 
-        lines: List[str] = open(path_to_conll_file, encoding='utf-8'). \
+        lines = open(path_to_conll_file, encoding='utf-8'). \
             read().strip().split('\n')
 
-        sentence: Sentence = Sentence()
+        sentence  = Sentence()
         for line in lines:
 
-            fields: List[str] = re.split("\s+", line)
+            fields = re.split("\s+", line)
             if line == '':
                 if len(sentence) > 0:
                     sentences.append(sentence)
-                sentence: Sentence = Sentence()
+                sentence  = Sentence()
 
             elif line.startswith('#'):
                 continue
