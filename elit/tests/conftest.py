@@ -19,6 +19,7 @@ import pytest
 
 from elit.eval import Accuracy, F1
 from elit.lemmatizer import EnglishLemmatizer
+from elit.morph_analyzer import EnglishMorphAnalyzer
 from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 from elit.util.io import tsv_reader, json_reader
 
@@ -40,6 +41,11 @@ def space_tokenizer():
 @pytest.fixture()
 def english_tokenizer():
     return EnglishTokenizer()
+
+
+@pytest.fixture()
+def en_morph_analyzer():
+    return EnglishMorphAnalyzer()
 
 
 @pytest.fixture()

@@ -144,7 +144,7 @@ class EnglishTokenizer(Tokenizer):
         """
         super(EnglishTokenizer, self).__init__()
 
-        # lexicons
+        # _lexicons
         resource_root = 'elit.resources.tokenizer'
 
         self.ABBREVIATION_PERIOD = read_word_set(resource_filename(

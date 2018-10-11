@@ -19,7 +19,7 @@ import glob
 import json
 import logging
 import os
-from typing import List, Dict, Callable, Sequence, Any, Tuple
+from typing import List, Dict, Callable, Sequence, Any, Tuple, Set
 
 from elit.state import NLPState
 from elit.util.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
@@ -194,7 +194,7 @@ def group_states(docs: Sequence[Document], create_state: Callable[[
     return states
 
 
-def read_word_set(filename):
+def read_word_set(filename) -> Set[str]:
     """
     :param filename: the name of the file containing one key per line.
     :return: a set containing all keys in the file.
@@ -203,6 +203,17 @@ def read_word_set(filename):
     s = set(line.strip() for line in fin)
     logging.info('Init: %s (keys = %d)' % (filename, len(s)))
     return s
+
+
+def read_word_dict(filename: str) -> Dict[str, str]:
+    """
+    :param filename: the name of the file containing one 'key value' pair per line.
+    :return: a dictionary containing all key-value pairs in the file.
+    """
+    fin = codecs.open(filename, mode='r', encoding='utf-8')
+    d = dict(line.strip().split() for line in fin)
+    logging.info('Init: %s (keys = %d)' % (filename, len(d)))
+    return d
 
 
 def read_concat_word_dict(filename):
