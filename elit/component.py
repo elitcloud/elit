@@ -217,7 +217,7 @@ class MXNetComponent(NLPComponent):
             trn_et = time.time()
 
             dev_st = time.time()
-            dev_acc = self.accuracy(data_iterator=dev_data, docs=dev_docs)
+            dev_acc = 100.0 * self.accuracy(data_iterator=dev_data, docs=dev_docs)
             dev_et = time.time()
 
             if best_eval < dev_acc:
