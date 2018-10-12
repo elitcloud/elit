@@ -221,7 +221,6 @@ class LanguageModelTrainer:
         try:
             with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
-                epoch = 0
                 best_val_loss = 100000000
                 scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience)
@@ -229,9 +228,9 @@ class LanguageModelTrainer:
                 trainer = gluon.Trainer(self.model.collect_params(),
                                         optimizer=optimizer)
 
-                for split in range(1, max_epochs + 1):
+                for epoch in range(1, max_epochs + 1):
 
-                    print('Split %d' % split + '\t - ({:%H:%M:%S})'.format(datetime.datetime.now()))
+                    print('Split %d' % epoch + '\t - ({:%H:%M:%S})'.format(datetime.datetime.now()))
 
                     # for group in optimizer.param_groups:
                     #     learning_rate = group['lr']
@@ -263,6 +262,7 @@ class LanguageModelTrainer:
                         # Starting each batch, we detach the hidden state from how it was previously produced.
                         # If we didn't, the model would try backpropagating all the way to start of the dataset.
                         hidden = self._repackage_hidden(hidden)
+                        cell = self._repackage_hidden(cell)
 
                         # self.model.zero_grad()
                         # optimizer.zero_grad()
@@ -286,13 +286,13 @@ class LanguageModelTrainer:
                             elapsed = time.time() - start_time
                             print('| split {:3d} /{:3d} | {:5d}/{:5d} batches | ms/batch {:5.2f} | '
                                   'loss {:5.2f} | ppl {:8.2f}'.format(
-                                split, number_of_splits, batch, len(train_data) // sequence_length,
+                                epoch, number_of_splits, batch, len(train_data) // sequence_length,
                                                                 elapsed * 1000 / self.log_interval, cur_loss,
                                 self._safe_exp(cur_loss)))
                             total_loss = 0
                             start_time = time.time()
 
-                    print('epoch {} training done! \t({:%H:%M:%S})'.format(epoch, datetime.datetime.now()))
+                    print('epoch {} done! \t({:%H:%M:%S})'.format(epoch, datetime.datetime.now()))
 
                     ###############################################################################
                     # TEST
@@ -313,7 +313,7 @@ class LanguageModelTrainer:
                     ###############################################################################
                     print('-' * 89)
 
-                    local_split_number = split % number_of_splits
+                    local_split_number = epoch % number_of_splits
                     if local_split_number == 0: local_split_number = number_of_splits
 
                     summary = '| end of split {:3d} /{:3d} | epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | ' \
