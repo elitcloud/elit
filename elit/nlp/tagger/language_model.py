@@ -400,18 +400,18 @@ def _convert_dumped_model():
 
 
 def _train():
-    corpus = TextCorpus('data/wiki-debug/')
+    corpus = TextCorpus('data/raw')
     language_model = LanguageModel(corpus.dictionary,
                                    is_forward_lm=True,
-                                   hidden_size=1024,
+                                   hidden_size=256,
                                    nlayers=1,
                                    dropout=0.25)
     trainer = LanguageModelTrainer(language_model, corpus)
-    trainer.train('data/model/lm',
+    trainer.train('data/model/lm-jumbo-forward256',
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
-    LanguageModel.load_language_model('data/model/lm')
+    # LanguageModel.load_language_model('data/model/lm')
 
 
 def _load():
@@ -419,6 +419,6 @@ def _load():
 
 
 if __name__ == '__main__':
-    # _train()
-    _convert_dumped_model()
-    _load()
+    _train()
+    # _convert_dumped_model()
+    # _load()
