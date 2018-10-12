@@ -21,13 +21,16 @@ __author__ = "Jinho D. Choi"
 
 data_inflection = [
     ([
+         # verb: 3rd-person singular
          ('studies', 'VBZ'),
          ('pushes', 'VBZ'),
          ('takes', 'VBZ'),
+         # verb: gerund
          ('lying', 'VBG'),
          ('feeling', 'VBG'),
          ('taking', 'VBG'),
          ('running', 'VBG'),
+         # verb: past (participle)
          ('denied', 'VBD'),
          ('entered', 'VBD'),
          ('zipped', 'VBD'),
@@ -36,6 +39,19 @@ data_inflection = [
          ('written', 'VBN'),
          ('drawn', 'VBN'),
          ('clung', 'VBN'),
+         # verb: irregular
+         ('bit', 'VBD'),
+         ('bites', 'VBZ'),
+         ('biting', 'VBG'),
+         ('bitted', 'VBD'),
+         ('bitten', 'VBN'),
+         ('bitting', 'VBG'),
+         ('chivvies', 'VBZ'),
+         ('took', 'VBD'),
+         ('slept', 'VBD'),
+         ('spoken', 'VBN'),
+         ('woken', 'VBN'),
+         # noun: plural
          ('studies', 'NNS'),
          ('crosses', 'NNS'),
          ('areas', 'NNS'),
@@ -43,29 +59,53 @@ data_inflection = [
          ('vertebrae', 'NNS'),
          ('foci', 'NNS'),
          ('optima', 'NNS'),
+         # noun: irregular
+         ('indices', 'NNS'),
+         ('wolves', 'NNS'),
+         ('knives', 'NNS'),
+         ('quizzes', 'NNS'),
+         # adjective: comparative
          ('easier', 'JJR'),
          ('larger', 'JJR'),
          ('smaller', 'JJR'),
          ('bigger', 'JJR'),
+         # adjective: superlative
          ('easiest', 'JJS'),
          ('largest', 'JJS'),
          ('smallest', 'JJS'),
          ('biggest', 'JJS'),
+         # adjective: irregular
+         ('cagier', 'JJR'),
+         ('worse', 'JJR'),
+         # adverb: comparative
          ('earlier', 'RBR'),
          ('sooner', 'RBR'),
          ('larger', 'RBR'),
+         # adverb: superlative
          ('earliest', 'RBS'),
          ('soonest', 'RBS'),
          ('largest', 'RBS'),
+         # adverb: irregular
+         ('further', 'RBR'),
+         ('best', 'RBS'),
+         ('worst', 'RBS'),
+         # w/o pos tag
+         ('studies', None),
+         ('bound', None),
+         ('was', None),
+         ("'d", None),
      ],
      [
+         # verb: 3rd-person singular
          [[('study', 'VB'), ('ies', MorphTag.TPS)]],
          [[('push', 'VB'), ('es', MorphTag.TPS)]],
          [[('take', 'VB'), ('s', MorphTag.TPS)]],
+         # verb: gerund
          [[('lie', 'VB'), ('ying', MorphTag.GER)]],
          [[('feel', 'VB'), ('ing', MorphTag.GER)]],
          [[('take', 'VB'), ('ing', MorphTag.GER)]],
          [[('run', 'VB'), ('ing', MorphTag.GER)]],
+         # verb: past (participle)
          [[('deny', 'VB'), ('ied', MorphTag.PAS)]],
          [[('enter', 'VB'), ('ed', MorphTag.PAS)]],
          [[('zip', 'VB'), ('ed', MorphTag.PAS)]],
@@ -74,6 +114,19 @@ data_inflection = [
          [[('write', 'VB'), ('en', MorphTag.PAS)]],
          [[('draw', 'VB'), ('n', MorphTag.PAS)]],
          [[('cling', 'VB'), ('ung', MorphTag.PAS)]],
+         # verb: irregular
+         [[('bite', 'VB'), ('', MorphTag.PAS)]],
+         [[('bite', 'VB'), ('s', MorphTag.TPS)]],
+         [[('bite', 'VB'), ('ing', MorphTag.GER)]],
+         [[('bit', 'VB'), ('ed', MorphTag.PAS)]],
+         [[('bite', 'VB'), ('en', MorphTag.PAS)]],
+         [[('bit', 'VB'), ('ing', MorphTag.GER)]],
+         [[('chivy', 'VB'), ('ies', MorphTag.TPS)]],
+         [[('take', 'VB'), ('ook', MorphTag.PAS)]],
+         [[('sleep', 'VB'), ('pt', MorphTag.PAS)]],
+         [[('speak', 'VB'), ('oken', MorphTag.PAS)]],
+         [[('wake', 'VB'), ('oken', MorphTag.PAS)]],
+         # noun: plural
          [[('study', 'NN'), ('ies', MorphTag.PLU)]],
          [[('cross', 'NN'), ('es', MorphTag.PLU)]],
          [[('area', 'NN'), ('s', MorphTag.PLU)]],
@@ -81,20 +134,41 @@ data_inflection = [
          [[('vertebra', 'NN'), ('ae', MorphTag.PLU)]],
          [[('focus', 'NN'), ('i', MorphTag.PLU)]],
          [[('optimum', 'NN'), ('a', MorphTag.PLU)]],
+         # noun: irregular
+         [[('index', 'NN'), ('ices', MorphTag.PLU)]],
+         [[('wolf', 'NN'), ('ves', MorphTag.PLU)]],
+         [[('knife', 'NN'), ('ves', MorphTag.PLU)]],
+         [[('quiz', 'NN'), ('es', MorphTag.PLU)]],
+         # adjective: comparative
          [[('easy', 'JJ'), ('ier', MorphTag.COM)]],
          [[('large', 'JJ'), ('er', MorphTag.COM)]],
          [[('small', 'JJ'), ('er', MorphTag.COM)]],
          [[('big', 'JJ'), ('er', MorphTag.COM)]],
+         # adjective: superlative
          [[('easy', 'JJ'), ('iest', MorphTag.SUP)]],
          [[('large', 'JJ'), ('est', MorphTag.SUP)]],
          [[('small', 'JJ'), ('est', MorphTag.SUP)]],
          [[('big', 'JJ'), ('est', MorphTag.SUP)]],
+         # adjective: irregular
+         [[('cagey', 'JJ'), ('ier', MorphTag.COM)]],
+         [[('bad', 'JJ'), ('', MorphTag.COM)]],
+         # adverb: comparative
          [[('early', 'RB'), ('ier', MorphTag.COM)]],
          [[('soon', 'RB'), ('er', MorphTag.COM)]],
          [[('large', 'RB'), ('er', MorphTag.COM)]],
+         # adverb: superlative
          [[('early', 'RB'), ('iest', MorphTag.SUP)]],
          [[('soon', 'RB'), ('est', MorphTag.SUP)]],
          [[('large', 'RB'), ('est', MorphTag.SUP)]],
+         # adverb: irregular
+         [[('far', 'RB'), ('urther', MorphTag.COM)]],
+         [[('well', 'RB'), ('', MorphTag.SUP)]],
+         [[('bad', 'RB'), ('', MorphTag.SUP)]],
+         # w/o pos tags
+         [[('study', 'VB'), ('ies', '3PS')], [('study', 'NN'), ('ies', 'PLU')]],
+         [[('bound', 'VB')], [('bind', 'VB'), ('ound', 'PAS')], [('bound', 'NN')], [('bound', 'JJ')]],
+         [[('be', 'VB'), ('', '3PS'), ('', 'PAS')]],
+         [[('have', 'VB'), ('d', 'PAS')], [('would', 'MD')]],
      ])
 ]
 
@@ -103,6 +177,8 @@ data_inflection = [
 def test_inflection(en_morph_analyzer, input, expected):
     actual = [en_morph_analyzer.analyze(token, pos) for token, pos in input]
     assert actual == expected
+
+
 
 
 

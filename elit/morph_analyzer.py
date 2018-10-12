@@ -92,16 +92,29 @@ def suffix_matcher(rule: AffixRule, base_set: Set[str], token: str, pos: str = N
     return None
 
 
+def extract_suffix(token: str, lemma: str) -> str:
+    i = 0
+    for c in token:
+        if i >= len(lemma) or c != lemma[i]: break
+        i += 1
+
+    if i == 0 or i >= len(token): return ''
+    if i > 2 and token[i] == token[i-1]: i += 1
+    return token[i:]
+    # return 'en' if suffix.endswith('en') else 'er' if suffix.endswith('er') else 'est' if suffix.endswith('est') else ''
+
+
 class EnglishMorphAnalyzer:
     def __init__(self):
-        # initialize rules
-        self._inflection_rules = self._init_inflection_rules()
-        self._derivation_rules = self._init_derivation_rules()
-        self._base_tagset = {'VB', 'NN', 'JJ', 'RB'}
-
         # initialize _lexicons
         resource_path = 'elit.resources.lemmatizer.english'
         self._lexicons = self._init_lexicons(resource_path)
+
+        # initialize rules
+        self._irregular_rules = self._init_irregular_rules()
+        self._inflection_rules = self._init_inflection_rules()
+        self._derivation_rules = self._init_derivation_rules()
+        self._base_tagset = {'VB', 'VBP', 'NN', 'JJ', 'RB'}
 
     @classmethod
     def _init_lexicons(cls, resource_path: str):
@@ -113,7 +126,7 @@ class EnglishMorphAnalyzer:
                             affix_tag=lambda x: MorphTag.GER if x.endswith('ing') else MorphTag.TPS if x.endswith('s') else MorphTag.PAS),
             SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'noun.base')),
                             exc_dict=io.read_word_dict(resource_filename(resource_path, 'noun.exc')),
-                            token_tagset={'NNS', 'NNPS'},
+                            token_tagset={'NNS'},
                             stem_tag='NN',
                             affix_tag=lambda x: MorphTag.PLU),
             SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'adjective.base')),
@@ -126,6 +139,41 @@ class EnglishMorphAnalyzer:
                             token_tagset={'RBR', 'RBS'},
                             stem_tag='RB',
                             affix_tag=lambda x: MorphTag.SUP if x.endswith('st') else MorphTag.COM)]
+
+    @classmethod
+    def _init_irregular_rules(cls) -> Dict[Tuple[str, str], List[List[Tuple[str, str]]]]:
+        return {
+            ("n't", 'RB'): [[('not', 'RB')]],
+            ("n't", None): [[('not', 'RB')]],
+            ("'nt", 'RB'): [[('not', 'RB')]],
+            ("'nt", None): [[('not', 'RB')]],
+            ("'d", 'MD'): [[('would', 'MD')]],
+            ("'ll", 'MD'): [[('will', 'MD')]],
+            ("'ll", None): [[('will', 'MD')]],
+            ('ca', 'MD'): [[('can', 'MD')]],
+            ('na', 'TO'): [[('to', 'TO')]],
+            ("'d", 'VBD'): [[('have', 'VB'), ('d', MorphTag.PAS)]],
+            ("'d", None): [[('have', 'VB'), ('d', MorphTag.PAS)], [('would', 'MD')]],
+            ("'ve", 'VBP'): [[('have', 'VB')]],
+            ("'ve", None): [[('have', 'VB')]],
+            ("'m", 'VBP'): [[('be', 'VB')]],
+            ("'m", None): [[('be', 'VB')]],
+            ("'mmm", 'VBP'): [[('be', 'VB')]],
+            ("'re", 'VBP'): [[('be', 'VB')]],
+            ("'re", None): [[('be', 'VB')]],
+            ('ai', 'VBP'): [[('be', 'VB')]],
+            ('am', 'VBP'): [[('be', 'VB')]],
+            ('am', None): [[('be', 'VB')], [('am', 'NN')]],
+            ('are', 'VBP'): [[('be', 'VB')]],
+            ('are', None): [[('be', 'VB')]],
+            ('is', 'VBZ'): [[('be', 'VB'), ('', MorphTag.TPS)]],
+            ('is', None): [[('be', 'VB'), ('', MorphTag.TPS)]],
+            ('was', 'VBD'): [[('be', 'VB'), ('', MorphTag.TPS), ('', MorphTag.PAS)]],
+            ('was', None): [[('be', 'VB'), ('', MorphTag.TPS), ('', MorphTag.PAS)]],
+            ('were', 'VBD'): [[('be', 'VB'), ('', MorphTag.PAS)]],
+            ('were', None): [[('be', 'VB'), ('', MorphTag.PAS)]],
+            ('gon', 'VBG'): [[('go', 'VB'), ('ing', MorphTag.GER)]],
+        }
 
     @classmethod
     def _init_inflection_rules(cls) -> Dict[str, List[AffixRule]]:
@@ -214,19 +262,20 @@ class EnglishMorphAnalyzer:
     def _inflection(self, lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
         if pos is not None and pos not in lex.token_tagset: return None
         lemma = lex.exc_dict.get(token, None)
-        if lemma is not None: return [(lemma, lex.stem_tag), ('', lex.affix_tag(token))]
+        if lemma is not None: return [(lemma, lex.stem_tag), (extract_suffix(token, lemma), lex.affix_tag(token))]
 
         for rule in self._inflection_rules[lex.stem_tag]:
             lemma = suffix_matcher(rule, lex.base_set, token, pos)
-            if lemma is not None:
-                return [(lemma, rule.stem_tag), (rule.affix_form, rule.affix_tag)]
+            if lemma is not None: return [(lemma, rule.stem_tag), (rule.affix_form, rule.affix_tag)]
 
         return None
 
-    def analyze(self, token: str, pos: str = None) -> List[Tuple[str, str]]:
+    def analyze(self, token: str, pos: str = None) -> List[List[Tuple[str, str]]]:
         token = token.lower()
-        morphs = []
+        t = self._irregular_rules.get((token, pos), None)
+        if t is not None: return t
 
+        morphs = []
         for lex in self._lexicons:
             t = self._base(lex, token, pos)
             if t is not None: morphs.append(t)
@@ -234,4 +283,4 @@ class EnglishMorphAnalyzer:
             t = self._inflection(lex, token, pos)
             if t is not None: morphs.append(t)
 
-        return morphs if morphs else [(token, pos)]
+        return morphs
