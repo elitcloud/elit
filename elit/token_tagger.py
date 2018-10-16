@@ -86,8 +86,8 @@ class TokenTaggerDataset(Dataset):
     def extract_x(self, idx, w):
         return nd.stack(*[w[idx + win] if 0 <= (idx + win) < len(w) else self.pad for win in self.feature_windows])
 
-    def extract_y(self, label):
-        if label is False:
+    def extract_y(self, label: str):
+        if self.label is False:
             return -1
         return self.label_map.cid(label)
 
