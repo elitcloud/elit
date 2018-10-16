@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from collections import OrderedDict
 from types import SimpleNamespace
 from typing import Sequence, Set, List, Optional, Tuple, Dict
 
@@ -151,57 +152,6 @@ def extract_suffix(token: str, lemma: str) -> str:
     return '-'+lsuf+'-' if not tsuf else '+'+tsuf+'+'
 
 
-def analyze_base(lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
-    """
-    :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
-    :param token: the input token in lower cases.
-    :param pos: the part-of-speech tag of the input token if available.
-    :return: if the input token is in a base form, the lemma and its part-of-speech tag; otherwise, None.
-    """
-    if pos is None:
-        return [(token, lex.stem_tag)] if token in lex.base_set else None
-    if pos in lex.stem_tagset:
-        return [(token, lex.stem_tag)]
-
-
-def analyze_inflection(rules: Dict[str, List[AffixRule]], lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
-    """
-    :param rules: a dictionary of inflection rules (see :attr:`EnglishMorphAnalyzer._inflection_rules`).
-    :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
-    :param token: the input token in lower cases.
-    :param pos: the part-of-speech tag of the input token if available.
-    :return: if the input token matches an inflection rule, the lemma, inflection suffixes and their pos tags; otherwise, None.
-    """
-    if pos is not None and pos not in lex.infl_tagset: return None
-    lemma = lex.exc_dict.get(token, None)
-    if lemma is not None: return [(lemma, lex.stem_tag), (extract_suffix(token, lemma), lex.affix_tag(token))]
-
-    for rule in rules[lex.stem_tag]:
-        lemma = suffix_matcher(rule, lex.base_set, token, pos)
-        if lemma is not None: return [(lemma, lex.stem_tag), ('+'+rule.affix_form, rule.affix_tag)]
-
-    return None
-
-
-def analyze_derivation(rules: Dict[str, List[AffixRule]], lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
-    """
-    :param rules: a dictionary of derivation rules (see :attr:`EnglishMorphAnalyzer._derivation_rules`).
-    :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
-    :param token: the input token in lower cases.
-    :param pos: the part-of-speech tag of the input token if available.
-    :return: if the input token matches an derivation rule, the lemma, inflection suffixes and their pos tags; otherwise, None.
-    """
-    if pos is not None and pos not in lex.infl_tagset: return None
-    lemma = lex.exc_dict.get(token, None)
-    if lemma is not None: return [(lemma, lex.stem_tag), (extract_suffix(token, lemma), lex.affix_tag(token))]
-
-    for rule in rules[lex.stem_tag]:
-        lemma = suffix_matcher(rule, lex.base_set, token, pos)
-        if lemma is not None: return [(lemma, lex.stem_tag), ('+'+rule.affix_form, rule.affix_tag)]
-
-    return None
-
-
 class EnglishMorphAnalyzer:
     V = 'V'  # verb
     N = 'N'  # noun
@@ -220,32 +170,33 @@ class EnglishMorphAnalyzer:
         self._inflection_rules = self._init_inflection_rules()
         self._derivation_rules = self._init_derivation_rules()
 
-    def _init_lexicons(self, resource_path: str):
-        return [
-            SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'verb.base')),
-                            exc_dict=io.read_word_dict(resource_filename(resource_path, 'verb.exc')),
-                            stem_tag=self.V,
-                            stem_tagset={'VB', 'VBP'},
-                            infl_tagset={'VBD', 'VBG', 'VBN', 'VBZ'},
-                            affix_tag=lambda x: MorphTag.I_GER if x.endswith('ing') else MorphTag.I_3PS if x.endswith('s') else MorphTag.I_PAS),
-            SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'noun.base')),
-                            exc_dict=io.read_word_dict(resource_filename(resource_path, 'noun.exc')),
-                            stem_tag=self.N,
-                            stem_tagset={'NN', 'NNP'},
-                            infl_tagset={'NNS', 'NNPS'},
-                            affix_tag=lambda x: MorphTag.I_PLU),
-            SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'adjective.base')),
-                            exc_dict=io.read_word_dict(resource_filename(resource_path, 'adjective.exc')),
-                            stem_tag=self.J,
-                            stem_tagset={'JJ'},
-                            infl_tagset={'JJR', 'JJS'},
-                            affix_tag=lambda x: MorphTag.I_SUP if x.endswith('st') else MorphTag.I_COM),
-            SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'adverb.base')),
-                            exc_dict=io.read_word_dict(resource_filename(resource_path, 'adverb.exc')),
-                            stem_tag=self.R,
-                            stem_tagset={'RB'},
-                            infl_tagset={'RBR', 'RBS'},
-                            affix_tag=lambda x: MorphTag.I_SUP if x.endswith('st') else MorphTag.I_COM)]
+    def _init_lexicons(self, resource_path: str) -> Dict[str, SimpleNamespace]:
+        return {
+            self.V: SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'verb.base')),
+                                    exc_dict=io.read_word_dict(resource_filename(resource_path, 'verb.exc')),
+                                    stem_tag=self.V,
+                                    stem_tagset={'VB', 'VBP'},
+                                    infl_tagset={'VBD', 'VBG', 'VBN', 'VBZ'},
+                                    affix_tag=lambda x: MorphTag.I_GER if x.endswith('ing') else MorphTag.I_3PS if x.endswith('s') else MorphTag.I_PAS),
+            self.N: SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'noun.base')),
+                                    exc_dict=io.read_word_dict(resource_filename(resource_path, 'noun.exc')),
+                                    stem_tag=self.N,
+                                    stem_tagset={'NN', 'NNP'},
+                                    infl_tagset={'NNS', 'NNPS'},
+                                    affix_tag=lambda x: MorphTag.I_PLU),
+            self.J: SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'adjective.base')),
+                                    exc_dict=io.read_word_dict(resource_filename(resource_path, 'adjective.exc')),
+                                    stem_tag=self.J,
+                                    stem_tagset={'JJ'},
+                                    infl_tagset={'JJR', 'JJS'},
+                                    affix_tag=lambda x: MorphTag.I_SUP if x.endswith('st') else MorphTag.I_COM),
+            self.R: SimpleNamespace(base_set=io.read_word_set(resource_filename(resource_path, 'adverb.base')),
+                                    exc_dict=io.read_word_dict(resource_filename(resource_path, 'adverb.exc')),
+                                    stem_tag=self.R,
+                                    stem_tagset={'RB'},
+                                    infl_tagset={'RBR', 'RBS'},
+                                    affix_tag=lambda x: MorphTag.I_SUP if x.endswith('st') else MorphTag.I_COM)
+        }
 
     def _init_irregular_rules(self) -> Dict[Tuple[str, str], List[List[Tuple[str, str]]]]:
         return {
@@ -305,7 +256,8 @@ class EnglishMorphAnalyzer:
                 AffixRule(MorphTag.I_PAS, 'd', [''], PAS, t),  # heard
                 AffixRule(MorphTag.I_PAS, 'en', ['', 'e'], PAS, t, True),  # fallen, written
                 AffixRule(MorphTag.I_PAS, 'n', [''], PAS, t),  # drawn
-                AffixRule(MorphTag.I_PAS, 'ung', ['ing'], PAS, t)],  # clung
+                AffixRule(MorphTag.I_PAS, 'ung', ['ing'], PAS, t),  # clung
+            ],
             self.N: [
                 AffixRule(MorphTag.I_PLU, 'ies', ['y'], PLU, t),  # studies
                 AffixRule(MorphTag.I_PLU, 'es', [''], PLU, t),  # crosses
@@ -313,7 +265,8 @@ class EnglishMorphAnalyzer:
                 AffixRule(MorphTag.I_PLU, 'men', ['man'], PLU, t),  # women
                 AffixRule(MorphTag.I_PLU, 'ae', ['a'], PLU, t),  # vertebrae
                 AffixRule(MorphTag.I_PLU, 'i', ['us'], PLU, t),  # foci
-                AffixRule(MorphTag.I_PLU, 'a', ['um'], PLU, t)],  # optima
+                AffixRule(MorphTag.I_PLU, 'a', ['um'], PLU, t),  # optima
+            ],
             self.J: [
                 AffixRule(MorphTag.I_COM, 'ier', ['y'], JCO, t),  # easier
                 AffixRule(MorphTag.I_COM, 'er', [''], JCO, t, True),  # smaller, bigger
@@ -321,13 +274,15 @@ class EnglishMorphAnalyzer:
 
                 AffixRule(MorphTag.I_SUP, 'iest', ['y'], JSU, t),  # easiest
                 AffixRule(MorphTag.I_SUP, 'est', ['e'], JSU, t),  # smallest, biggest
-                AffixRule(MorphTag.I_SUP, 'est', [''], JSU, t, True)],  # largest
+                AffixRule(MorphTag.I_SUP, 'est', [''], JSU, t, True),  # largest
+            ],
             self.R: [
                 AffixRule(MorphTag.I_COM, 'ier', ['y'], RCO, t),  # earlier
                 AffixRule(MorphTag.I_COM, 'er', ['', 'e'], RCO, t),  # sooner, larger
 
                 AffixRule(MorphTag.I_SUP, 'iest', ['y'], RSU, t),  # earliest
-                AffixRule(MorphTag.I_SUP, 'est', ['', 'e'], RSU, t)]  # soonest, largest
+                AffixRule(MorphTag.I_SUP, 'est', ['', 'e'], RSU, t),  # soonest, largest
+            ]
         }
 
     def _init_derivation_rules(self) -> Dict[str, List[AffixRule]]:
@@ -475,9 +430,47 @@ class EnglishMorphAnalyzer:
             ]
         }
 
+    def _analyze_base(self, lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
+        """
+        :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
+        :param token: the input token in lower cases.
+        :param pos: the part-of-speech tag of the input token if available.
+        :return: if the input token is in a base form, the lemma and its part-of-speech tag; otherwise, None.
+        """
+        if pos is None:
+            return [(token, lex.stem_tag)] if token in lex.base_set else None
+        if pos in lex.stem_tagset:
+            return [(token, lex.stem_tag)]
 
+    def _analyze_inflection(self, lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
+        """
+        :param rules: a dictionary of inflection rules (see :attr:`EnglishMorphAnalyzer._inflection_rules`).
+        :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
+        :param token: the input token in lower cases.
+        :param pos: the part-of-speech tag of the input token if available.
+        :return: if the input token matches an inflection rule, the lemma, inflection suffixes and their pos tags; otherwise, None.
+        """
+        if pos is not None and pos not in lex.infl_tagset: return None
+        lemma = lex.exc_dict.get(token, None)
+        if lemma is not None: return [(lemma, lex.stem_tag), (extract_suffix(token, lemma), lex.affix_tag(token))]
 
+        for rule in self._inflection_rules[lex.stem_tag]:
+            lemma = suffix_matcher(rule, lex.base_set, token, pos)
+            if lemma is not None: return [(lemma, lex.stem_tag), ('+' + rule.affix_form, rule.affix_tag)]
 
+        return None
+
+    def _analyze_derivation(self, tp: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        """
+        :param tp:
+        """
+        token, pos = tp[0]
+        for rule in self._derivation_rules[pos]:
+            lemma = suffix_matcher(rule, self._lexicons[rule.stem_tag].base_set, token)
+            if lemma is not None:
+                return self._analyze_derivation([(lemma, rule.stem_tag), ('+' + rule.affix_form, rule.affix_tag)] + tp[1:])
+
+        return tp
 
     def analyze(self, token: str, pos: str = None, derivation=False) -> List[List[Tuple[str, str]]]:
         token = token.lower()
@@ -485,12 +478,17 @@ class EnglishMorphAnalyzer:
         if t is not None: return t
 
         morphs = []
-        for lex in self._lexicons:
-            t = analyze_base(lex, token, pos)
+        for lex in self._lexicons.values():
+            t = self._analyze_base(lex, token, pos)
             if t is not None: morphs.append(t)
 
-            t = analyze_inflection(self._inflection_rules, lex, token, pos)
+            t = self._analyze_inflection(lex, token, pos)
             if t is not None: morphs.append(t)
+
+        # for i, morph in enumerate(morphs):
+        #     m = morph[:1]
+        #     morphs[i] = self._analyze_derivation(morph[:1]) + morph[1:]
+
 
         # if len(morphs) == 1 and len(morphs[0]) == 1 and morphs[0][0] == token: del morphs[:]
         return morphs
