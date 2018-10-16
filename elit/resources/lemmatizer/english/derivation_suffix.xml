@@ -1,7 +1,7 @@
 <morphology>
     <verb>
         <affix type="suffix" form="ify" pos="DSV" org_pos="VB">
-            <rule base_pos="NN" affix_form="ify" replacements=",y,or,ity" examples="fortify, glorify, terrify, qualify"/>
+            <rule base_pos="NN" affix_form="ify" replacements=",y,or,id,ity" examples="fortify, glorify, terrify, liquefy, qualify"/>
             <rule base_pos="JJ" affix_form="ify" replacements="e,y"       examples="simplify, fancify"/>
         </affix>
         
@@ -30,7 +30,7 @@
         
         <affix type="suffix" form="ant" pos="DSN" org_pos="NN">
             <rule base_pos="VB" affix_form="ant" replacements=",e,ate" examples="assistant, servant, immigrant"/>
-            <rule base_pos="VB" affix_form="ent" replacements=",e"     examples="resident"/>
+            <rule base_pos="VB" affix_form="ent" replacements=",e"     examples="student, resident"/>
         </affix>
         
         <affix type="suffix" form="er" pos="DSN" org_pos="NN">
