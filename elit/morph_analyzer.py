@@ -18,9 +18,12 @@ from types import SimpleNamespace
 from typing import Sequence, Set, List, Optional, Tuple, Dict
 
 import os
+
+import marisa_trie
 from pkg_resources import resource_filename
 
 from elit.util import io
+from elit.util.io import read_word_set
 
 __author__ = 'Jinho D. Choi'
 
@@ -39,16 +42,20 @@ class MorphTag:
     I_SUP = 'I_SUP'  # superlative
 
     # derivation: verb
+    V_EN = 'V_EN'
     V_FY = 'V_FY'
     V_IZE = 'V_IZE'
 
     # derivation: noun
+    N_AGE = 'N_AGE'
     N_AL = 'N_AL'
     N_ANCE = 'N_ANCE'
-    N_ACY = 'N_ACY'
     N_ANT = 'N_ANT'
+    N_DOM = 'N_DOM'
+    N_EE = 'N_EE'
     N_ER = 'N_ER'
     N_HOOD = 'N_HOOD'
+    N_ING = 'N_ING'
     N_ISM = 'N_ISM'
     N_IST = 'N_IST'
     N_ITY = 'N_ITY'
@@ -65,8 +72,10 @@ class MorphTag:
     J_AL = 'J_AL'
     J_ANT = 'J_ANT'
     J_ARY = 'J_ARY'
+    J_ED = 'J_ED'
     J_FUL = 'J_FUL'
     J_IC = 'J_IC'
+    J_ING = 'J_ING'
     J_ISH = 'J_ISH'
     J_IVE = 'J_IVE'
     J_LESS = 'J_LESS'
@@ -164,8 +173,10 @@ class EnglishMorphAnalyzer:
         # initialize _lexicons
         resource_path = 'elit.resources.lemmatizer.english'
         self._lexicons = self._init_lexicons(resource_path)
+        self._derivation_exc = read_word_set(resource_filename(resource_path, 'derivation.exc'))
 
         # initialize rules
+        self._prefixes = self._init_prefixes()
         self._irregular_rules = self._init_irregular_rules()
         self._inflection_rules = self._init_inflection_rules()
         self._derivation_rules = self._init_derivation_rules()
@@ -289,50 +300,67 @@ class EnglishMorphAnalyzer:
         t = None
         return {
             self.V: [
-                AffixRule(MorphTag.V_FY, 'ify', ['', 'y', 'or', 'ity'], t, self.N),  # fortify, glorify, terrify, qualify
+                AffixRule(MorphTag.V_EN, 'en', [''], t, self.N),  # strengthen
+                AffixRule(MorphTag.V_EN, 'en', [''], t, self.J),  # brighten
+
+                AffixRule(MorphTag.V_FY, 'ify', ['or', 'y', '', 'ity'], t, self.N),  # fortify, glorify, terrify, qualify
                 AffixRule(MorphTag.V_FY, 'ify', ['e', 'y'], t, self.J),  # simplify, beautify
                 AffixRule(MorphTag.V_FY, 'efy', ['id'], t, self.N),  # liquefy
 
                 AffixRule(MorphTag.V_IZE, 'ize', ['', 'e', 'y'], t, self.N, True),  # hospitalize, oxidize, theorize
-                AffixRule(MorphTag.V_IZE, 'ize', ['', 'ic', 'ous'], t, self.J, True),  # sterilize, crystallize, dramatize, barbarize
+                AffixRule(MorphTag.V_IZE, 'ize', ['', 'e', 'ic', 'ous'], t, self.J, True),  # sterilize, crystallize, dramatize, barbarize
                 AffixRule(MorphTag.V_IZE, 'ise', ['', 'e', 'y'], t, self.N, True),  # hospitalise, oxidise, theorise
-                AffixRule(MorphTag.V_IZE, 'ise', ['', 'ic', 'ous'], t, self.J, True),  # sterilise, crystallise, dramatise, barbarise
+                AffixRule(MorphTag.V_IZE, 'ise', ['', 'e', 'ic', 'ous'], t, self.J, True),  # sterilise, crystallise, dramatise, barbarise
             ],
             self.N: [
+                AffixRule(MorphTag.N_AGE, 'iage', ['y'], t, self.V),  # marriage
+                AffixRule(MorphTag.N_AGE, 'age', [''], t, self.V),  # passage
+                AffixRule(MorphTag.N_AGE, 'age', [''], t, self.N),  # mileage
+
                 AffixRule(MorphTag.N_AL, 'ial', ['y'], t, self.V),  # denial
                 AffixRule(MorphTag.N_AL, 'al', ['e'], t, self.V),  # approval
 
                 AffixRule(MorphTag.N_ANCE, 'iance', ['y'], t, self.V),  # defiance
-                AffixRule(MorphTag.N_ANCE, 'ance', ['', 'e'], t, self.V),  # annoyance, insurance
+                AffixRule(MorphTag.N_ANCE, 'ance', ['', 'e'], t, self.V, True),  # annoyance, insurance, admittance
                 AffixRule(MorphTag.N_ANCE, 'ance', ['ant'], t, self.J),  # relevance
                 AffixRule(MorphTag.N_ANCE, 'ancy', ['ant'], t, self.J),  # pregnancy
                 AffixRule(MorphTag.N_ANCE, 'ence', ['ent'], t, self.J),  # difference
                 AffixRule(MorphTag.N_ANCE, 'ency', ['ent'], t, self.J),  # fluency
+                AffixRule(MorphTag.N_ANCE, 'cy', ['te'], t, self.J),  # accuracy
 
-                AffixRule(MorphTag.N_ACY, 'acy', ['ate', 'acious'], t, self.J),  # accuracy, fallacious
-
-                AffixRule(MorphTag.N_ANT, 'icant', ['y'], t, self.V, True),  # apply
+                AffixRule(MorphTag.N_ANT, 'icant', ['y'], t, self.V, True),  # applicant
                 AffixRule(MorphTag.N_ANT, 'ant', ['', 'e', 'ate'], t, self.V, True),  # assistant, propellant, servant, immigrant
                 AffixRule(MorphTag.N_ANT, 'ent', ['', 'e'], t, self.V),  # dependent, resident
+
+                AffixRule(MorphTag.N_DOM, 'dom', [''], t, self.J),  # freedom
+                AffixRule(MorphTag.N_DOM, 'dom', [''], t, self.N),  # kingdom
+
+                AffixRule(MorphTag.N_EE, 'ee', ['', 'e'], t, self.V, True),  # employee, escapee,
 
                 AffixRule(MorphTag.N_ER, 'ier', ['y'], t, self.V),  # carrier
                 AffixRule(MorphTag.N_ER, 'ier', ['', 'e'], t, self.N),  # cashier, financier
                 AffixRule(MorphTag.N_ER, 'yer', [''], t, self.V),  # bowyer
                 AffixRule(MorphTag.N_ER, 'yer', [''], t, self.N),  # lawyer
+                AffixRule(MorphTag.N_ER, 'eer', [''], t, self.N),  # profiteer
                 AffixRule(MorphTag.N_ER, 'er', ['', 'e'], t, self.V, True),  # reader, runner, writer
                 AffixRule(MorphTag.N_ER, 'er', ['', 'e'], t, self.N, True),  # engineer, hatter, tiler
                 AffixRule(MorphTag.N_ER, 'ar', ['', 'e'], t, self.V, True),  # beggar, liar
                 AffixRule(MorphTag.N_ER, 'or', ['', 'e'], t, self.V, True),  # actor, abator
 
+                AffixRule(MorphTag.N_HOOD, 'ihood', ['y'], t, self.J),  # likelihood
                 AffixRule(MorphTag.N_HOOD, 'ihood', ['y'], t, self.N),  # likelihood
+                AffixRule(MorphTag.N_HOOD, 'hood', [''], t, self.J),  # childhood
                 AffixRule(MorphTag.N_HOOD, 'hood', [''], t, self.N),  # childhood
+
+                AffixRule(MorphTag.N_ING, 'ying', ['ie'], t, self.V),  # lying
+                AffixRule(MorphTag.N_ING, 'ing', ['', 'e'], t, self.V, True),  # building
 
                 AffixRule(MorphTag.N_ISM, 'icism', ['y'], t, self.J),  # witticism
                 AffixRule(MorphTag.N_ISM, 'ism', ['ize'], t, self.V),  # baptism
-                AffixRule(MorphTag.N_ISM, 'ism', ['', 'e'], t, self.N),  # capitalism
+                AffixRule(MorphTag.N_ISM, 'ism', ['', 'e'], t, self.N, True),  # capitalism, bimetallism
 
-                AffixRule(MorphTag.N_IST, 'ist', ['ize'], t, self.V),  # apologist
-                AffixRule(MorphTag.N_IST, 'ist', ['', 'e'], t, self.N),  # capitalist, machinist
+                AffixRule(MorphTag.N_IST, 'ist', ['', 'e', 'y'], t, self.J, True),  # environmentalist
+                AffixRule(MorphTag.N_IST, 'ist', ['', 'e', 'y'], t, self.N, True),  # apologist, capitalist, machinist, panellist
 
                 AffixRule(MorphTag.N_ITY, 'ility', ['le'], t, self.J),  # capability
                 AffixRule(MorphTag.N_ITY, 'ety', ['ous'], t, self.J),  # variety
@@ -349,53 +377,60 @@ class EnglishMorphAnalyzer:
                 AffixRule(MorphTag.N_MENT, 'ment', ['', 'e'], t, self.V),  # development, abridgment
 
                 AffixRule(MorphTag.N_NESS, 'iness', ['y'], t, self.J),  # happiness
-                AffixRule(MorphTag.N_NESS, 'ness', [''], t, self.J),  # kindness
+                AffixRule(MorphTag.N_NESS, 'ness', [''], t, self.J, True),  # kindness, thinness
 
                 AffixRule(MorphTag.N_SHIP, 'ship', [''], t, self.N),  # friendship
 
-                AffixRule(MorphTag.N_SIS, 'sis', ['s', 'ze'], t, self.V),  # diagnosis, analysis
+                AffixRule(MorphTag.N_SIS, 'sis', ['ze', 'se'], t, self.V),  # diagnosis, analysis
 
                 AffixRule(MorphTag.N_TION, 'ication', ['y'], t, self.V),  # verification
                 AffixRule(MorphTag.N_TION, 'ation', ['', 'e'], t, self.V),  # flirtation, admiration
                 AffixRule(MorphTag.N_TION, 'icion', ['ect'], t, self.V),  # suspicion
-                AffixRule(MorphTag.N_TION, 'sion', ['de'], t, self.V),  # decision (illusion)
+                AffixRule(MorphTag.N_TION, 'ition', [''], t, self.V),  # addition
+                AffixRule(MorphTag.N_TION, 'sion', ['d', 'de'], t, self.V),  # extension, decision (illusion, division)
                 AffixRule(MorphTag.N_TION, 'tion', ['', 'e'], t, self.V),  # introduction
                 AffixRule(MorphTag.N_TION, 'ion', ['', 'e'], t, self.V),  # resurrection, alienation
-
-                AffixRule(MorphTag.N_WARE, 'ship', [''], t, self.N),  # friendship
             ],
             self.J: [
                 AffixRule(MorphTag.J_ABLE, 'iable', ['y'], t, self.V),  # certifiable
-                AffixRule(MorphTag.J_ABLE, 'able', ['', 'e', 'ate'], t, self.V),  # reable, writable, irritable
-                AffixRule(MorphTag.J_ABLE, 'ible', ['or', 'ion'], t, self.N),  # horrible, visible
-                AffixRule(MorphTag.J_ABLE, 'ble', [''], t, self.N),  # fashionable
+                AffixRule(MorphTag.J_ABLE, 'able', ['', 'e', 'ate'], t, self.V, True),  # readable, writable, irritable
+                AffixRule(MorphTag.J_ABLE, 'able', ['', 'e'], t, self.N, True),  # flammable, fashionable
+                AffixRule(MorphTag.J_ABLE, 'ible', ['ion'], t, self.N),  # visible
 
                 AffixRule(MorphTag.J_AL, 'tial', ['ce'], t, self.N),  # influential
                 AffixRule(MorphTag.J_AL, 'ial', ['y'], t, self.N),  # colonial
                 AffixRule(MorphTag.J_AL, 'al', ['y'], t, self.N),  # colonial
                 AffixRule(MorphTag.J_AL, 'al', ['', 'a', 'e', 'um', 'us'], t, self.N),  # accidental, visceral, universal, bacterial, focal
+                AffixRule(MorphTag.J_AL, 'al', [''], t, self.J),  # economical
 
                 AffixRule(MorphTag.J_ANT, 'icant', ['y'], t, self.V),  # applicant
                 AffixRule(MorphTag.J_ANT, 'ant', ['', 'e', 'ate'], t, self.V, True),  # relaxant, propellant, pleasant, dominant
                 AffixRule(MorphTag.J_ANT, 'ent', ['', 'e'], t, self.V, True),  # absorbent, abhorrent, adherent
 
-                AffixRule(MorphTag.J_ARY, 'ary', ['', 'e'], t, self.V),  # cautionary
-                AffixRule(MorphTag.J_ARY, 'ary', ['', 'e'], t, self.N),  # imaginary
+                AffixRule(MorphTag.J_ARY, 'tary', ['y'], t, self.N),  # monetary
+                AffixRule(MorphTag.J_ARY, 'ary', ['', 'e'], t, self.V, True),  # cautionary
+                AffixRule(MorphTag.J_ARY, 'ary', ['', 'e'], t, self.N, True),  # imaginary, pupillary
 
+                AffixRule(MorphTag.J_FUL, 'iful', ['y'], t, self.V),  # beautiful
                 AffixRule(MorphTag.J_FUL, 'iful', ['y'], t, self.N),  # beautiful
-                AffixRule(MorphTag.J_FUL, 'ful', [''], t, self.N),  # thoughtful, helpful
+                AffixRule(MorphTag.J_FUL, 'ful', [''], t, self.V),  # harmful
+                AffixRule(MorphTag.J_FUL, 'ful', [''], t, self.N),  # thoughtful
 
                 AffixRule(MorphTag.J_IC, 'stic', ['ze'], t, self.V),  # realistic
-                AffixRule(MorphTag.J_IC, 'tic', ['y', 'is, ''sis'], t, self.N),  # fantastic, diagnostic, analytic
+                AffixRule(MorphTag.J_IC, 'tic', ['y', 'is', 'sis'], t, self.N),  # fantastic, diagnostic, analytic
+                AffixRule(MorphTag.J_IC, 'ic', ['', 'e', 'y'], t, self.N, True),  # poetic, metallic, sophomoric
 
-                AffixRule(MorphTag.J_ISH, 'ish', ['', 'e'], t, self.V),  # bearish, ticklish
-                AffixRule(MorphTag.J_ISH, 'ish', ['', 'e'], t, self.N),  # boyish,
+                AffixRule(MorphTag.J_ING, 'ying', ['ie'], t, self.V),  # lying
+                AffixRule(MorphTag.J_ING, 'ing', ['', 'e'], t, self.V, True),  # differing
+
+                AffixRule(MorphTag.J_ISH, 'ish', ['', 'e'], t, self.V, True),  # bearish, ticklish
                 AffixRule(MorphTag.J_ISH, 'ish', ['', 'e'], t, self.J, True),  # foolish, reddish, bluish
+                AffixRule(MorphTag.J_ISH, 'ish', ['', 'e'], t, self.N, True),  # boyish, faddish, mulish
 
                 AffixRule(MorphTag.J_IVE, 'ative', ['', 'ate'], t, self.V),  # talkative, adjudicative
-                AffixRule(MorphTag.J_IVE, 'ive', [''], t, self.V),  # destructive
-                AffixRule(MorphTag.J_IVE, 'ive', ['', 'e'], t, self.N),  # defensive
-                AffixRule(MorphTag.J_IVE, 'ive', [''], t, self.J),  # corrective
+                AffixRule(MorphTag.J_IVE, 'ive', ['', 'e'], t, self.V),  # destructive
+                AffixRule(MorphTag.J_IVE, 'ive', ['', 'e'], t, self.J),  # corrective
+                AffixRule(MorphTag.J_IVE, 'ive', ['', 'e', 'ion'], t, self.N),  # massive, defensive, divisive
 
                 AffixRule(MorphTag.J_LESS, 'less', [''], t, self.V),  # countless
                 AffixRule(MorphTag.J_LESS, 'less', [''], t, self.N),  # speechless
@@ -408,26 +443,40 @@ class EnglishMorphAnalyzer:
                 AffixRule(MorphTag.J_MOST, 'most', [''], t, self.J),  # innermost
 
                 AffixRule(MorphTag.J_OUS, 'eous', [''], t, self.N),  # courteous
+                AffixRule(MorphTag.J_OUS, 'ious', ['y'], t, self.V),  # various
                 AffixRule(MorphTag.J_OUS, 'ious', ['y'], t, self.N),  # glorious
                 AffixRule(MorphTag.J_OUS, 'rous', ['er'], t, self.N),  # wondrous (disastrous)
-                AffixRule(MorphTag.J_OUS, 'ous', [''], t, self.V),  # covetous,
-                AffixRule(MorphTag.J_OUS, 'ous', ['', 'e', 'y', 'on'], t, self.N),  # cancerous, nervous, analogous, religious
+                AffixRule(MorphTag.J_OUS, 'ous', ['', 'e'], t, self.V, True),  # covetous, marvellous, nervous
+                AffixRule(MorphTag.J_OUS, 'ous', ['y', '', 'e', 'on'], t, self.N, True),  # cancerous, analogous, religious
 
+                AffixRule(MorphTag.J_SOME, 'isome', ['y'], t, self.J),  # worrisome
                 AffixRule(MorphTag.J_SOME, 'isome', ['y'], t, self.N),  # worrisome
+                AffixRule(MorphTag.J_SOME, 'some', ['', 'l'], t, self.J),  # awesome, fulsome
                 AffixRule(MorphTag.J_SOME, 'some', [''], t, self.N),  # troublesome
-                AffixRule(MorphTag.J_SOME, 'some', [''], t, self.J, True),  # wholesome, fulsome
 
+                AffixRule(MorphTag.J_WISE, 'wise', [''], t, self.J),  # likewise
                 AffixRule(MorphTag.J_WISE, 'wise', [''], t, self.N),  # clockwise
 
                 AffixRule(MorphTag.J_Y, 'ey', [''], t, self.N),  # clayey
                 AffixRule(MorphTag.J_Y, 'y', ['', 'e'], t, self.V, True),  # grouchy, runny, rumbly
-                AffixRule(MorphTag.J_Y, 'y', ['', 'e'], t, self.N),  # dreamy, juicy
+                AffixRule(MorphTag.J_Y, 'y', ['', 'e'], t, self.N, True),  # dreamy, skinny, juicy
             ],
             self.R: [
                 AffixRule(MorphTag.R_LY, 'ally', [''], t, self.J),  # electronically
                 AffixRule(MorphTag.R_LY, 'ily', ['y'], t, self.J),  # easily
                 AffixRule(MorphTag.R_LY, 'ly', ['', 'l', 'le'], t, self.J),  # sadly, fully, incredibly
             ]
+        }
+
+    def _init_prefixes(self) -> Dict[str, marisa_trie.Trie]:
+        v = ['be', 'co', 'de', 'dis', 'fore', 'inter', 'mis', 'out', 'over', 'pre', 're', 'sub', 'trans', 'un', 'under']
+        n = ['anti', 'auto', 'bi', 'co', 'counter', 'dis', 'ex', 'hyper', 'in', 'inter', 'kilo', 'mal', 'mega', 'mis', 'mini', 'mono', 'neo', 'out', 'poly', 'pseudo', 're', 'semi', 'sub', 'super', 'sur', 'tele', 'tri', 'ultra', 'under', 'vice']
+        j = ['dis', 'il', 'im', 'in', 'ir', 'non', 'un']
+
+        return {
+            self.V: marisa_trie.Trie(v + [e + '-' for e in v]),
+            self.N: marisa_trie.Trie(n + [e + '-' for e in n]),
+            self.J: marisa_trie.Trie(v + [e + '-' for e in j]),
         }
 
     def _analyze_base(self, lex: SimpleNamespace, token: str, pos: str = None) -> Optional[List[Tuple[str, str]]]:
@@ -465,10 +514,32 @@ class EnglishMorphAnalyzer:
         :param tp:
         """
         token, pos = tp[0]
+        if token in self._derivation_exc: return tp
+
         for rule in self._derivation_rules[pos]:
             lemma = suffix_matcher(rule, self._lexicons[rule.stem_tag].base_set, token)
             if lemma is not None:
                 return self._analyze_derivation([(lemma, rule.stem_tag), ('+' + rule.affix_form, rule.affix_tag)] + tp[1:])
+
+        if len(tp) == 1:
+            t = self._analyze_inflection(self._lexicons[self.V], token, 'VBN')
+            if t is not None: tp = [t[0], (t[1][0], MorphTag.J_ED)]
+
+        return tp
+
+    def _analyze_prefix(self, tp: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        token, pos = tp[0]
+
+        if pos in self._prefixes:
+            t = self._prefixes[pos].prefixes(token)
+            if t:
+                prefix = max(t, key=len)
+                stem = token[len(prefix):]
+                if stem in self._lexicons[pos].base_set:
+                    prefix = prefix[:-1] if prefix.endswith('-') else prefix
+                    tag = 'P_' + prefix.upper()
+                    prefix += '+'
+                    return self._analyze_prefix([(stem, pos)] + tp[1:] + [(prefix, tag)])
 
         return tp
 
@@ -485,10 +556,9 @@ class EnglishMorphAnalyzer:
             t = self._analyze_inflection(lex, token, pos)
             if t is not None: morphs.append(t)
 
-        # for i, morph in enumerate(morphs):
-        #     m = morph[:1]
-        #     morphs[i] = self._analyze_derivation(morph[:1]) + morph[1:]
-
+        if derivation:
+            for i, morph in enumerate(morphs):
+                morphs[i] = self._analyze_derivation(morph[:1]) + morph[1:]
 
         # if len(morphs) == 1 and len(morphs[0]) == 1 and morphs[0][0] == token: del morphs[:]
         return morphs
