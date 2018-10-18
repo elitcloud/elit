@@ -33,7 +33,7 @@ class SuffixRule:
 
     def get_base_form(self, lower: str):
         """
-        Get base form by enumerating each stem_affixes.
+        Get base form by enumerating each token_affixes.
         :param lower:
         :return:
         """

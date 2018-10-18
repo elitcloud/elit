@@ -58,6 +58,17 @@ Token Tagger
     :show-inheritance:
 
 
+-----------------
+Morphological Analyzer
+-----------------
+
+.. automodule:: elit.morph_analyzer
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
+
+
 =================
 Utilities
 =================

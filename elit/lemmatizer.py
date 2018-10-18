@@ -267,8 +267,8 @@ class EnglishLemmatizer(Lemmatizer):
             rules = affix.findall("rule")
             for rule in rules:
                 suffix_rule = SuffixRule(
-                    rule.get("affix_form"),
-                    [r.strip() for r in rule.get("stem_affixes").split(",")],
+                    rule.get("affix"),
+                    [r.strip() for r in rule.get("token_affixes").split(",")],
                     cls.str_to_bool(rule.get("doubleConsonants")),
                     set_base
                 )
