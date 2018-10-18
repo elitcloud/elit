@@ -46,67 +46,50 @@ def test_extract_suffix(data):
     assert actual == expected
 
 
-# ========================= analyze_prefix =========================
+# ========================= analyze_inflection_lookup =========================
 
-data_analyze_prefix = [
+data_analyze_inflection_lookup = [
     ([
-        (('repeat', AT.V), [('repeat', 'V')]),
-        (('transcribe', AT.V), [('scribe', 'V'), ('tran+', 'P')]),
-        (('belittle', AT.V), [('little', 'J'), ('be+', 'P')]),
-        (('anemic', AT.J), [('emic', 'J'), ('an+', 'P')]),
-        (('co-founder', AT.N), [('founder', 'N'), ('co+', 'P')]),
-        (('super-overlook', AT.V), [('look', 'V'), ('super+', 'P'), ('over+', 'P')]),
-(('deuteragonist', AT.N), [('agonist', 'N'), ('deuter+', 'P')]),
-(('be-deuteragonist', AT.N), [('agonist', 'N'), ('be+', 'P'), ('deuter+', 'P')]),
+        (('ai', 'VBP'), [('be', AT.V)]),
+        (('was', 'VBD'), [('be', AT.V), ('', AT.I_3PS), ('', AT.I_PST)]),
+        (("'d", 'VBD'), [('have', AT.V), ('+d', AT.I_PST)]),
+        (("'d", 'MD'), [('would', AT.M)]),
     ])
 ]
 
 
-@pytest.mark.parametrize('data', data_analyze_prefix)
-def test_analyze_prefix(en_morph_analyzer, data):
+@pytest.mark.parametrize('data', data_analyze_inflection_lookup)
+def test_analyze_inflection_lookup(en_morph_analyzer, data):
     input, expected = zip(*data)
-    actual = tuple(en_morph_analyzer._analyze_prefix(token, pos) for token, pos in input)
+    actual = tuple(en_morph_analyzer._analyze_inflection_lookup(token, pos) for token, pos in input)
     assert actual == expected
 
 
-# ========================= extract_irregular =========================
+# ========================= analyze_base_lookup =========================
 
-data_irregular = [
+data_analyze_base_lookup = [
     ([
-        (('ai', 'VBP'), [[('be', AT.V)]]),
-        (('ai', None), [[('ai', AT.N)]]),
-        (('was', None), [[('be', AT.V), ('', AT.I_3PS), ('', AT.I_PAS)]]),
-        (("'d", None), [[('have', AT.V), ('+d', AT.I_PAS)], [('would', AT.M)]]),
+        (('', 'VB'), [('', AT.V)]),
+        (('', 'VBP'), [('', AT.V)]),
+        (('', 'NN'), [('', AT.N)]),
+        (('', 'NNP'), [('', AT.N)]),
+        (('', 'JJ'), [('', AT.J)]),
+        (('', 'RB'), [('', AT.R)]),
+        (('', 'VBZ'), None),
     ])
 ]
 
 
-@pytest.mark.parametrize('data', data_irregular)
-def test_irregular(en_morph_analyzer, data):
+@pytest.mark.parametrize('data', data_analyze_base_lookup)
+def test_analyze_base_lookup(en_morph_analyzer, data):
     input, expected = zip(*data)
-    actual = tuple(en_morph_analyzer.analyze(token, pos) for token, pos in input)
+    actual = tuple(en_morph_analyzer._analyze_base_lookup(token, pos) for token, pos in input)
     assert actual == expected
 
 
-data_base = [
-    ([
-        (('study', 'VB'), [[('study', AT.V)]]),
-        (('bound', 'JJ'), [[('bound', AT.J)]]),
-        (('Jinho', 'NNP'), [[('jinho', AT.N)]]),
-        (('study', None), [[('study', AT.V)], [('study', AT.N)]]),
-        (('bound', None), [[('bound', AT.V)], [('bind', AT.V), ('+ou+', AT.I_PAS)], [('bound', AT.N)], [('bound', AT.J)]]),
-     ])
-]
+# ========================= analyze_inflection_rules =========================
 
-
-@pytest.mark.parametrize('data', data_base)
-def test_base(en_morph_analyzer, data):
-    input, expected = zip(*data)
-    actual = tuple(en_morph_analyzer.analyze(token, pos) for token, pos in input)
-    assert actual == expected
-
-
-data_inflection = [
+data_analyze_inflection_rules = [
     ([
          # verb: 3rd-person singular
          (('studies', 'VBZ'), [[('study', AT.V), ('+ies', AT.I_3PS)]]),
@@ -114,48 +97,49 @@ data_inflection = [
          (('takes', 'VBZ'), [[('take', AT.V), ('+s', AT.I_3PS)]]),
 
          # verb: gerund
-         (('lying', 'VBG'), [[('lie', AT.V), ('+ying', AT.I_GER)]]),
-         (('feeling', 'VBG'), [[('feel', AT.V), ('+ing', AT.I_GER)]]),
-         (('taking', 'VBG'), [[('take', AT.V), ('+ing', AT.I_GER)]]),
-         (('running', 'VBG'), [[('run', AT.V), ('+ing', AT.I_GER)]]),
+         (('lying', 'VBG'), [[('lie', AT.V), ('+ying', AT.I_GRD)]]),
+         (('feeling', 'VBG'), [[('feel', AT.V), ('+ing', AT.I_GRD)]]),
+         (('taking', 'VBG'), [[('take', AT.V), ('+ing', AT.I_GRD)]]),
+         (('running', 'VBG'), [[('run', AT.V), ('+ing', AT.I_GRD)]]),
 
          # verb: past (participle)
-         (('denied', 'VBD'), [[('deny', AT.V), ('+ied', AT.I_PAS)]]),
-         (('entered', 'VBD'), [[('enter', AT.V), ('+ed', AT.I_PAS)]]),
-         (('zipped', 'VBD'), [[('zip', AT.V), ('+ed', AT.I_PAS)]]),
-         (('heard', 'VBD'), [[('hear', AT.V), ('+d', AT.I_PAS)]]),
-         (('fallen', 'VBN'), [[('fall', AT.V), ('+en', AT.I_PAS)]]),
-         (('written', 'VBN'), [[('write', AT.V), ('+en', AT.I_PAS)]]),
-         (('drawn', 'VBN'), [[('draw', AT.V), ('+n', AT.I_PAS)]]),
-         (('clung', 'VBN'), [[('cling', AT.V), ('+ung', AT.I_PAS)]]),
+         (('denied', 'VBD'), [[('deny', AT.V), ('+ied', AT.I_PST)]]),
+         (('entered', 'VBD'), [[('enter', AT.V), ('+ed', AT.I_PST)]]),
+         (('zipped', 'VBD'), [[('zip', AT.V), ('+ed', AT.I_PST)]]),
+         (('heard', 'VBD'), [[('hear', AT.V), ('+d', AT.I_PST)]]),
+         (('fallen', 'VBN'), [[('fall', AT.V), ('+en', AT.I_PST)]]),
+         (('written', 'VBN'), [[('write', AT.V), ('+en', AT.I_PST)]]),
+         (('drawn', 'VBN'), [[('draw', AT.V), ('+n', AT.I_PST)]]),
+         (('clung', 'VBN'), [[('cling', AT.V), ('+ung', AT.I_PST)]]),
 
          # verb: irregular
-         (('bit', 'VBD'), [[('bite', AT.V), ('-e', AT.I_PAS)]]),
+         (('bit', 'VBD'), [[('bite', AT.V), ('-e', AT.I_PST)]]),
          (('bites', 'VBZ'), [[('bite', AT.V), ('+s', AT.I_3PS)]]),
-         (('biting', 'VBG'), [[('bite', AT.V), ('+ing', AT.I_GER)]]),
-         (('bitted', 'VBD'), [[('bit', AT.V), ('+ed', AT.I_PAS)]]),
-         (('bitten', 'VBN'), [[('bite', AT.V), ('+en', AT.I_PAS)]]),
-         (('bitting', 'VBG'), [[('bit', AT.V), ('+ing', AT.I_GER)]]),
+         (('biting', 'VBG'), [[('bite', AT.V), ('+ing', AT.I_GRD)]]),
+         (('bitted', 'VBD'), [[('bit', AT.V), ('+ed', AT.I_PST)]]),
+         (('bitten', 'VBN'), [[('bite', AT.V), ('+en', AT.I_PST)]]),
+         (('bitting', 'VBG'), [[('bit', AT.V), ('+ing', AT.I_GRD)]]),
+         (('bound', 'VBD'), [[('bind', AT.V), ('+ou+', AT.I_PST)]]),
          (('chivvies', 'VBZ'), [[('chivy', AT.V), ('+ies', AT.I_3PS)]]),
-         (('took', 'VBD'), [[('take', AT.V), ('+ook', AT.I_PAS)]]),
-         (('slept', 'VBD'), [[('sleep', AT.V), ('+pt', AT.I_PAS)]]),
-         (('spoken', 'VBN'), [[('speak', AT.V), ('+oken', AT.I_PAS)]]),
-         (('woken', 'VBN'), [[('wake', AT.V), ('+oken', AT.I_PAS)]]),
+         (('took', 'VBD'), [[('take', AT.V), ('+ook', AT.I_PST)]]),
+         (('slept', 'VBD'), [[('sleep', AT.V), ('+pt', AT.I_PST)]]),
+         (('spoken', 'VBN'), [[('speak', AT.V), ('+oken', AT.I_PST)]]),
+         (('woken', 'VBN'), [[('wake', AT.V), ('+oken', AT.I_PST)]]),
 
          # noun: plural
-         (('studies', 'NNS'), [[('study', AT.N), ('+ies', AT.I_PLU)]]),
-         (('crosses', 'NNS'), [[('cross', AT.N), ('+es', AT.I_PLU)]]),
-         (('areas', 'NNS'), [[('area', AT.N), ('+s', AT.I_PLU)]]),
-         (('men', 'NNS'), [[('man', AT.N), ('+men', AT.I_PLU)]]),
-         (('vertebrae', 'NNS'), [[('vertebra', AT.N), ('+ae', AT.I_PLU)]]),
-         (('foci', 'NNS'), [[('focus', AT.N), ('+i', AT.I_PLU)]]),
-         (('optima', 'NNS'), [[('optimum', AT.N), ('+a', AT.I_PLU)]]),
+         (('studies', 'NNS'), [[('study', AT.N), ('+ies', AT.I_PLR)]]),
+         (('crosses', 'NNS'), [[('cross', AT.N), ('+es', AT.I_PLR)]]),
+         (('areas', 'NNS'), [[('area', AT.N), ('+s', AT.I_PLR)]]),
+         (('men', 'NNS'), [[('man', AT.N), ('+men', AT.I_PLR)]]),
+         (('vertebrae', 'NNS'), [[('vertebra', AT.N), ('+ae', AT.I_PLR)]]),
+         (('foci', 'NNS'), [[('focus', AT.N), ('+i', AT.I_PLR)]]),
+         (('optima', 'NNS'), [[('optimum', AT.N), ('+a', AT.I_PLR)]]),
 
          # noun: irregular
-         (('indices', 'NNS'), [[('index', AT.N), ('+ices', AT.I_PLU)]]),
-         (('wolves', 'NNS'), [[('wolf', AT.N), ('+ves', AT.I_PLU)]]),
-         (('knives', 'NNS'), [[('knife', AT.N), ('+ves', AT.I_PLU)]]),
-         (('quizzes', 'NNS'), [[('quiz', AT.N), ('+es', AT.I_PLU)]]),
+         (('indices', 'NNS'), [[('index', AT.N), ('+ices', AT.I_PLR)]]),
+         (('wolves', 'NNS'), [[('wolf', AT.N), ('+ves', AT.I_PLR)]]),
+         (('knives', 'NNS'), [[('knife', AT.N), ('+ves', AT.I_PLR)]]),
+         (('quizzes', 'NNS'), [[('quiz', AT.N), ('+es', AT.I_PLR)]]),
 
          # adjective: comparative
          (('easier', 'JJR'), [[('easy', AT.J), ('+ier', AT.I_COM)]]),
@@ -191,11 +175,36 @@ data_inflection = [
 ]
 
 
-@pytest.mark.parametrize('data', data_inflection)
-def test_inflection(en_morph_analyzer, data):
+@pytest.mark.parametrize('data', data_analyze_inflection_rules)
+def test_analyze_inflection_rules(en_morph_analyzer, data):
     input, expected = zip(*data)
     actual = tuple(en_morph_analyzer.analyze(token, pos) for token, pos in input)
     assert actual == expected
+
+
+
+# ========================= analyze_prefix =========================
+
+data_analyze_prefix = [
+    ([
+        (('repeat', AT.V), [('repeat', 'V')]),
+        (('transcribe', AT.V), [('scribe', 'V'), ('tran+', 'P')]),
+        (('belittle', AT.V), [('little', 'J'), ('be+', 'P')]),
+        (('anemic', AT.J), [('emic', 'J'), ('an+', 'P')]),
+        (('co-founder', AT.N), [('founder', 'N'), ('co+', 'P')]),
+        (('super-overlook', AT.V), [('look', 'V'), ('super+', 'P'), ('over+', 'P')]),
+        (('deuteragonist', AT.N), [('agonist', 'N'), ('deuter+', 'P')]),
+        (('be-deuteragonist', AT.N), [('agonist', 'N'), ('be+', 'P'), ('deuter+', 'P')]),
+    ])
+]
+
+
+@pytest.mark.parametrize('data', data_analyze_prefix)
+def test_analyze_prefix(en_morph_analyzer, data):
+    input, expected = zip(*data)
+    actual = tuple(en_morph_analyzer._analyze_prefix(token, pos) for token, pos in input)
+    assert actual == expected
+
 
 
 data_analyze_derivation = [
@@ -470,9 +479,9 @@ def test_analyze_derivation(en_morph_analyzer, data):
 
 data_inflection_derivation = [
     ([
-        (('ownerships', None), [[('own', AT.V), ('+er', AT.N_ER), ('+ship', AT.N_SHIP), ('+s', AT.I_PLU)]]),
+        (('ownerships', None), [[('own', AT.V), ('+er', AT.N_ER), ('+ship', AT.N_SHIP), ('+s', AT.I_PLR)]]),
         (('offensiveness', None), [[('offense', AT.N), ('+ive', AT.J_IVE), ('+ness', AT.N_NESS)]]),
-        (('chairmen', None), [[('chair', AT.V), ('+man', AT.N_MAN), ('+men', AT.I_PLU)]]),
+        (('chairmen', None), [[('chair', AT.V), ('+man', AT.N_MAN), ('+men', AT.I_PLR)]]),
         (('girlisher', None), [[('girl', AT.N), ('+ish', AT.J_ISH), ('+er', AT.I_COM)]]),
         (('environmentalist', None), [[('environ', AT.V), ('+ment', AT.N_MENT), ('+al', AT.J_AL), ('+ist', AT.N_IST)]]),
         (('economically', None), [[('economy', AT.N), ('+ic', AT.J_IC), ('+ally', AT.R_LY)]]),
