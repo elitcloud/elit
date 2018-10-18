@@ -24,7 +24,7 @@ __author__ = 'Jinho D. Choi'
 
 
 class EvalMetric(metric.EvalMetric):
-
+  
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
 

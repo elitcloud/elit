@@ -21,7 +21,7 @@ from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
-class ContextualStringModel(nn.HybridBlock):
+class LanguageModel(nn.Block):
     """
     Container module with an encoder, a recurrent module, and a decoder.
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
@@ -83,7 +83,7 @@ class ContextualStringModel(nn.HybridBlock):
     def set_hidden(self, hidden):
         self.hidden = hidden
 
-    def hybrid_forward(self, F, input, hidden, cell):
+    def forward(self, input, hidden, cell, ordered_sequence_lengths=None):
         encoded = self.encoder(input)
         emb = self.drop(encoded)
 
@@ -95,8 +95,9 @@ class ContextualStringModel(nn.HybridBlock):
 
         output = self.drop(output)
 
-        decoded = self.decoder(output.reshape((-1, self.hidden_size)))
-        return decoded, output, hidden, cell
+        decoded = self.decoder(output.reshape(-1, output.shape[2]))
+
+        return decoded.reshape(output.shape[0], output.shape[1], decoded.shape[1]), output, hidden, cell
 
     def get_representation(self, strings: List[str], detach_from_lm=True):
 
@@ -191,11 +192,10 @@ class ContextualStringModelTrainer:
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
     """
 
-    def __init__(self, model: ContextualStringModel, corpus: TextCorpus, test_mode: bool = False):
-        self.model = model
-        model.hybridize()
-        self.corpus = corpus
-        self.test_mode = test_mode
+    def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
+        self.model: LanguageModel = model
+        self.corpus: TextCorpus = corpus
+        self.test_mode: bool = test_mode
 
         self.loss_function = SoftmaxCrossEntropyLoss()
         self.log_interval = 100
@@ -215,12 +215,11 @@ class ContextualStringModelTrainer:
 
         os.makedirs(base_path, exist_ok=True)
         loss_txt = os.path.join(base_path, 'loss.txt')
-        savefile = base_path
+        savefile = os.path.join(base_path, 'best-lm.pt')
 
         try:
             with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
-                epoch = 0
                 best_val_loss = 100000000
                 scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                                                  patience=patience)
@@ -228,9 +227,9 @@ class ContextualStringModelTrainer:
                 trainer = gluon.Trainer(self.model.collect_params(),
                                         optimizer=optimizer)
 
-                for split in range(1, max_epochs + 1):
+                for epoch in range(1, max_epochs + 1):
 
-                    print('Split %d' % split + '\t - ({:%H:%M:%S})'.format(datetime.datetime.now()))
+                    print('Split %d' % epoch + '\t - ({:%H:%M:%S})'.format(datetime.datetime.now()))
 
                     # for group in optimizer.param_groups:
                     #     learning_rate = group['lr']
@@ -262,13 +261,14 @@ class ContextualStringModelTrainer:
                         # Starting each batch, we detach the hidden state from how it was previously produced.
                         # If we didn't, the model would try backpropagating all the way to start of the dataset.
                         hidden = self._repackage_hidden(hidden)
+                        cell = self._repackage_hidden(cell)
 
                         # self.model.zero_grad()
                         # optimizer.zero_grad()
 
                         # do the forward pass in the model
                         with autograd.record():
-                            output, rnn_output, hidden, cell = self.run(data, hidden, cell)
+                            output, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
                             # try to predict the targets
                             loss = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
@@ -285,34 +285,37 @@ class ContextualStringModelTrainer:
                             elapsed = time.time() - start_time
                             print('| split {:3d} /{:3d} | {:5d}/{:5d} batches | ms/batch {:5.2f} | '
                                   'loss {:5.2f} | ppl {:8.2f}'.format(
-                                split, number_of_splits, batch, len(train_data) // sequence_length,
+                                epoch, number_of_splits, batch, len(train_data) // sequence_length,
                                                                 elapsed * 1000 / self.log_interval, cur_loss,
                                 self._safe_exp(cur_loss)))
                             total_loss = 0
                             start_time = time.time()
 
-                    print('training done! \t({:%H:%M:%S})'.format(datetime.datetime.now()))
+                    print('epoch {} done! \t({:%H:%M:%S})'.format(epoch, datetime.datetime.now()))
+                    scheduler.step(cur_loss)
 
                     ###############################################################################
                     # TEST
                     ###############################################################################
-                    # self.model.eval()
-                    val_loss = self.evaluate(val_data, mini_batch_size, sequence_length)
-                    scheduler.step(val_loss)
-
-                    # Save the model if the validation loss is the best we've seen so far.
-                    if val_loss < best_val_loss:
+                    # skip evaluation
+                    # val_loss = self.evaluate(val_data, mini_batch_size, sequence_length)
+                    # scheduler.step(val_loss)
+                    #
+                    # # Save the model if the validation loss is the best we've seen so far.
+                    # if val_loss < best_val_loss:
+                    #     self.model.save(savefile)
+                    #     best_val_loss = val_loss
+                    #     print('best loss so far {:5.2f}'.format(best_val_loss))
+                    val_loss = cur_loss
+                    if (self.corpus.current_train_file_index + 1) % 100 == 0 or self.corpus.is_last_slice:
                         self.model.save(savefile)
-                        best_val_loss = val_loss
-
-                    print('best loss so far {:5.2f}'.format(best_val_loss))
 
                     ###############################################################################
                     # print info
                     ###############################################################################
                     print('-' * 89)
 
-                    local_split_number = split % number_of_splits
+                    local_split_number = epoch % number_of_splits
                     if local_split_number == 0: local_split_number = number_of_splits
 
                     summary = '| end of split {:3d} /{:3d} | epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | ' \
@@ -334,10 +337,6 @@ class ContextualStringModelTrainer:
             print('-' * 89)
             print('Exiting from training early')
 
-    def run(self, data, hidden, cell):
-        decoded, output, hidden, cell = self.model(data, hidden, cell)
-        return decoded.reshape((data.shape[0], data.shape[1], len(self.model.dictionary))), output, hidden, cell
-
     @staticmethod
     def _safe_exp(val_loss):
         return float('nan') if val_loss > 100 else math.exp(val_loss)
@@ -345,7 +344,7 @@ class ContextualStringModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss = 0
+        total_loss: nd.NDArray = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)
@@ -353,12 +352,12 @@ class ContextualStringModelTrainer:
 
         for i in range(0, len(data_source) - 1, sequence_length):
             data, targets = self._get_batch(data_source, i, sequence_length)
-            prediction, rnn_output, hidden, cell = self.run(data, hidden, cell)
+            prediction, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
             output_flat = prediction.reshape(-1, ntokens)
-            total_loss += len(data) * self.loss_function(output_flat, targets).mean().asscalar()
+            total_loss += len(data) * self.loss_function(output_flat, targets).mean()
             hidden = self._repackage_hidden(hidden)
             cell = cell.detach()
-        return total_loss / len(data_source)
+        return total_loss.asscalar() / len(data_source)
 
     @staticmethod
     def _batchify(data: nd.NDArray, batch_size):
@@ -399,18 +398,18 @@ def _convert_dumped_model():
 
 
 def _train():
-    corpus = TextCorpus('data/wiki-debug/')
+    corpus = TextCorpus('data/raw')
     language_model = ContextualStringModel(corpus.dictionary,
-                                           is_forward_lm=True,
-                                           hidden_size=1024,
-                                           nlayers=1,
-                                           dropout=0.25)
+                                   is_forward_lm=False,
+                                   hidden_size=1024,
+                                   nlayers=1,
+                                   dropout=0.25)
     trainer = ContextualStringModelTrainer(language_model, corpus)
-    trainer.train('data/model/lm',
+    trainer.train('data/model/lm-jumbo-backward1024',
                   sequence_length=250,
                   mini_batch_size=100,
-                  max_epochs=10)
-    ContextualStringModel.load_language_model('data/model/lm')
+                  max_epochs=99999)
+    # LanguageModel.load_language_model('data/model/lm')
 
 
 def _load():
@@ -418,6 +417,6 @@ def _load():
 
 
 if __name__ == '__main__':
-    # _train()
-    _convert_dumped_model()
-    _load()
+    _train()
+    # _convert_dumped_model()
+    # _load()

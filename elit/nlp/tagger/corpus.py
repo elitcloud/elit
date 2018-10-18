@@ -17,8 +17,8 @@ import numpy as np
 
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.util.structure import Document, NER, POS, SEN
-from elit.util.structure import Sentence as ElitSentence
+from elit.structure import Document, NER, POS, SENS
+from elit.structure import Sentence as ElitSentence
 
 
 def read_pretrained_embeddings(filename):
@@ -1072,7 +1072,7 @@ class NLPTaskDataFetcher:
     def fetch_data(task: NLPTask) -> TaggedCorpus:
         """
         Helper function to fetch a TaggedCorpus for a specific NLPTask. For this to work you need to first download
-        and put into the appropriate folder structure the corresponsing NLP task data. The tutorials on
+        and put into the appropriate folder structure the corresponsing NLP task data. The documents on
         https://github.com/zalandoresearch/flair give more info on how to do this. Alternatively, you can use this
         code to create your own data fetchers.
         :param task: specification of the NLPTask you wish to get
@@ -1574,7 +1574,7 @@ def conll_to_documents(path, headers={0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}) -
             ner_tags = [t.tags['ner'] for t in s.tokens]
             sent[NER] = get_chunks(ner_tags)
         elit_sents.append(sent)
-    return [Document({SEN: elit_sents})]
+    return [Document({SENS: elit_sents})]
 
 
 if __name__ == '__main__':

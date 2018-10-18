@@ -20,11 +20,6 @@ Embeddings
     :show-inheritance:
 
 
-=================
-Tokenizer
-=================
-
-.. automodule:: elit.tokenizer
     :members:
     :special-members: __init__
     :undoc-members:
