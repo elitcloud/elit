@@ -305,8 +305,7 @@ class LanguageModelTrainer:
                     if val_loss < best_val_loss:
                         self.model.save(savefile)
                         best_val_loss = val_loss
-
-                    print('best loss so far {:5.2f}'.format(best_val_loss))
+                        print('best loss so far {:5.2f}'.format(best_val_loss))
 
                     ###############################################################################
                     # print info
