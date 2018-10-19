@@ -19,6 +19,7 @@ import glob
 import json
 import logging
 import os
+import re
 from typing import List, Dict, Callable, Sequence, Any, Tuple, Set
 
 from elit.state import NLPState
@@ -233,3 +234,38 @@ def read_concat_word_dict(filename):
     d = dict(key_value(line.strip()) for line in fin)
     logging.info('Init: %s (keys = %d)' % (filename, len(d)))
     return d
+
+
+class NoIndent(object):
+    def __init__(self, value):
+        self.value = value
+
+
+class NoIndentEncoder(json.JSONEncoder):
+    REGEX = re.compile(r'@@@(\d+)@@@')
+
+    def __init__(self, *args, **kwargs):
+        super(NoIndentEncoder, self).__init__(*args, **kwargs)
+        self.kwargs = dict(kwargs)
+        del self.kwargs['indent']
+        self._replacements = {}
+
+    def default(self, o):
+        if isinstance(o, NoIndent):
+            key = len(self._replacements)
+            self._replacements[key] = json.dumps(o.value, **self.kwargs)
+            return "@@@%d@@@" % key
+        else:
+            return super(NoIndentEncoder, self).default(o)
+
+    def encode(self, o):
+        result = super(NoIndentEncoder, self).encode(o)
+        out = []
+        m = self.REGEX.search(result)
+        while m:
+            key = int(m.group(1))
+            out.append(result[:m.start(0) - 1])
+            out.append(self._replacements[key])
+            result = result[m.end(0) + 1:]
+            m = self.REGEX.search(result)
+        return ''.join(out)

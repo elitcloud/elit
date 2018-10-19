@@ -85,8 +85,8 @@ class EnglishLemmatizer(Lemmatizer):
 
     PATH_ROOT = "elit.resources.lemmatizer.english"
     FILENAME_ABBREVIATION = "abbreviation.rule"
-    FILENAME_CARDINAL = "cardinal.base"
-    FILENAME_ORDINAL = "ordinal.base"
+    FILENAME_CARDINAL = "cardinal.txt"
+    FILENAME_ORDINAL = "ordinal.txt"
     FILENAME_INFLECTION = "inflection_suffix.xml"
 
     BASE_POS_VERB = "VB"

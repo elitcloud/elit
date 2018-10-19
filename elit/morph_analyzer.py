@@ -15,123 +15,18 @@
 # ========================================================================
 import json
 import os
-import re
 from marisa_trie import BytesTrie
 from types import SimpleNamespace
 from typing import Sequence, Set, List, Optional, Tuple, Dict, Any
 
 from pkg_resources import resource_filename
 
+from elit.component import NLPComponent
 from elit.util import io
-from elit.util.io import read_word_set
+from elit.util.io import read_word_set, NoIndent, NoIndentEncoder
+from elit.util.structure import Document, MOR
 
 __author__ = 'Jinho D. Choi'
-
-
-class AffixTag:
-    # lemma
-    V = 'V'  # verb
-    N = 'N'  # noun
-    J = 'J'  # adjective
-    R = 'R'  # adverb
-    M = 'M'  # modal
-    T = 'T'  # TO
-
-    # inflection: verb
-    I_3PS = 'I_3PS'  # 3rd-person singular present
-    I_GRD = 'I_GRD'  # gerund
-    I_PST = 'I_PST'  # past
-
-    # inflection: noun
-    I_PLR = 'I_PLR'  # plural
-
-    # inflection: adjective/adverb
-    I_COM = 'I_COM'  # comparative
-    I_SUP = 'I_SUP'  # superlative
-
-    # derivation: verb
-    V_EN = 'V_EN'
-    V_FY = 'V_FY'
-    V_IZE = 'V_IZE'
-
-    # derivation: noun
-    N_AGE = 'N_AGE'
-    N_AL = 'N_AL'
-    N_ANCE = 'N_ANCE'
-    N_ANT = 'N_ANT'
-    N_DOM = 'N_DOM'
-    N_EE = 'N_EE'
-    N_ER = 'N_ER'
-    N_HOOD = 'N_HOOD'
-    N_ING = 'N_ING'
-    N_ISM = 'N_ISM'
-    N_IST = 'N_IST'
-    N_ITY = 'N_ITY'
-    N_MAN = 'N_MAN'
-    N_MENT = 'N_MENT'
-    N_NESS = 'N_NESS'
-    N_SHIP = 'N_SHIP'
-    N_SIS = 'N_SIS'
-    N_TION = 'N_TION'
-    N_WARE = 'N_WARE'
-
-    # derivation: adjective
-    J_ABLE = 'J_ABLE'
-    J_AL = 'J_AL'
-    J_ANT = 'J_ANT'
-    J_ARY = 'J_ARY'
-    J_ED = 'J_ED'
-    J_FUL = 'J_FUL'
-    J_IC = 'J_IC'
-    J_ING = 'J_ING'
-    J_ISH = 'J_ISH'
-    J_IVE = 'J_IVE'
-    J_LESS = 'J_LESS'
-    J_LIKE = 'J_LIKE'
-    J_LY = 'J_LY'
-    J_MOST = 'J_MOST'
-    J_OUS = 'J_OUS'
-    J_SOME = 'J_SOME'
-    J_WISE = 'J_WISE'
-    J_Y = 'J_Y'
-
-    # derivation: adverb
-    R_LY = 'R_LY'
-
-
-class NoIndent(object):
-    def __init__(self, value):
-        self.value = value
-
-
-class NoIndentEncoder(json.JSONEncoder):
-    REGEX = re.compile(r'@@@(\d+)@@@')
-
-    def __init__(self, *args, **kwargs):
-        super(NoIndentEncoder, self).__init__(*args, **kwargs)
-        self.kwargs = dict(kwargs)
-        del self.kwargs['indent']
-        self._replacements = {}
-
-    def default(self, o):
-        if isinstance(o, NoIndent):
-            key = len(self._replacements)
-            self._replacements[key] = json.dumps(o.value, **self.kwargs)
-            return "@@@%d@@@" % key
-        else:
-            return super(NoIndentEncoder, self).default(o)
-
-    def encode(self, o):
-        result = super(NoIndentEncoder, self).encode(o)
-        out = []
-        m = self.REGEX.search(result)
-        while m:
-            key = int(m.group(1))
-            out.append(result[:m.start(0) - 1])
-            out.append(self._replacements[key])
-            result = result[m.end(0) + 1:]
-            m = self.REGEX.search(result)
-        return ''.join(out)
 
 
 class AffixRule:
@@ -203,10 +98,10 @@ def extract_suffix(token: str, lemma: str) -> str:
     return '-' + lsuf + '-' if not tsuf else '+' + tsuf + '+'
 
 
-def suffix_matcher(rule: AffixRule, base_set: Set[str], token: str, pos: str = None) -> Optional[str]:
+def suffix_matcher(rule: AffixRule, lemma_set: Set[str], token: str, pos: str = None) -> Optional[str]:
     """
     :param rule: the affix rule.
-    :param base_set: the set including base forms (lemmas).
+    :param lemma_set: the set including base forms (lemmas).
     :param token: the input token.
     :param pos: the part-of-speech tag of the input token.
     :return: the lemma of the input token if it matches to the affix rule; otherwise, ``None``.
@@ -215,7 +110,7 @@ def suffix_matcher(rule: AffixRule, base_set: Set[str], token: str, pos: str = N
     def match(s: str):
         for suffix in rule.token_affixes:
             base = s + suffix
-            if base in base_set: return base
+            if base in lemma_set: return base
         return None
 
     if len(rule.affix) > len(token) or not token.endswith(rule.affix): return None
@@ -232,41 +127,51 @@ def suffix_matcher(rule: AffixRule, base_set: Set[str], token: str, pos: str = N
     return None
 
 
-class EnglishMorphAnalyzer:
-    _RES_INFLECTION_LOOKUP = 'inflection_lookup.json'
-    _RES_INFLECTION_RULES = 'inflection_rules.json'
-
-    _RES_PREFIX = 'prefix.txt'
-    _RES_PREFIX_EX = 'prefix_lookup.json'
-    _RES_DERIVATION_RULES = 'derivation_rules.json'
-
+class EnglishMorphAnalyzer(NLPComponent):
     PREFIX_NONE = 0
     PREFIX_LONGEST = 1
     PREFIX_SHORTEST = 2
 
     def __init__(self):
-        self._base_lookup = {'VB': AffixTag.V, 'VBP': AffixTag.V, 'NN': AffixTag.N, 'NNP': AffixTag.N, 'JJ': AffixTag.J, 'RB': AffixTag.R}
+        self._base_lookup = self._init_base_lookup()
+        self._inflection_lexicons = None
+        self._inflection_lookup = None
+        self._inflection_rules = None
+        self._prefix = None
+        self._prefix_lookup = None
+        self._derivation_lookup = None
+        self._derivation_rules = None
+        self.init()
 
-        # initialize resources
-        resource_path = 'elit.resources.lemmatizer.english'
-        self._inflection_lookup = self._load_inflection_lookup(resource_filename(resource_path, self._RES_INFLECTION_LOOKUP))
-        self._inflection_rules = self._load_affix_rules(resource_filename(resource_path, self._RES_INFLECTION_RULES))
+    def init(self):
+        self.load('elit.resources.lemmatizer.english')
 
+    def load(self, resource_path: str, **kwargs):
+        self._inflection_lexicons = self._load_inflection_lexicons(resource_path)
+        self._inflection_lookup = self._load_inflection_lookup(resource_path)
+        self._inflection_rules = self._load_inflection_rules(resource_path)
+        self._prefix = self._load_prefix(resource_path)
+        self._prefix_lookup = self._load_prefix_lookup(resource_path)
+        self._derivation_lookup = self._load_derivation_lookup(resource_path)
+        self._derivation_rules = self._load_affix_rules(resource_filename(resource_path, 'derivation_rules.json'))
 
+    def decode(self, docs: Sequence[Document], derivation=True, prefix=PREFIX_SHORTEST):
+        for doc in docs:
+            for sen in doc:
+                sen[MOR] = [self.analyze(token, pos, derivation, prefix) for token, pos in zip(sen.tokens, sen.part_of_speech_tags)]
 
-
-        self._lexicons = self._init_lexicons(resource_path)
-        self._derivation_exc = read_word_set(resource_filename(resource_path, 'derivation.exc'))
-
-        # initialize rules
-        self._prefix = self._load_prefix(resource_filename(resource_path, self._RES_PREFIX))
-        self._prefix_ex = self._load_prefix_ex(resource_filename(resource_path, self._RES_PREFIX_EX))
-
-
-        self._derivation = self._load_affix_rules(resource_filename(resource_path, self._RES_DERIVATION_RULES))
-
-    def load(self, resource_path):
+    def save(self, **kwargs):
         pass
+
+    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
+        pass
+
+    def evaluate(self, docs: Sequence[Document], **kwargs):
+        pass
+
+    @classmethod
+    def _init_base_lookup(cls) -> Dict[str, str]:
+        return {'VB': EnglishMorphTag.VB, 'VBP': EnglishMorphTag.VB, 'NN': EnglishMorphTag.NN, 'NNP': EnglishMorphTag.NN, 'JJ': EnglishMorphTag.JJ, 'RB': EnglishMorphTag.RB}
 
     @classmethod
     def _load_simple_rules(cls, filename: str) -> Dict[str, List[Tuple[str, str]]]:
@@ -274,29 +179,55 @@ class EnglishMorphAnalyzer:
         return {k: list(map(tuple, v)) for k, v in d.items()}
 
     @classmethod
-    def _load_affix_rules(self, filename: str) -> Dict[str, List[AffixRule]]:
+    def _load_affix_rules(cls, filename: str) -> Dict[str, List[AffixRule]]:
         with open(filename) as fin: d = json.load(fin)
         return {pos: [AffixRule.factory(rule) for rule in rules] for pos, rules in d.items()}
 
-    @classmethod
-    def _load_inflection_lookup(cls, filename) -> Dict[str, List[Tuple[str, str]]]:
-        return cls._load_simple_rules(filename)
+    def _load_inflection_lexicons(self, resource_path: str) -> Dict[str, SimpleNamespace]:
+        # vv_tag = lambda x: EnglishMorphTag.I_GRD if x.endswith('ing') else EnglishMorphTag.I_3PS if x.endswith('s') else EnglishMorphTag.I_PST
+        # nn_tag = lambda x: EnglishMorphTag.I_PLR),
+        # jj_tag = lambda x: EnglishMorphTag.I_SUP if x.endswith('st') else EnglishMorphTag.I_COM
+        # rb_tag = lambda x: EnglishMorphTag.I_SUP if x.endswith('st') else EnglishMorphTag.I_COM
+
+        return {
+            EnglishMorphTag.VB: SimpleNamespace(
+                lemma_set=io.read_word_set(resource_filename(resource_path, 'verb.txt')),
+                exc_dict=self._load_simple_rules(resource_filename(resource_path, 'inflection_lookup_verb.json')),
+                token_tagset={'VBD', 'VBG', 'VBN', 'VBZ'}),
+            EnglishMorphTag.NN: SimpleNamespace(
+                lemma_set=io.read_word_set(resource_filename(resource_path, 'noun.txt')),
+                exc_dict=self._load_simple_rules(resource_filename(resource_path, 'inflection_lookup_noun.json')),
+                token_tagset={'NNS', 'NNPS'}),
+            EnglishMorphTag.JJ: SimpleNamespace(
+                lemma_set=io.read_word_set(resource_filename(resource_path, 'adjective.txt')),
+                exc_dict=self._load_simple_rules(resource_filename(resource_path, 'inflection_lookup_adjective.json')),
+                token_tagset={'JJR', 'JJS'}),
+            EnglishMorphTag.RB: SimpleNamespace(
+                lemma_set=io.read_word_set(resource_filename(resource_path, 'adverb.txt')),
+                exc_dict=self._load_simple_rules(resource_filename(resource_path, 'inflection_lookup_adverb.json')),
+                token_tagset={'RBR', 'RBS'}),
+        }
+
+    def _load_inflection_lookup(self, resource_path: str) -> Dict[str, List[Tuple[str, str]]]:
+        return self._load_simple_rules(resource_filename(resource_path, 'inflection_lookup.json'))
+
+    def _load_inflection_rules(self, resource_path: str) -> Dict[str, List[AffixRule]]:
+        return self._load_affix_rules(resource_filename(resource_path, 'inflection_rules.json'))
 
     @classmethod
-    def _load_prefix(cls, filename: str) -> BytesTrie:
-        prefixes = read_word_set(filename)
+    def _load_prefix(cls, resource_path: str) -> BytesTrie:
+        prefixes = read_word_set(resource_filename(resource_path, 'prefix.txt'))
         prefixes = [e.split() for e in prefixes]
         return BytesTrie([(p[0], p[1].encode('utf-8')) for p in prefixes] + [(p[0] + '-', p[1].encode('utf-8')) for p in prefixes])
 
-    @classmethod
-    def _load_prefix_ex(cls, filename: str) -> Dict[str, List[Tuple[str, str]]]:
-        return cls._load_simple_rules(filename)
+    def _load_prefix_lookup(self, resource_path: str) -> Dict[str, List[Tuple[str, str]]]:
+        return self._load_simple_rules(resource_filename(resource_path, 'prefix_lookup.json'))
 
+    def _load_derivation_lookup(self, resource_path: str) -> Dict[str, List[Tuple[str, str]]]:
+        return self._load_simple_rules(resource_filename(resource_path, 'derivation_lookup.json'))
 
-
-
-
-
+    def _load_derivation_rules(self, resource_path: str) -> Dict[str, List[AffixRule]]:
+        return self._load_affix_rules(resource_filename(resource_path, 'derivation_rules.json'))
 
     @classmethod
     def _save_simple_rules(cls, filename: str, d: Dict[str, List[Tuple[str, str]]]):
@@ -312,50 +243,12 @@ class EnglishMorphAnalyzer:
             d = json.dumps(d, cls=NoIndentEncoder, indent=2) + '\n  ]\n}'
             fout.write(d)
 
-    def _save_inflection_lookup(self, filename):
-        self._save_simple_rules(filename, self._inflection_lookup)
-
     def _save_prefix(self, filename: str):
         with open(filename, 'w') as fout:
             for prefix, tag in sorted(self._prefix.items()):
                 if not prefix.endswith('-'): fout.write(prefix + ' ' + tag.decode('utf-8') + '\n')
 
-    def _save_prefix_ex(self, filename: str):
-        self._save_simple_rules(filename, self._prefix_ex)
-
-
-
-
-
-    def _init_lexicons(self, resource_path: str) -> Dict[str, SimpleNamespace]:
-        return {
-            AffixTag.V: SimpleNamespace(
-                base_set=io.read_word_set(resource_filename(resource_path, 'verb.base')),
-                exc_dict=io.read_word_dict(resource_filename(resource_path, 'verb.exc')),
-                stem_tag=AffixTag.V,
-                infl_tagset={'VBD', 'VBG', 'VBN', 'VBZ'},
-                affix_tag=lambda x: AffixTag.I_GRD if x.endswith('ing') else AffixTag.I_3PS if x.endswith('s') else AffixTag.I_PST),
-            AffixTag.N: SimpleNamespace(
-                base_set=io.read_word_set(resource_filename(resource_path, 'noun.base')),
-                exc_dict=io.read_word_dict(resource_filename(resource_path, 'noun.exc')),
-                stem_tag=AffixTag.N,
-                infl_tagset={'NNS', 'NNPS'},
-                affix_tag=lambda x: AffixTag.I_PLR),
-            AffixTag.J: SimpleNamespace(
-                base_set=io.read_word_set(resource_filename(resource_path, 'adjective.base')),
-                exc_dict=io.read_word_dict(resource_filename(resource_path, 'adjective.exc')),
-                stem_tag=AffixTag.J,
-                infl_tagset={'JJR', 'JJS'},
-                affix_tag=lambda x: AffixTag.I_SUP if x.endswith('st') else AffixTag.I_COM),
-            AffixTag.R: SimpleNamespace(
-                base_set=io.read_word_set(resource_filename(resource_path, 'adverb.base')),
-                exc_dict=io.read_word_dict(resource_filename(resource_path, 'adverb.exc')),
-                stem_tag=AffixTag.R,
-                infl_tagset={'RBR', 'RBS'},
-                affix_tag=lambda x: AffixTag.I_SUP if x.endswith('st') else AffixTag.I_COM)
-        }
-
-    def analyze(self, token: str, pos: str = None, derivation=False) -> List[Tuple[str, str]]:
+    def analyze(self, token: str, pos: str, derivation=True, prefix=PREFIX_SHORTEST) -> List[Tuple[str, str]]:
         token = token.lower()
 
         # inflection lookup
@@ -365,21 +258,20 @@ class EnglishMorphAnalyzer:
         if morphs is None:
             morphs = self._analyze_base_lookup(token, pos)
 
-        # inflection
-        if morphs is None:
-            morphs = self._analyze_inflection_rules(token, pos)
+            # inflection rules
+            if morphs is None:
+                morphs = self._analyze_inflection_rules(token, pos)
 
-        morphs = []
-        for lex in self._lexicons.values():
-
-            t = self._analyze_inflection_rules(lex, token, pos)
-            if t is not None: morphs.append(t)
+                # default
+                if morphs is None:
+                    return [(token, EnglishMorphTag.to_lemma_tag(pos))]
 
         if derivation:
-            for i, morph in enumerate(morphs):
-                morphs[i] = self._analyze_derivation(morph[:1]) + morph[1:]
+            morphs = self._analyze_derivation_rules(*morphs[0]) + morphs[1:]
 
-        # if len(morphs) == 1 and len(morphs[0]) == 1 and morphs[0][0] == token: del morphs[:]
+        if prefix != self.PREFIX_NONE:
+            morphs = self._analyze_prefix(*morphs[0]) + morphs[1:]
+
         return morphs
 
     def _analyze_base_lookup(self, token: str, pos: str) -> Optional[List[Tuple[str, str]]]:
@@ -390,58 +282,32 @@ class EnglishMorphAnalyzer:
         return self._inflection_lookup.get(token + ' ' + pos, None)
 
     def _analyze_inflection_rules(self, token: str, pos: str) -> Optional[List[Tuple[str, str]]]:
-        """
-        :param rules: a dictionary of inflection rules (see :attr:`EnglishMorphAnalyzer._inflection_rules`).
-        :param lex: a lexicon item from :attr:`EnglishMorphAnalyzer._lexicons`.
-        :param token: the input token in lower cases.
-        :param pos: the part-of-speech tag of the input token if available.
-        :return: if the input token matches an inflection rule, the lemma, inflection suffixes and their pos tags; otherwise, None.
-        """
-        if pos is not None and pos not in lex.infl_tagset: return None
-        lemma = lex.exc_dict.get(token, None)
-        if lemma is not None: return [(lemma, lex.stem_tag), (extract_suffix(token, lemma), lex.affix_tag(token))]
+        lemma_tag = pos[:2]
+        lex = self._inflection_lexicons.get(lemma_tag, None)
+        if lex is None or pos not in lex.token_tagset: return None
+        morphs = lex.exc_dict.get(token, None)
+        if morphs is not None: return morphs
 
-        for rule in self._inflection_rules[lex.stem_tag]:
-            lemma = suffix_matcher(rule, lex.base_set, token, pos)
-            if lemma is not None: return [(lemma, lex.stem_tag), ('+' + rule.affix, rule.affix_tag)]
+        for rule in self._inflection_rules[lemma_tag]:
+            lemma = suffix_matcher(rule, lex.lemma_set, token, pos)
+            if lemma is not None: return [(lemma, lemma_tag), ('+' + rule.affix, rule.affix_tag)]
 
         return None
-
-    def _analyze_derivation(self, tp: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
-        """
-        :param tp:
-        """
-        token, pos = tp[0]
-        if token in self._derivation_exc: return tp
-
-        for rule in self._derivation[pos]:
-            lemma = suffix_matcher(rule, self._lexicons[rule.lemma_tag].base_set, token)
-            if lemma is not None:
-                return self._analyze_derivation([(lemma, rule.lemma_tag), ('+' + rule.affix, rule.affix_tag)] + tp[1:])
-
-        if len(tp) == 1:
-            t = self._analyze_inflection_rules(self._lexicons[AffixTag.V], token, 'VBN')
-            if t is not None: tp = [t[0], (t[1][0], AffixTag.J_ED)]
-
-        return tp
 
     def _analyze_prefix(self, token: str, pos: str, option=PREFIX_SHORTEST) -> List[Tuple[str, str]]:
         def prefix_stem_pos(prefix: str) -> Optional[Tuple[str, str, str]]:
             stem = token[len(prefix):]
             if prefix == 'be':  # be+little
-                for p in [AffixTag.V, AffixTag.J, AffixTag.N]:
-                    if stem in self._lexicons[p].base_set: return prefix, stem, p
+                for p in [EnglishMorphTag.VB, EnglishMorphTag.JJ, EnglishMorphTag.NN]:
+                    if stem in self._inflection_lexicons[p].lemma_set: return prefix, stem, p
 
-            return (prefix, stem, pos) if stem in self._lexicons[pos].base_set else None
+            return (prefix, stem, pos) if stem in self._inflection_lexicons[pos].lemma_set else None
 
         def get_key(psp):
             return len(psp[0])
 
-        # none option
-        if option == self.PREFIX_NONE: return [(token, pos)]
-
         # exception
-        t = self._prefix_ex.get(token + ' ' + pos, None)
+        t = self._prefix_lookup.get(token + ' ' + pos, None)
         if t is not None: return t
 
         # prefix matching
@@ -459,3 +325,169 @@ class EnglishMorphAnalyzer:
 
         t = self._analyze_prefix(lemma, pos, option)
         return [t[0], (prefix + '+', tag)] + t[1:]
+
+    def _analyze_derivation_rules(self, token, pos) -> List[Tuple[str, str]]:
+        # no derivation
+        t = self._derivation_lookup.get(token, None)
+        if t is not None: return [(token, pos)]
+
+        # exception
+        t = self._derivation_lookup.get(token + ' ' + pos, None)
+        if t is not None: return t
+
+        for rule in self._derivation_rules[pos]:
+            lemma = suffix_matcher(rule, self._inflection_lexicons[rule.lemma_tag].lemma_set, token)
+            if lemma is not None:
+                t = self._analyze_derivation_rules(lemma, rule.lemma_tag)
+                return t + [('+' + rule.affix, rule.affix_tag)]
+
+        if pos == EnglishMorphTag.JJ:
+            t = self._analyze_inflection_rules(token, 'VBN')
+            if t is not None: return t[:1] + [(t[1][0], EnglishMorphTag.J_ED)]
+
+        return [(token, pos)]
+
+
+class EnglishMorphTag:
+    # lemma
+    CC = 'CC'  # conjunction: CC
+    CD = 'CD'  # number: CD
+    DT = 'DT'  # determiner: DT, PDT
+    EX = 'EX'  # existential: EX
+    FW = 'FW'  # foreign words: FW
+    GW = 'GW'  # goes with: AFX, GW
+    IN = 'IN'  # case: IN, POS, RP, TO
+    JJ = 'JJ'  # adjective: JJ, JJR, JJS
+    LS = 'LS'  # list marker: LS
+    MD = 'MD'  # modal: MD
+    NN = 'NN'  # noun: NN, NNS, NNP, NNPS
+    PR = 'PR'  # pronoun: PRP, PRP$, WP
+    RB = 'RB'  # adverb: RB, RBR, RBS, WRB
+    UH = 'UH'  # interjection: UH
+    VB = 'VB'  # verb: VB, VBD, VBG, VBN, VBP, VBZ
+    PU = 'PU'  # punctuation
+    XX = 'XX'  # unknown: ADD, XX
+
+    _PENN2 = {
+        'AFX': GW,
+        'CC': CC,
+        'CD': CD,
+        'DT': DT,
+        'EX': EX,
+        'FW': FW,
+        'GW': GW,
+        'IN': IN,
+        'JJ': JJ,
+        'JJR': JJ,
+        'JJS': JJ,
+        'LS': LS,
+        'MD': MD,
+        'NN': NN,
+        'NNS': NN,
+        'NNP': NN,
+        'NNPS': NN,
+        'PDT': DT,
+        'POS': IN,
+        'PRP': PR,
+        'PRP$': PR,
+        'RB': RB,
+        'RBR': RB,
+        'RBS': RB,
+        'RP': IN,
+        'TO': IN,
+        'UH': UH,
+        'VB': VB,
+        'VBD': VB,
+        'VBG': VB,
+        'VBN': VB,
+        'VBP': VB,
+        'VBZ': VB,
+        'WDT': DT,
+        'WP': PR,
+        'WP$': PR,
+        'WRB': RB,
+        '$': PU,
+        ':': PU,
+        ',': PU,
+        '.': PU,
+        '``': PU,
+        "''": PU,
+        '-LRB-': PU,
+        '-RRB-': PU,
+        'HYPH': PU,
+        'NFP': PU,
+        'SYM': PU,
+        'PUNC': PU
+    }
+
+    @classmethod
+    def to_lemma_tag(cls, pos):
+        """
+        :param pos: the Penn Treebank style part-of-speech tag.
+        :return: the lemma tag converted from the original pos tag.
+        """
+        return cls._PENN2.get(pos, cls.XX)
+
+    # inflection: verb
+    I_3PS = 'I_3PS'  # 3rd-person singular present
+    I_GRD = 'I_GRD'  # gerund
+    I_PST = 'I_PST'  # past
+
+    # inflection: noun
+    I_PLR = 'I_PLR'  # plural
+
+    # inflection: adjective/adverb
+    I_COM = 'I_COM'  # comparative
+    I_SUP = 'I_SUP'  # superlative
+
+    # derivation: verb
+    V_EN = 'V_EN'
+    V_FY = 'V_FY'
+    V_IZE = 'V_IZE'
+
+    # derivation: noun
+    N_AGE = 'N_AGE'
+    N_AL = 'N_AL'
+    N_ANCE = 'N_ANCE'
+    N_ANT = 'N_ANT'
+    N_DOM = 'N_DOM'
+    N_EE = 'N_EE'
+    N_ER = 'N_ER'
+    N_HOOD = 'N_HOOD'
+    N_ING = 'N_ING'
+    N_ISM = 'N_ISM'
+    N_IST = 'N_IST'
+    N_ITY = 'N_ITY'
+    N_MAN = 'N_MAN'
+    N_MENT = 'N_MENT'
+    N_NESS = 'N_NESS'
+    N_SHIP = 'N_SHIP'
+    N_SIS = 'N_SIS'
+    N_TION = 'N_TION'
+    N_WARE = 'N_WARE'
+
+    # derivation: adjective
+    J_ABLE = 'J_ABLE'
+    J_AL = 'J_AL'
+    J_ANT = 'J_ANT'
+    J_ARY = 'J_ARY'
+    J_ED = 'J_ED'
+    J_FUL = 'J_FUL'
+    J_IC = 'J_IC'
+    J_ING = 'J_ING'
+    J_ISH = 'J_ISH'
+    J_IVE = 'J_IVE'
+    J_LESS = 'J_LESS'
+    J_LIKE = 'J_LIKE'
+    J_LY = 'J_LY'
+    J_MOST = 'J_MOST'
+    J_OUS = 'J_OUS'
+    J_SOME = 'J_SOME'
+    J_WISE = 'J_WISE'
+    J_Y = 'J_Y'
+
+    # derivation: adverb
+    R_LY = 'R_LY'
+
+    # prefix
+    P = 'P'

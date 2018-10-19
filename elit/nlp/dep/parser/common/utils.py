@@ -358,8 +358,8 @@ if __name__ == '__main__':
     U = np.random.normal(0, 1, ((C + 1) * O, C + 1))
     y = np.random.normal(0, 1, (C, T, N))
     # single output
-    # zmxnet = bilinear(nd.array(x), nd.array(W), nd.array(y), C, T, N, 1, True, False).asnumpy()
-    # zdynet = dynet_bilinear(x, W, y, C, T, N, 1, True, False).npvalue()
+    # zmxnet = bilinear(nd.array(x), nd.array(W), nd.array(y), C, IN, NN, 1, True, False).asnumpy()
+    # zdynet = dynet_bilinear(x, W, y, C, IN, NN, 1, True, False).npvalue()
     # print(zmxnet.shape)
     # print(zdynet.shape)
     # print(np.allclose(zmxnet, zdynet))
@@ -371,4 +371,4 @@ if __name__ == '__main__':
     print(zdynet.shape)
     print(np.allclose(zmxnet, zdynet))
 
-    # debug_bilinear(x, U, y, C, T, N, O, True, True)
+    # debug_bilinear(x, U, y, C, IN, NN, O, True, True)

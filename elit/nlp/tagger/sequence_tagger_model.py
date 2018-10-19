@@ -225,7 +225,7 @@ class SequenceTagger(nn.Block):
             all_sentence_tensors.append(word_embeddings_tensor.expand_dims(1))
 
         # padded tensor for entire batch
-        sentence_tensor = nd.concat(*all_sentence_tensors, dim=1)  # (T, N, C)
+        sentence_tensor = nd.concat(*all_sentence_tensors, dim=1)  # (IN, NN, C)
         # if torch.cuda.is_available():
         #     sentence_tensor = sentence_tensor.cuda()
 

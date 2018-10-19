@@ -105,7 +105,7 @@ class LanguageModel(nn.HybridBlock):
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
 
-        batch = nd.array(sequences_as_char_indices).transpose((1, 0))  # (T, N)
+        batch = nd.array(sequences_as_char_indices).transpose((1, 0))  # (IN, NN)
 
         hidden = self.init_hidden(len(strings))
         prediction, rnn_output, hidden, cell = self.forward(batch, hidden, hidden.copy())
@@ -365,8 +365,8 @@ class LanguageModelTrainer:
         """
         Make a batch tensor out of a vector
         :param data: vector
-        :param batch_size: N
-        :return: (T,N) tensor
+        :param batch_size: NN
+        :return: (IN,NN) tensor
         """
         # Work out how cleanly we can divide the dataset into bsz parts.
         nbatch = len(data) // batch_size

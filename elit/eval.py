@@ -66,7 +66,7 @@ class F1(EvalMetric):
         self.r_total = 0
 
     def __str__(self):
-        return 'F1:%6.2f, P:%6.2f, R:%6.2f' % (
+        return 'F1:%6.2f, P:%6.2f, RB:%6.2f' % (
             self.f1(), self.precision(), self.recall())
 
     def precision(self) -> float:
