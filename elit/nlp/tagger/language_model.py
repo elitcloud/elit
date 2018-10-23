@@ -297,15 +297,18 @@ class LanguageModelTrainer:
                     ###############################################################################
                     # TEST
                     ###############################################################################
-                    # self.model.eval()
-                    val_loss = self.evaluate(val_data, mini_batch_size, sequence_length)
-                    scheduler.step(val_loss)
-
-                    # Save the model if the validation loss is the best we've seen so far.
-                    if val_loss < best_val_loss:
+                    # skip evaluation
+                    # val_loss = self.evaluate(val_data, mini_batch_size, sequence_length)
+                    # scheduler.step(val_loss)
+                    #
+                    # # Save the model if the validation loss is the best we've seen so far.
+                    # if val_loss < best_val_loss:
+                    #     self.model.save(savefile)
+                    #     best_val_loss = val_loss
+                    #     print('best loss so far {:5.2f}'.format(best_val_loss))
+                    val_loss = cur_loss
+                    if (self.corpus.current_train_file_index + 1) % 100 == 0 or self.corpus.is_last_slice:
                         self.model.save(savefile)
-                        best_val_loss = val_loss
-                        print('best loss so far {:5.2f}'.format(best_val_loss))
 
                     ###############################################################################
                     # print info
@@ -401,12 +404,12 @@ def _convert_dumped_model():
 def _train():
     corpus = TextCorpus('data/raw')
     language_model = LanguageModel(corpus.dictionary,
-                                   is_forward_lm=False,
+                                   is_forward_lm=True,
                                    hidden_size=256,
                                    nlayers=1,
                                    dropout=0.25)
     trainer = LanguageModelTrainer(language_model, corpus)
-    trainer.train('data/model/lm-jumbo-backward256',
+    trainer.train('data/model/lm-jumbo-forward256',
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=99999)
