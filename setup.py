@@ -136,6 +136,7 @@ def setup_package():
             'numpy==1.14.5',
             'ujson==1.35',
             'mxnet==1.2.0',
+            'gluonnlp==0.4.0'
             'marisa_trie==0.7.5',
             'tqdm==4.26.0',
         ],
