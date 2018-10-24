@@ -13,7 +13,7 @@ from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, Stacked
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.util.structure import Document, NER, SEN
+from elit.structure import Document, NER, SEN
 
 
 class NERTagger(NLPComponent):

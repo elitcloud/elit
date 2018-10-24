@@ -32,9 +32,9 @@ from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
 from elit.eval import MxF1
 from elit.model import FFNNModel
-from elit.util.io import pkl, gln, json_reader, tsv_reader, params
+from elit.structure import to_gold, BILOU, DOC_ID
+from elit.util.io import pkl, json_reader, tsv_reader, params
 from elit.util.mx import mxloss
-from elit.util.structure import to_gold, BILOU, DOC_ID
 from elit.util.vsm import LabelMap, init_vsm
 
 __author__ = 'Jinho D. Choi, Gary Lai'

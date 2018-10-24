@@ -23,8 +23,7 @@ import numpy as np
 from gensim.models import KeyedVectors
 
 from elit.nlp.language_models.contextual_string_model import ContextualStringModel
-from elit.util.io import bucket_sentences
-from elit.util.structure import Document
+from elit.structure import Document
 
 __author__ = 'Jinho D. Choi'
 

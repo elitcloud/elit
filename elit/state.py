@@ -19,7 +19,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from elit.util.structure import Document
+from elit.structure import Document
 
 __author__ = 'Jinho D. Choi'
 

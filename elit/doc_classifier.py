@@ -16,7 +16,8 @@
 from typing import List, Optional
 
 import numpy as np
-from elit.util.structure import Document, to_gold, to_out
+
+from elit.structure import Document, to_gold, to_out
 from elit.util.vsm import LabelMap, VectorSpaceModel
 
 __author__ = 'Jinho D. Choi'

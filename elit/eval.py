@@ -18,7 +18,7 @@ from typing import Any, Tuple
 
 from mxnet import metric
 
-from elit.util.structure import Document
+from elit.structure import Document
 
 __author__ = 'Jinho D. Choi'
 

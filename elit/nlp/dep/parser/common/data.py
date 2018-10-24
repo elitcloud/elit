@@ -8,7 +8,7 @@ import numpy as np
 
 from elit.nlp.dep.common.savable import Savable
 from elit.nlp.dep.parser.common.k_means import KMeans
-from elit.util.structure import Document, DEP
+from elit.structure import Document, DEP
 
 
 class ConllWord(object):

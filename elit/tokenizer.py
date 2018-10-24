@@ -22,9 +22,9 @@ from typing import Dict, List, Tuple
 from pkg_resources import resource_filename
 
 from elit.component import Component
+from elit.structure import TOK, OFF, Document, Sentence, SEN_ID
 from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *
-from elit.util.structure import TOK, OFF, Document, Sentence, SEN_ID
 
 __author__ = "Jinho D. Choi, Gary Lai"
 

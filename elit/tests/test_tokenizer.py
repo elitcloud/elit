@@ -15,8 +15,6 @@
 # ========================================================================
 import pytest
 
-from elit.util.structure import SEN
-
 __author__ = 'Jinho D. Choi'
 
 

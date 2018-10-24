@@ -24,7 +24,7 @@ from mxnet import gluon, autograd, nd
 from mxnet.gluon import Trainer
 from tqdm import trange, tqdm
 
-from elit.util.structure import Document, to_gold
+from elit.structure import Document, to_gold
 from elit.util.vsm import LabelMap
 
 __author__ = 'Jinho D. Choi, Gary Lai'

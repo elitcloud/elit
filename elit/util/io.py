@@ -20,10 +20,9 @@ import json
 import logging
 import os
 import re
-from typing import List, Dict, Callable, Sequence, Any, Tuple, Set, Union
+from typing import List, Dict, Sequence, Any, Tuple, Set
 
-from elit.state import NLPState
-from elit.util.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
+from elit.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
 from elit.util.vsm import LabelMap
 
 __author__ = "Jinho D. Choi, Gary Lai"

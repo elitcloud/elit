@@ -6,17 +6,34 @@
 ELIT: Evolution of Language and Information Technology
 ======================================================
 
+The ELIT project brings the latest natural language processing (NLP) technology to the community.
+The primary focus of this project is to present end-to-end NLP tools that are scalable for big data analysis using rich resources in the cloud.
+ELIT facilitates the process of developing, accessing, and deploying state-of-the-art NLP tools by
+allowing researchers to quickly prototype innovative ideas using plug-and-play modules,
+supporting web-APIs to access cutting-edge models, and
+providing a cloud platform to deploy comprehensive systems.
+ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at Emory University with an active collaboration with the AWS `MXNet <https://mxnet.incubator.apache.org>`_ team.
+
 .. toctree::
    :maxdepth: 3
    :caption: Getting Started
 
-   installation
+   getting_started/install
+   getting_started/decode
+   getting_started/train
+   getting_started/deploy
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Tutorials
+
+   tutorials/structure
+   tutorials/embedding
 
 .. toctree::
    :maxdepth: 3
    :caption: API Reference
 
-   embedding
    apidocs
 
 Indices and tables
