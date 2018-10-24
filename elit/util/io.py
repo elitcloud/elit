@@ -20,7 +20,7 @@ import json
 import logging
 import os
 import re
-from typing import List, Dict, Callable, Sequence, Any, Tuple, Set
+from typing import List, Dict, Callable, Sequence, Any, Tuple, Set, Union
 
 from elit.state import NLPState
 from elit.util.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
@@ -143,30 +143,24 @@ def params(filepath):
     return filepath + '.params'
 
 
-def group_states(docs: Sequence[Document], create_state: Callable[[
-                                                                      Document], NLPState], maxlen: int = -1) -> List[
-    NLPState]:
+def bucket_sentences(data: Sequence[Document], maxlen: int = -1) -> List[Document]:
     """
-    Groups sentences into documents such that each document consists of multiple sentences and the total number of words
-    across all sentences within a document is close to the specified maximum length.
-    :param docs: a list of documents.
-    :param create_state: a function that takes a document and returns a state.
-    :param maxlen: the maximum number of words; if max_len < 0, it is inferred by the length of the longest sentence.
-    :return: list of states, where each state roughly consists of the max_len number of words.
+    :param data: a list of documents or a list of sentences.
+    :param maxlen: the maximum length of each sentence; if max_len < 0, it is inferred by the length of the longest sentence.
+    :return: the list of documents, where the number of tokens across all sentences in each document is roughly ``maxlen``.
     """
 
     def aux(i):
         ls = d[keys[i]]
         t = ls.pop()
-        document.sentences.append(t)
-        if not ls:
-            del keys[i]
+        document.add_sentence(t)
+        if not ls: del keys[i]
         return len(t)
 
     # key = length, value = list of sentences with the key length
     d = {}
 
-    for doc in docs:
+    for doc in data:
         for sen in doc.sentences:
             d.setdefault(len(sen), []).append(sen)
 
@@ -174,7 +168,7 @@ def group_states(docs: Sequence[Document], create_state: Callable[[
     if maxlen < 0:
         maxlen = keys[-1]
 
-    states = []
+    documents = []
     document = Document()
     wc = maxlen - aux(-1)
 
@@ -183,16 +177,14 @@ def group_states(docs: Sequence[Document], create_state: Callable[[
         if idx >= len(keys) or keys[idx] > wc:
             idx -= 1
         if idx < 0:
-            states.append(create_state(document))
+            documents.append(document)
             document = Document()
             wc = maxlen - aux(-1)
         else:
             wc -= aux(idx)
 
-    if document:
-        states.append(create_state(document))
-
-    return states
+    if document: documents.append(document)
+    return documents
 
 
 def read_word_set(filename) -> Set[str]:

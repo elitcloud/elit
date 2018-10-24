@@ -4,13 +4,19 @@
    contain the root `toctree` directive.
 
 ELIT: Evolution of Language and Information Technology
-===================================
+======================================================
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
+   :caption: Getting Started
 
    installation
+
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference
+
+   embedding
    apidocs
 
 Indices and tables

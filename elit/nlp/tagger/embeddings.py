@@ -10,8 +10,8 @@ import mxnet.ndarray as nd
 import numpy as np
 from mxnet.gluon import nn
 
+from elit.nlp.language_models.contextual_string_model import ContextualStringModel
 from elit.nlp.tagger.corpus import Sentence, Token, read_pretrained_embeddings
-from elit.nlp.tagger.language_model import LanguageModel
 
 
 class Embeddings(nn.Block):
@@ -140,7 +140,7 @@ class CharLMEmbeddings(TokenEmbeddings):
         """
         self.static_embeddings = detach
 
-        self.lm = LanguageModel.load_language_model(model)
+        self.lm = ContextualStringModel.load_language_model(model)
         self.detach = detach
         if detach:
             self.lm.freeze()

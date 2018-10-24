@@ -21,7 +21,7 @@ from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
-class LanguageModel(nn.HybridBlock):
+class ContextualStringModel(nn.HybridBlock):
     """
     Container module with an encoder, a recurrent module, and a decoder.
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
@@ -37,7 +37,7 @@ class LanguageModel(nn.HybridBlock):
                  dropout=0.5,
                  init_params: Dict = None):
 
-        super(LanguageModel, self).__init__()
+        super(ContextualStringModel, self).__init__()
 
         self.dictionary = dictionary
         self.is_forward_lm = is_forward_lm
@@ -105,7 +105,7 @@ class LanguageModel(nn.HybridBlock):
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
 
-        batch = nd.array(sequences_as_char_indices).transpose((1, 0))  # (IN, NN)
+        batch = nd.array(sequences_as_char_indices).transpose((1, 0))  # (T, N)
 
         hidden = self.init_hidden(len(strings))
         prediction, rnn_output, hidden, cell = self.forward(batch, hidden, hidden.copy())
@@ -132,13 +132,13 @@ class LanguageModel(nn.HybridBlock):
     @classmethod
     def load_language_model(cls, model_file):
         config = LanguageModelConfig.load(os.path.join(model_file, 'config.pkl'))
-        model = LanguageModel(config.dictionary,
-                              config.is_forward_lm,
-                              config.hidden_size,
-                              config.nlayers,
-                              config.embedding_size,
-                              config.nout,
-                              config.dropout)
+        model = ContextualStringModel(config.dictionary,
+                                      config.is_forward_lm,
+                                      config.hidden_size,
+                                      config.nlayers,
+                                      config.embedding_size,
+                                      config.nout,
+                                      config.dropout)
         model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
         return model
 
@@ -158,14 +158,14 @@ class LanguageModel(nn.HybridBlock):
                 dictionary.idx2item.append(k.decode('UTF-8'))
             config = LanguageModelConfig(dictionary, params['is_forward_lm'], params['hidden_size'],
                                          params['nlayers'], params['embedding_size'], params['nout'], params['dropout'])
-            model = LanguageModel(config.dictionary,
-                                  config.is_forward_lm,
-                                  config.hidden_size,
-                                  config.nlayers,
-                                  config.embedding_size,
-                                  config.nout,
-                                  config.dropout,
-                                  params)
+            model = ContextualStringModel(config.dictionary,
+                                          config.is_forward_lm,
+                                          config.hidden_size,
+                                          config.nlayers,
+                                          config.embedding_size,
+                                          config.nout,
+                                          config.dropout,
+                                          params)
             return model
 
     def save(self, file):
@@ -186,12 +186,12 @@ class LanguageModel(nn.HybridBlock):
         return nd.zeros((self.nlayers, mini_batch_size, self.hidden_size))
 
 
-class LanguageModelTrainer:
+class ContextualStringModelTrainer:
     """
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
     """
 
-    def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
+    def __init__(self, model: ContextualStringModel, corpus: TextCorpus, test_mode: bool = False):
         self.model = model
         model.hybridize()
         self.corpus = corpus
@@ -393,28 +393,28 @@ class LanguageModelTrainer:
 
 def _convert_dumped_model():
     for path in ['data/model/lm-news-forward', 'data/model/lm-news-backward']:
-        model = LanguageModel.load_dumped_model(path + '/params.pkl')
+        model = ContextualStringModel.load_dumped_model(path + '/params.pkl')
         model.initialize()
         model.save(path)
 
 
 def _train():
     corpus = TextCorpus('data/wiki-debug/')
-    language_model = LanguageModel(corpus.dictionary,
-                                   is_forward_lm=True,
-                                   hidden_size=1024,
-                                   nlayers=1,
-                                   dropout=0.25)
-    trainer = LanguageModelTrainer(language_model, corpus)
+    language_model = ContextualStringModel(corpus.dictionary,
+                                           is_forward_lm=True,
+                                           hidden_size=1024,
+                                           nlayers=1,
+                                           dropout=0.25)
+    trainer = ContextualStringModelTrainer(language_model, corpus)
     trainer.train('data/model/lm',
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=10)
-    LanguageModel.load_language_model('data/model/lm')
+    ContextualStringModel.load_language_model('data/model/lm')
 
 
 def _load():
-    lm = LanguageModel.load_language_model('data/model/lm-news-forward')
+    lm = ContextualStringModel.load_language_model('data/model/lm-news-forward')
 
 
 if __name__ == '__main__':
