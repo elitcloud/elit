@@ -91,9 +91,8 @@ def test_eng_tokenizer_offset(english_tokenizer, input, offset, expected):
 
      ),
     ("don't he's can't does'nt 0's DON'IN ab'cd",
-     {'sen': [{'sen_id': 0, 'tok': ['do', "n't", 'he', "'s", 'ca', "n't", 'does', "'nt", "0's", 'DO', "NN'IN", "ab'cd"],
-               'off': [(0, 2), (2, 5), (6, 8), (8, 10), (11, 13), (13, 16), (17, 21), (21, 24), (25, 28), (29, 31),
-                       (31, 34), (35, 40)]}]}
+     {'sen': [{'sen_id': 0, 'tok': ['do', "n't", 'he', "'s", 'ca', "n't", 'does', "'nt", "0's", "DON'IN", "ab'cd"],
+               'off': [(0, 2), (2, 5), (6, 8), (8, 10), (11, 13), (13, 16), (17, 21), (21, 24), (25, 28), (29, 35), (36, 41)]}]}
      ),
 ])
 def test_eng_tokenizer_regex(english_tokenizer, input, expected):
@@ -176,8 +175,7 @@ def test_eng_tokenizer_concat(english_tokenizer, input, expected):
      ),
     # concatenated word
     ("whadya DON'CHA",
-     {'sen': [{'sen_id': 0, 'tok': ['wha', 'd', 'ya', 'DO', "NN'", 'CHA'],
-               'off': [(0, 3), (3, 4), (4, 6), (7, 9), (9, 11), (11, 14)]}]}
+     {'sen': [{'sen_id': 0, 'tok': ['wha', 'd', 'ya', 'DO', "N'", 'CHA'], 'off': [(0, 3), (3, 4), (4, 6), (7, 9), (9, 11), (11, 14)]}]}
      ),
     # final mark
     ('Mbaaah.Please hello.!?world',
