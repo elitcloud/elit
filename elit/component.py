@@ -35,22 +35,12 @@ class Component(abc.ABC):
     :class:`Component` is an abstract class; any component developed in ELIT must inherit this class.
 
     Abstract methods to be implemented:
-      - :meth:`Component.init`
       - :meth:`Component.load`
       - :meth:`Component.save`
       - :meth:`Component.train`
       - :meth:`Component.decode`
       - :meth:`Component.evaluate`
     """
-
-    @abc.abstractmethod
-    def init(self, **kwargs):
-        """
-        :param kwargs: custom parameters.
-
-        Initializes this component.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
 
     @abc.abstractmethod
     def load(self, model_path: str, **kwargs):
@@ -152,14 +142,10 @@ class NLPComponent(Component):
 
 class MXNetComponent(NLPComponent):
 
-    def __init__(self, ctx):
+    def __init__(self, ctx, **kwargs):
         super().__init__()
         self.ctx = ctx
         self.model = None
-
-    @abc.abstractmethod
-    def init(self, **kwargs):
-        pass
 
     def load(self, model_path: str, **kwargs):
         pass

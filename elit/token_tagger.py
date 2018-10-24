@@ -18,7 +18,6 @@ import json
 import logging
 import pickle
 import sys
-from types import SimpleNamespace
 from typing import Tuple, Optional, List
 
 import mxnet as mx
@@ -27,6 +26,7 @@ from mxnet import nd
 from mxnet.gluon.data import Dataset, DataLoader
 from mxnet.metric import Accuracy
 from tqdm import tqdm
+from types import SimpleNamespace
 
 from elit.cli import ComponentCLI, set_logger
 from elit.component import MXNetComponent
@@ -40,8 +40,7 @@ from elit.util.vsm import LabelMap, init_vsm
 __author__ = 'Jinho D. Choi, Gary Lai'
 
 
-# ======================================== Dataset ========================================
-class TokenTaggerDataset(Dataset):
+class TokensDataset(Dataset):
 
     def __init__(self, vsms: List[SimpleNamespace],
                  key,
@@ -93,23 +92,16 @@ class TokenTaggerDataset(Dataset):
 
     def extract_sen(self, sen):
         return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen.tokens) for vsm in self.vsms])],
-                        ctx=self.ctx).reshape(
-            0, -1)
+                        ctx=self.ctx).reshape(0, -1)
 
     def init_data(self, docs):
         for doc in tqdm(docs):
             for sen in tqdm(doc, desc="loading doc: {}".format(doc[DOC_ID]), leave=False):
                 w = self.extract_sen(sen)
-                if self.label:
-                    for idx, label in enumerate(sen[to_gold(self.key)]):
-                        x = self.extract_x(idx, w)
-                        y = self.extract_y(label)
-                        self.data.append((x, y))
-                else:
-                    for idx, _ in enumerate(sen):
-                        x = self.extract_x(idx, w)
-                        y = self.extract_y(self.label)
-                        self.data.append((x, y))
+                for idx, label in enumerate(sen[to_gold(self.key)]):
+                    x = self.extract_x(idx, w)
+                    y = self.extract_y(label)
+                    self.data.append((x, y))
 
 
 # ======================================== Component ========================================
@@ -119,7 +111,20 @@ class TokenTagger(MXNetComponent):
     :class:`TokenTagger` provides an abstract class to implement a tagger that predicts a tag for every token.
     """
 
-    def __init__(self, ctx: mx.Context, vsm_path: list):
+    def __init__(self,
+                 ctx: mx.Context,
+                 vsm_path: list,
+                 key: str,
+                 feature_windows: Tuple[int, ...],
+                 label_map: LabelMap,
+                 chunking: bool = False,
+                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
+                 output_config: Optional[SimpleNamespace] = None,
+                 fuse_conv_config: Optional[SimpleNamespace] = None,
+                 ngram_conv_config: Optional[SimpleNamespace] = None,
+                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
+                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
+                 **kwargs):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         :param vsms: the sequence of namespace(model, key),
@@ -130,52 +135,6 @@ class TokenTagger(MXNetComponent):
         self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]), ctx=self.ctx)
 
         # to be loaded/saved
-        self.key = None
-        self.model = None
-        self.label_map = LabelMap()
-        self.chunking = None
-        self.feature_windows = None
-        self.input_config = None
-        self.output_config = None
-        self.fuse_conv_config = None
-        self.ngram_conv_config = None
-        self.hidden_configs = None
-        self.initializer = None
-
-    def __str__(self):
-        s = ('Token Tagger',
-             '- key: {}'.format(self.key),
-             '- label_map: {}'.format(self.label_map),
-             '- chunking: {}'.format(self.chunking),
-             '- feature windows: {}'.format(self.feature_windows),
-             '- %s' % str(self.model))
-        return '\n'.join(s)
-
-    def init(self,
-             key: str,
-             feature_windows: Tuple[int, ...],
-             label_map: LabelMap,
-             chunking: bool,
-             input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-             output_config: Optional[SimpleNamespace] = None,
-             fuse_conv_config: Optional[SimpleNamespace] = None,
-             ngram_conv_config: Optional[SimpleNamespace] = None,
-             hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
-             initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
-             **kwargs):
-        """
-        :param key: the key to each sentence where the tags are to be saved.
-        :param feature_windows: the content windows for feature extraction.
-        :param label_map:
-        :param input_config: the dropout rate to be applied to the input layer.
-        :param output_config:
-        :param fuse_conv_config: the configuration for the fuse convolution layer.
-        :param ngram_conv_config: the configuration for the n-gram convolution layer.
-        :param hidden_configs: the configurations for the hidden layers.
-        :param initializer: the weight initializer for :class:`mxnet.gluon.Block`.
-        :param kwargs: extra parameters to initialize :class:`mxnet.gluon.Block`.
-        """
-        # configuration
         self.key = key
         self.label_map = label_map
         self.chunking = chunking
@@ -202,6 +161,15 @@ class TokenTagger(MXNetComponent):
             **kwargs)
         self.model.collect_params().initialize(self.initializer, ctx=self.ctx)
         logging.info(self.__str__())
+
+    def __str__(self):
+        s = ('Token Tagger',
+             '- key: {}'.format(self.key),
+             '- label_map: {}'.format(self.label_map),
+             '- chunking: {}'.format(self.chunking),
+             '- feature windows: {}'.format(self.feature_windows),
+             '- %s' % str(self.model))
+        return '\n'.join(s)
 
     # override
     def load(self, model_path: str, **kwargs):
@@ -281,13 +249,14 @@ class TokenTagger(MXNetComponent):
                 idx += len(labels)
         return acc.get()[1]
 
-    def data_loader(self, docs, batch_size, shuffle=False, label=True):
-        return DataLoader(TokenTaggerDataset(vsms=self.vsms,
-                                             key=self.key,
-                                             docs=docs,
-                                             feature_windows=self.feature_windows,
-                                             label_map=self.label_map,
-                                             label=label),
+    def data_loader(self, docs, batch_size, shuffle=False, batchify_fn=None, label=True):
+        return DataLoader(TokensDataset(vsms=self.vsms,
+                                        key=self.key,
+                                        docs=docs,
+                                        feature_windows=self.feature_windows,
+                                        label_map=self.label_map,
+                                        label=label),
+                          batchify_fn=batchify_fn,
                           batch_size=batch_size,
                           shuffle=shuffle)
 
@@ -353,7 +322,8 @@ class TokenTaggerConfig(object):
         assert self.source.get('output_config') is not None
 
         return SimpleNamespace(
-            dropout=self.source['output_config'].get('dropout', 0.0)
+            dropout=self.source['output_config'].get('dropout', 0.0),
+            flatten=self.source['output_config'].get('flatten', True)
         )
 
     @property
@@ -470,9 +440,9 @@ class TokenTaggerCLI(ComponentCLI):
         dev_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
 
         # component
-        comp = TokenTagger(config.ctx, args.vsm_path)
-
-        comp.init(
+        comp = TokenTagger(
+            ctx=config.ctx,
+            vsm_path=args.vsm_path,
             key=args.key,
             feature_windows=config.feature_windows,
             label_map=label_map,
@@ -482,6 +452,7 @@ class TokenTaggerCLI(ComponentCLI):
             fuse_conv_config=config.fuse_conv_config,
             ngram_conv_config=config.ngram_conv_cofig,
             hidden_configs=config.hidden_configs)
+
         # train
         comp.train(
             trn_docs=trn_docs,

@@ -334,7 +334,7 @@ class Position2Vec(VectorSpaceModel):
 
 
 def init_vsm(l: list) -> SimpleNamespace:
-    model, key, path = l
+    model, path = l
     if model.lower() == 'word2vec':
         model = Word2Vec
     elif model.lower() == 'fasttext':
@@ -343,4 +343,4 @@ def init_vsm(l: list) -> SimpleNamespace:
         model = Gaze
     else:
         raise TypeError('model {} is not supported'.format(model))
-    return SimpleNamespace(model=model(path), key=key)
+    return SimpleNamespace(model=model(path))

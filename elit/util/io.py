@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import bisect
-import codecs
 import glob
 import json
 import logging
-import os
-import re
 from typing import List, Dict, Sequence, Any, Tuple, Set
+
+import codecs
+import os
 
 from elit.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
 from elit.util.vsm import LabelMap
