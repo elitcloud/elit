@@ -119,7 +119,7 @@ class WordEmbeddings(TokenEmbeddings):
 class CharLMEmbeddings(TokenEmbeddings):
     """Contextual string embeddings of words, as proposed in Akbik et al., 2018."""
 
-    def __init__(self, model, detach: bool = False):
+    def __init__(self, model, detach: bool = True):
         super().__init__()
 
         """
