@@ -293,6 +293,7 @@ class LanguageModelTrainer:
                             start_time = time.time()
 
                     print('epoch {} done! \t({:%H:%M:%S})'.format(epoch, datetime.datetime.now()))
+                    scheduler.step(cur_loss)
 
                     ###############################################################################
                     # TEST
