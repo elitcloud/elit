@@ -196,7 +196,8 @@ class CNNTokenTagger(MXComponent):
             ngram_conv_config=self.ngram_conv_config,
             hidden_configs=self.hidden_configs,
             **kwargs)
-        self.model.load_params(params(model_path), self.ctx)
+        # self.model.load_params(params(model_path), self.ctx)
+        self.model.load_parameters(params(model_path), self.ctx)
         logging.info('{} is loaded'.format(params(model_path)))
         logging.info(self.__str__())
 
@@ -216,5 +217,5 @@ class CNNTokenTagger(MXComponent):
             pickle.dump(self.ngram_conv_config, fout)
             pickle.dump(self.hidden_configs, fout)
         logging.info('{} is saved'.format(pkl(model_path)))
-        self.model.save_params(params(model_path))
+        self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))
