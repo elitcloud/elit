@@ -96,7 +96,7 @@ class CNNTokenTagger(MXComponent):
              '- model: {}'.format(str(self.model)))
         return '\n'.join(s)
 
-    def train_block(self, data_iter: DataLoader, sens: Sequence[Sentence]) -> float:
+    def train_block(self, data_iter: DataLoader, docs: Sequence[Document]) -> float:
         """
 
         :param data_iter:
