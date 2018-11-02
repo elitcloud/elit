@@ -13,20 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
 import argparse
 import inspect
 import logging
-import re
 import sys
-from typing import Callable, Any, Dict, Tuple
 
-import mxnet as mx
+import abc
 
 __author__ = "Gary Lai, Jinho D. Choi"
 
 
-class ComponentCLI(abc.ABC):
+class CLIComponent(abc.ABC):
     """
     :class:`ComponentCLI` is an abstract class to implement a command-line interface for a component.
 
@@ -113,17 +110,6 @@ commands:
             print('Unrecognized command')
             parser.print_help()
             exit(1)
-
-
-def set_logger(filename: str = None,
-               level: int = logging.INFO,
-               formatter: logging.Formatter = None):
-    log = logging.getLogger()
-    log.setLevel(level)
-    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
-    if formatter is not None:
-        ch.setFormatter(formatter)
-    log.addHandler(ch)
 
 
 if __name__ == '__main__':

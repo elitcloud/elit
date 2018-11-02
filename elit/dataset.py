@@ -13,17 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+from typing import List, Union, Sequence
+
 import abc
-
 import numpy as np
-from typing import List, Union
-
+from gluonnlp.data.batchify import batchify
 from mxnet import nd, gluon
 from mxnet.ndarray import NDArray
 from tqdm import tqdm
-from types import SimpleNamespace
 
-from elit.structure import to_gold, DOC_ID, Document
+from elit.embedding import Embedding, TokenEmbedding
+from elit.structure import to_gold, Sentence, Document
 
 __author__ = "Gary Lai"
 
@@ -35,7 +35,7 @@ class LabelMap(object):
 
     def __init__(self):
         self.index_map = {}
-        self.labels = []
+        self.labels = {}
 
     def __len__(self):
         return len(self.labels)
@@ -54,7 +54,7 @@ class LabelMap(object):
         if idx < 0:
             idx = len(self.labels)
             self.index_map[label] = idx
-            self.labels.append(label)
+            self.labels[idx] = label
         return idx
 
     def get(self, cid: int) -> str:
@@ -62,7 +62,7 @@ class LabelMap(object):
         :param cid: the class ID.
         :return: the label corresponding to the class ID.
         """
-        return self.labels[cid]
+        return self.labels.get(cid, None)
 
     def cid(self, label: str) -> int:
         """
@@ -70,6 +70,9 @@ class LabelMap(object):
         :return: the class ID of the label if exists; otherwise, -1.
         """
         return self.index_map.get(label, -1)
+
+    def num_class(self) -> int:
+        return len(self.labels)
 
     def argmax(self, scores: Union[np.ndarray, NDArray]) -> str:
         """
@@ -84,63 +87,78 @@ class LabelMap(object):
 
 class Dataset(gluon.data.Dataset):
 
-    def __init__(self, vsms: List[SimpleNamespace], key: str, docs: List[Document], label_map: LabelMap, transform=None):
+    def __init__(self, docs: Sequence[Document], embs: List[Union[Embedding, TokenEmbedding]], key: str, label_map: LabelMap, label: bool = True, transform=None):
         self._data = []
-        self.vsms = vsms
+        self.embs = embs
         self.key = key
         self.label_map = label_map
+        self.label = label
         self.transform = transform
-        self.init_data(docs)
+        self.docs = docs
+        self.init_data()
 
     def __getitem__(self, idx):
-        x, y = self._data[idx]
         if self.transform is not None:
-            return self.transform(x, y)
+            return self.transform(self._data[idx])
         else:
-            return x, y
+            return self._data[idx]
 
     def __len__(self):
         return len(self._data)
 
     @abc.abstractmethod
-    def extract(self, sen):
+    def extract(self, did: int, sid: int, sen: Sentence):
         raise NotImplementedError
 
     def extract_sen(self, sen):
-        return nd.array([np.concatenate(i) for i in zip(*[vsm.model.embedding_list(sen.tokens) for vsm in self.vsms])]).reshape(0, -1)
+        return nd.array([np.concatenate(i) for i in zip(*[emb.emb_list(sen.tokens) for emb in self.embs])]).reshape(0, -1)
 
-    def init_data(self, docs: List[Document]):
-        for doc in tqdm(docs):
-            for sen in tqdm(doc, desc="loading doc: {}".format(doc[DOC_ID]), leave=False):
-                self.extract(sen)
+    def init_data(self):
+        for did, doc in enumerate(tqdm(self.docs, leave=False)):
+            for sid, sen in enumerate(tqdm(doc.sentences, leave=False)):
+                self.extract(did, sid, sen)
 
 
 class TokensDataset(Dataset):
 
-    def __init__(self, vsms: List[SimpleNamespace], key: str, docs: List[Document], label_map: LabelMap, feature_windows: List, transform=None):
-        super().__init__(vsms, key, docs, label_map, transform)
+    def __init__(self, docs: Sequence[Document], embs: List[Embedding], key: str, label_map: LabelMap, feature_windows: List, label: bool = True, transform=None):
+        super().__init__(docs=docs, embs=embs, key=key, label_map=label_map, label=label, transform=transform)
         self.feature_windows = feature_windows
-        self.pad = nd.zeros(sum([vsm.model.dim for vsm in self.vsms]))
+        self.pad = nd.zeros(sum([emb.dim for emb in self.embs]))
 
-    def extract_x(self, idx, w):
-        return nd.stack(*[w[idx + win] if 0 <= (idx + win) < len(w) else self.pad for win in self.feature_windows])
+    def extract_x(self, i, w):
+        return nd.stack(*[w[i + win] if 0 <= (i + win) < len(w) else self.pad for win in self.feature_windows])
 
     def extract_y(self, label: str):
         return self.label_map.cid(label)
 
-    def extract(self, sen, **kwargs):
+    def extract(self, did, sid, sen, **kwargs):
         w = self.extract_sen(sen)
-        for idx, label in enumerate(sen[to_gold(self.key)]):
-            self._data.append((self.extract_x(idx, w), self.extract_y(label)))
+        if self.label:
+            for i, label in enumerate(sen[to_gold(self.key)]):
+                self._data.append((self.extract_x(i, w), self.extract_y(label)))
+        else:
+            for i in range(len(sen)):
+                self._data.append((self.extract_x(i, w), -1))
 
 
 class SequencesDataset(Dataset):
 
-    def __init__(self, vsms: List[SimpleNamespace], key: str, docs: List[Document], label_map: LabelMap):
-        super().__init__(vsms, key, docs, label_map)
+    def __init__(self, docs: Sequence[Document], embs: List[Embedding], key: str, label_map: LabelMap, label: bool = True, transform=None):
+        super().__init__(docs=docs, embs=embs, key=key, label_map=label_map, label=label, transform=transform)
 
     def extract_labels(self, sen):
-        return nd.array([self.label_map.cid(label) for label in sen[to_gold(self.key)]])
+        if self.label:
+            return nd.array([self.label_map.cid(l) for l in sen[to_gold(self.key)]])
+        else:
+            return nd.array([-1 for _ in range(len(sen))])
 
-    def extract(self, sen):
-        self._data.append((self.extract_sen(sen), self.extract_labels(sen)))
+    def extract(self, did, sid, sen):
+        self._data.append((did, sid, self.extract_sen(sen), self.extract_labels(sen)))
+
+
+sequence_batchify_fn = batchify.Tuple((batchify.Stack(), batchify.Stack(), batchify.Pad(), batchify.Pad(pad_val=-1)))
+# stack doc idx
+# stack sen idx
+# pad sen
+# pad label

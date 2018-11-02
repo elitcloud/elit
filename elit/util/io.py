@@ -13,16 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import sys
+
+import bisect
 import glob
 import json
 import logging
+import re
 from typing import List, Dict, Sequence, Any, Tuple, Set
 
 import codecs
 import os
 
+from elit.dataset import LabelMap
 from elit.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
-from elit.util.vsm import LabelMap
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
@@ -152,7 +156,8 @@ def bucket_sentences(data: Sequence[Document], maxlen: int = -1) -> List[Documen
         ls = d[keys[i]]
         t = ls.pop()
         document.add_sentence(t)
-        if not ls: del keys[i]
+        if not ls:
+            del keys[i]
         return len(t)
 
     # key = length, value = list of sentences with the key length
@@ -181,7 +186,8 @@ def bucket_sentences(data: Sequence[Document], maxlen: int = -1) -> List[Documen
         else:
             wc -= aux(idx)
 
-    if document: documents.append(document)
+    if document:
+        documents.append(document)
     return documents
 
 
@@ -259,3 +265,14 @@ class NoIndentEncoder(json.JSONEncoder):
             result = result[m.end(0) + 1:]
             m = self.REGEX.search(result)
         return ''.join(out)
+
+
+def set_logger(filename: str = None,
+               level: int = logging.INFO,
+               formatter: logging.Formatter = None):
+    log = logging.getLogger()
+    log.setLevel(level)
+    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
+    if formatter is not None:
+        ch.setFormatter(formatter)
+    log.addHandler(ch)
