@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from typing import List, Union, Sequence
+from typing import List, Union, Sequence, Tuple
 
 import abc
 import numpy as np
@@ -121,10 +121,11 @@ class Dataset(gluon.data.Dataset):
 
 class TokensDataset(Dataset):
 
-    def __init__(self, docs: Sequence[Document], embs: List[Embedding], key: str, label_map: LabelMap, feature_windows: List, label: bool = True, transform=None):
-        super().__init__(docs=docs, embs=embs, key=key, label_map=label_map, label=label, transform=transform)
+    def __init__(self, docs: Sequence[Document], embs: List[Embedding], key: str, label_map: LabelMap, feature_windows: Tuple, label: bool = True, transform=None):
+        self.embs = embs
         self.feature_windows = feature_windows
         self.pad = nd.zeros(sum([emb.dim for emb in self.embs]))
+        super().__init__(docs=docs, embs=embs, key=key, label_map=label_map, label=label, transform=transform)
 
     def extract_x(self, i, w):
         return nd.stack(*[w[i + win] if 0 <= (i + win) < len(w) else self.pad for win in self.feature_windows])

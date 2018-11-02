@@ -168,8 +168,7 @@ class CNNTokenTagger(MXComponent):
         :param kwargs:
         :return:
         """
-        return DataLoader(TokensDataset(docs=docs, embs=self.embs, key=self.key, label_map=self.label_map, feature_windows=self.feature_windows,
-                                        label=label, transform=transform),
+        return DataLoader(TokensDataset(docs=docs, embs=self.embs, key=self.key, label_map=self.label_map, feature_windows=self.feature_windows, label=label, transform=transform),
                           batch_size=batch_size,
                           shuffle=shuffle)
 
