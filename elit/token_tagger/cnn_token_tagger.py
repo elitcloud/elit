@@ -37,7 +37,7 @@ __author__ = 'Jinho D. Choi, Gary Lai'
 class CNNTokenTagger(MXComponent):
 
     def __init__(self, ctx: mx.Context, key: str, embs_config: list, label_map: LabelMap, chunking: bool,
-                 feature_windows=None,
+                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
                  input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
                  output_config: Optional[SimpleNamespace] = None,
                  fuse_conv_config: Optional[SimpleNamespace] = None,
@@ -62,8 +62,6 @@ class CNNTokenTagger(MXComponent):
         :param kwargs:
         """
         super().__init__(ctx, key, embs_config, label_map, chunking, **kwargs)
-        if feature_windows is None:
-            feature_windows = [3, 2, 1, 0, -1, -2, -3]
         self.feature_windows = feature_windows
 
         input_config.col = self.dim
