@@ -15,6 +15,7 @@
 # ========================================================================
 import logging
 import pickle
+from types import SimpleNamespace
 from typing import Sequence, Optional, Tuple
 
 import mxnet as mx
@@ -22,13 +23,12 @@ from mxnet import nd, autograd
 from mxnet.gluon.data import DataLoader
 from mxnet.metric import Accuracy
 from tqdm import tqdm
-from types import SimpleNamespace
 
 from elit.component import MXComponent
 from elit.dataset import LabelMap, TokensDataset
 from elit.eval import ChunkF1
 from elit.model import CNNModel
-from elit.structure import Sentence, Document, to_gold
+from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 
 __author__ = 'Jinho D. Choi, Gary Lai'

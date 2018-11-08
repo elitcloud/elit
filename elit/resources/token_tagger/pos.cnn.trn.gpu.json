@@ -24,7 +24,7 @@
     "dropout": 0.2
   },
   "device": "gpu",
-  "core": 1,
+  "core": 0,
   "epoch": 100,
   "trn_batch": 64,
   "dev_batch": 2048,

@@ -37,19 +37,19 @@ class TokenTaggerCLI(CLIComponent):
         # data
         data_group = parser.add_argument_group("data arguments")
 
-        data_group.add_argument('trn_path', type=str, metavar='TRN_PATH', help='filepath to the training data (input)')
-        data_group.add_argument('dev_path', type=str, metavar='DEV_PATH', help='filepath to the development data (input)')
-        data_group.add_argument('model_path', type=str, metavar='MODEL_PATH', default=None, help='filepath to the model data (output); if not set, the model is not saved')
-        data_group.add_argument('--embs_config', action='append', nargs='+', metavar='EMBS_CONFIG', required=True, help='embs config')
+        data_group.add_argument('trn_path', type=str, help='filepath to the training data (input)')
+        data_group.add_argument('dev_path', type=str, help='filepath to the development data (input)')
+        data_group.add_argument('model_path', type=str, default=None, help='filepath to the model data (output); if not set, the model is not saved')
+        data_group.add_argument('--embs_config', action='append', nargs='+', required=True, help='list of word embeddings models and file')
 
         # tagger
         tagger_group = parser.add_argument_group("tagger arguments")
-        tagger_group.add_argument('mode', type=str, metavar='MODE', help='mode: cnn or rnn')
-        tagger_group.add_argument('key', type=str, metavar='KEY', help='key to the document dictionary where the predicted tags are to be stored')
+        tagger_group.add_argument('mode', type=str, help='mode: cnn or rnn')
+        tagger_group.add_argument('key', type=str, help='key to the document dictionary where the predicted tags are to be stored')
 
         # network
         network_group = parser.add_argument_group("network arguments")
-        network_group.add_argument('config', type=str, metavar='CONFIG', help="config file")
+        network_group.add_argument('config', type=str, help="path to config file")
 
         # arguments
         args = parser.parse_args(sys.argv[3:])
