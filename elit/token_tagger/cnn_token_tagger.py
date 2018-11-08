@@ -194,8 +194,7 @@ class CNNTokenTagger(MXComponent):
             output_config=self.output_config,
             fuse_conv_config=self.fuse_conv_config,
             ngram_conv_config=self.ngram_conv_config,
-            hidden_configs=self.hidden_configs,
-            **kwargs)
+            hidden_configs=self.hidden_configs)
         # self.model.load_params(params(model_path), self.ctx)
         self.model.load_parameters(params(model_path), self.ctx)
         logging.info('{} is loaded'.format(params(model_path)))
