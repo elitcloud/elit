@@ -1,0 +1,31 @@
+{
+  "reader": "tsv",
+  "tsv_heads": {
+    "tok": 0,
+    "pos": 1
+  },
+  "log_path": null,
+  "chunking": false,
+  "input_config": {
+    "dropout": 0.5
+  },
+  "rnn_config": {
+    "mode": "lstm",
+    "bidirectional": true,
+    "hidden_size": 256,
+    "num_layers": 2
+  },
+  "output_config": {
+    "flatten": false
+  },
+  "device": "gpu",
+  "core": 0,
+  "epoch": 100,
+  "trn_batch": 64,
+  "dev_batch": 128,
+  "loss": "softmaxcrossentropyloss",
+  "optimizer": "adagrad",
+  "optimizer_params": {
+    "learning_rate": 0.01
+  }
+}

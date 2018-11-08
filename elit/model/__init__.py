@@ -13,18 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.tokenizer import SpaceTokenizer, EnglishTokenizer
 
-__author__ = 'Jinho D. Choi'
-import sys
+__author__ = "Gary Lai"
 
-seg = sys.argv[3] == 'space'
-fin = open(sys.argv[1])
-fout = open(sys.argv[2], 'w')
-tok = SpaceTokenizer() if seg else EnglishTokenizer()
-
-for i,line in enumerate(fin):
-    if i%100000 == 0: print(i)
-    d = tok.decode(line)
-    for s in d.sentences:
-        fout.write(' '.join(s.tokens)+'\n')
+from .rnn_model import RNNModel
+from .cnn_model import CNNModel

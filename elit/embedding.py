@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
 import inspect
 import logging
-from typing import List, Sequence
+from typing import List, Sequence, Union
 
+import abc
 import fastText
 import numpy as np
 from gensim.models import KeyedVectors
@@ -234,3 +234,14 @@ class ContextualStringEmbedding(Embedding):
                     embeddings.append(embedding)
 
                 i += 1
+
+
+def init_emb(config: list) -> Union[Word2Vec, FastText]:
+    model, path = config
+    if model.lower() == 'word2vec':
+        emb = Word2Vec
+    elif model.lower() == 'fasttext':
+        emb = FastText
+    else:
+        raise TypeError('model {} is not supported'.format(model))
+    return emb(path)

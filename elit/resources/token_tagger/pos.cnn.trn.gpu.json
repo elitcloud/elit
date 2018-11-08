@@ -2,11 +2,10 @@
   "reader": "tsv",
   "tsv_heads": {
     "tok": 0,
-    "ner": 1
+    "pos": 1
   },
   "log_path": null,
-  "sqeuence": false,
-  "chunking": true,
+  "chunking": false,
   "feature_windows": [3, 2, 1, 0, -1, -2, -3],
   "position_embedding": false,
   "label_embedding": false,
@@ -24,8 +23,8 @@
   "output_config": {
     "dropout": 0.2
   },
-  "device": "cpu",
-  "core": 1,
+  "device": "gpu",
+  "core": 0,
   "epoch": 100,
   "trn_batch": 64,
   "dev_batch": 2048,

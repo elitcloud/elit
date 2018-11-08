@@ -13,84 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
-from typing import Any, Tuple
+from typing import Tuple
 
+import abc
 from mxnet import metric
 
-from elit.structure import Document
+from elit.structure import BILOU
 
 __author__ = 'Jinho D. Choi'
 
 
-class EvalMetric(abc.ABC):
-    @abc.abstractmethod
-    def update(self, document: Document):
-        """
-        Updates this evaluation metric given
-        """
-        pass
+class EvalMetric(metric.EvalMetric):
 
-    @abc.abstractmethod
-    def get(self) -> Any:
-        """
-        :return: the evaluated score.
-        """
-        pass
-
-
-class Accuracy(EvalMetric):
-    def __init__(self):
-        self.correct = 0
-        self.total = 0
-
-    def __str__(self):
-        return 'ACC:%6.2f (%d/%d)' % (self.get(), self.correct, self.total)
-
-    def get(self) -> float:
-        """
-        :return: accuracy in percentage.
-        """
-        return 100.0 * self.correct / self.total if self.total > 0 else 0
-
-    @abc.abstractmethod
-    def update(self, document: Document):
-        pass
-
-
-class F1(EvalMetric):
-    def __init__(self):
-        super().__init__()
-        self.correct = 0
-        self.p_total = 0
-        self.r_total = 0
-
-    def __str__(self):
-        return 'F1:%6.2f, P:%6.2f, RB:%6.2f' % (
-            self.f1(), self.precision(), self.recall())
-
-    def precision(self) -> float:
-        return 100.0 * self.correct / self.p_total if self.p_total > 0 else 0
-
-    def recall(self) -> float:
-        return 100.0 * self.correct / self.r_total if self.r_total > 0 else 0
-
-    def f1(self):
-        p = self.precision()
-        r = self.recall()
-        return 2 * p * r / (p + r) if p + r > 0 else 0
-
-    def get(self):
-        return self.f1()
-
-    @abc.abstractmethod
-    def update(self, document: Document):
-        pass
-
-
-class MxEvalMetric(metric.EvalMetric):
-
-    @abc.abstractmethod
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
 
@@ -99,7 +33,7 @@ class MxEvalMetric(metric.EvalMetric):
         pass
 
 
-class MxF1(MxEvalMetric):
+class F1(EvalMetric):
 
     def __init__(self):
         super().__init__(name='f1score')
@@ -108,10 +42,10 @@ class MxF1(MxEvalMetric):
         self.r_total = 0.0
 
     def precision(self) -> float:
-        return 100.0 * self.correct / self.p_total if self.p_total > 0.0 else 0.0
+        return self.correct / self.p_total if self.p_total > 0.0 else 0.0
 
     def recall(self) -> float:
-        return 100.0 * self.correct / self.r_total if self.r_total > 0.0 else 0.0
+        return self.correct / self.r_total if self.r_total > 0.0 else 0.0
 
     def f1(self) -> float:
         p = self.precision()
@@ -129,3 +63,13 @@ class MxF1(MxEvalMetric):
     @abc.abstractmethod
     def update(self, labels, preds):
         pass
+
+
+class ChunkF1(F1):
+
+    def update(self, labels, preds):
+        gold = BILOU.to_chunks(labels)
+        pred = BILOU.to_chunks(preds)
+        self.correct += len(set.intersection(set(gold), set(pred)))
+        self.p_total += len(pred)
+        self.r_total += len(gold)

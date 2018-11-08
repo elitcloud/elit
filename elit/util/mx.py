@@ -19,7 +19,7 @@ import mxnet as mx
 __author__ = "Gary Lai"
 
 
-def mxloss(s: str) -> mx.gluon.loss.Loss:
+def mx_loss(s: str) -> mx.gluon.loss:
     s = s.lower()
 
     if s == 'softmaxcrossentropyloss':

@@ -13,78 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import abc
 import glob
 import inspect
 import logging
 import marisa_trie
 import pickle
-from types import SimpleNamespace
-from typing import List, Optional, Union, Sequence
+from typing import List, Optional, Sequence
 
+import abc
 import fastText
 import numpy as np
 from gensim.models import KeyedVectors
-from mxnet import nd
-from mxnet.ndarray import NDArray
+from types import SimpleNamespace
 
 from elit.structure import TOK, Document
 
 __author__ = 'Jinho D. Choi'
-
-
-class LabelMap(object):
-    """
-    :class:`LabelMap` provides the mapping between string labels and their unique integer IDs.
-    """
-
-    def __init__(self):
-        self.index_map = {}
-        self.labels = []
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __str__(self):
-        return str(self.index_map)
-
-    def add(self, label: str) -> int:
-        """
-        :param label: the label.
-        :return: the class ID of the label.
-
-        Adds the label to this map and assigns its class ID if not already exists.
-        """
-        idx = self.cid(label)
-        if idx < 0:
-            idx = len(self.labels)
-            self.index_map[label] = idx
-            self.labels.append(label)
-        return idx
-
-    def get(self, cid: int) -> str:
-        """
-        :param cid: the class ID.
-        :return: the label corresponding to the class ID.
-        """
-        return self.labels[cid]
-
-    def cid(self, label: str) -> int:
-        """
-        :param label: the label.
-        :return: the class ID of the label if exists; otherwise, -1.
-        """
-        return self.index_map.get(label, -1)
-
-    def argmax(self, scores: Union[np.ndarray, NDArray]) -> str:
-        """
-        :param scores: the prediction scores of all labels.
-        :return: the label with the maximum score.
-        """
-        if self.__len__() < len(scores):
-            scores = scores[:self.__len__()]
-        n = nd.argmax(scores, axis=0).asscalar() if isinstance(scores, NDArray) else np.argmax(scores)
-        return self.get(int(n))
 
 
 # ======================================== Vector Space Models ========================================
@@ -334,7 +278,7 @@ class Position2Vec(VectorSpaceModel):
 
 
 def init_vsm(l: list) -> SimpleNamespace:
-    model, key, path = l
+    model, path = l
     if model.lower() == 'word2vec':
         model = Word2Vec
     elif model.lower() == 'fasttext':
@@ -343,4 +287,4 @@ def init_vsm(l: list) -> SimpleNamespace:
         model = Gaze
     else:
         raise TypeError('model {} is not supported'.format(model))
-    return SimpleNamespace(model=model(path), key=key)
+    return SimpleNamespace(model=model(path))
