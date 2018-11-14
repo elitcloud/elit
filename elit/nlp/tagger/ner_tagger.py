@@ -32,6 +32,9 @@ class NERTagger(NLPComponent):
         self.tagger.save(model_path)
 
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
+              pretrained_embeddings,
+              forward_language_model,
+              backward_language_model,
               learning_rate: float = 0.1,
               mini_batch_size: int = 32,
               max_epochs: int = 100,
@@ -39,7 +42,8 @@ class NERTagger(NLPComponent):
               patience: int = 2,
               save_model: bool = True,
               embeddings_in_memory: bool = True,
-              train_with_dev: bool = False, **kwargs) -> float:
+              train_with_dev: bool = False,
+              **kwargs) -> float:
         tag_type = 'ner'
         corpus = TaggedCorpus(NLPTaskDataFetcher.convert_elit_documents(trn_docs),
                               NLPTaskDataFetcher.convert_elit_documents(dev_docs),
@@ -49,14 +53,14 @@ class NERTagger(NLPComponent):
         with mx.Context(mxnet_prefer_gpu()):
             embedding_types: List[TokenEmbeddings] = [
 
-                WordEmbeddings('glove'),
+                WordEmbeddings(pretrained_embeddings),
 
                 # comment in this line to use character embeddings
                 # CharacterEmbeddings(),
 
                 # comment in these lines to use contextual string embeddings
-                CharLMEmbeddings('data/model/lm-news-forward'),
-                CharLMEmbeddings('data/model/lm-news-backward'),
+                CharLMEmbeddings(forward_language_model),
+                CharLMEmbeddings(backward_language_model),
             ]
 
             embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -105,7 +109,10 @@ if __name__ == '__main__':
     tagger = NERTagger()
     model_path = 'data/model/ner/debug'
     tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
-                 model_path, max_epochs=1)
+                 model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
+                 forward_language_model='data/model/lm-news-forward',
+                 backward_language_model='data/model/lm-news-backward',
+                 max_epochs=1)
     test = conll_to_documents('data/conll-03/debug/eng.tst')
     sent = tagger.decode(test)[0][SEN][3]
     print(sent[NER])
