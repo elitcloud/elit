@@ -13,15 +13,16 @@ import mxnet as mx
 if __name__ == '__main__':
     # use your own data path
     # data_folder = 'data/conll-03/debug'
-    data_folder = 'data/conll-03'
+    # data_folder = 'data/conll-03'
+    data_folder = 'data/dat'
 
     # get training, test and dev data
-    columns = {0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}
+    columns = {0: 'text', 1: 'pos', 2: 'ner'}
     corpus = NLPTaskDataFetcher.fetch_column_corpus(data_folder,
                                                     columns,
-                                                    train_file='eng.trn',
-                                                    test_file='eng.tst',
-                                                    dev_file='eng.dev',
+                                                    train_file='en-ner.trn',
+                                                    test_file='en-ner.tst',
+                                                    dev_file='en-ner.dev',
                                                     tag_to_biloes='ner',
                                                     source_scheme='ioblu')
     # 2. what tag do we want to predict?
@@ -35,16 +36,16 @@ if __name__ == '__main__':
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types: List[TokenEmbeddings] = [
 
-            WordEmbeddings('data/embedding/glove/glove.6B.100d.txt'),
+            WordEmbeddings('data/embedding/fasttext100.vec.txt'),
 
             # comment in this line to use character embeddings
             # CharacterEmbeddings(),
 
             # comment in these lines to use contextual string embeddings
-            # CharLMEmbeddings('data/model/lm-news-forward'),
-            # CharLMEmbeddings('data/model/lm-news-backward'),
-            CharLMEmbeddings('data/model/lm-jumbo-forward256'),
-            CharLMEmbeddings('data/model/lm-jumbo-backward256'),
+            CharLMEmbeddings('data/model/lm-news-forward'),
+            CharLMEmbeddings('data/model/lm-news-backward'),
+            # CharLMEmbeddings('data/model/lm-jumbo-forward256'),
+            # CharLMEmbeddings('data/model/lm-jumbo-backward256'),
         ]
 
         embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -60,7 +61,7 @@ if __name__ == '__main__':
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
         # 7. start training
-        trainer.train('data/model/ner-256',
+        trainer.train('data/model/ner/jumbo',
                       learning_rate=0.1,
                       mini_batch_size=32,
                       max_epochs=150,
