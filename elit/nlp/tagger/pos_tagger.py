@@ -1,20 +1,20 @@
 # -*- coding:utf-8 -*-
-# Author：hankcs
-# Date: 2018-09-27 21:03
+# Author: hankcs
+# Date: 2018-11-14 10:42
 import tempfile
 from typing import Sequence
 
 import mxnet as mx
 
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_chunks
+from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.nlp.tagger.tagger import Tagger
-from elit.util.structure import Document, NER, SEN
+from elit.util.structure import Document, SEN, POS
 from elit.util.structure import Sentence as ElitSentence
 
 
-class NERTagger(Tagger):
+class POSTagger(Tagger):
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
               pretrained_embeddings,
               forward_language_model,
@@ -30,7 +30,7 @@ class NERTagger(Tagger):
               **kwargs) -> float:
         return self._train(trn_docs, dev_docs, model_path, pretrained_embeddings, forward_language_model,
                            backward_language_model,
-                           'ner', learning_rate, mini_batch_size, max_epochs, anneal_factor, patience, save_model,
+                           'pos', learning_rate, mini_batch_size, max_epochs, anneal_factor, patience, save_model,
                            embeddings_in_memory, train_with_dev)
 
     def decode(self, docs: Sequence[Document], **kwargs):
@@ -40,7 +40,7 @@ class NERTagger(Tagger):
         for d in docs:
             for s in d:
                 s: ElitSentence = s
-                s[NER] = get_chunks([t.tags['ner'] for t in sentences[idx]])
+                s[POS] = [t.tags['pos'] for t in sentences[idx]]
                 idx += 1
         return docs
 
@@ -48,23 +48,24 @@ class NERTagger(Tagger):
         print('test... ')
         with mx.Context(mxnet_prefer_gpu()):
             trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
-            test_score, test_fp, test_result = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
-                                                                tempfile.gettempdir(),
-                                                                evaluation_method='span-F1',
-                                                                embeddings_in_memory=False)
-        print('TEST   \t%d\t' % test_fp + test_result)
+            test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
+                                                tempfile.gettempdir(),
+                                                evaluation_method='span-F1',
+                                                embeddings_in_memory=False)
+        print('TEST   \t%d\t' % test_score)
         return test_score
 
 
 if __name__ == '__main__':
-    tagger = NERTagger()
-    model_path = 'data/model/ner/debug'
-    tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
+    tagger = POSTagger()
+    model_path = 'data/model/pos/debug'
+    tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
+                 conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
                  model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
                  forward_language_model='data/model/lm-news-forward',
                  backward_language_model='data/model/lm-news-backward',
                  max_epochs=1)
-    test = conll_to_documents('data/conll-03/debug/eng.tst')
+    test = conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'})
     sent = tagger.decode(test)[0][SEN][3]
-    print(sent[NER])
+    print(sent[POS])
     tagger.evaluate(test)
