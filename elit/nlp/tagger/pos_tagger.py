@@ -64,7 +64,8 @@ if __name__ == '__main__':
                  model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
                  forward_language_model='data/model/lm-news-forward',
                  backward_language_model='data/model/lm-news-backward',
-                 max_epochs=1)
+                 max_epochs=1,
+                 embeddings_in_memory=False)
     test = conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'})
     sent = tagger.decode(test)[0][SEN][3]
     print(sent[POS])
