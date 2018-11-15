@@ -33,7 +33,7 @@ def tokenizer():
 
 @pytest.fixture()
 def space_tokenizer():
-    return SpaceTokenizer()
+    return WhitespaceTokenizer()
 
 
 @pytest.fixture()

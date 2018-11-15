@@ -1,6 +1,0 @@
-# Text Structures
-
-## Document
-
-## Sentence
-
