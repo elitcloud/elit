@@ -54,8 +54,8 @@ def get_version_info(filename):
         try:
             from elit.version import dev_version as DEV_VERSION
         except ImportError:
-            raise ImportError("Unable to import dev_version. Try removing " \
-                              "elit/version.py and the build directory " \
+            raise ImportError("Unable to import dev_version. Try removing " 
+                              "elit/version.py and the build directory " 
                               "before building.")
     else:
         DEV_VERSION = "Unknown"
@@ -77,16 +77,17 @@ release = %(isrelease)s
 if not release:
     version = full_version
 """
-    FULLVERSION, DEV_VERSION  = get_version_info(filename)
+    FULLVERSION, DEV_VERSION = get_version_info(filename)
 
     a = open(filename, 'w')
     try:
         a.write(cnt % {'version': VERSION,
                        'full_version': FULLVERSION,
-                       'dev_version': DEV_VERSION ,
+                       'dev_version': DEV_VERSION,
                        'isrelease': str(ISRELEASED)})
     finally:
         a.close()
+
 
 VERSION_PY = 'elit/version.py'
 

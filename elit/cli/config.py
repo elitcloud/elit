@@ -13,4 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-__author__ = 'Jinho D. Choi'
+from os.path import expanduser
+
+__author__ = "Gary Lai"
+
+HOME = expanduser("~")
+CONFIG_PATH = '{home}/.elit'.format(home=HOME)

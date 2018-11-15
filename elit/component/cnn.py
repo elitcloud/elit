@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import mxnet as mx
 from mxnet.gluon.data import DataLoader
 
 from elit.component import MXComponent
-from elit.embedding import Embedding
+from elit.nlp.embedding import Embedding
 from elit.model import CNNModel
 from elit.structure import Document
 

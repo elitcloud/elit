@@ -13,4 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-__author__ = 'Jinho D. Choi'
+
+__author__ = "Gary Lai"
+
+from .base import Embedding
+from .token import TokenEmbedding
+from .fasttext import FastText
+from .word2vec import Word2Vec
+from .contextual_string_embedding import ContextualStringEmbedding
+
+from typing import Union
+
+
+def init_emb(config: list) -> Union[Word2Vec, FastText]:
+    model, path = config
+    if model.lower() == 'word2vec':
+        emb = Word2Vec
+    elif model.lower() == 'fasttext':
+        emb = FastText
+    else:
+        raise TypeError('model {} is not supported'.format(model))
+    return emb(path)

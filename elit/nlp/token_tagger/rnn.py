@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,128 +16,99 @@
 import logging
 import pickle
 from types import SimpleNamespace
-from typing import Sequence, Optional, Tuple, List
+from typing import Sequence, List
 
 import mxnet as mx
+from gluonnlp.data import FixedBucketSampler
 from mxnet import nd, autograd
 from mxnet.gluon.data import DataLoader
+from mxnet.gluon.utils import clip_global_norm
 from mxnet.metric import Accuracy
 from tqdm import tqdm
 
-from elit.component import CNNComponent
-from elit.dataset import LabelMap, TokensDataset
-from elit.embedding import Embedding
+from elit.component import RNNComponent
+from elit.dataset import LabelMap, sequence_batchify_fn, SequencesDataset
+from elit.nlp.embedding import Embedding
 from elit.eval import ChunkF1
-from elit.model import CNNModel
+from elit.model import RNNModel
 from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 
-__author__ = 'Jinho D. Choi, Gary Lai'
+__author__ = 'Gary Lai'
 
 
-class CNNTokenTagger(CNNComponent):
+class RNNTokenTagger(RNNComponent):
 
     def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
-                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
-                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = None,
-                 fuse_conv_config: Optional[SimpleNamespace] = None,
-                 ngram_conv_config: Optional[SimpleNamespace] = None,
-                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
-                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
+                 rnn_config: SimpleNamespace, output_config: SimpleNamespace,
                  label_map: LabelMap = None, chunking: bool = False,
                  **kwargs):
         """
 
-        :param ctx:
+        :param ctx: ctx is the Context
         :param key:
         :param embs_config:
         :param label_map:
         :param chunking:
-        :param feature_windows:
-        :param input_config:
+        :param rnn_config:
         :param output_config:
-        :param fuse_conv_config:
-        :param ngram_conv_config:
-        :param hidden_configs:
-        :param initializer:
         :param kwargs:
         """
-        self.chunking = chunking
-        self.feature_windows = feature_windows
         self.label_map = label_map
-        input_config.col = sum([emb.dim for emb in embs])
-        input_config.row = len(self.feature_windows)
+        self.chunking = chunking
         if label_map:
             output_config.num_class = self.label_map.num_class()
-
-        super().__init__(ctx, key, embs,
-                         input_config,
-                         output_config,
-                         fuse_conv_config,
-                         ngram_conv_config,
-                         hidden_configs,
-                         initializer,
-                         **kwargs)
+        super().__init__(ctx, key, embs, rnn_config, output_config, **kwargs)
 
     def __str__(self):
-        s = ('CNNTokenTagger',
+        s = ('RNNTokenTagger',
              '- context: {}'.format(self.ctx),
              '- key: {}'.format(self.key),
              '- embs: {}'.format(self.embs),
              '- label_map: {}'.format(self.label_map),
              '- chunking: {}'.format(self.chunking),
-             '- feature windows: {}'.format(self.feature_windows),
-             '- initializer: {}'.format(self.initializer),
-             '- model: {}'.format(str(self.model)))
+             '- model: {}'.format(self.model))
         return '\n'.join(s)
 
     def train_block(self, data_iter: DataLoader, docs: Sequence[Document]) -> float:
-        """
-
-        :param data_iter:
-        :param sens:
-        :return:
-        """
         acc = Accuracy()
-        for data, label in tqdm(data_iter, leave=False):
-            data = data.as_in_context(self.ctx)
-            label = label.as_in_context(self.ctx)
+        for dids, sids, data, label in tqdm(data_iter, leave=False):
+            # batch_size, sequence_length, input_size -> sequence_length, batch_size, input_size
+            X = nd.transpose(data, axes=(1, 0, 2)).as_in_context(self.ctx)
+            # batch_size, sequence_length -> sequence_length, batch_size
+            Y = label.T.as_in_context(self.ctx)
+            state = self.model.begin_state(batch_size=X.shape[1], ctx=self.ctx)
+            for s in state:
+                s.detach()
             with autograd.record():
-                output = self.model(data)
-                l = self.loss(output, label)
+                output, state = self.model(X, state)
+                l = self.loss(output, Y)
             l.backward()
-            for preds, labels in zip(nd.argmax(output, axis=1), label):
+            grads = [param.grad(self.ctx) for param in self.model.collect_params().values()]
+            clip_global_norm(grads, self.model.rnn_layer.clip * X.shape[0] * X.shape[1])
+
+            # sequence_length, batch_size -> batch_size, sequence_length
+            for batch, (preds, labels) in enumerate(zip(nd.argmax(output, axis=2).T, label)):
+                sen = docs[dids[batch].asscalar()].sentences[sids[batch].asscalar()]
+                sequence_length = len(sen)
+                preds = preds[:sequence_length]
+                labels = labels[:sequence_length]
                 acc.update(labels=labels, preds=preds)
             self.trainer.step(data.shape[0])
         return float(acc.get()[1])
 
     def decode_block(self, data_iter: DataLoader, docs: Sequence[Document], **kwargs):
-        """
-
-        :param data_iter:
-        :param docs:
-        :param kwargs:
-        """
-        preds = []
-        for data, label in data_iter:
-            data = data.as_in_context(self.ctx)
-            output = self.model(data)
-            [preds.append(self.label_map.get(int(pred.asscalar()))) for pred in nd.argmax(output, axis=1)]
-
-        idx = 0
-        for doc in docs:
-            for sen in doc.sentences:
-                sen[self.key] = preds[idx:idx+len(sen)]
-                idx += len(sen)
+        for dids, sids, data, label in tqdm(data_iter, leave=False):
+            X = nd.transpose(data, axes=(1, 0, 2)).as_in_context(self.ctx)
+            state = self.model.begin_state(batch_size=X.shape[1], ctx=self.ctx)
+            output, state = self.model(X, state)
+            for batch, preds in enumerate(nd.argmax(output, axis=2).T):
+                sen = docs[dids[batch].asscalar()].sentences[sids[batch].asscalar()]
+                sequence_length = len(sen)
+                preds = [self.label_map.get(int(pred.asscalar())) for pred in preds[:sequence_length]]
+                sen[self.key] = preds
 
     def evaluate_block(self, data_iter: DataLoader, docs: Sequence[Document]) -> float:
-        """
-
-        :param data_iter:
-        :param docs:
-        :return:
-        """
         self.decode_block(data_iter=data_iter, docs=docs)
         if self.chunking:
             acc = ChunkF1()
@@ -153,26 +124,23 @@ class CNNTokenTagger(CNNComponent):
                     acc.update(labels=labels, preds=preds)
         return acc.get()[1]
 
-    def data_loader(self, docs: Sequence[Document], batch_size, shuffle=False, label=True, transform=None, **kwargs) -> DataLoader:
-        """
-
-        :param docs:
-        :param batch_size:
-        :param shuffle:
-        :param label:
-        :param transform:
-        :param kwargs:
-        :return:
-        """
+    def data_loader(self, docs: Sequence[Document], batch_size, shuffle=False, label=True, **kwargs) -> DataLoader:
         if label is True and self.label_map is None:
             raise ValueError('Please specify label_map')
-        return DataLoader(TokensDataset(docs=docs, embs=self.embs, key=self.key, label_map=self.label_map, feature_windows=self.feature_windows, label=label, transform=transform),
-                          batch_size=batch_size,
-                          shuffle=shuffle)
+        batchify_fn = kwargs.get('batchify_fn', sequence_batchify_fn)
+        bucket = kwargs.get('bucket', False)
+        num_buckets = kwargs.get('num_buckets', 10)
+        ratio = kwargs.get('ratio', 0)
+        dataset = SequencesDataset(docs=docs, embs=self.embs, key=self.key, label_map=self.label_map, label=label)
+        if bucket is True:
+            dataset_lengths = list(map(lambda x: float(len(x[3])), dataset))
+            batch_sampler = FixedBucketSampler(dataset_lengths, batch_size=batch_size, num_buckets=num_buckets, ratio=ratio, shuffle=shuffle)
+            return DataLoader(dataset=dataset, batch_sampler=batch_sampler, batchify_fn=batchify_fn)
+        else:
+            return DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, batchify_fn=batchify_fn)
 
     def load(self, model_path: str, **kwargs):
         """
-
         :param model_path: the path to a pre-trained model to be loaded.
         :type model_path: str
         """
@@ -180,21 +148,12 @@ class CNNTokenTagger(CNNComponent):
             self.key = pickle.load(fin)
             self.label_map = pickle.load(fin)
             self.chunking = pickle.load(fin)
-            self.feature_windows = pickle.load(fin)
-            self.input_config = pickle.load(fin)
+            self.rnn_config = pickle.load(fin)
             self.output_config = pickle.load(fin)
-            self.fuse_conv_config = pickle.load(fin)
-            self.ngram_conv_config = pickle.load(fin)
-            self.hidden_configs = pickle.load(fin)
         logging.info('{} is loaded'.format(pkl(model_path)))
-        self.model = CNNModel(
-            input_config=self.input_config,
-            output_config=self.output_config,
-            fuse_conv_config=self.fuse_conv_config,
-            ngram_conv_config=self.ngram_conv_config,
-            hidden_configs=self.hidden_configs)
-        # self.model.load_params(params(model_path), self.ctx)
+        self.model = RNNModel(rnn_config=self.rnn_config, output_config=self.output_config)
         self.model.load_parameters(params(model_path), self.ctx)
+        # self.model.load_params(params(model_path), self.ctx)
         logging.info('{} is loaded'.format(params(model_path)))
         logging.info(self.__str__())
         return self
@@ -208,12 +167,8 @@ class CNNTokenTagger(CNNComponent):
             pickle.dump(self.key, fout)
             pickle.dump(self.label_map, fout)
             pickle.dump(self.chunking, fout)
-            pickle.dump(self.feature_windows, fout)
-            pickle.dump(self.input_config, fout)
+            pickle.dump(self.rnn_config, fout)
             pickle.dump(self.output_config, fout)
-            pickle.dump(self.fuse_conv_config, fout)
-            pickle.dump(self.ngram_conv_config, fout)
-            pickle.dump(self.hidden_configs, fout)
         logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))

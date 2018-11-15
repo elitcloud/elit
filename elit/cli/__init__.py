@@ -13,4 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-__author__ = 'Jinho D. Choi'
+
+__author__ = "Gary Lai"
+
+from .base import BaseCLI
+from .component import ComponentCLI

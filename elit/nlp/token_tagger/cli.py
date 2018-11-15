@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@ import argparse
 import json
 import sys
 
-from elit.cli import CLIComponent
+from elit.cli import ComponentCLI
+from elit.nlp.embedding import init_emb
 from elit.nlp.token_tagger import TokenTaggerConfig
-from elit.embedding import init_emb
 from elit.util.io import set_logger
 
 __author__ = "Gary Lai"
 
 
-class TokenTaggerCLI(CLIComponent):
+class TokenTaggerCLI(ComponentCLI):
     def __init__(self):
         super().__init__('token_tagger', 'Token Tagger')
 
