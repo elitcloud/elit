@@ -14,16 +14,17 @@
 # limitations under the License.
 # ========================================================================
 import argparse
+import json
 import logging
 import sys
 
-import requests
+from pkg_resources import resource_filename
 
+from elit import EMB_PATH
 from elit.cli import BaseCLI
+from elit.util.io import check_resource_dir, file_exist, download, sha1sum
 
 __author__ = "Gary Lai"
-
-BUCKET = 'https://s3-us-west-2.amazonaws.com/elitcloud-public-data/'
 
 
 class DownloadCLI(BaseCLI):
@@ -32,43 +33,26 @@ class DownloadCLI(BaseCLI):
         name = 'download'
         usage = """elit {} <command> [<args>]
 
-        commands:
-            emb: word embedding data
-            model: pre-trained model
-        """.format(name)
-
+       commands:
+           emb: word embedding file
+       """.format(name)
         super().__init__(name=name, usage=usage)
 
     @classmethod
     def emb(cls):
-        parser = argparse.ArgumentParser(description='Download word embeddings file',
+        parser = argparse.ArgumentParser(description='Download word embeddings',
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        # parser.add_argument('-a', '--all', action='store_true')
-        parser.add_argument('model', type=str, help='word embedding model, ex: fasttext')
-        parser.add_argument('dim', type=int, help='word embedding dim, ex: 400')
+        parser.add_argument('model', type=str)
         args = parser.parse_args(sys.argv[3:])
-        if args.model == 'fasttext':
-            pass
-
-    @classmethod
-    def model(cls):
-        pass
-
-
-def download(url, filename):
-    with open(filename, "wb") as f:
-        logging.info("Downloading {}".format(filename))
-        response = requests.get(url, stream=True)
-        total_length = response.headers.get('content-length')
-
-        if total_length is None:  # no content length header
-            f.write(response.content)
+        meta_file = resource_filename('elit.resources.meta.emb', '{}.json'.format(args.model))
+        with open(meta_file) as f:
+            meta = json.load(f)
+        check_resource_dir(EMB_PATH)
+        filename = '{}/{}'.format(EMB_PATH, meta['name'])
+        if not file_exist(filename):
+            download(meta['source'], filename)
+        if sha1sum(filename) != meta['checksum']:
+            logging.error("{}: checksum is invalid. Please remove it and and run download command it again.".format(filename))
         else:
-            dl = 0
-            total_length = int(total_length)
-            for data in response.iter_content(chunk_size=4096):
-                dl += len(data)
-                f.write(data)
-                done = int(50 * dl / total_length)
-                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
-                sys.stdout.flush()
+            logging.error("{} exist.".format(filename))
+

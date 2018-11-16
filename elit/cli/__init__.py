@@ -14,7 +14,37 @@
 # limitations under the License.
 # ========================================================================
 
+import argparse
+import sys
+
+from elit.util.logger import set_logger
+
 __author__ = "Gary Lai"
+
+
+class ElitCli(object):
+    def __init__(self):
+        set_logger()
+        usage = '''elit <command> [<args>]
+
+        commands:
+            token_tagger: use token tagger
+            download: download pre-trained model or word embedding
+        '''
+        parser = argparse.ArgumentParser(usage=usage)
+        parser.add_argument('command', help='command to run')
+        args = parser.parse_args(sys.argv[1:2])
+        if args.command == 'token_tagger':
+            from elit.nlp.token_tagger import TokenTaggerCLI
+            TokenTaggerCLI()
+        if args.command == 'download':
+            from elit.cli.download import DownloadCLI
+            DownloadCLI()
+        else:
+            print('Unrecognized command')
+            parser.print_help()
+            exit(1)
+
 
 from .base import BaseCLI
 from .component import ComponentCLI

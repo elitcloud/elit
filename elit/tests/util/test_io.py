@@ -15,7 +15,7 @@
 # ========================================================================
 
 
-from elit.util.io import tsv_cols, tsv_reader, json_reader
+from elit.util.reader import tsv_cols, tsv_reader, json_reader
 
 __author__ = "Gary Lai"
 

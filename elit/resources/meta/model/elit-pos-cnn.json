@@ -1,0 +1,18 @@
+{
+  "name": "elit-pos-cnn",
+  "github": "",
+  "emb": [{
+    "name": "fasttext-dim400.bin",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/word_embedding/fasetext/dim400.bin",
+    "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
+  }],
+  "model": [{
+    "name": "elit-pos-cnn.params",
+    "source": "",
+    "checksum": ""
+  }, {
+    "name": "elit-pos-cnn.pkl",
+    "source": "",
+    "checksum": ""
+  }]
+}

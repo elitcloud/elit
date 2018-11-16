@@ -13,5 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import logging
+import sys
 
 __author__ = "Gary Lai"
+
+
+def set_logger(filename: str = None, level: int = logging.INFO, formatter: logging.Formatter = None):
+    log = logging.getLogger()
+    log.setLevel(level)
+    ch = logging.StreamHandler(sys.stdout) if filename is None else logging.FileHandler(filename)
+    if formatter is not None:
+        ch.setFormatter(formatter)
+    log.addHandler(ch)

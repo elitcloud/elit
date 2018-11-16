@@ -140,7 +140,11 @@ def setup_package():
             'gluonnlp==0.4.0',
             'marisa_trie==0.7.5',
             'tqdm==4.26.0',
+            'gitpython==2.1.11',
         ],
+        extras_require={
+          'cu92': ['mxnet-cu92==1.3.0']
+        },
         tests_require=[
             'pytest',
         ],

@@ -17,7 +17,7 @@ import mxnet as mx
 from elit.util.mx import mx_loss
 from types import SimpleNamespace
 
-from elit.util.io import tsv_reader, json_reader
+from elit.util.reader import tsv_reader, json_reader
 
 __author__ = "Gary Lai"
 

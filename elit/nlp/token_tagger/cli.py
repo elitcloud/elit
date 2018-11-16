@@ -20,7 +20,7 @@ import sys
 from elit.cli import ComponentCLI
 from elit.nlp.embedding import init_emb
 from elit.nlp.token_tagger import TokenTaggerConfig
-from elit.util.io import set_logger
+from elit.util.logger import set_logger
 
 __author__ = "Gary Lai"
 
