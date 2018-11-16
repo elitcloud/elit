@@ -20,6 +20,7 @@ import marisa_trie
 import pickle
 from typing import List, Optional, Sequence
 
+
 import abc
 
 import fastText
@@ -114,7 +115,7 @@ class FastText(VectorSpaceModel):
         """
         logging.info('FastText')
         logging.info('- model: {}'.format(filepath))
-        self.model = fasttext.load_model(filepath)
+        self.model = fastText.load_model(filepath)
         dim = self.model.get_dimension()
         super().__init__(dim)
         logging.info('- vocab = %d, dim = %d' % (len(self.model.get_words()), dim))
