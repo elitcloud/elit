@@ -191,6 +191,14 @@ class SequenceTaggerTrainer:
                         loss_file.close()
                     print(summary)
 
+                    if self.corpus.test and len(self.corpus.test):
+                        print('test... ')
+                        test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
+                                                                         evaluation_method=evaluation_method,
+                                                                         embeddings_in_memory=embeddings_in_memory)
+                        summary += '\tTEST   \t%d\t' % test_fp + test_result
+                    print(summary)
+
             # if we do not use dev data for model selection, save final model
             if save_model and train_with_dev:
                 self.model.save(base_path)

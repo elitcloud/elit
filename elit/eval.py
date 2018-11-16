@@ -34,7 +34,7 @@ class EvalMetric(metric.EvalMetric):
 
 
 class F1(EvalMetric):
-
+  
     def __init__(self):
         super().__init__(name='f1score')
         self.correct = 0.0
