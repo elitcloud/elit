@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import itertools
-from typing import List, Tuple
+from typing import List, Tuple, Sequence
 
 __author__ = 'Jinho D. Choi'
 
@@ -138,6 +138,9 @@ class Document(dict):
 
     def add_sentence(self, sentence: Sentence):
         self.sentences.append(sentence)
+
+    def add_sentences(self, sentences: Sequence[Sentence]):
+        self.sentences.extend(sentences)
 
 
 def to_gold(key: str) -> str:

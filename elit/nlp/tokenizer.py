@@ -17,7 +17,7 @@ import abc
 import inspect
 import os
 import re
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from pkg_resources import resource_filename
 
@@ -30,9 +30,109 @@ __author__ = "Jinho D. Choi, Gary Lai"
 
 
 class Tokenizer(Component):
-    def init(self, **kwargs):
-        """ Not supported. """
-        pass
+    def decode(self, input_text: str, init_offset: int = 0, segment: int = 2, **kwargs) -> Document:
+        """
+        :param input_text: the input text.
+        :param init_offset: the initial offset of the first token.
+        :param segment: 0 - no segmentation, 1 - newline segmentation, 2 - rule-based segmentation, 3 - newline and rule-based segmentation.
+        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
+                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
+        """
+        document = Document()
+
+        if segment == 0:
+            tokens, offsets = self.tokenize(input_text, init_offset)
+            document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
+        elif segment == 2:
+            tokens, offsets = self.tokenize(input_text, init_offset)
+            document.add_sentences(self.segment(tokens, offsets))
+        elif segment == 1 or segment == 3:
+            indices = [i for i, c in enumerate(input_text) if i == 0 or (c == '\n' and input_text[i - 1] != '\n')]
+            indices.append(len(input_text))
+
+            for i in range(1, len(indices)):
+                bidx = indices[i - 1]
+                eidx = indices[i]
+                tokens, offsets = self.tokenize(input_text[bidx:eidx], bidx)
+                if tokens:
+                    if segment == 1: document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
+                    else: document.add_sentences(self.segment(tokens, offsets))
+
+        for i, sentence in enumerate(document.sentences): sentence[SEN_ID] = i
+        return document
+
+    @abc.abstractmethod
+    def tokenize(self, input_text: str, init_offset: int = 0) -> Tuple[List[str], List[Tuple[int, int]]]:
+        """
+        :param input_text: the input text.
+        :param init_offset: the initial offset of the first token.
+        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
+                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
+        """
+        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+
+    @classmethod
+    def get_offsets(cls, input_text: str, tokens: List[str], init_offset=0) -> List[Tuple[int, int]]:
+        """
+        :param input_text: the input text.
+        :param tokens: the list of tokens split from the input text.
+        :param init_offset: the initial offset of the first token.
+        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end (exclusive) offsets indicate
+        the caret positions of the first and the last characters of the corresponding token, respectively.
+        e.g., text = 'Hello, world!', tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
+        """
+
+        def get_offset(token):
+            nonlocal end
+            begin = input_text.index(token, end)
+            end = begin + len(token)
+            return begin + init_offset, end + init_offset
+
+        end = 0
+        return [get_offset(token) for token in tokens]
+
+    @classmethod
+    def segment(cls, tokens: List[str], offsets: List[Tuple[int, int]]) -> List[Sentence]:
+        """
+        :param tokens: the list of input tokens.
+        :param offsets: the list of offsets, where each offset is a tuple of (begin, end).
+        :return: the list of sentences segmented from the input text.
+        """
+
+        def sentence(bidx: int, eidx: int) -> Sentence:
+            return Sentence({TOK: tokens[bidx:eidx], OFF: offsets[bidx:eidx]})
+
+        right_quote = True
+        sentences = []
+        begin = 0
+
+        for i, token in enumerate(tokens):
+            t = token[0]
+            if t == '"': right_quote = not right_quote
+
+            if begin == i:
+                if sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
+                    d = sentences[-1]
+                    d[TOK].append(token)
+                    d[OFF].append(offsets[i])
+                    begin = i + 1
+            elif all(is_final_mark(c) for c in token):
+                sentences.append(sentence(begin, i + 1))
+                begin = i + 1
+
+        if begin < len(tokens):
+            sentences.append(sentence(begin, len(tokens)))
+
+        return sentences
+
+
+class WhitespaceTokenizer(Tokenizer):
+    """
+    :class:`SpaceTokenizer` splits tokens by white-spaces.
+    """
+
+    def __init__(self):
+        super(WhitespaceTokenizer, self).__init__()
 
     def save(self, model_path: str, **kwargs):
         """ Not supported. """
@@ -46,95 +146,19 @@ class Tokenizer(Component):
         """ Not supported. """
         pass
 
-    @abc.abstractmethod
-    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
-        """
-        :param input_text: the input text.
-        :param offset: the offset of the first token.
-        :param segment: if True, segment sentences from the text.
-        :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
-                 see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @classmethod
-    def get_offsets(cls, input_text: str, tokens: List[str], offset=0) -> List[Tuple[int, int]]:
-        """
-        :param input_text: the input text.
-        :param tokens: the list of tokens split from the input text.
-        :param offset: the offset of the first token
-        :return: the list of (begin, end) offsets, where the begin (inclusive) and the end (exclusive) offsets indicate
-        the caret positions of the first and the last characters of the corresponding token, respectively.
-        e.g., text = 'Hello, world!', tokens = ['Hello', ',', 'world', '!'] -> [(0, 5), (5, 6), (7, 12), (12, 13)]
-        """
-        def get_offset(token):
-            nonlocal end
-            begin = input_text.index(token, end)
-            end = begin + len(token)
-            return begin + offset, end + offset
-
-        end = 0
-        return [get_offset(token) for token in tokens]
-
-    @classmethod
-    def segment(cls, tok_output: Dict[str, List]) -> Document:
-        """
-        :param tok_output: the output of :meth:`Tokenizer.decode`.
-        :return: a document where sentences are segmented from the input text.
-        """
-        tokens = tok_output[TOK]
-        offsets = tok_output[OFF]
-        document = Document()
-        right_quote = True
-        begin = 0
-        sid = 0
-
-        for i, token in enumerate(tokens):
-            t = token[0]
-            if t == '"':
-                right_quote = not right_quote
-
-            if begin == i:
-                if document.sentences and (is_right_bracket(t) or t == u'\u201D' or t == '"' and right_quote):
-                    d = document.sentences[-1]
-                    d[TOK].append(token)
-                    d[OFF].append(offsets[i])
-                    begin = i + 1
-            elif all(is_final_mark(c) for c in token):
-                end = i + 1
-                document.add_sentence(Sentence({SEN_ID: sid, TOK: tokens[begin:end], OFF: offsets[begin:end]}))
-                sid += 1
-                begin = end
-
-        if begin < len(tok_output):
-            end = len(tokens)
-            document.add_sentence(Sentence({SEN_ID: sid, TOK: tokens[begin:end], OFF: offsets[begin:end]}))
-
-        return document
-
-
-class SpaceTokenizer(Tokenizer):
-    """
-    :class:`SpaceTokenizer` splits tokens by white-spaces.
-    """
-    def __init__(self):
-        super(SpaceTokenizer, self).__init__()
-
     def load(self, model_path: str, **kwargs):
         """ Not supported. """
         pass
 
-    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
+    def tokenize(self, input_text: str, init_offset: int = 0) -> Tuple[List[str], List[Tuple[int, int]]]:
         """
         :param input_text: the input text.
-        :param offset: the offset of the first token.
-        :param segment: if True, segment sentences from the text.
+        :param init_offset: the initial offset of the first token.
         :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
                  see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
         """
         tokens = input_text.split()
-        d = {TOK: tokens, OFF: self.get_offsets(input_text, tokens, offset)}
-        return self.segment(d) if segment else Document(sen=[Sentence(d)])
+        return tokens, self.get_offsets(input_text, tokens, init_offset)
 
 
 class EnglishTokenizer(Tokenizer):
@@ -207,6 +231,18 @@ class EnglishTokenizer(Tokenizer):
         self.RE_FINAL_MARK_IN_BETWEEN = re.compile(
             r'([A-Za-z]{3,})([.?!]+)([A-Za-z]{3,})$')
 
+    def save(self, model_path: str, **kwargs):
+        """ Not supported. """
+        pass
+
+    def train(self, trn_data, dev_data, model_path: str, **kwargs) -> float:
+        """ Not supported. """
+        pass
+
+    def evaluate(self, data, **kwargs):
+        """ Not supported. """
+        pass
+
     def load(self, model_path, *args, **kwargs):
         self.ABBREVIATION_PERIOD = read_word_set(
             os.path.join(model_path, 'english_abbreviation_period.txt'))
@@ -219,21 +255,19 @@ class EnglishTokenizer(Tokenizer):
         self.HYPHEN_SUFFIX = read_word_set(
             os.path.join(model_path, 'english_hyphen_suffix.txt'))
 
-    def decode(self, input_text: str, offset: int=0, segment: bool=True, **kwargs) -> Document:
+    def tokenize(self, input_text: str, init_offset: int = 0) -> Tuple[List[str], List[Tuple[int, int]]]:
         """
         :param input_text: the input text.
-        :param offset: the offset of the first token.
-        :param segment: if True, segment sentences from the text.
+        :param init_offset: the initial offset of the first token.
         :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
                  see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
         """
         tokens = []
         offsets = []
-        result = {TOK: tokens, OFF: offsets}
 
         # no valid token in the input text
         if not input_text or input_text.isspace():
-            return Document()
+            return tokens, offsets
 
         # skip beginning and ending spaces
         begin = next(i for i, c in enumerate(input_text) if not c.isspace())
@@ -242,11 +276,11 @@ class EnglishTokenizer(Tokenizer):
         # search for in-between spaces
         for end, c in enumerate(input_text[begin + 1:last], begin + 1):
             if c.isspace():
-                self.tokenize_aux(tokens, offsets, input_text, begin, end, offset)
+                self.tokenize_aux(tokens, offsets, input_text, begin, end, init_offset)
                 begin = end + 1
 
-        self.tokenize_aux(tokens, offsets, input_text, begin, last, offset)
-        return self.segment(result) if segment else Document(sen=[Sentence(result)])
+        self.tokenize_aux(tokens, offsets, input_text, begin, last, init_offset)
+        return tokens, offsets
 
     def tokenize_aux(self, tokens, offsets, text, begin, end, offset):
         if begin >= end or end > len(text): return False

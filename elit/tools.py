@@ -13,44 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import os
+from elit.nlp.tokenizer import WhitespaceTokenizer
+from elit.nlp.tokenizer import EnglishTokenizer
 
-import pytest
+__author__ = 'Jinho D. Choi'
 
-from elit.morph_analyzer import EnglishMorphAnalyzer
-from elit.nlp.tokenizer import Tokenizer, WhitespaceTokenizer, EnglishTokenizer
-from elit.util.io import tsv_reader, json_reader
-
-__author__ = "Gary Lai"
-
-current_path = os.path.abspath(os.path.dirname(__file__))
-
-
-@pytest.fixture()
-def tokenizer():
-    return Tokenizer()
-
-
-@pytest.fixture()
-def space_tokenizer():
-    return WhitespaceTokenizer()
-
-
-@pytest.fixture()
-def english_tokenizer():
-    return EnglishTokenizer()
-
-
-@pytest.fixture()
-def en_morph_analyzer():
-    return EnglishMorphAnalyzer()
-
-
-@pytest.fixture()
-def tsv_reader():
-    return tsv_reader
-
-
-@pytest.fixture()
-def json_reader():
-    return json_reader
