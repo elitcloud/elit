@@ -1,11 +1,11 @@
 [{
   "doc_id": 0,
-  "sen": [{
-    "sen_id": 0,
+  "sens": [{
+    "sid": 0,
     "tok": ["John", "bought", "a", "car", "."],
     "ner": ["U-PER", "O", "B-IT", "L-IT", "."]
   }, {
-    "sen_id": 1,
+    "sid": 1,
     "tok": ["A", "boy", "is", "here", "?"],
     "ner": ["O", "O", "B-P", "I-P", "L-P"]
   }]

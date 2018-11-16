@@ -35,11 +35,11 @@ def test_tsv_reader():
         key='pos'
     )
     print(docs)
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
          {'tok': ['John', 'bought', 'a', 'car', '.'], 'pos-gold': ['NNP', 'VBD', 'DT', 'NN', '.'],
-          'sen_id': 0},
+          'sid': 0},
          {'tok': ['A', 'boy', 'is', 'here', '?'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
-          'sen_id': 1}],
+          'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 7
     docs, label_map = tsv_reader(
@@ -47,11 +47,11 @@ def test_tsv_reader():
         cols=tsv_cols(tsv_heads),
         key='pos'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['Mary', 'sold', 'a', 'truck', '.'], 'pos-gold': ['NNP', 'VBD', 'DT', 'NN', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['The', 'girl', 'is', 'there', '!'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 7
     tsv_heads = [['tok', 0], ['ner', 1]]
@@ -60,11 +60,11 @@ def test_tsv_reader():
         cols=tsv_cols(tsv_heads),
         key='ner'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['John', 'bought', 'a', 'car', '.'], 'ner-gold': ['U-PER', 'O', 'B-IT', 'L-IT', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['A', 'boy', 'is', 'here', '?'], 'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 8
     tsv_heads = [['tok', 0], ['ner', 1]]
@@ -73,13 +73,13 @@ def test_tsv_reader():
         cols=tsv_cols(tsv_heads),
         key='ner'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['Mary', 'sold', 'a', 'truck', '.'],
          'ner-gold': ['U-PER', 'O', 'B-IT', 'L-IT', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['The', 'girl', 'is', 'there', '!'],
          'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 8
 
@@ -89,45 +89,45 @@ def test_json_reader():
         filepath=resource_filename('elit.tests.resources', 'json/pos/trn/sample.json'),
         key='pos'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
          {'tok': ['John', 'bought', 'a', 'car', '.'], 'pos-gold': ['NNP', 'VBD', 'DT', 'NN', '.'],
-          'sen_id': 0},
+          'sid': 0},
          {'tok': ['A', 'boy', 'is', 'here', '?'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
-          'sen_id': 1}],
+          'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 7
     docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/pos/dev/sample.json'),
         key='pos'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['Mary', 'sold', 'a', 'truck', '.'], 'pos-gold': ['NNP', 'VBD', 'DT', 'NN', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['The', 'girl', 'is', 'there', '!'], 'pos-gold': ['DT', 'NN', 'VBZ', 'RB', '.'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 7
     docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/ner/trn/sample.json'),
         key='ner'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['John', 'bought', 'a', 'car', '.'], 'ner-gold': ['U-PER', 'O', 'B-IT', 'L-IT', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['A', 'boy', 'is', 'here', '?'], 'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 8
     docs, label_map = json_reader(
         filepath=resource_filename('elit.tests.resources', 'json/ner/dev/sample.json'),
         key='ner'
     )
-    assert docs == [{'sen': [
+    assert docs == [{'sens': [
         {'tok': ['Mary', 'sold', 'a', 'truck', '.'],
          'ner-gold': ['U-PER', 'O', 'B-IT', 'L-IT', '.'],
-         'sen_id': 0},
+         'sid': 0},
         {'tok': ['The', 'girl', 'is', 'there', '!'],
          'ner-gold': ['O', 'O', 'B-P', 'I-P', 'L-P'],
-         'sen_id': 1}],
+         'sid': 1}],
         'doc_id': 0}]
     assert len(label_map) == 8

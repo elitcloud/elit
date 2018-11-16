@@ -93,7 +93,7 @@ def tsv_reader(tsv_directory: str,
         [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
         [sent.update({SID: i}) for i, sent in enumerate(sentences)]
         sc += len(sentences)
-        documents.append(Document(sen=sentences))
+        documents.append(Document(sens=sentences))
 
     [sent.update({DOC_ID: i}) for i, sent in enumerate(documents)]
     logging.info('- dc = %d, sc = %d, wc = %d' % (len(documents), sc, wc))
@@ -117,7 +117,7 @@ def json_reader(filepath: str,
         docs = json.load(f)
         for i, doc in enumerate(docs):
             sentences = []
-            for sen in doc['sen']:
+            for sen in doc['sens']:
                 wc += len(sen['tok'])
                 if key is not None:
                     sen = sen.copy()
@@ -125,7 +125,7 @@ def json_reader(filepath: str,
                 sentences.append(Sentence(sen))
             sc += len(sentences)
             [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
-            document = Document(sen=sentences)
+            document = Document(sens=sentences)
             document[DOC_ID] = i
             documents.append(document)
             dc += len(documents)
