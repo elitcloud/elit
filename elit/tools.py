@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.nlp.tokenizer import WhitespaceTokenizer
+from elit.nlp.tokenizer import SpaceTokenizer
 from elit.nlp.tokenizer import EnglishTokenizer
 
 __author__ = 'Jinho D. Choi'

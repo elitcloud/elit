@@ -1,6 +1,0 @@
-# Coreference Resolution
-
-
-
-
-

@@ -126,13 +126,13 @@ class Tokenizer(Component):
         return sentences
 
 
-class WhitespaceTokenizer(Tokenizer):
+class SpaceTokenizer(Tokenizer):
     """
     :class:`SpaceTokenizer` splits tokens by white-spaces.
     """
 
     def __init__(self):
-        super(WhitespaceTokenizer, self).__init__()
+        super(SpaceTokenizer, self).__init__()
 
     def save(self, model_path: str, **kwargs):
         """ Not supported. """

@@ -15,8 +15,8 @@
 # ========================================================================
 import pytest
 
-from elit.morph_analyzer import EnglishMorphTag as MT
-from elit.morph_analyzer import extract_suffix
+from elit.nlp.morph_analyzer import EnglishMorphTag as MT
+from elit.nlp.morph_analyzer import extract_suffix
 
 __author__ = "Jinho D. Choi"
 

@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-ELIT: Evolution of Language and Information Technology
+Evolution of Language and Information Technology
 ======================================================
 
 The ELIT project brings the latest natural language processing (NLP) technology to the community.
@@ -30,18 +30,19 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    :maxdepth: 1
    :caption: Tools
 
-   tools/tokenization
-   tools/part_of_speech_tagging
-   tools/named_entity_recognition
-   tools/dependency_parsing
-   tools/coreference_resolution
-   tools/sentiment_analysis
+   tools/tokenizers
+   tools/morphological_analyzers
+   tools/part_of_speech_taggers
+   tools/named_entity_recognizers
+   tools/dependency_parsers
+   tools/coreference_resolvers
+   tools/sentiment_analyzers
 
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-
-   apidocs
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: API Reference
+..
+..    apidocs
 
 
 .. Indices and tables

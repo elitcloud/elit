@@ -16,8 +16,8 @@
 from typing import List
 
 from elit.component import NLPComponent
-from elit.doc_classifier import SentenceClassificationBatchState
 from elit.eval import Accuracy, F1
+from elit.nlp.doc_classifier import SentenceClassificationBatchState
 from elit.structure import SENTI_NEUTRAL, SENTI_POSITIVE, SENTI_NEGATIVE
 
 __author__ = 'Jinho D. Choi'
