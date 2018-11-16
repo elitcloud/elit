@@ -1,4 +1,4 @@
-# Available Tools
+# Available Models
 
 The 'dependencies' column indicates tools that need to be run prior to the corresponding model.
 

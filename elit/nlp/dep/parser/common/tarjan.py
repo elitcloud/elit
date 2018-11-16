@@ -20,12 +20,12 @@ from collections import defaultdict
 #***************************************************************
 class Tarjan:
   """
-    Computes Tarjan's algorithm for finding strongly connected components (cycles) of a graph
+    Computes Tarjan's algorithm for finding strongly connected tools (cycles) of a graph
     
     Attributes:
       edges: dictionary of edges such that edges[dep] = head
       vertices: set of dependents
-      SCCs: list of sets of strongly connected components. Non-singleton sets are cycles.
+      SCCs: list of sets of strongly connected tools. Non-singleton sets are cycles.
   """
   
   #=============================================================
