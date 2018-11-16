@@ -17,7 +17,7 @@ from elit.nlp.dep.parser.common.exponential_scheduler import ExponentialSchedule
 from elit.nlp.dep.parser.evaluate import evaluate_official_script
 from elit.nlp.dep.parser.parser_config import ParserConfig
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.structure import Document, Sentence, DEP, POS, SEN
+from elit.structure import Document, Sentence, DEP, POS, SENS
 
 
 class DependencyParser(NLPComponent):
@@ -220,7 +220,7 @@ def _load_conll(path) -> Document:
             else:
                 sents.append(sent)
                 sent = create_sentence()
-    return Document({SEN: sents})
+    return Document({SENS: sents})
 
 
 if __name__ == '__main__':

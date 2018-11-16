@@ -17,7 +17,7 @@ import numpy as np
 
 from elit.nlp.dep.common.utils import make_sure_path_exists
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.structure import Document, NER, POS, SEN
+from elit.structure import Document, NER, POS, SENS
 from elit.structure import Sentence as ElitSentence
 
 
@@ -1564,7 +1564,7 @@ def conll_to_documents(path) -> List[Document]:
             sent.tokens.append(t.text)
             sent[POS].append(t.tags['pos'])
         elit_sents.append(sent)
-    return [Document({SEN: elit_sents})]
+    return [Document({SENS: elit_sents})]
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ from typing import List, Tuple
 from pkg_resources import resource_filename
 
 from elit.component import Component
-from elit.structure import TOK, OFF, Document, Sentence, SEN_ID
+from elit.structure import TOK, OFF, Document, Sentence, SID
 from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *
 
@@ -58,7 +58,7 @@ class Tokenizer(Component):
                     if segment == 1: document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
                     else: document.add_sentences(self.segment(tokens, offsets))
 
-        for i, sentence in enumerate(document.sentences): sentence[SEN_ID] = i
+        for i, sentence in enumerate(document.sentences): sentence[SID] = i
         return document
 
     @abc.abstractmethod

@@ -13,7 +13,7 @@ from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, Stacked
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.structure import Document, NER, SEN
+from elit.structure import Document, NER, SENS
 
 
 class NERTagger(NLPComponent):
@@ -106,6 +106,6 @@ if __name__ == '__main__':
     tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
                  model_path, max_epochs=1)
     test = conll_to_documents('data/conll-03/debug/eng.tst')
-    sent = tagger.decode(test)[0][SEN][3]
+    sent = tagger.decode(test)[0][SENS][3]
     print(sent[NER])
     tagger.evaluate(test)

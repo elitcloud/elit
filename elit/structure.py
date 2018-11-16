@@ -19,8 +19,8 @@ from typing import List, Tuple, Sequence
 __author__ = 'Jinho D. Choi'
 
 DOC_ID = 'doc_id'  # document ID
-SEN = 'sen'  # sentences
-SEN_ID = 'sen_id'  # sentence ID
+SENS = 'sens'  # sentences
+SID = 'sid'  # sentence ID
 TOK = 'tok'
 OFF = 'off'
 LEM = 'lem'
@@ -98,7 +98,7 @@ class Document(dict):
         if d is not None:
             self.update(d)
         self.update(kwargs)
-        self._sentences = self.setdefault(SEN, [])
+        self._sentences = self.setdefault(SENS, [])
 
     def __len__(self):
         """

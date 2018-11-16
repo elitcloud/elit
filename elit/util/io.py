@@ -26,7 +26,7 @@ import codecs
 import os
 
 from elit.dataset import LabelMap
-from elit.structure import Sentence, TOK, Document, to_gold, SEN_ID, DOC_ID
+from elit.structure import Sentence, TOK, Document, to_gold, SID, DOC_ID
 
 __author__ = "Jinho D. Choi, Gary Lai"
 
@@ -91,7 +91,7 @@ def tsv_reader(tsv_directory: str,
         fin.close()
 
         [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
-        [sent.update({SEN_ID: i}) for i, sent in enumerate(sentences)]
+        [sent.update({SID: i}) for i, sent in enumerate(sentences)]
         sc += len(sentences)
         documents.append(Document(sen=sentences))
 
