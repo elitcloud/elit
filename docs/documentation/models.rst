@@ -16,6 +16,12 @@ All models take the following naming convention:
 
 .. toctree::
    :maxdepth: 1
-   :caption: By Languages
+   :caption: Models
 
    english_models
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Datasets
+
+   english_datasets

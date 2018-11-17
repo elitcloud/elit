@@ -10,7 +10,7 @@ Single Document
 ---------------
 
 The following codes take an input document and run the NLP pipeline for
-tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, coreference resolution, and sentiment analysis using the default parameters:
+tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, and coreference resolution using the default parameters:
 
 .. tabs::
 
@@ -32,8 +32,7 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
              {'model': 'elit-pos-lstm-en-mixed'},
              {'model': 'elit-morph-lexrule-en'},
              {'model': 'elit-dep-biaffine-en-mixed'},
-             {'model': 'uw-coref-e2e-en-ontonotes'},
-             {'model': 'elit-senti-embatt-en-sst'}]
+             {'model': 'uw-coref-e2e-en-ontonotes'}]
 
          request = {'input': doc, 'models': models}
          r = requests.post(url, json=request)
@@ -63,13 +62,12 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                               "He is the founder of the ELIT project.";
 
                  String models = "[" +
-                         "{\"model\": \"elit-en-tok\"}," +
-                         "{\"model\": \"elit-en-ner\"}," +
-                         "{\"model\": \"elit-en-pos\"}," +
-                         "{\"model\": \"elit-en-morph\"}," +
-                         "{\"model\": \"elit-en-dep\"}," +
-                         "{\"model\": \"elit-en-dep\"}," +
-                         "{\"model\": \"e2e-en-coref\"}]";
+                         "{\"model\": \"elit-tok-lexrule-en\"}," +
+                         "{\"model\": \"elit-ner-flair-en-ontonotes\"}," +
+                         "{\"model\": \"elit-pos-lstm-en-mixed\"}," +
+                         "{\"model\": \"elit-morph-lexrule-en\"}," +
+                         "{\"model\": \"elit-dep-biaffine-en-mixed\"}," +
+                         "{\"model\": \"uw-coref-e2e-en-ontonotes\"}]";
 
                  String request = "{\"input\": " + doc + ", \"models\": " + models + "}";
 
@@ -126,7 +124,7 @@ The following shows the output in the JSON format (see the `output format <../do
      "coref": [{[0, 0, 2], [1, 0, 1], [2, 0, 2]}]}
 
 
-See the descriptions of individual `models <models.html>`_ for parameter settings.
+See the `available models <models.html>`_ for more details about all built-in models and their parameter settings.
 
 
 ------------------
