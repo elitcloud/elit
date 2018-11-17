@@ -58,15 +58,16 @@ class POSTagger(Tagger):
 if __name__ == '__main__':
     tagger = POSTagger()
     model_path = 'data/model/pos/wsj'
-    tagger.load(model_path)
-    # tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
-    #              conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
-    #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
-    #              forward_language_model='data/model/lm-news-forward',
-    #              backward_language_model='data/model/lm-news-backward',
-    #              max_epochs=1,
-    #              embeddings_in_memory=False)
-    test = conll_to_documents('data/wsj-pos/test.tsv', headers={0: 'text', 1: 'pos'})
-    # sent = tagger.decode(test)[0][SEN][3]
-    # print(sent[POS])
-    print(tagger.evaluate(test))
+    with mx.Context(mxnet_prefer_gpu()):
+        tagger.load(model_path)
+        # tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
+        #              conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
+        #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
+        #              forward_language_model='data/model/lm-news-forward',
+        #              backward_language_model='data/model/lm-news-backward',
+        #              max_epochs=1,
+        #              embeddings_in_memory=False)
+        test = conll_to_documents('data/wsj-pos/test.tsv', headers={0: 'text', 1: 'pos'})
+        # sent = tagger.decode(test)[0][SEN][3]
+        # print(sent[POS])
+        print(tagger.evaluate(test))

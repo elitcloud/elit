@@ -13,6 +13,8 @@ from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharL
 from mxnet import autograd
 from mxnet.gluon import nn, rnn
 
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+
 START_TAG: str = '<START>'
 STOP_TAG: str = '<STOP>'
 
@@ -175,7 +177,7 @@ class SequenceTagger(nn.Block):
                 use_crf=config['use_crf'],
                 use_rnn=config['use_rnn'],
                 rnn_layers=config['rnn_layers'])
-            model.load_parameters(os.path.join(model_folder, 'model.bin'))
+            model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
             return model
 
     def forward(self, sentences: List[Sentence]) -> Tuple[nd.NDArray, nd.NDArray, List]:
