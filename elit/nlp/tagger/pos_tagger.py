@@ -49,7 +49,7 @@ class POSTagger(Tagger):
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
         test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                             tempfile.gettempdir(),
-                                            evaluation_method='span-F1',
+                                            evaluation_method='accuracy',
                                             embeddings_in_memory=False)
         print('TEST   \t%d\t' % test_score)
         return test_score
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         #              backward_language_model='data/model/lm-news-backward',
         #              max_epochs=1,
         #              embeddings_in_memory=False)
-        test = conll_to_documents('data/wsj-pos/test.tsv', headers={0: 'text', 1: 'pos'})
+        test = conll_to_documents('data/dat/en-pos.tst', headers={0: 'text', 1: 'pos'})
         # sent = tagger.decode(test)[0][SEN][3]
         # print(sent[POS])
         print(tagger.evaluate(test))
