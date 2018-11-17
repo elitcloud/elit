@@ -24,61 +24,47 @@ The 'dependencies' column in each table indicates tools that need to be run prio
 | [elit-tok-lexrule-en](../tools/tokenizers.html#english-tokenizer) | - | - |
 
 
-### Morphological Analysis
-
-| Model ID | Trained | Dependencies |
-|----------|:-------:|--------------|
-| [elit-morph-lexrule-en](../tools/morphological_analysis.html#english-morphological-analyzer) | - | [pos tagger](#part-of-speech-tagging) trained on any dataset in [mixed](#mixed) |
-
-
 ### Part-of-Speech Tagging
 
 | Model ID | Trained | Dependencies |
 |----------|:-------:|--------------|
-| elit-pos-en-cnn-mixed   | [Mixed](#mixed) | [tokenizer](#tokenization) |
-| elit-pos-en-lstm-mixed  | [Mixed](#mixed) | [tokenizer](#tokenization) |
-| elit-pos-en-flair-mixed | [Mixed](#mixed) | [tokenizer](#tokenization) |
+| elit-pos-en-cnn-mixed   | [Mixed](datasets.html#mixed) | [Tokenizer](#tokenization) with segmentation |
+| elit-pos-en-lstm-mixed  | [Mixed](datasets.html#mixed) | [Tokenizer](#tokenization) with segmentation |
+| elit-pos-en-flair-mixed | [Mixed](datasets.html#mixed) | [Tokenizer](#tokenization) with segmentation |
 
 
 ### Named Entity Recognition
 
 | Model ID | Trained | Dependencies |
 |----------|:-------:|--------------|
-| elit-ner-en-cnn-ontonotes   | [OntoNotes](#OntoNotes) | [tokenizer](#tokenization) |
-| elit-ner-en-lstm-ontonotes  | [OntoNotes](#OntoNotes) | [tokenizer](#tokenization) |
-| elit-ner-en-flair-ontonotes | [OntoNotes](#OntoNotes) | [tokenizer](#tokenization) |
+| elit-ner-en-cnn-ontonotes   | [OntoNotes](datasets.html#ontonotes) | [Tokenizer](#tokenization) with segmentation |
+| elit-ner-en-lstm-ontonotes  | [OntoNotes](datasets.html#ontonotes) | [Tokenizer](#tokenization) with segmentation |
+| elit-ner-en-flair-ontonotes | [OntoNotes](datasets.html#ontonotes) | [Tokenizer](#tokenization) with segmentation |
+
+
+### Morphological Analysis
+
+| Model ID | Trained | Dependencies |
+|----------|:-------:|--------------|
+| [elit-morph-lexrule-en](../tools/morphological_analysis.html#english-morphological-analyzer) | - | [POS tagger](#part-of-speech-tagging) trained on any dataset in [Mixed](datasets.html#mixed) |
 
 
 ### Dependency Parsing
 
 | Model ID | Trained | Dependencies |
 |----------|:-------:|--------------|
-| elit-dep-en-biaffine-mixed | [Mixed](#mixed) | [pos tagger](#part-of-speech-tagging) trained on [mixed](#mixed) |
+| elit-dep-en-biaffine-mixed | [Mixed](datasets.html#mixed) | [POS tagger](#part-of-speech-tagging) trained on [Mixed](datasets.html#mixed) |
 
 
 ### Coreference Resolution
 
 | Model ID | Trained | Dependencies |
 |----------|:-------:|--------------|
-| elit-coref-en-e2e-ontonotes | [OntoNotes](#OntoNotes) | [tokenizer](#tokenization) |
+| elit-coref-en-e2e-ontonotes | [OntoNotes](datasets.html#ontonotes) | [Tokenizer](#tokenization) with segmentation |
 
 
 ### Sentiment Analysis
 
 | Model ID | Trained | Dependencies |
 |----------|:-------:|--------------|
-| elit-senti-en-cnnatt-sst | [SST](#Stanford-Sentiment-Treebank) | [tokenizer](#tokenization) |
-
-
-## English Datasets
-
-### OntoNotes
-
-
-### BOLT
-
-### Mixed
-
-OntoNotes + Medical + BOLT
-
-### Stanford Sentiment Treebank
+| elit-senti-en-cnnatt-sst | [SST](datasets.html#stanford-sentiment-treebank) | [Tokenizer](#tokenization) with segmentation |

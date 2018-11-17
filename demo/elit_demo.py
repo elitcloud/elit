@@ -13,19 +13,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
-from elit.structure import Document, Sentence, MOR, TOK, POS
+from elit.tools import EnglishTokenizer, SpaceTokenizer
+tok = EnglishTokenizer()
+text = "Mr. Johnson doesn't like cats! What's his favorite then? He likes puffy-dogs."
+print(tok.decode(text))
 
-__author__ = 'Jinho D. Choi'
-
-
-
-m = EnglishMorphAnalyzer()
-
-doc = Document()
-sen = Sentence()
-sen[TOK] = ["Jinho", "Choi", "is", "a", "professor", "at", "Emory", "University", "."]
-sen[POS] = ["NNP", "NNP", "VBZ", "DT", "NN", "IN", "NNP", "NNP", "."]
-doc.add_sentence(sen)
-m.decode([doc])
-print(sen[MOR])
+# tok = EnglishTokenizer()
+#
+# # email address
+# text = 'Email (support@elit.cloud)'
+# print(tok.decode(text))
+#
+# # hyperlink
+# text = 'URL: https://elit.cloud'
+# print(tok.decode(text))
+#
+# # emoticon
+# text = 'I love ELIT :-)!?.'
+# print(tok.decode(text))
+#
+# # hashtag
+# text = 'ELIT is the #1 platform #elit2018.'
+# print(tok.decode(text))
+#
+# # html entity
+# text = 'A&larr;B'
+# print(tok.decode(text))
+#
+# # hyphens for telephone/social security number
+# text = '(123) 456-7890, 123-456-7890, 2014-2018'
+# print(tok.decode(text))
+#
+# # list item
+# text = '(A)First (A.1)Second [2a]Third [Forth]'
+# print(tok.decode(text))
+#
+# # units
+# text = "$1,000 20mg 100cm 11:00a.m. 10:30PM"
+# print(tok.decode(text))
+#
+# # acronym
+# text = "I'm gonna miss Dr. Choi 'cause he isn't here."
+# print(tok.decode(text))
+#

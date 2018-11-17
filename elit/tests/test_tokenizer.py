@@ -24,7 +24,7 @@ __author__ = 'Jinho D. Choi'
     ('  Hello\t\r, world  !\n\n', 1,
      {'sens': [{'sid': 0, 'tok': ['Hello', ',', 'world', '!'], 'off': [(3, 8), (10, 11), (12, 17), (19, 20)]}]})
 ])
-def test_pace_tokenizer(space_tokenizer, input, offset, expected):
+def test_space_tokenizer(space_tokenizer, input, offset, expected):
     result = space_tokenizer.decode(input, offset)
     assert result == expected
 
