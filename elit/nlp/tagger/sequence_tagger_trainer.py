@@ -116,79 +116,78 @@ class SequenceTaggerTrainer:
 
         # At any point you can hit Ctrl + C to break out of training early.
         try:
-            with mx.Context(mxnet_prefer_gpu()):
-                self.model.initialize()
-                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
-                                                                 patience=patience, mode=anneal_mode)
-                optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
-                trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
-                for epoch in range(0, max_epochs):
-                    current_loss: float = 0
-                    if not self.test_mode:
-                        random.shuffle(train_data)
+            self.model.initialize()
+            scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                                                             patience=patience, mode=anneal_mode)
+            optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
+            trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
+            for epoch in range(0, max_epochs):
+                current_loss: float = 0
+                if not self.test_mode:
+                    random.shuffle(train_data)
 
-                    batches = [train_data[x:x + mini_batch_size] for x in
-                               range(0, len(train_data), mini_batch_size)]
+                batches = [train_data[x:x + mini_batch_size] for x in
+                           range(0, len(train_data), mini_batch_size)]
 
-                    batch_no: int = 0
+                batch_no: int = 0
 
-                    for batch in batches:
-                        batch: List[Sentence] = batch
-                        batch_no += 1
+                for batch in batches:
+                    batch: List[Sentence] = batch
+                    batch_no += 1
 
-                        if batch_no % 100 == 0:
-                            print("%d of %d (%f)" % (batch_no, len(batches), float(batch_no / len(batches))))
+                    if batch_no % 100 == 0:
+                        print("%d of %d (%f)" % (batch_no, len(batches), float(batch_no / len(batches))))
 
-                        # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
-                        with autograd.record():
-                            loss = self.model.neg_log_likelihood(batch, self.model.tag_type)
+                    # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+                    with autograd.record():
+                        loss = self.model.neg_log_likelihood(batch, self.model.tag_type)
 
-                        current_loss += loss.sum().asscalar()
+                    current_loss += loss.sum().asscalar()
 
-                        loss.backward()
+                    loss.backward()
 
-                        # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+                    # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
 
-                        # optimizer.step()
-                        trainer.step(len(batch))
+                    # optimizer.step()
+                    trainer.step(len(batch))
 
-                        sys.stdout.write('.')
-                        sys.stdout.flush()
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
 
-                        if not embeddings_in_memory:
-                            self.clear_embeddings_in_batch(batch)
+                    if not embeddings_in_memory:
+                        self.clear_embeddings_in_batch(batch)
 
-                    current_loss /= len(train_data)
+                current_loss /= len(train_data)
 
-                    if not train_with_dev:
-                        print('.. evaluating... dev... ')
-                        dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
-                                                                      evaluation_method=evaluation_method,
-                                                                      embeddings_in_memory=embeddings_in_memory)
-                    else:
-                        dev_fp = 0
-                        dev_result = '_'
+                if not train_with_dev:
+                    print('.. evaluating... dev... ')
+                    dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
+                                                                  evaluation_method=evaluation_method,
+                                                                  embeddings_in_memory=embeddings_in_memory)
+                else:
+                    dev_fp = 0
+                    dev_result = '_'
 
-                    # anneal against train loss if training with dev, otherwise anneal against dev score
-                    scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
+                # anneal against train loss if training with dev, otherwise anneal against dev score
+                scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
 
-                    # save if model is current best and we use dev data for model selection
-                    if save_model and not train_with_dev and dev_score == scheduler.best:
-                        self.model.save(base_path)
-                    summary = '%d' % epoch + '\t({:%H:%M:%S})'.format(datetime.datetime.now()) \
-                              + '\t%f\t%d\t%f\tDEV   %d\t' % (
-                                  current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
-                    summary = summary.replace('\n', '')
-                    if self.corpus.test and len(self.corpus.test):
-                        print('test... ')
-                        test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
-                                                                         evaluation_method=evaluation_method,
-                                                                         embeddings_in_memory=embeddings_in_memory)
-                        summary += '\tTEST   \t%d\t' % test_fp + test_result
-                    with open(loss_txt, "a") as loss_file:
-                        loss_file.write('%s\n' % summary)
-                        loss_file.close()
-                    print(summary)
+                # save if model is current best and we use dev data for model selection
+                if save_model and not train_with_dev and dev_score == scheduler.best:
+                    self.model.save(base_path)
+                summary = '%d' % epoch + '\t({:%H:%M:%S})'.format(datetime.datetime.now()) \
+                          + '\t%f\t%d\t%f\tDEV   %d\t' % (
+                              current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
+                summary = summary.replace('\n', '')
+                if self.corpus.test and len(self.corpus.test):
+                    print('test... ')
+                    test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
+                                                                     evaluation_method=evaluation_method,
+                                                                     embeddings_in_memory=embeddings_in_memory)
+                    summary += '\tTEST   \t%d\t' % test_fp + test_result
+                with open(loss_txt, "a") as loss_file:
+                    loss_file.write('%s\n' % summary)
+                    loss_file.close()
+                print(summary)
 
             # if we do not use dev data for model selection, save final model
             if save_model and train_with_dev:

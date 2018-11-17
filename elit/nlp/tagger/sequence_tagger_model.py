@@ -156,7 +156,7 @@ class SequenceTagger(nn.Block):
             config = pickle.load(f)
             embedding_types: List[TokenEmbeddings] = [
 
-                WordEmbeddings('glove'),
+                WordEmbeddings('data/embedding/fasttext100.vec.txt'),
 
                 # comment in this line to use character embeddings
                 # CharacterEmbeddings(),
