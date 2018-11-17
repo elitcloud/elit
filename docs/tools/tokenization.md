@@ -1,18 +1,18 @@
 # Tokenization
 
-A tokenizer takes raw text and splits it into morphologically meaningful tokens.
-It also returns the begin (inclusive) and the end (exclusive) character offsets of each token from the original text.
-Most tokenizers provide an option of performing several types of sentence segmentation, which groups chunks of consecutive tokens into sentences:
+A tokenizer takes raw text and splits it into string tokens.
+It also returns the begin (inclusive) and the end (exclusive) character offsets from the original text for each token.
+ELIT's tokenizers provide an option of performing several types of sentence segmentation, which groups chunks of consecutive tokens into sentences:
 
 * `0`: no segmentation.
 * `1`: segment by newlines (`\n`).
-* `2`: segment by [symbol rules](../_modules/elit/tokenizer.html#Tokenizer.segment).
+* `2`: segment by [symbol rules](../apidocs/tokenizers.html#elit.nlp.tokenizer.Tokenizer.segment).
 * `3`: segment by `1` and `2`.
 
 
 ## Space Tokenizer
 
-This tokenizer splits input text by only whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
+The Space Tokenizer splits input text by whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
 
 * Associated models: `elit-tok-space-un`.
 * API reference: [SpaceTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.SpaceTokenizer).
@@ -54,9 +54,9 @@ print(tok.decode(text, segment=1))  # segment by newlines (default)
 
 ## English Tokenizer
 
-This tokenizer splits input text into linguistic tokens using lexicons and matching rules.
+The English Tokenizer splits input text into linguistic tokens using lexicalized rules.
 
-* Associated models: `elit-tok-lexrule-en`
+* Associated models: `elit-tok-lexrule-en`.
 * API reference: [EnglishTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.EnglishTokenizer).
 * Decode parameters:
   * `segment`: `0`, `1`, `2` (_default_), or `3`.
