@@ -1,8 +1,3 @@
-.. elitsdk documentation master file, created by
-   sphinx-quickstart on Wed Apr 18 15:19:05 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Evolution of Language and Information Technology
 ======================================================
 
@@ -21,23 +16,28 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    documentation/install
    documentation/decode_webapi
    documentation/decode_python
-   documentation/decode_cli
-   documentation/train_cli
    documentation/deploy
    documentation/models
    documentation/datasets
 
 .. toctree::
    :maxdepth: 1
+   :caption: Coming Soon
+
+   documentation/decode_cli
+   documentation/train_cli
+
+.. toctree::
+   :maxdepth: 1
    :caption: Tools
 
-   tools/tokenizers
-   tools/part_of_speech_taggers
-   tools/named_entity_recognizers
-   tools/morphological_analyzers
-   tools/dependency_parsers
-   tools/coreference_resolvers
-   tools/sentiment_analyzers
+   tools/tokenization
+   tools/morphological_analysis
+   tools/part_of_speech_tagging
+   tools/named_entity_recognition
+   tools/dependency_parsing
+   tools/coreference_resolution
+   tools/sentiment_analysis
 
 .. toctree::
    :maxdepth: 2
@@ -45,6 +45,7 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
 
    apidocs/structures
    apidocs/tokenizers
+   apidocs/morphological_analyzers
 
 
 .. Indices and tables

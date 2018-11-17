@@ -22,7 +22,7 @@ from typing import Sequence, Set, List, Optional, Tuple, Dict, Any
 from pkg_resources import resource_filename
 
 from elit.component import NLPComponent
-from elit.structure import Document, MOR
+from elit.structure import Document, MORPH
 from elit.util import io
 from elit.util.io import read_word_set, NoIndent, NoIndentEncoder
 
@@ -155,10 +155,10 @@ class EnglishMorphAnalyzer(NLPComponent):
         self._derivation_lookup = self._load_derivation_lookup(resource_path)
         self._derivation_rules = self._load_affix_rules(resource_filename(resource_path, 'derivation_rules.json'))
 
-    def decode(self, docs: Sequence[Document], derivation=True, prefix=PREFIX_SHORTEST):
+    def decode(self, docs: Sequence[Document], derivation=True, prefix=PREFIX_NONE):
         for doc in docs:
             for sen in doc:
-                sen[MOR] = [self.analyze(token, pos, derivation, prefix) for token, pos in zip(sen.tokens, sen.part_of_speech_tags)]
+                sen[MORPH] = [self.analyze(token, pos, derivation, prefix) for token, pos in zip(sen.tokens, sen.part_of_speech_tags)]
 
     def save(self, **kwargs):
         pass
@@ -248,7 +248,7 @@ class EnglishMorphAnalyzer(NLPComponent):
             for prefix, tag in sorted(self._prefix.items()):
                 if not prefix.endswith('-'): fout.write(prefix + ' ' + tag.decode('utf-8') + '\n')
 
-    def analyze(self, token: str, pos: str, derivation=True, prefix=PREFIX_SHORTEST) -> List[Tuple[str, str]]:
+    def analyze(self, token: str, pos: str, derivation=True, prefix=PREFIX_NONE) -> List[Tuple[str, str]]:
         token = token.lower()
 
         # inflection lookup

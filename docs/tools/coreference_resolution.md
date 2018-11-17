@@ -1,4 +1,4 @@
-# Coreference Resolvers
+# Coreference Resolution
 
 ## End-to-End Resolver
 

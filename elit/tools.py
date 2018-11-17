@@ -15,6 +15,7 @@
 # ========================================================================
 from elit.nlp.tokenizer import SpaceTokenizer
 from elit.nlp.tokenizer import EnglishTokenizer
+from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
 
 __author__ = 'Jinho D. Choi'
 

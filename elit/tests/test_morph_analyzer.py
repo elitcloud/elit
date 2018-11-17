@@ -223,7 +223,7 @@ data_analyze_derivation_rules = [
         (('theorize', MT.VB), [('theory', MT.NN), ('+ize', MT.V_IZE)]),
         (('sterilize', MT.VB), [('sterile', MT.JJ), ('+ize', MT.V_IZE)]),
         (('crystallize', MT.VB), [('crystal', MT.NN), ('+ize', MT.V_IZE)]),
-        (('dramatize', MT.VB), [('dramatic', MT.JJ), ('+ize', MT.V_IZE)]),
+        (('dramatize', MT.VB), [('drama', MT.NN), ('+tic', MT.J_IC), ('+ize', MT.V_IZE)]),
         (('barbarize', MT.VB), [('barbary', MT.NN), ('+ize', MT.V_IZE)]),
 
         # verb: 'en'
@@ -492,5 +492,5 @@ data_analyze = [
 @pytest.mark.parametrize('data', data_analyze)
 def test_analyze(en_morph_analyzer, data):
     input, expected = zip(*data)
-    actual = tuple(en_morph_analyzer.analyze(token, pos) for token, pos in input)
+    actual = tuple(en_morph_analyzer.analyze(token, pos, prefix=1) for token, pos in input)
     assert actual == expected

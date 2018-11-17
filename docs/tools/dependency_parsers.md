@@ -1,6 +1,0 @@
-# Dependency Parsers
-
-## Affine
-
-
-

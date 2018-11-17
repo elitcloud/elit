@@ -1,8 +1,8 @@
 Decode with Web API
 ===================
 
-ELIT provides web API that allows anyone to decode raw text into NLP structures using its built-in models.
-The web APIs do not require the `ELIT installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
+ELIT provides web API that allows anyone to decode raw text into NLP structures using its `built-in models <models.html>`_.
+The web API does not require the `ELIT installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
 
 
 ---------------
@@ -10,7 +10,7 @@ Single Document
 ---------------
 
 The following codes take an input document and run the NLP pipeline for
-tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, and coreference resolution using the default parameters:
+tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, coreference resolution, and sentiment analysis using the default parameters:
 
 .. tabs::
 
@@ -27,13 +27,13 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                'He is the founder of the ELIT project.'
 
          models = [
-             {'model': 'elit-en-tok'},
-             {'model': 'elit-en-ner-ontonotes'},
-             {'model': 'elit-en-pos-general'},
-             {'model': 'elit-en-morph'},
-             {'model': 'elit-en-dep-general'},
-             {'model': 'elit-en-senti-movie-review'},
-             {'model': 'e2e-en-coref-ontonotes'}]
+             {'model': 'elit-tok-lexrule-en'},
+             {'model': 'elit-ner-flair-en-ontonotes'},
+             {'model': 'elit-pos-lstm-en-mixed'},
+             {'model': 'elit-morph-lexrule-en'},
+             {'model': 'elit-dep-biaffine-en-mixed'},
+             {'model': 'uw-coref-e2e-en-ontonotes'},
+             {'model': 'elit-senti-embatt-en-sst'}]
 
          request = {'input': doc, 'models': models}
          r = requests.post(url, json=request)
@@ -126,14 +126,11 @@ The following shows the output in the JSON format (see the `output format <../do
      "coref": [{[0, 0, 2], [1, 0, 1], [2, 0, 2]}]}
 
 
-------------------
-Parameter Settings
-------------------
+See the descriptions of individual `models <models.html>`_ for parameter settings.
 
-Some models can take parameters for further customizations
-
-### Hello
 
 ------------------
 Multiple Documents
 ------------------
+
+To be filled.
