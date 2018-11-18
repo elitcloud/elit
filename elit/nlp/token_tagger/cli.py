@@ -79,8 +79,6 @@ class TokenTaggerCLI(ComponentCLI):
         else:
             raise TypeError('mode {} is not supported.'.format(args.mode))
 
-        # component
-        # train
         comp.train(trn_docs=trn_docs, dev_docs=dev_docs, model_path=args.model_path, epoch=config.epoch,
                    trn_batch=config.trn_batch, dev_batch=config.dev_batch,
                    loss=config.loss, optimizer=config.optimizer, optimizer_params=config.optimizer_params)
@@ -141,12 +139,16 @@ class TokenTaggerCLI(ComponentCLI):
                            help='filepath to the evaluation data')
         group.add_argument('model_path', type=str, metavar='MODEL_PATH',
                            help='filepath to the model data')
-        group.add_argument('--vsm_path', action='append', nargs='+', metavar='VSM_PATH', required=True,
-                           help='vsm path')
+        group.add_argument('--embs_config', action='append', nargs='+', required=True, help='list of word embeddings models and file')
+
+        # tagger
+        tagger_group = parser.add_argument_group("tagger arguments")
+        tagger_group.add_argument('mode', type=str, help='mode: cnn or rnn')
+        tagger_group.add_argument('key', type=str, help='key to the document dictionary where the predicted tags are to be stored')
 
         # network
         network_group = parser.add_argument_group("network arguments")
-        network_group.add_argument('config', type=str, metavar='CONFIG', help="config file")
+        network_group.add_argument('config', type=str, help="path to config file")
 
         args = parser.parse_args(sys.argv[3:])
 
@@ -154,9 +156,21 @@ class TokenTaggerCLI(ComponentCLI):
             config = TokenTaggerConfig(json.load(d))
 
         set_logger(config.log_path)
-        #
-        # # component
-        # comp = TokenTagger(config.ctx, args.vsm_path)
-        # comp.load(args.model_path)
-        # docs, _ = config.reader(args.eval_path, config.tsv_heads, comp.key)
-        # comp.evaluate(docs=docs, batch_size=config.batch_size)
+
+        embs = [init_emb(config) for config in args.embs_config]
+
+        comp = None
+        if args.mode == 'rnn':
+            from elit.nlp.token_tagger import RNNTokenTagger
+            comp = RNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
+        elif args.mode == 'cnn':
+            from elit.nlp.token_tagger import CNNTokenTagger
+            comp = CNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
+
+        comp.load(args.model_path)
+
+        # component
+
+        eval_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
+
+        comp.evaluate(docs=eval_docs, batch_size=config.batch_size)
