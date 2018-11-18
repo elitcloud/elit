@@ -30,7 +30,7 @@ from elit.component import MXComponent
 from elit.dataset import LabelMap, sequence_batchify_fn, SequencesDataset
 from elit.eval import ChunkF1
 from elit.model import RNNModel
-from elit.structure import Document, to_gold
+from elit.structure import Document, to_gold, POS, NER
 from elit.util.io import pkl, params
 
 __author__ = 'Gary Lai'
@@ -168,3 +168,15 @@ class RNNTokenTagger(MXComponent):
         logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))
+
+
+class RNNPOSTagger(RNNTokenTagger):
+    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
+                 rnn_config: SimpleNamespace, output_config: SimpleNamespace, **kwargs):
+        super().__init__(ctx, POS, embs_config, label_map, False, rnn_config, output_config, **kwargs)
+
+
+class RNNNERTagger(RNNTokenTagger):
+    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
+                 rnn_config: SimpleNamespace, output_config: SimpleNamespace, **kwargs):
+        super().__init__(ctx, NER, embs_config, label_map, True, rnn_config, output_config, **kwargs)

@@ -28,7 +28,7 @@ from elit.component import MXComponent
 from elit.dataset import LabelMap, TokensDataset
 from elit.eval import ChunkF1
 from elit.model import CNNModel
-from elit.structure import Document, to_gold
+from elit.structure import Document, to_gold, POS, NER
 from elit.util.io import pkl, params
 
 __author__ = 'Jinho D. Choi, Gary Lai'
@@ -218,3 +218,29 @@ class CNNTokenTagger(MXComponent):
         logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))
+
+
+class CNNPOSTagger(CNNTokenTagger):
+    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
+                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
+                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
+                 output_config: Optional[SimpleNamespace] = None,
+                 fuse_conv_config: Optional[SimpleNamespace] = None,
+                 ngram_conv_config: Optional[SimpleNamespace] = None,
+                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
+                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
+                 **kwargs):
+        super().__init__(ctx, POS, embs_config, label_map, False, feature_windows, input_config, output_config, fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)
+
+
+class CNNNERTagger(CNNTokenTagger):
+    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
+                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
+                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
+                 output_config: Optional[SimpleNamespace] = None,
+                 fuse_conv_config: Optional[SimpleNamespace] = None,
+                 ngram_conv_config: Optional[SimpleNamespace] = None,
+                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
+                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
+                 **kwargs):
+        super().__init__(ctx, NER, embs_config, label_map, True, feature_windows, input_config, output_config, fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)

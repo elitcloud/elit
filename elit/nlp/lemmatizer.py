@@ -15,13 +15,15 @@
 # ========================================================================
 import abc
 import codecs
-from xml.etree import ElementTree
-from elit.component import NLPComponent
-from pkg_resources import resource_filename
 from typing import Sequence
-from elit.lemmatization.english.inflection import Inflection
+from xml.etree import ElementTree
+
 from elit.lemmatization.english.suffix_group import SuffixGroup
 from elit.lemmatization.english.suffix_rule import SuffixRule
+from pkg_resources import resource_filename
+
+from elit.component import NLPComponent
+from elit.nlp.lemmatization.english.inflection import Inflection
 
 __author__ = "Liyan Xu"
 

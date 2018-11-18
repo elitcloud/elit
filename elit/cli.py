@@ -13,12 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
 import argparse
 import inspect
 import logging
 import sys
-
-import abc
 
 __author__ = "Gary Lai, Jinho D. Choi"
 
@@ -104,7 +103,7 @@ commands:
         parser.add_argument('command', help='command to run')
         args = parser.parse_args(sys.argv[1:2])
         if args.command == 'token_tagger':
-            from elit.token_tagger import TokenTaggerCLI
+            from elit.nlp.token_tagger import TokenTaggerCLI
             TokenTaggerCLI()
         else:
             print('Unrecognized command')

@@ -18,7 +18,7 @@ import json
 import sys
 
 from elit.cli import CLIComponent
-from elit.token_tagger import TokenTaggerConfig
+from elit.nlp.token_tagger import TokenTaggerConfig
 from elit.util.io import set_logger
 
 __author__ = "Gary Lai"
@@ -63,11 +63,11 @@ class TokenTaggerCLI(CLIComponent):
         dev_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
 
         if args.mode == 'rnn':
-            from elit.token_tagger import RNNTokenTagger
+            from elit.nlp.token_tagger import RNNTokenTagger
             comp = RNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs_config=args.embs_config, chunking=config.chunking,
                                   rnn_config=config.rnn_config, output_config=config.output_config)
         elif args.mode == 'cnn':
-            from elit.token_tagger import CNNTokenTagger
+            from elit.nlp.token_tagger import CNNTokenTagger
             comp = CNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs_config=args.embs_config, chunking=config.chunking,
                                   input_config=config.input_config, output_config=config.output_config, fuse_conv_config=config.fuse_conv_config,
                                   ngram_conv_config=config.ngram_conv_config, hidden_configs=config.hidden_configs)

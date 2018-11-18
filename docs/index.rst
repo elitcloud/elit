@@ -18,6 +18,7 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    documentation/decode_python
    documentation/deploy
    documentation/models
+   documentation/output_format
 
 .. toctree::
    :maxdepth: 1
@@ -45,7 +46,6 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    apidocs/structures
    apidocs/tokenizers
    apidocs/morphological_analyzers
-   apidocs/dependency_parsers
 
 
 .. Indices and tables

@@ -5,12 +5,12 @@
 The English Analyzer takes an input token and its part-of-speech tag in the [Penn Treebank style](../documentation/english_datasets.html#mixed), 
 and splits it into morphemes using [inflection](https://en.wikipedia.org/wiki/Inflection), [derivation](https://en.wikipedia.org/wiki/Morphological_derivation), and [prefix](https://en.wikipedia.org/wiki/Prefix) rules.
 
-* Associated models: `elit-morph-idprule-en`.
-* API reference: [EnglishMorphAnalyzer](../apidocs/morphological_analyzers.html#elit.nlp.morph_analyzer.EnglishMorphAnalyzer).
-* [Supplementary documentation](supplementary/english_morph_analyzer.html).
+* Associated models: `elit-morph-idprule-en`
+* API reference: [EnglishMorphAnalyzer](../apidocs/morphological_analyzers.html#elit.nlp.morph_analyzer.EnglishMorphAnalyzer)
+* [Supplementary documentation](supplementary/english_morph_analyzer.html)
 * Decode parameters:
-  * `derivation`: `True` (_default_) or `False`.
-  * `prefix`: `0` (no prefix analysis; _default_), `1` (shortest preferred), `2` (longest preferred).
+  * `derivation`: `True` (_default_) or `False`
+  * `prefix`: `0` (no prefix analysis; _default_), `1` (shortest preferred), `2` (longest preferred)
   
 
 ### Web-API
@@ -23,7 +23,7 @@ and splits it into morphemes using [inflection](https://en.wikipedia.org/wiki/In
 
 ```python
 from elit.structure import Document, Sentence, TOK, POS, MORPH
-from elit.tools import EnglishMorphAnalyzer
+from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
 
 tokens = ['dramatized', 'ownerships', 'environmentalists', 'certifiable', 'realistically']
 postags = ['VBD', 'NNS', 'NNS', 'JJ', 'RB']

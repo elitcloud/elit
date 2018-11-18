@@ -4,10 +4,9 @@
 
 This is ELIT's replication of the dependency parser using deep biaffine attention introduced by Stanford University.
 
-* Associated models: `elit-dep-biaffine-en-mixed`.
-* API reference: [BiaffineDEPParser](../apidocs/dependency_parsers.html#elit.nlp.dep.parser.parser.BiaffineDEPParser).
-* Decode parameters: `none`.
-
+* Source: [https://github.com/elitcloud/biaffine-parser](https://github.com/elitcloud/biaffine-parser)
+* Associated models: `elit-dep-biaffine-en-mixed`
+* Decode parameters: `none`
 
 ### Web-API
 
@@ -18,7 +17,7 @@ This is ELIT's replication of the dependency parser using deep biaffine attentio
 ### Citation
 
 ```text
-@InProceedings{lee-he-zettlemoyer:2018:N18-2,
+@InProceedings{dozat-manning:ICLR:2017,
   author    = {Dozat, Timothy and Manning, Christopher D.},
   title     = {Deep Biaffine Attention for Neural Dependency Parsing},
   booktitle = {Proceedings of the 5th International Conference on Learning Representations},

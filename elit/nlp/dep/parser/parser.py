@@ -20,7 +20,7 @@ from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.structure import Document, Sentence, DEP, POS, SENS
 
 
-class BiaffineDEPParser(NLPComponent):
+class BiaffineParser(NLPComponent):
     """
     An implementation of "Deep Biaffine Attention for Neural Dependency Parsing" Dozat and Manning (2016)
     """
@@ -29,7 +29,7 @@ class BiaffineDEPParser(NLPComponent):
         super().__init__()
         self._config = None  # type: ParserConfig
         self._vocab = None  # type: ParserVocabulary
-        self._parser = None  # type: BiaffineDEPParser
+        self._parser = None  # type: BiaffineParser
 
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
         # read config file
@@ -47,13 +47,13 @@ class BiaffineDEPParser(NLPComponent):
         # training
         with mx.Context(mxnet_prefer_gpu()):
 
-            self._parser = parser = BiaffineDEPParser(vocab, config.word_dims, config.tag_dims,
-                                                      config.dropout_emb,
-                                                      config.lstm_layers,
-                                                      config.lstm_hiddens, config.dropout_lstm_input,
-                                                      config.dropout_lstm_hidden,
-                                                      config.mlp_arc_size,
-                                                      config.mlp_rel_size, config.dropout_mlp, config.debug)
+            self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
+                                                   config.dropout_emb,
+                                                   config.lstm_layers,
+                                                   config.lstm_hiddens, config.dropout_lstm_input,
+                                                   config.dropout_lstm_hidden,
+                                                   config.mlp_arc_size,
+                                                   config.mlp_rel_size, config.dropout_mlp, config.debug)
             parser.initialize()
             scheduler = ExponentialScheduler(config.learning_rate, config.decay, config.decay_steps)
             optimizer = mx.optimizer.Adam(config.learning_rate, config.beta_1, config.beta_2, config.epsilon,
@@ -185,13 +185,13 @@ class BiaffineDEPParser(NLPComponent):
         return ConllSentence(words)
 
     def _create_parser(self, config, vocab):
-        return BiaffineDEPParser(vocab, config.word_dims, config.tag_dims,
-                                 config.dropout_emb,
-                                 config.lstm_layers,
-                                 config.lstm_hiddens, config.dropout_lstm_input,
-                                 config.dropout_lstm_hidden,
-                                 config.mlp_arc_size,
-                                 config.mlp_rel_size, config.dropout_mlp, config.debug)
+        return BiaffineParser(vocab, config.word_dims, config.tag_dims,
+                              config.dropout_emb,
+                              config.lstm_layers,
+                              config.lstm_hiddens, config.dropout_lstm_input,
+                              config.dropout_lstm_hidden,
+                              config.mlp_arc_size,
+                              config.mlp_rel_size, config.dropout_mlp, config.debug)
 
 
 def _load_conll(path) -> Document:
@@ -227,7 +227,7 @@ def _load_conll(path) -> Document:
 if __name__ == '__main__':
     train = _load_conll('data/ptb/dep/train-debug.conllx')
     dev = _load_conll('data/ptb/dep/dev-debug.conllx')
-    parser = BiaffineDEPParser()
+    parser = BiaffineParser()
     model_path = 'data/model/ptb/dep-debug'
     parser.train([train], [dev], model_path=model_path, config_file='data/ptb/dep/config-debug.ini')
     parser.load(model_path)

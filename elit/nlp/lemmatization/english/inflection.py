@@ -14,7 +14,8 @@
 # limitations under the License.
 # ========================================================================
 from typing import Sequence
-from elit.lemmatization.english.suffix_group import SuffixGroup
+
+from elit.nlp.lemmatization.english.suffix_group import SuffixGroup
 
 __author__ = "Liyan Xu"
 

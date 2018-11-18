@@ -4,11 +4,11 @@
 
 This is ELIT's adaptation of the higher-order coreference resolution system developed by the University of Washington.
 
-* Associated models: `uw-coref-e2e-en-ontonotes`.
-* Decode parameters:
-  * `genre`: the genre of the input text; `bc`, `bn`, `mz`, `nw` (_default_), `pt`, `tc`, or `wb`.
 * Original source: [https://github.com/kentonl/e2e-coref](https://github.com/kentonl/e2e-coref)
-* ELIT's wrapper: [https://github.com/elitcloud/e2e-coref](https://github.com/elitcloud/e2e-coref)
+* Source: [https://github.com/elitcloud/uw-coref-e2e](https://github.com/elitcloud/uw-coref-e2e)
+* Associated models: `uw-coref-e2e-en-ontonotes`
+* Decode parameters:
+  * `genre`: the genre of the input text; `bc` (broadcasting conversation), `bn` (broadcasting news), `mz` (news magazine), `nw` (newswire; _default_), `pt` (pivot text), `tc` (telephone conversation), or `wb` (weblog)
 
 
 ### Web-API

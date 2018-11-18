@@ -26,9 +26,9 @@
 
 | Model ID | PRE | DATA | EVAL | BM |
 |----------|:---:|:----:|:----:|:--:|
-| elit-pos-cnn-en-mixed   | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | |
-| elit-pos-lstm-en-mixed  | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | | 
-| elit-pos-flair-en-mixed | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.80 | 97.72 |
+| [elit-pos-cnn-en-mixed](../tools/part_of_speech_tagging.html#cnn-tagger)     | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | |
+| [elit-pos-rnn-en-mixed](../tools/part_of_speech_tagging.html#rnn-tagger)     | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | | 
+| [elit-pos-flair-en-mixed](../tools/part_of_speech_tagging.html#flair-tagger) | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.80 | 97.72 |
 
 * EVAL: accuracy.
 * BM: accuracy on the Wall Street Journal portion of the [Penn Treebank](https://catalog.ldc.upenn.edu/ldc99t42) using the standard split (trn: 0-18; dev: 19-21; tst: 22-24).
@@ -38,9 +38,9 @@
 
 | Model ID | PRE | DATA | EVAL | BM |
 |----------|:---:|:----:|:----:|:--:|
-| elit-ner-cnn-en-ontonotes   | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 87.xx | |
-| elit-ner-lstm-en-ontonotes  | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 86.xx | |
-| elit-ner-flair-en-ontonotes | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 88.75 | 92.74 | 
+| [elit-ner-cnn-en-ontonotes](../tools/named_entity_recognition.html#cnn-tagger)     | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 87.xx | |
+| [elit-ner-rnn-en-ontonotes](../tools/named_entity_recognition.html#rnn-tagger)     | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 86.xx | |
+| [elit-ner-flair-en-ontonotes](../tools/named_entity_recognition.html#flair-tagger) | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 88.75 | 92.74 | 
 
 * EVAL: F1-score.
 * BM: F1-score on the English dataset distributed by the [CoNLL'03 shared task](https://www.clips.uantwerpen.be/conll2003/ner/).

@@ -14,10 +14,10 @@ ELIT's tokenizers provide an option of performing several types of sentence segm
 
 The Space Tokenizer splits input text by whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
 
-* Associated models: `elit-tok-space-un`.
-* API reference: [SpaceTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.SpaceTokenizer).
+* Associated models: `elit-tok-space-un`
+* API reference: [SpaceTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.SpaceTokenizer)
 * Decode parameters:
-  * `segment`: `0`, `1` (_default_), `2`, or `3`.
+  * `segment`: `0`, `1` (_default_), `2`, or `3`
 
 ### Web-API
 
@@ -28,7 +28,7 @@ The Space Tokenizer splits input text by whitespaces, which is useful when the i
 ### Python API
 
 ```python
-from elit.tools import SpaceTokenizer
+from elit.nlp.tokenizer import SpaceTokenizer
 tok = SpaceTokenizer()
 text = 'John bought a car\nMary sold a truck .'
 print(tok.decode(text, segment=1))  # segment by newlines (default)
@@ -56,10 +56,10 @@ print(tok.decode(text, segment=1))  # segment by newlines (default)
 
 The English Tokenizer splits input text into linguistic tokens using lexicalized rules.
 
-* Associated models: `elit-tok-lexrule-en`.
-* API reference: [EnglishTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.EnglishTokenizer).
+* Associated models: `elit-tok-lexrule-en`
+* API reference: [EnglishTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.EnglishTokenizer)
 * Decode parameters:
-  * `segment`: `0`, `1`, `2` (_default_), or `3`.
+  * `segment`: `0`, `1`, `2` (_default_), or `3`
 
 The followings show key features of this tokenizer:
 
@@ -85,7 +85,7 @@ The followings show key features of this tokenizer:
 ### Python API
 
 ```python
-from elit.tools import EnglishTokenizer, SpaceTokenizer
+from elit.nlp.tokenizer import EnglishTokenizer, SpaceTokenizer
 tok = EnglishTokenizer()
 text = "Mr. Johnson doesn't like cats! What's his favorite then? He likes puffy-dogs."
 print(tok.decode(text, segment=2))  # segment by symbol rules (default)

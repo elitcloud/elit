@@ -29,7 +29,7 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
          models = [
              {'model': 'elit-tok-lexrule-en'},
              {'model': 'elit-ner-flair-en-ontonotes'},
-             {'model': 'elit-pos-lstm-en-mixed'},
+             {'model': 'elit-pos-flair-en-mixed'},
              {'model': 'elit-morph-lexrule-en'},
              {'model': 'elit-dep-biaffine-en-mixed'},
              {'model': 'uw-coref-e2e-en-ontonotes'}]
@@ -64,7 +64,7 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                  String models = "[" +
                          "{\"model\": \"elit-tok-lexrule-en\"}," +
                          "{\"model\": \"elit-ner-flair-en-ontonotes\"}," +
-                         "{\"model\": \"elit-pos-lstm-en-mixed\"}," +
+                         "{\"model\": \"elit-pos-flair-en-mixed\"}," +
                          "{\"model\": \"elit-morph-lexrule-en\"}," +
                          "{\"model\": \"elit-dep-biaffine-en-mixed\"}," +
                          "{\"model\": \"uw-coref-e2e-en-ontonotes\"}]";
@@ -103,7 +103,7 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                 'Dr. Choi started the Emory NLP Research Group in 2014. ' +
                 'He is the founder of the ELIT project.'
 
-The following shows the output in the JSON format (see the `output format <../documents/output_format.html>`_ for more details):
+The following shows the output in the JSON format (see the `output format <../documentation/output_format.html>`_ for more details):
 
 .. code-block:: json
 
@@ -124,7 +124,7 @@ The following shows the output in the JSON format (see the `output format <../do
      "coref": [{[0, 0, 2], [1, 0, 1], [2, 0, 2]}]}
 
 
-See the `available models <models.html>`_ for more details about all built-in models and their parameter settings.
+See the `available models <models.html>`_ for the list of all built-in models and their parameter settings.
 
 
 ------------------
