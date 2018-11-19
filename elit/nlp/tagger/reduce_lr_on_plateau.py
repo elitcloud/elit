@@ -120,7 +120,6 @@ class ReduceLROnPlateau(LRScheduler):
                 print('Epoch {:5d}: reducing learning rate'
                       ' from {:.4e} to {:.4e}.'.format(epoch, old_lr, new_lr))
 
-
     @property
     def in_cooldown(self):
         return self.cooldown_counter > 0

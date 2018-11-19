@@ -18,7 +18,7 @@ from elit.structure import Document
 class Tagger(NLPComponent):
     def __init__(self) -> None:
         super().__init__()
-        self.tagger: SequenceTagger = None
+        self.tagger = None
 
     def init(self, **kwargs):
         pass
@@ -49,7 +49,7 @@ class Tagger(NLPComponent):
         tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
 
         with mx.Context(mxnet_prefer_gpu()):
-            embedding_types: List[TokenEmbeddings] = [
+            embedding_types = [
 
                 WordEmbeddings(pretrained_embeddings),
 
@@ -61,15 +61,15 @@ class Tagger(NLPComponent):
                 CharLMEmbeddings(backward_language_model),
             ]
 
-            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+            embeddings = StackedEmbeddings(embeddings=embedding_types)
 
-            self.tagger: SequenceTagger = SequenceTagger(hidden_size=256,
+            self.tagger = SequenceTagger(hidden_size=256,
                                                          embeddings=embeddings,
                                                          tag_dictionary=tag_dictionary,
                                                          tag_type=tag_type,
                                                          use_crf=True)
 
-            trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus, test_mode=False)
+            trainer = SequenceTaggerTrainer(self.tagger, corpus, test_mode=False)
 
             return trainer.train(model_path, learning_rate,
                                  mini_batch_size,

@@ -71,9 +71,9 @@ class Metric(object):
 
 class SequenceTaggerTrainer:
     def __init__(self, model: SequenceTagger, corpus: TaggedCorpus, test_mode: bool = False) -> None:
-        self.model  = model
-        self.corpus  = corpus
-        self.test_mode  = test_mode
+        self.model = model
+        self.corpus = corpus
+        self.test_mode = test_mode
 
     def train(self,
               base_path: str,
@@ -99,8 +99,10 @@ class SequenceTaggerTrainer:
         :return: best dev f1
         """
         evaluation_method = 'F1'
-        if self.model.tag_type in ['ner', 'np', 'srl']: evaluation_method = 'span-F1'
-        if self.model.tag_type in ['pos', 'upos']: evaluation_method = 'accuracy'
+        if self.model.tag_type in ['ner', 'np', 'srl']:
+            evaluation_method = 'span-F1'
+        if self.model.tag_type in ['pos', 'upos']:
+            evaluation_method = 'accuracy'
         print(evaluation_method)
 
         os.makedirs(base_path, exist_ok=True)
@@ -120,7 +122,7 @@ class SequenceTaggerTrainer:
             with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
                 scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
-                                                                 patience=patience, mode=anneal_mode)
+                                              patience=patience, mode=anneal_mode)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
                 trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
                 for epoch in range(0, max_epochs):

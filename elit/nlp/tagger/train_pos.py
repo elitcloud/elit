@@ -40,10 +40,10 @@ if __name__ == '__main__':
 
         # 5. initialize sequence tagger
         tagger = SequenceTagger(hidden_size=256,
-                                                embeddings=embeddings,
-                                                tag_dictionary=tag_dictionary,
-                                                tag_type=tag_type,
-                                                use_crf=True)
+                                embeddings=embeddings,
+                                tag_dictionary=tag_dictionary,
+                                tag_type=tag_type,
+                                use_crf=True)
 
         # 6. initialize trainer
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)

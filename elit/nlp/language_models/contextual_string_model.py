@@ -193,9 +193,9 @@ class ContextualStringModelTrainer:
     """
 
     def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
-        self.model: LanguageModel = model
-        self.corpus: TextCorpus = corpus
-        self.test_mode: bool = test_mode
+        self.model = model
+        self.corpus = corpus
+        self.test_mode = test_mode
 
         self.loss_function = SoftmaxCrossEntropyLoss()
         self.log_interval = 100

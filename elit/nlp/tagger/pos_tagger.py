@@ -10,8 +10,7 @@ from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.nlp.tagger.tagger import Tagger
-from elit.structure import Document, SENS, POS
-from elit.structure import Sentence as ElitSentence
+from elit.structure import Document, POS
 
 
 class POSTagger(Tagger):
@@ -39,14 +38,13 @@ class POSTagger(Tagger):
         idx = 0
         for d in docs:
             for s in d:
-                s: ElitSentence = s
                 s[POS] = [t.tags['pos'] for t in sentences[idx]]
                 idx += 1
         return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
         print('test... ')
-        trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
+        trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
         test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                             tempfile.gettempdir(),
                                             evaluation_method='accuracy',
