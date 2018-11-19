@@ -18,7 +18,7 @@ import os
 import pytest
 
 from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
-from elit.nlp.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.nlp.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer, SpaceTokenizer
 from elit.util.io import tsv_reader, json_reader
 
 __author__ = "Gary Lai"
@@ -33,7 +33,7 @@ def tokenizer():
 
 @pytest.fixture()
 def space_tokenizer():
-    return WhitespaceTokenizer()
+    return SpaceTokenizer()
 
 
 @pytest.fixture()
