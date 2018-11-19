@@ -10,8 +10,8 @@ from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.nlp.tagger.tagger import Tagger
-from elit.util.structure import Document, SEN, POS
-from elit.util.structure import Sentence as ElitSentence
+from elit.structure import Document, SENS, POS
+from elit.structure import Sentence as ElitSentence
 
 
 class POSTagger(Tagger):
@@ -68,6 +68,6 @@ if __name__ == '__main__':
         #              max_epochs=1,
         #              embeddings_in_memory=False)
         test = conll_to_documents('data/dat/en-pos.tst', headers={0: 'text', 1: 'pos'})
-        # sent = tagger.decode(test)[0][SEN][3]
+        # sent = tagger.decode(test)[0][SENS][3]
         # print(sent[POS])
         print(tagger.evaluate(test))

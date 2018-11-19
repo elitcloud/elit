@@ -12,7 +12,7 @@ from elit.nlp.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEm
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.util.structure import Document
+from elit.structure import Document
 
 
 class Tagger(NLPComponent):
