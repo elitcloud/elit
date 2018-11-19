@@ -12,6 +12,7 @@ from mxnet.gluon import nn, rnn
 
 from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
 from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
