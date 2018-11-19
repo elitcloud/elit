@@ -21,7 +21,7 @@ from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
-class LanguageModel(nn.Block):
+class ContextualStringModel(nn.Block):
     """
     Container module with an encoder, a recurrent module, and a decoder.
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
@@ -192,7 +192,7 @@ class ContextualStringModelTrainer:
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
     """
 
-    def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
+    def __init__(self, model: ContextualStringModel, corpus: TextCorpus, test_mode: bool = False):
         self.model = model
         self.corpus = corpus
         self.test_mode = test_mode
