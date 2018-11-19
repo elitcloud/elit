@@ -405,12 +405,12 @@ def _convert_dumped_model():
 def _train():
     corpus = TextCorpus('data/raw')
     language_model = LanguageModel(corpus.dictionary,
-                                   is_forward_lm=True,
+                                   is_forward_lm=False,
                                    hidden_size=1024,
                                    nlayers=1,
                                    dropout=0.25)
     trainer = LanguageModelTrainer(language_model, corpus)
-    trainer.train('data/model/lm-jumbo-forward1024',
+    trainer.train('data/model/lm-jumbo-backward1024',
                   sequence_length=250,
                   mini_batch_size=100,
                   max_epochs=99999)

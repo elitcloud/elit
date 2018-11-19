@@ -57,14 +57,16 @@ class NERTagger(Tagger):
 
 
 if __name__ == '__main__':
-    tagger = NERTagger()
-    model_path = 'data/model/ner/debug'
-    tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
-                 model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
-                 forward_language_model='data/model/lm-news-forward',
-                 backward_language_model='data/model/lm-news-backward',
-                 max_epochs=1)
-    test = conll_to_documents('data/conll-03/debug/eng.tst')
-    sent = tagger.decode(test)[0][SEN][3]
-    print(sent[NER])
-    tagger.evaluate(test)
+    with mx.Context(mxnet_prefer_gpu()):
+        tagger = NERTagger()
+        model_path = 'data/model/ner/jumbo'
+        # tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
+        #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
+        #              forward_language_model='data/model/lm-news-forward',
+        #              backward_language_model='data/model/lm-news-backward',
+        #              max_epochs=1)
+        tagger.load(model_path)
+        test = conll_to_documents('data/dat/en-ner.tst',headers={0: 'text', 1: 'pos', 2: 'ner'})
+        sent = tagger.decode(test)[0][SEN][3]
+        print(sent[NER])
+        print(tagger.evaluate(test))
