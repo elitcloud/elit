@@ -1,0 +1,9 @@
+{
+  "reader": "tsv",
+  "tsv_heads": {
+    "tok": 0,
+    "pos": 1
+  },
+  "log_path": null,
+  "device": "cpu"
+}

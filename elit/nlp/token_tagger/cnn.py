@@ -40,7 +40,7 @@ class CNNTokenTagger(CNNComponent):
     def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
                  feature_windows=(3, 2, 1, 0, -1, -2, -3),
                  input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = None,
+                 output_config: Optional[SimpleNamespace] = SimpleNamespace(num_class=1, flatten=False),
                  fuse_conv_config: Optional[SimpleNamespace] = None,
                  ngram_conv_config: Optional[SimpleNamespace] = None,
                  hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
@@ -68,17 +68,10 @@ class CNNTokenTagger(CNNComponent):
         self.label_map = label_map
         input_config.col = sum([emb.dim for emb in embs])
         input_config.row = len(self.feature_windows)
-        if label_map:
-            output_config.num_class = self.label_map.num_class()
+        output_config.num_class = self.label_map.num_class() if label_map else output_config.num_class
 
-        super().__init__(ctx, key, embs,
-                         input_config,
-                         output_config,
-                         fuse_conv_config,
-                         ngram_conv_config,
-                         hidden_configs,
-                         initializer,
-                         **kwargs)
+        super().__init__(ctx, key, embs, input_config, output_config,
+                         fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)
 
     def __str__(self):
         s = ('CNNTokenTagger',

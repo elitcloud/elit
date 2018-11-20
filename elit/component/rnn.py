@@ -29,11 +29,14 @@ __author__ = "Gary Lai"
 
 class RNNComponent(MXComponent):
 
-    def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding], rnn_config, output_config, **kwargs):
+    def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding], rnn_config=None, output_config=None, **kwargs):
         super().__init__(ctx, key, embs, **kwargs)
         self.rnn_config = rnn_config
         self.output_config = output_config
-        self.model = RNNModel(rnn_config=rnn_config, output_config=output_config)
+        if rnn_config is not None and output_config is not None:
+            self.model = RNNModel(rnn_config=rnn_config, output_config=output_config)
+        else:
+            self.model = None
         logging.info(self.__str__())
 
     def train_block(self, data_iter: DataLoader, docs: Sequence[Document]) -> float:

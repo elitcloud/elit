@@ -24,7 +24,7 @@ __author__ = "Gary Lai"
 
 class ElitCli(object):
     def __init__(self):
-        set_logger()
+        # set_logger()
         usage = '''elit <command> [<args>]
 
         commands:
@@ -37,7 +37,7 @@ class ElitCli(object):
         if args.command == 'token_tagger':
             from elit.nlp.token_tagger import TokenTaggerCLI
             TokenTaggerCLI()
-        if args.command == 'download':
+        elif args.command == 'download':
             from elit.cli.download import DownloadCLI
             DownloadCLI()
         else:

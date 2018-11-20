@@ -21,6 +21,7 @@ __author__ = "Gary Lai"
 HOME = expanduser("~")
 CONFIG_PATH = '{HOME}/.elit'.format(HOME=HOME)
 EMB_PATH = '{CONFIG_PATH}/emb'.format(CONFIG_PATH=CONFIG_PATH)
+ELITNLP_PATH = '{CONFIG_PATH}/elitnlp'.format(CONFIG_PATH=CONFIG_PATH)
 MODEL_PATH = '{CONFIG_PATH}/model'.format(CONFIG_PATH=CONFIG_PATH)
 REPO_PATH = '{CONFIG_PATH}/repo'.format(CONFIG_PATH=CONFIG_PATH)
 

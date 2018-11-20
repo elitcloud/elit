@@ -40,7 +40,7 @@ __author__ = 'Gary Lai'
 class RNNTokenTagger(RNNComponent):
 
     def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
-                 rnn_config: SimpleNamespace, output_config: SimpleNamespace,
+                 rnn_config: SimpleNamespace = None, output_config: SimpleNamespace = None,
                  label_map: LabelMap = None, chunking: bool = False,
                  **kwargs):
         """
@@ -56,8 +56,8 @@ class RNNTokenTagger(RNNComponent):
         """
         self.label_map = label_map
         self.chunking = chunking
-        if label_map:
-            output_config.num_class = self.label_map.num_class()
+        if output_config is not None:
+            output_config.num_class = self.label_map.num_class() if label_map else 1
         super().__init__(ctx, key, embs, rnn_config, output_config, **kwargs)
 
     def __str__(self):

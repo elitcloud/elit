@@ -169,8 +169,7 @@ class TokenTaggerCLI(ComponentCLI):
 
         comp.load(args.model_path)
 
-        # component
+        eval_docs, _ = config.reader(args.eval_path, config.tsv_heads, args.key)
 
-        eval_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
-
-        comp.evaluate(docs=eval_docs, batch_size=config.batch_size)
+        acc, eva_time = comp.evaluate(docs=eval_docs, batch_size=config.batch_size)
+        print(acc, eva_time)

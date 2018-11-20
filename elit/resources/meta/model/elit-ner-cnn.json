@@ -1,6 +1,8 @@
 {
   "name": "elit-ner-cnn",
   "github": "",
+  "entry_point": "",
+  "component": "",
   "emb": [{
     "name": "fasttext-dim400.bin",
     "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/word_embedding/fasetext/dim400.bin",

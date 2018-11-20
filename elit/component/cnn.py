@@ -32,7 +32,7 @@ class CNNComponent(MXComponent):
 
     def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
                  input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = None,
+                 output_config: Optional[SimpleNamespace] = SimpleNamespace(num_class=1, flatten=False),
                  fuse_conv_config: Optional[SimpleNamespace] = None,
                  ngram_conv_config: Optional[SimpleNamespace] = None,
                  hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
