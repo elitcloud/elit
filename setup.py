@@ -128,7 +128,7 @@ def setup_package():
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
-        package_data={'': ['*.txt']},
+        package_data={'': ['*.txt', '*.json']},
         install_requires=[
             'argparse==1.4.0',
             'pybind11==2.2.3',

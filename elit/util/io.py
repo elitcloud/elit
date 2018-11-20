@@ -21,6 +21,7 @@ import logging
 import os
 import pathlib
 import re
+import sys
 from typing import Set
 
 import requests
@@ -131,18 +132,22 @@ def sha1sum(filename):
 
 
 def download(source, filename):
-    logging.info("Downloading {}".format(filename.split('/')[-1]))
+    try:
+        with open(filename, "wb") as f:
+            response = requests.get(source, stream=True)
+            total_size = response.headers.get('content-length', 0)
 
-    with open(filename, "wb") as f:
-        response = requests.get(source, stream=True)
-        total_size = response.headers.get('content-length', 0)
-
-        if total_size is None:
-            f.write(response.content)
-        else:
-            block_size = 32 * 1024
-            total_size = int(total_size) // block_size
-            with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
-                for data in response.iter_content(chunk_size=block_size):
-                    f.write(data)
-                    pbar.update(len(data))
+            if total_size is None:
+                f.write(response.content)
+            else:
+                block_size = 32 * 1024
+                total_size = int(total_size) // block_size
+                with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
+                    for data in response.iter_content(chunk_size=block_size):
+                        f.write(data)
+                        pbar.set_description('Downloading: {}'.format(filename))
+                        pbar.update(len(data))
+    except KeyboardInterrupt:
+        if file_exist(filename):
+           os.remove(filename)
+        sys.exit()

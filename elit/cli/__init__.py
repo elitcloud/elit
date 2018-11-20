@@ -17,8 +17,6 @@
 import argparse
 import sys
 
-from elit.util.logger import set_logger
-
 __author__ = "Gary Lai"
 
 
@@ -29,6 +27,7 @@ class ElitCli(object):
 
         commands:
             token_tagger: use token tagger
+            install: Install model
             download: download pre-trained model or word embedding
         '''
         parser = argparse.ArgumentParser(usage=usage)
@@ -37,6 +36,9 @@ class ElitCli(object):
         if args.command == 'token_tagger':
             from elit.nlp.token_tagger import TokenTaggerCLI
             TokenTaggerCLI()
+        elif args.command == 'install':
+            from elit.cli.install import InstallCLI
+            InstallCLI()
         elif args.command == 'download':
             from elit.cli.download import DownloadCLI
             DownloadCLI()

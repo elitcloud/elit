@@ -25,4 +25,4 @@ ELITNLP_PATH = '{CONFIG_PATH}/elitnlp'.format(CONFIG_PATH=CONFIG_PATH)
 MODEL_PATH = '{CONFIG_PATH}/model'.format(CONFIG_PATH=CONFIG_PATH)
 REPO_PATH = '{CONFIG_PATH}/repo'.format(CONFIG_PATH=CONFIG_PATH)
 
-sys.path.insert(1, REPO_PATH)
+sys.path.insert(1, ELITNLP_PATH)
