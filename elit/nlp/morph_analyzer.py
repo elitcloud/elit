@@ -144,7 +144,7 @@ class EnglishMorphAnalyzer(NLPComponent):
         self.init()
 
     def init(self):
-        self.load('elit.resources.lemmatizer.english')
+        self.load('elit.resources.morph_analyzer.english')
 
     def load(self, resource_path: str, **kwargs):
         self._inflection_lexicons = self._load_inflection_lexicons(resource_path)
