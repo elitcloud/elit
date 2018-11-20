@@ -18,7 +18,7 @@ import os
 import pytest
 
 from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
-from elit.nlp.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.nlp.tokenizer import Tokenizer, WhitespaceTokenizer, EnglishTokenizer
 from elit.util.reader import tsv_reader, json_reader
 
 
