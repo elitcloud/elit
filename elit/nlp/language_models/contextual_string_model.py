@@ -344,7 +344,7 @@ class ContextualStringModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss: nd.NDArray = 0
+        total_loss = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)

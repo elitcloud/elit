@@ -924,7 +924,7 @@ class TaggedCorpus:
     def make_tag_dictionary(self, tag_type: str) -> Dictionary:
 
         # Make the tag dictionary
-        tag_dictionary: Dictionary = Dictionary()
+        tag_dictionary = Dictionary()
         if tag_type == 'ner':
             tag_dictionary.add_item('O')
         for sentence in self.get_all_sentences():
@@ -1259,7 +1259,7 @@ class NLPTaskDataFetcher:
         dataset = []
         for d in docs:
             for s in d.sentences:
-                sentence: Sentence = Sentence()
+                sentence = Sentence()
 
                 for word in s.tokens:
                     t = Token(word)
