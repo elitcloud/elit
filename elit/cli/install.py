@@ -16,6 +16,8 @@
 import argparse
 import json
 import logging
+import os
+import subprocess
 import sys
 
 from git import Repo
@@ -62,7 +64,11 @@ class InstallCLI(BaseCLI):
         check_resource_dir(ELITNLP_PATH)
 
         if meta['github']:
-            Repo.clone_from(meta['github'], '{}/{}'.format(ELITNLP_PATH, meta['name']))
+            dest = '{}/{}'.format(ELITNLP_PATH, meta['name'])
+            Repo.clone_from(url=meta['github'], to_path=dest)
+            pip_args = ['-r', '--no-cache-dir']
+            cmd = [sys.executable, '-m', 'pip', 'install'] + pip_args + '{}/requirements.txt'.format(dest)
+            return subprocess.call(cmd, env=os.environ.copy())
         for model in meta['model']:
             filename = '{}/{}'.format(MODEL_PATH, model['name'])
             source = model['source']

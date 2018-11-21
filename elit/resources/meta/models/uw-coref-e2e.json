@@ -1,20 +1,20 @@
 {
-  "name": "elit-ner-cnn",
-  "github": "",
-  "entry_point": "",
-  "component": "",
+  "name": "uw-coref-e2e",
+  "github": "https://github.com/elitcloud/e2e-coref",
+  "entry_point": "uw_coref_e2e",
+  "component": "E2ECoref",
   "emb": [{
     "name": "fasttext-dim400.bin",
     "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/emb/fasttext-dim400.bin",
     "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
   }],
-  "model": [{
+  "models": [{
     "name": "elit-ner-cnn.params",
-    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/model/elit-ner-cnn.params",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-ner-cnn.params",
     "checksum": "8ab65c1c4b2e5eb32d61b3d75cb5d6dcda5ca172"
   }, {
     "name": "elit-ner-cnn.pkl",
-    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/model/elit-ner-cnn.pkl",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-ner-cnn.pkl",
     "checksum": "cb1880d6c60bf669d3e188a7f35e8c12ffd3745b"
   }]
 }
