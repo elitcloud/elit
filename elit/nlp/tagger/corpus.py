@@ -1320,7 +1320,7 @@ class NLPTaskDataFetcher:
                 sentence  = Sentence()
 
             else:
-                fields = re.split("\s+", line)
+                fields = re.split(r"\s+", line)
                 token = Token(fields[text_column])
                 for column in column_name_map:
                     if len(fields) > column:
@@ -1349,7 +1349,7 @@ class NLPTaskDataFetcher:
         sentence  = Sentence()
         for line in lines:
 
-            fields = re.split("\s+", line)
+            fields = re.split(r"\s+", line)
             if line == '':
                 if len(sentence) > 0:
                     sentences.append(sentence)
