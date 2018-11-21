@@ -138,6 +138,9 @@ class SpaceTokenizer(Tokenizer):
         """ Not supported. """
         pass
 
+    def decode(self, input_text: str, init_offset: int = 0, segment: int = 1, **kwargs) -> Document:
+        return super().decode(input_text, init_offset, segment, **kwargs)
+
     def train(self, trn_data, dev_data, model_path: str, **kwargs) -> float:
         """ Not supported. """
         pass

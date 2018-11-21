@@ -19,6 +19,7 @@ import sys
 
 from elit.cli import CLIComponent
 from elit.nlp.token_tagger import TokenTaggerConfig
+from elit.embedding import init_emb
 from elit.util.io import set_logger
 
 __author__ = "Gary Lai"
@@ -62,21 +63,26 @@ class TokenTaggerCLI(CLIComponent):
         trn_docs, label_map = config.reader(args.trn_path, config.tsv_heads, args.key)
         dev_docs, _ = config.reader(args.dev_path, config.tsv_heads, args.key)
 
+        embs = [init_emb(config) for config in args.embs_config]
         if args.mode == 'rnn':
             from elit.nlp.token_tagger import RNNTokenTagger
-            comp = RNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs_config=args.embs_config, chunking=config.chunking,
+            comp = RNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs=embs, chunking=config.chunking,
                                   rnn_config=config.rnn_config, output_config=config.output_config)
         elif args.mode == 'cnn':
             from elit.nlp.token_tagger import CNNTokenTagger
-            comp = CNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs_config=args.embs_config, chunking=config.chunking,
-                                  input_config=config.input_config, output_config=config.output_config, fuse_conv_config=config.fuse_conv_config,
-                                  ngram_conv_config=config.ngram_conv_config, hidden_configs=config.hidden_configs)
+            comp = CNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs=embs, chunking=config.chunking,
+                                  input_config=config.input_config,
+                                  output_config=config.output_config,
+                                  fuse_conv_config=config.fuse_conv_config,
+                                  ngram_conv_config=config.ngram_conv_config,
+                                  hidden_configs=config.hidden_configs)
         else:
             raise TypeError('mode {} is not supported.'.format(args.mode))
 
         # component
         # train
-        comp.train(trn_docs=trn_docs, dev_docs=dev_docs, model_path=args.model_path, epoch=config.epoch, trn_batch=config.trn_batch, dev_batch=config.dev_batch,
+        comp.train(trn_docs=trn_docs, dev_docs=dev_docs, model_path=args.model_path, epoch=config.epoch,
+                   trn_batch=config.trn_batch, dev_batch=config.dev_batch,
                    loss=config.loss, optimizer=config.optimizer, optimizer_params=config.optimizer_params)
 
 

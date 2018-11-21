@@ -18,5 +18,5 @@ __author__ = "Gary Lai"
 
 from .config import TokenTaggerConfig
 from .cli import TokenTaggerCLI
-from .rnn_token_tagger import RNNTokenTagger
-from .cnn_token_tagger import CNNTokenTagger
+from .rnn import RNNTokenTagger
+from .cnn import CNNTokenTagger

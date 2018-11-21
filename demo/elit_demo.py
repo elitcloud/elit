@@ -19,8 +19,8 @@ tok = SpaceTokenizer()
 
 input = '  Hello\n, world  !\n\n'
 offset = 0
-print(tok.decode(input, offset))
+doc = tok.decode(input, offset)
 
 
-offset = 1
-print(tok.decode(input, offset))
+for k, sc in sorted(doc .items(), key=lambda x: x[0]):
+    print('%s\t%d\t%d' % (k, sc, doc[k]))

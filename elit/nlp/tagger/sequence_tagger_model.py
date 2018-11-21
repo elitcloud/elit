@@ -12,6 +12,7 @@ from mxnet.gluon import nn, rnn
 
 from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
 from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
@@ -186,7 +187,7 @@ class SequenceTagger(nn.Block):
         """
         # first, sort sentences by number of tokens
         sentences.sort(key=lambda x: len(x), reverse=True)
-        longest_token_sequence_in_batch: int = len(sentences[0])
+        longest_token_sequence_in_batch = len(sentences[0])
 
         self.embeddings.embed(sentences)
 
@@ -423,7 +424,7 @@ class SequenceTagger(nn.Block):
                 all_tokens.extend(sentence.tokens)
 
             for (token, pred_id) in zip(all_tokens, predicted_id):
-                token: Token = token
+                token = token
                 # get the predicted tag
                 predicted_tag = self.tag_dictionary.get_item_for_index(pred_id)
                 token.add_tag(self.tag_type, predicted_tag)

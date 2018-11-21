@@ -16,5 +16,8 @@
 
 __author__ = "Gary Lai"
 
-from .rnn import RNNModel
-from .cnn import CNNModel
+from .base import Component
+from .nlp import NLPComponent
+from .mx import MXComponent
+from .cnn import CNNComponent
+from .rnn import RNNComponent

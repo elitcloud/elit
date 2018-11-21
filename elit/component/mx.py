@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2017 Emory University
+# Copyright 2018 Emory University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,134 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import abc
 import datetime
-import inspect
 import logging
 import time
-from typing import Sequence, Any
+from typing import Sequence, List
 
-import abc
 import mxnet as mx
 from mxnet.gluon import Trainer
 from mxnet.gluon.data import DataLoader
 from tqdm import trange
 
-from elit.dataset import LabelMap
-from elit.embedding import init_emb
+from elit.component import NLPComponent
+from elit.embedding import Embedding
 from elit.structure import Document
 from elit.util.mx import mx_loss
 
-__author__ = 'Jinho D. Choi, Gary Lai'
-
-
-class Component(abc.ABC):
-    """
-    :class:`Component` is an abstract class; any component developed in ELIT must inherit this class.
-
-    Abstract methods to be implemented:
-      - :meth:`Component.load`
-      - :meth:`Component.save`
-      - :meth:`Component.train`
-      - :meth:`Component.decode`
-      - :meth:`Component.evaluate`
-    """
-
-    @abc.abstractmethod
-    def load(self, model_path: str, **kwargs):
-        """
-        :param model_path: the filepath where a model can be loaded.
-
-        Loads a model for this component from the filepath.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def save(self, model_path: str, **kwargs):
-        """
-        :param model_path: the filepath where the current model can be saved.
-
-        Saves the current model of this component to the filepath.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def train(self, trn_data: Any, dev_data: Any, model_path: str, **kwargs) -> float:
-        """
-        :param trn_data: training data.
-        :param dev_data: development (validation) data.
-        :param model_path: the filepath where the trained model(s) are to be saved.
-        :return: the best score form the development data.
-
-        Trains a model for this component and saves the model to the filepath.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def decode(self, data: Any, **kwargs):
-        """
-        :param data: input data.
-
-        Processes the input data, make predictions, and saves the predicted labels back to the
-        input data.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def evaluate(self, data: Any, **kwargs):
-        """
-        :param data: input data.
-
-        Evaluates the current model of this component with the input data.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-
-class NLPComponent(Component):
-    """
-    :class:`NLPComponent` is an abstract class; any NLP component developed in ELIT must inherit
-    this class.
-    It is similar to :class:`Component` except that the type of training and development data is
-    specified to :class:`elit.structure.Document`.
-
-    Abstract methods to be implemented:
-      - :meth:`Component.init`
-      - :meth:`Component.load`
-      - :meth:`Component.save`
-      - :meth:`NLPComponent.train`
-      - :meth:`NLPComponent.decode`
-      - :meth:`NLPComponent.evaluate`
-    """
-
-    @abc.abstractmethod
-    def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
-        """
-        :param trn_docs: the sequence of documents for training.
-        :param dev_docs: the sequence of documents for development (validation).
-        :param model_path: the filepath where trained model(s) are to be saved.
-        :return: the best score form the development data.
-
-        Trains a model for this component and saves the model to the filepath.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def decode(self, docs: Sequence[Document], **kwargs):
-        """
-        :param docs: the sequence of input documents.
-
-        Processes the input documents, make predictions, and saves the predicted labels back to the
-        input documents.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
-
-    @abc.abstractmethod
-    def evaluate(self, docs: Sequence[Document], **kwargs):
-        """
-        :param docs: the sequence of input documents.
-
-        Evaluates the current model of this component with the input documents.
-        """
-        raise NotImplementedError('%s.%s()' % (self.__class__.__name__, inspect.stack()[0][3]))
+__author__ = "Gary Lai"
 
 
 class MXComponent(NLPComponent):
@@ -148,7 +37,7 @@ class MXComponent(NLPComponent):
     :class:`TokenTagger` provides an abstract class to implement a tagger that predicts a tag for every token.
     """
 
-    def __init__(self, ctx: mx.Context, key: str, embs_config: list, label_map: LabelMap, chunking: bool = False, **kwargs):
+    def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding], **kwargs):
         """
         :param ctx: the (list of) device context(s) for :class:`mxnet.gluon.Block`.
         :param vsms: the sequence of namespace(model, key),
@@ -156,10 +45,7 @@ class MXComponent(NLPComponent):
         """
         self.ctx = ctx
         self.key = key
-        self.label_map = label_map
-        self.embs = [init_emb(config) for config in embs_config]
-        self.chunking = chunking
-        self.dim = sum([emb.dim for emb in self.embs])
+        self.embs = embs
         self.model = None
         self.loss = None
         self.trainer = None
