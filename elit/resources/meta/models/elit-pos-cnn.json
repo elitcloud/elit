@@ -1,0 +1,20 @@
+{
+  "name": "elit-pos-cnn",
+  "github": "",
+  "entry_point": "",
+  "component": "",
+  "emb": [{
+    "name": "fasttext-dim400.bin",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/emb/fasttext-dim400.bin",
+    "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
+  }],
+  "models": [{
+    "name": "elit-pos-cnn.params",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-pos-cnn.params",
+    "checksum": "ac40e6457c2a1674dcd7c5727eb93a9356dbc8ce"
+  }, {
+    "name": "elit-pos-cnn.pkl",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-pos-cnn.pkl",
+    "checksum": "3a887bb6d00ba00a5a865d21b655751fb58e698c"
+  }]
+}

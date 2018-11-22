@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -137,6 +137,9 @@ class SpaceTokenizer(Tokenizer):
     def save(self, model_path: str, **kwargs):
         """ Not supported. """
         pass
+
+    def decode(self, input_text: str, init_offset: int = 0, segment: int = 1, **kwargs) -> Document:
+        return super().decode(input_text, init_offset, segment, **kwargs)
 
     def train(self, trn_data, dev_data, model_path: str, **kwargs) -> float:
         """ Not supported. """

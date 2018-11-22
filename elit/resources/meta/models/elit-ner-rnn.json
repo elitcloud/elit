@@ -1,0 +1,20 @@
+{
+  "name": "elit-ner-rnn",
+  "github": "",
+  "entry_point": "",
+  "component": "",
+  "emb": [{
+    "name": "fasttext-dim400.bin",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/emb/fasttext-dim400.bin",
+    "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
+  }],
+  "models": [{
+    "name": "elit-ner-rnn.params",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-ner-rnn.params",
+    "checksum": "9c6e8a3bd0f3729f15e1d778554ecf784313442b"
+  }, {
+    "name": "elit-ner-rnn.pkl",
+    "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/models/elit/elit-ner-rnn.pkl",
+    "checksum": "6731d9c180958d373f92a6c4758ef55396becd82"
+  }]
+}

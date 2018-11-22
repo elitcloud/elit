@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import mxnet as mx
 from elit.util.mx import mx_loss
 from types import SimpleNamespace
 
-from elit.util.io import tsv_reader, json_reader
+from elit.util.reader import tsv_reader, json_reader
 
 __author__ = "Gary Lai"
 

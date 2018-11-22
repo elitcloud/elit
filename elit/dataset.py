@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ from mxnet import nd, gluon
 from mxnet.ndarray import NDArray
 from tqdm import tqdm
 
-from elit.embedding import Embedding, TokenEmbedding
+from elit.nlp.embedding import Embedding, TokenEmbedding
 from elit.structure import to_gold, Sentence, Document
 
 __author__ = "Gary Lai"

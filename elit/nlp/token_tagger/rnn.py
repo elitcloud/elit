@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
 # ========================================================================
 import logging
 import pickle
-from typing import Sequence
+from types import SimpleNamespace
+from typing import Sequence, List
 
 import mxnet as mx
 from gluonnlp.data import FixedBucketSampler
@@ -24,22 +25,24 @@ from mxnet.gluon.data import DataLoader
 from mxnet.gluon.utils import clip_global_norm
 from mxnet.metric import Accuracy
 from tqdm import tqdm
-from types import SimpleNamespace
 
-from elit.component import MXComponent
+from elit.component import RNNComponent
 from elit.dataset import LabelMap, sequence_batchify_fn, SequencesDataset
+from elit.nlp.embedding import Embedding
 from elit.eval import ChunkF1
 from elit.model import RNNModel
-from elit.structure import Document, to_gold, POS, NER
+from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 
 __author__ = 'Gary Lai'
 
 
-class RNNTokenTagger(MXComponent):
+class RNNTokenTagger(RNNComponent):
 
-    def __init__(self, ctx: mx.Context, key: str, embs_config: list, label_map: LabelMap, chunking: bool,
-                 rnn_config: SimpleNamespace, output_config: SimpleNamespace, **kwargs):
+    def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
+                 rnn_config: SimpleNamespace = None, output_config: SimpleNamespace = None,
+                 label_map: LabelMap = None, chunking: bool = False,
+                 **kwargs):
         """
 
         :param ctx: ctx is the Context
@@ -51,13 +54,11 @@ class RNNTokenTagger(MXComponent):
         :param output_config:
         :param kwargs:
         """
-        super().__init__(ctx, key, embs_config, label_map, chunking, **kwargs)
-        self.rnn_config = rnn_config
-        self.output_config = output_config
-        rnn_config.input_size = self.dim
-        output_config.num_class = label_map.num_class()
-        self.model = RNNModel(rnn_config=rnn_config, output_config=output_config)
-        logging.info(self.__str__())
+        self.label_map = label_map
+        self.chunking = chunking
+        if output_config is not None:
+            output_config.num_class = self.label_map.num_class() if label_map else 1
+        super().__init__(ctx, key, embs, rnn_config, output_config, **kwargs)
 
     def __str__(self):
         s = ('RNNTokenTagger',
@@ -124,6 +125,8 @@ class RNNTokenTagger(MXComponent):
         return acc.get()[1]
 
     def data_loader(self, docs: Sequence[Document], batch_size, shuffle=False, label=True, **kwargs) -> DataLoader:
+        if label is True and self.label_map is None:
+            raise ValueError('Please specify label_map')
         batchify_fn = kwargs.get('batchify_fn', sequence_batchify_fn)
         bucket = kwargs.get('bucket', False)
         num_buckets = kwargs.get('num_buckets', 10)
@@ -153,6 +156,7 @@ class RNNTokenTagger(MXComponent):
         # self.model.load_params(params(model_path), self.ctx)
         logging.info('{} is loaded'.format(params(model_path)))
         logging.info(self.__str__())
+        return self
 
     def save(self, model_path, **kwargs):
         """
@@ -168,15 +172,3 @@ class RNNTokenTagger(MXComponent):
         logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))
-
-
-class RNNPOSTagger(RNNTokenTagger):
-    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
-                 rnn_config: SimpleNamespace, output_config: SimpleNamespace, **kwargs):
-        super().__init__(ctx, POS, embs_config, label_map, False, rnn_config, output_config, **kwargs)
-
-
-class RNNNERTagger(RNNTokenTagger):
-    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
-                 rnn_config: SimpleNamespace, output_config: SimpleNamespace, **kwargs):
-        super().__init__(ctx, NER, embs_config, label_map, True, rnn_config, output_config, **kwargs)

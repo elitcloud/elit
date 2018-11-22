@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,5 +16,5 @@
 
 __author__ = "Gary Lai"
 
-from .rnn_model import RNNModel
-from .cnn_model import CNNModel
+from .rnn import RNNModel
+from .cnn import CNNModel

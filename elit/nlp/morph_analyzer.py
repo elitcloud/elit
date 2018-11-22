@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -144,7 +144,7 @@ class EnglishMorphAnalyzer(NLPComponent):
         self.init()
 
     def init(self):
-        self.load('elit.resources.lemmatizer.english')
+        self.load('elit.resources.morph_analyzer.english')
 
     def load(self, resource_path: str, **kwargs):
         self._inflection_lexicons = self._load_inflection_lexicons(resource_path)
