@@ -31,8 +31,8 @@ __author__ = "Gary Lai"
 class CNNComponent(MXComponent):
 
     def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
-                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = SimpleNamespace(num_class=1, flatten=False),
+                 input_config: Optional[SimpleNamespace] = None,
+                 output_config: Optional[SimpleNamespace] = None,
                  fuse_conv_config: Optional[SimpleNamespace] = None,
                  ngram_conv_config: Optional[SimpleNamespace] = None,
                  hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
@@ -45,14 +45,17 @@ class CNNComponent(MXComponent):
         self.ngram_conv_config = ngram_conv_config
         self.hidden_configs = hidden_configs
         self.initializer = initializer
-        self.model = CNNModel(
-            input_config=self.input_config,
-            output_config=self.output_config,
-            fuse_conv_config=self.fuse_conv_config,
-            ngram_conv_config=self.ngram_conv_config,
-            hidden_configs=self.hidden_configs,
-            **kwargs)
-        self.model.collect_params().initialize(self.initializer, ctx=self.ctx)
+        if input_config is not None and output_config is not None:
+            self.model = CNNModel(
+                input_config=self.input_config,
+                output_config=self.output_config,
+                fuse_conv_config=self.fuse_conv_config,
+                ngram_conv_config=self.ngram_conv_config,
+                hidden_configs=self.hidden_configs,
+                **kwargs)
+            self.model.collect_params().initialize(self.initializer, ctx=self.ctx)
+        else:
+            self.model = None
         logging.info(self.__str__())
 
     def train_block(self, data_iter: DataLoader, docs: Sequence[Document]) -> float:
