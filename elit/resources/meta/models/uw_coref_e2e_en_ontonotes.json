@@ -1,7 +1,7 @@
 {
-  "name": "uw-coref-e2e",
+  "name": "uw_coref_e2e_en_ontonotes",
   "github": "https://github.com/elitcloud/e2e-coref",
-  "entry_point": "uw_coref_e2e",
+  "entry_point": "uw_coref_e2e_en_ontonotes",
   "component": "E2ECoref",
   "emb": [{
     "name": "fasttext-dim400.bin",
