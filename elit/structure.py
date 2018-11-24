@@ -115,7 +115,7 @@ class Document(dict):
         self._iter += 1
         if self._iter >= len(self.sentences):
             raise StopIteration
-        return self._sentences[self._iter]
+        return Sentence(self._sentences[self._iter])
 
     @property
     def sentences(self) -> List[Sentence]:
