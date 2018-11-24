@@ -4,7 +4,7 @@
   "github": "",
   "entry_point": "",
   "component": "",
-  "emb": [{
+  "embs": [{
     "model": "fasttext",
     "name": "facebook_fasttext_400.bin",
     "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
