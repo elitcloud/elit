@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,5 +18,5 @@ __author__ = "Gary Lai"
 
 from .config import TokenTaggerConfig
 from .cli import TokenTaggerCLI
-from .rnn_token_tagger import RNNTokenTagger
-from .cnn_token_tagger import CNNTokenTagger
+from .rnn import RNNTokenTagger
+from .cnn import CNNTokenTagger

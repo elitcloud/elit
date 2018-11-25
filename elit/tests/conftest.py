@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ import pytest
 
 from elit.nlp.morph_analyzer import EnglishMorphAnalyzer
 from elit.nlp.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
-from elit.util.io import tsv_reader, json_reader
+from elit.util.reader import tsv_reader, json_reader
+
 
 __author__ = "Gary Lai"
 
@@ -33,7 +34,7 @@ def tokenizer():
 
 @pytest.fixture()
 def space_tokenizer():
-    return WhitespaceTokenizer()
+    return SpaceTokenizer()
 
 
 @pytest.fixture()

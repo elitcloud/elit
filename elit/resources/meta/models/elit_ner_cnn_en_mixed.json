@@ -1,0 +1,19 @@
+{
+  "org": "elit",
+  "name": "elit_ner_cnn_en_mixed",
+  "github": "",
+  "entry_point": "",
+  "component": "",
+  "embs": [{
+    "model": "fasttext",
+    "name": "facebook_fasttext_400.bin",
+    "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
+  }],
+  "models": [{
+    "name": "elit_ner_cnn_en_mixed.params",
+    "checksum": "8ab65c1c4b2e5eb32d61b3d75cb5d6dcda5ca172"
+  }, {
+    "name": "elit_ner_cnn_en_mixed.pkl",
+    "checksum": "cb1880d6c60bf669d3e188a7f35e8c12ffd3745b"
+  }]
+}

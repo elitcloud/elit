@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 import logging
 import pickle
 from types import SimpleNamespace
-from typing import Sequence, Optional, Tuple
+from typing import Sequence, Optional, Tuple, List
 
 import mxnet as mx
 from mxnet import nd, autograd
@@ -24,26 +24,28 @@ from mxnet.gluon.data import DataLoader
 from mxnet.metric import Accuracy
 from tqdm import tqdm
 
-from elit.component import MXComponent
+from elit.component import CNNComponent
 from elit.dataset import LabelMap, TokensDataset
+from elit.nlp.embedding import Embedding
 from elit.eval import ChunkF1
 from elit.model import CNNModel
-from elit.structure import Document, to_gold, POS, NER
+from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 
 __author__ = 'Jinho D. Choi, Gary Lai'
 
 
-class CNNTokenTagger(MXComponent):
+class CNNTokenTagger(CNNComponent):
 
-    def __init__(self, ctx: mx.Context, key: str, embs_config: list, label_map: LabelMap, chunking: bool,
+    def __init__(self, ctx: mx.Context, key: str, embs: List[Embedding],
                  feature_windows=(3, 2, 1, 0, -1, -2, -3),
-                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
+                 input_config: Optional[SimpleNamespace] = None,
                  output_config: Optional[SimpleNamespace] = None,
                  fuse_conv_config: Optional[SimpleNamespace] = None,
                  ngram_conv_config: Optional[SimpleNamespace] = None,
                  hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
                  initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
+                 label_map: LabelMap = None, chunking: bool = False,
                  **kwargs):
         """
 
@@ -61,28 +63,17 @@ class CNNTokenTagger(MXComponent):
         :param initializer:
         :param kwargs:
         """
-        super().__init__(ctx, key, embs_config, label_map, chunking, **kwargs)
+        self.chunking = chunking
         self.feature_windows = feature_windows
+        self.label_map = label_map
+        if input_config is not None:
+            input_config.col = sum([emb.dim for emb in embs])
+            input_config.row = len(self.feature_windows)
+        if output_config is not None:
+            output_config.num_class = self.label_map.num_class() if label_map else 1
 
-        input_config.col = self.dim
-        input_config.row = len(self.feature_windows)
-        output_config.num_class = len(self.label_map)
-
-        self.input_config = input_config
-        self.output_config = output_config
-        self.fuse_conv_config = fuse_conv_config
-        self.ngram_conv_config = ngram_conv_config
-        self.hidden_configs = hidden_configs
-        self.initializer = initializer
-        self.model = CNNModel(
-            input_config=self.input_config,
-            output_config=self.output_config,
-            fuse_conv_config=self.fuse_conv_config,
-            ngram_conv_config=self.ngram_conv_config,
-            hidden_configs=self.hidden_configs,
-            **kwargs)
-        self.model.collect_params().initialize(self.initializer, ctx=self.ctx)
-        logging.info(self.__str__())
+        super().__init__(ctx, key, embs, input_config, output_config,
+                         fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)
 
     def __str__(self):
         s = ('CNNTokenTagger',
@@ -168,6 +159,8 @@ class CNNTokenTagger(MXComponent):
         :param kwargs:
         :return:
         """
+        if label is True and self.label_map is None:
+            raise ValueError('Please specify label_map')
         return DataLoader(TokensDataset(docs=docs, embs=self.embs, key=self.key, label_map=self.label_map, feature_windows=self.feature_windows, label=label, transform=transform),
                           batch_size=batch_size,
                           shuffle=shuffle)
@@ -199,6 +192,7 @@ class CNNTokenTagger(MXComponent):
         self.model.load_parameters(params(model_path), self.ctx)
         logging.info('{} is loaded'.format(params(model_path)))
         logging.info(self.__str__())
+        return self
 
     def save(self, model_path, **kwargs):
         """
@@ -218,29 +212,3 @@ class CNNTokenTagger(MXComponent):
         logging.info('{} is saved'.format(pkl(model_path)))
         self.model.save_parameters(params(model_path))
         logging.info('{} is saved'.format(params(model_path)))
-
-
-class CNNPOSTagger(CNNTokenTagger):
-    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
-                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
-                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = None,
-                 fuse_conv_config: Optional[SimpleNamespace] = None,
-                 ngram_conv_config: Optional[SimpleNamespace] = None,
-                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
-                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
-                 **kwargs):
-        super().__init__(ctx, POS, embs_config, label_map, False, feature_windows, input_config, output_config, fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)
-
-
-class CNNNERTagger(CNNTokenTagger):
-    def __init__(self, ctx: mx.Context, embs_config: list, label_map: LabelMap,
-                 feature_windows=(3, 2, 1, 0, -1, -2, -3),
-                 input_config: Optional[SimpleNamespace] = SimpleNamespace(dropout=0.0),
-                 output_config: Optional[SimpleNamespace] = None,
-                 fuse_conv_config: Optional[SimpleNamespace] = None,
-                 ngram_conv_config: Optional[SimpleNamespace] = None,
-                 hidden_configs: Optional[Tuple[SimpleNamespace]] = None,
-                 initializer: mx.init.Initializer = mx.init.Xavier(magnitude=2.24, rnd_type='gaussian'),
-                 **kwargs):
-        super().__init__(ctx, NER, embs_config, label_map, True, feature_windows, input_config, output_config, fuse_conv_config, ngram_conv_config, hidden_configs, initializer, **kwargs)

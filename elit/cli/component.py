@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
 # limitations under the License.
 # ========================================================================
 import abc
-import argparse
+
 import inspect
-import logging
-import sys
 
 __author__ = "Gary Lai, Jinho D. Choi"
 
+from elit.cli import BaseCLI
 
-class CLIComponent(abc.ABC):
+
+class ComponentCLI(BaseCLI):
     """
     :class:`ComponentCLI` is an abstract class to implement a command-line interface for a component.
 
@@ -37,27 +37,15 @@ class CLIComponent(abc.ABC):
         :param name: the name of the component.
         :param description: the description of this component; if ``None``, the name is used instead.
         """
-        usage = [
-            '        elit %s <command> [<args>]' %
-            name,
-            '',
-            '    commands:',
-            '           train: train a model (gold labels required)',
-            '          decode: predict labels (gold labels not required)',
-            '        evaluate: evaluate the pre-trained model (gold labels required)']
+        usage = """elit {} <command> [<args>]
+        
+        commands:
+            train: train a model (gold labels required)
+            decode: predict labels (gold labels not required)
+            evaluate: evaluate the pre-trained model (gold labels required)
+        """.format(name)
 
-        usage = '\n'.join(usage)
-        if not description:
-            description = name
-        parser = argparse.ArgumentParser(usage=usage, description=description)
-        parser.add_argument('command', help='{} command to run'.format(name))
-        args = parser.parse_args(sys.argv[2:3])
-
-        if not hasattr(self, args.command):
-            logging.info('Unrecognized command: ' + args.command)
-            parser.print_help()
-            exit(1)
-        getattr(self, args.command)()
+        super().__init__(name=name, usage=usage, description=description)
 
     @classmethod
     @abc.abstractmethod
@@ -88,28 +76,3 @@ class CLIComponent(abc.ABC):
         Evaluates the current model of this component.
         """
         raise NotImplementedError('%s.%s()' % (cls.__class__.__name__, inspect.stack()[0][3]))
-
-
-class ElitCli(object):
-    def __init__(self):
-        parser = argparse.ArgumentParser(
-            usage='''
-    elit <command> [<args>]
-
-commands:
-    token_tagger    token_tagger
-'''
-        )
-        parser.add_argument('command', help='command to run')
-        args = parser.parse_args(sys.argv[1:2])
-        if args.command == 'token_tagger':
-            from elit.nlp.token_tagger import TokenTaggerCLI
-            TokenTaggerCLI()
-        else:
-            print('Unrecognized command')
-            parser.print_help()
-            exit(1)
-
-
-if __name__ == '__main__':
-    ElitCli()

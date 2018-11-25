@@ -13,31 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import glob
-import os
+from elit.nlp.tokenizer import SpaceTokenizer
 
-def count(filename):
-    sc, wc = 0, 0
-    tree = []
-    for line in open(filename):
-        line = line.strip()
-        if line:
-            tree.append(line)
-        elif tree:
-            sc += 1
-            wc += len(tree)
-            tree = []
-    return sc, wc
+tok = SpaceTokenizer()
 
-dat_dir = '/Users/jdchoi/Documents/Data/english/zzz/tsv'
-dsc, dwc = {}, {}
-
-for filename in glob.glob(os.path.join(dat_dir, '*/*')):
-    key = os.path.basename(filename)[:-4]
-    sc, wc = count(filename)
-    dsc[key] = dsc.get(key, 0) + sc
-    dwc[key] = dwc.get(key, 0) + wc
+input = '  Hello\n, world  !\n\n'
+offset = 0
+doc = tok.decode(input, offset)
 
 
-for k, sc in sorted(dsc.items(), key=lambda x: x[0]):
-    print('%s\t%d\t%d' % (k, sc, dwc[k]))
+for k, sc in sorted(doc .items(), key=lambda x: x[0]):
+    print('%s\t%d\t%d' % (k, sc, doc[k]))

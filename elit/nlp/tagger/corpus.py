@@ -1,3 +1,18 @@
+# ========================================================================
+# Copyright 2018 ELIT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
 # -*- coding:utf-8 -*-
 # Filename: corpus.py
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
@@ -24,7 +39,7 @@ from elit.structure import Sentence as ElitSentence
 def read_pretrained_embeddings(filename):
     word_to_embed = {}
     m = 0
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         for line in f:
             split = line.split()
             if len(split) == 2:
@@ -924,7 +939,7 @@ class TaggedCorpus:
     def make_tag_dictionary(self, tag_type: str) -> Dictionary:
 
         # Make the tag dictionary
-        tag_dictionary: Dictionary = Dictionary()
+        tag_dictionary = Dictionary()
         if tag_type == 'ner':
             tag_dictionary.add_item('O')
         for sentence in self.get_all_sentences():
@@ -1259,7 +1274,7 @@ class NLPTaskDataFetcher:
         dataset = []
         for d in docs:
             for s in d.sentences:
-                sentence: Sentence = Sentence()
+                sentence = Sentence()
 
                 for word in s.tokens:
                     t = Token(word)
@@ -1320,7 +1335,7 @@ class NLPTaskDataFetcher:
                 sentence  = Sentence()
 
             else:
-                fields = re.split("\s+", line)
+                fields = re.split(r"\s+", line)
                 token = Token(fields[text_column])
                 for column in column_name_map:
                     if len(fields) > column:
@@ -1349,7 +1364,7 @@ class NLPTaskDataFetcher:
         sentence  = Sentence()
         for line in lines:
 
-            fields = re.split("\s+", line)
+            fields = re.split(r"\s+", line)
             if line == '':
                 if len(sentence) > 0:
                     sentences.append(sentence)

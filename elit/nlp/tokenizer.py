@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class Tokenizer(Component):
             for i in range(1, len(indices)):
                 bidx = indices[i - 1]
                 eidx = indices[i]
-                tokens, offsets = self.tokenize(input_text[bidx:eidx], bidx)
+                tokens, offsets = self.tokenize(input_text[bidx:eidx], bidx+init_offset)
                 if tokens:
                     if segment == 1: document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
                     else: document.add_sentences(self.segment(tokens, offsets))
@@ -126,17 +126,20 @@ class Tokenizer(Component):
         return sentences
 
 
-class WhitespaceTokenizer(Tokenizer):
+class SpaceTokenizer(Tokenizer):
     """
     :class:`SpaceTokenizer` splits tokens by white-spaces.
     """
 
     def __init__(self):
-        super(WhitespaceTokenizer, self).__init__()
+        super(SpaceTokenizer, self).__init__()
 
     def save(self, model_path: str, **kwargs):
         """ Not supported. """
         pass
+
+    def decode(self, input_text: str, init_offset: int = 0, segment: int = 1, **kwargs) -> Document:
+        return super().decode(input_text, init_offset, segment, **kwargs)
 
     def train(self, trn_data, dev_data, model_path: str, **kwargs) -> float:
         """ Not supported. """

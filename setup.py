@@ -54,8 +54,8 @@ def get_version_info(filename):
         try:
             from elit.version import dev_version as DEV_VERSION
         except ImportError:
-            raise ImportError("Unable to import dev_version. Try removing " \
-                              "elit/version.py and the build directory " \
+            raise ImportError("Unable to import dev_version. Try removing " 
+                              "elit/version.py and the build directory " 
                               "before building.")
     else:
         DEV_VERSION = "Unknown"
@@ -77,16 +77,17 @@ release = %(isrelease)s
 if not release:
     version = full_version
 """
-    FULLVERSION, DEV_VERSION  = get_version_info(filename)
+    FULLVERSION, DEV_VERSION = get_version_info(filename)
 
     a = open(filename, 'w')
     try:
         a.write(cnt % {'version': VERSION,
                        'full_version': FULLVERSION,
-                       'dev_version': DEV_VERSION ,
+                       'dev_version': DEV_VERSION,
                        'isrelease': str(ISRELEASED)})
     finally:
         a.close()
+
 
 VERSION_PY = 'elit/version.py'
 
@@ -127,7 +128,7 @@ def setup_package():
         description='The Emory Language Information Toolkit (ELIT).',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
-        package_data={'': ['*.txt']},
+        package_data={'': ['*.txt', '*.json']},
         install_requires=[
             'argparse==1.4.0',
             'pybind11==2.2.3',
@@ -139,7 +140,11 @@ def setup_package():
             'gluonnlp==0.4.0',
             'marisa_trie==0.7.5',
             'tqdm==4.26.0',
+            'gitpython==2.1.11',
         ],
+        extras_require={
+          'cu92': ['mxnet-cu92==1.3.0']
+        },
         tests_require=[
             'pytest',
         ],

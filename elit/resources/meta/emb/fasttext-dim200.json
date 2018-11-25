@@ -1,0 +1,5 @@
+{
+  "name": "fasttext-dim200.bin",
+  "source": "https://s3-us-west-2.amazonaws.com/elitcloud-public-data/emb/fasttext-dim200.bin",
+  "checksum": "9a6d5b3f7b5b74d7705103d137ade0c29f97f8da"
+}

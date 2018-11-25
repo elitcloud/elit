@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2017 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ __author__ = 'Jinho D. Choi'
      {'sens': [{'sid': 0, 'tok': ['Hello', ',', 'world', '!'], 'off': [(3, 8), (10, 11), (12, 17), (19, 20)]}]})
 ])
 def test_space_tokenizer(space_tokenizer, input, offset, expected):
-    result = space_tokenizer.decode(input, offset)
+    result = space_tokenizer.decode(input, offset, segment=2)
     assert result == expected
 
 

@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 Emory University
+# Copyright 2018 ELIT
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ class Document(dict):
         self._iter += 1
         if self._iter >= len(self.sentences):
             raise StopIteration
-        return self._sentences[self._iter]
+        return Sentence(self._sentences[self._iter])
 
     @property
     def sentences(self) -> List[Sentence]:

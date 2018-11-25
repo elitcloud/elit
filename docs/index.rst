@@ -31,13 +31,13 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    :maxdepth: 1
    :caption: Tools
 
-   tools/tokenization
-   tools/morphological_analysis
-   tools/part_of_speech_tagging
-   tools/named_entity_recognition
-   tools/dependency_parsing
-   tools/coreference_resolution
-   tools/sentiment_analysis
+   tools/tokenizers
+   tools/part_of_speech_taggers
+   tools/named_entity_recognizers
+   tools/morphological_analyzers
+   tools/dependency_parsers
+   tools/coreference_resolvers
+   tools/sentiment_analyzers
 
 .. toctree::
    :maxdepth: 2
@@ -45,7 +45,6 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
 
    apidocs/structures
    apidocs/tokenizers
-   apidocs/morphological_analyzers
 
 
 .. Indices and tables
