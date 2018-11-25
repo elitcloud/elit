@@ -66,8 +66,6 @@ class CNNTokenTagger(CNNComponent):
         self.chunking = chunking
         self.feature_windows = feature_windows
         self.label_map = label_map
-        input_config.col = sum([emb.dim for emb in embs])
-        input_config.row = len(self.feature_windows)
         if input_config is not None:
             input_config.col = sum([emb.dim for emb in embs])
             input_config.row = len(self.feature_windows)
