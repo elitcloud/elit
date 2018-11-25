@@ -166,20 +166,20 @@ class SequenceTagger(nn.Block):
             self.save_parameters(model_path)
 
     @classmethod
-    def load_from_file(cls, model_folder):
+    def load_from_file(cls, model_folder, **kwargs):
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'rb') as f:
             config = pickle.load(f)
             embedding_types = [
 
-                WordEmbeddings('data/embedding/fasttext100.vec.txt'),
+                WordEmbeddings('{}data/embedding/fasttext100.vec.txt'.format(kwargs.get('word_embedding_path', ''))),
 
                 # comment in this line to use character embeddings
                 # CharacterEmbeddings(),
 
                 # comment in these lines to use contextual string embeddings
-                CharLMEmbeddings('data/model/lm-news-forward'),
-                CharLMEmbeddings('data/model/lm-news-backward'),
+                CharLMEmbeddings('{}data/model/lm-news-forward'.format(kwargs.get('word_embedding_path', ''))),
+                CharLMEmbeddings('{}data/model/lm-news-backward'.format(kwargs.get('word_embedding_path', ''))),
             ]
 
             embeddings = StackedEmbeddings(embeddings=embedding_types)

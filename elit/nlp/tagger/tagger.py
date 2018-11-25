@@ -24,7 +24,7 @@ class Tagger(NLPComponent):
         pass
 
     def load(self, model_path: str, **kwargs):
-        self.tagger = SequenceTagger.load_from_file(model_path)
+        self.tagger = SequenceTagger.load_from_file(model_path, **kwargs)
 
     def save(self, model_path: str, **kwargs):
         self.tagger.save(model_path)
