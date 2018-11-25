@@ -39,7 +39,7 @@ from elit.structure import Sentence as ElitSentence
 def read_pretrained_embeddings(filename):
     word_to_embed = {}
     m = 0
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         for line in f:
             split = line.split()
             if len(split) == 2:
