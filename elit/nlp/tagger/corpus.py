@@ -1280,8 +1280,9 @@ class NLPTaskDataFetcher:
                     t = Token(word)
                     sentence.add_token(t)
 
-                for t, pos in zip(sentence, s.part_of_speech_tags):
-                    t.add_tag('pos', pos)
+                if POS in s:
+                    for t, pos in zip(sentence, s.part_of_speech_tags):
+                        t.add_tag('pos', pos)
 
                 if NER in s:
                     for t in sentence:
