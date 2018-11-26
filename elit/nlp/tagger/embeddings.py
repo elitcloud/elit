@@ -20,13 +20,14 @@
 import re
 from abc import abstractmethod
 from typing import Union, List
-
+import mxnet as mx
 import mxnet.ndarray as nd
 import numpy as np
 from mxnet.gluon import nn
 
 from elit.nlp.language_models.contextual_string_model import ContextualStringModel
 from elit.nlp.tagger.corpus import Sentence, Token, read_pretrained_embeddings
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 
 
 class Embeddings(nn.Block):
@@ -138,7 +139,7 @@ class CharLMEmbeddings(TokenEmbeddings):
     def forward(self, *args):
         pass
 
-    def __init__(self, model, detach: bool = True):
+    def __init__(self, model, detach: bool = True, context: mx.Context = None):
         super().__init__()
 
         """
@@ -154,18 +155,19 @@ class CharLMEmbeddings(TokenEmbeddings):
                 training and often leads to worse results, so not recommended.
         """
         self.static_embeddings = detach
-
-        self.lm = ContextualStringModel.load_language_model(model)
+        self.context = context if context else mxnet_prefer_gpu()
+        self.lm = ContextualStringModel.load_language_model(model, context=self.context)
         self.detach = detach
         if detach:
             self.lm.freeze()
 
         self.is_forward_lm = self.lm.is_forward_lm
 
-        dummy_sentence = Sentence()
-        dummy_sentence.add_token(Token('hello'))
-        embedded_dummy = self.embed(dummy_sentence)
-        self.__embedding_length = len(embedded_dummy[0].get_token(1).get_embedding())
+        with self.context:
+            dummy_sentence = Sentence()
+            dummy_sentence.add_token(Token('hello'))
+            embedded_dummy = self.embed(dummy_sentence)
+            self.__embedding_length = len(embedded_dummy[0].get_token(1).get_embedding())
 
     @property
     def embedding_length(self) -> int:

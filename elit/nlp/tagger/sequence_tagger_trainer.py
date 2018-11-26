@@ -99,7 +99,8 @@ class SequenceTaggerTrainer:
               patience: int = 2,
               save_model: bool = True,
               embeddings_in_memory: bool = True,
-              train_with_dev: bool = False) -> float:
+              train_with_dev: bool = False,
+              context: mx.Context = None) -> float:
         """
 
         :param base_path: a folder to store model, log etc.
@@ -134,7 +135,7 @@ class SequenceTaggerTrainer:
 
         # At any point you can hit Ctrl + C to break out of training early.
         try:
-            with mx.Context(mxnet_prefer_gpu()):
+            with mx.Context(context if context else mxnet_prefer_gpu()):
                 self.model.initialize()
                 scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
                                               patience=patience, mode=anneal_mode)

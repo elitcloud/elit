@@ -34,7 +34,8 @@ class POSTagger(Tagger):
 
     def decode(self, docs: Sequence[Document], **kwargs):
         samples = NLPTaskDataFetcher.convert_elit_documents(docs)
-        sentences = self.tagger.predict(samples)
+        with self.context:
+            sentences = self.tagger.predict(samples)
         idx = 0
         for d in docs:
             for s in d:
@@ -44,28 +45,28 @@ class POSTagger(Tagger):
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
         print('test... ')
-        trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
-        test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
-                                            tempfile.gettempdir(),
-                                            evaluation_method='accuracy',
-                                            embeddings_in_memory=False)
+        with self.context:
+            trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
+            test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
+                                                tempfile.gettempdir(),
+                                                evaluation_method='accuracy',
+                                                embeddings_in_memory=False)
         print('TEST   \t%d\t' % test_score)
         return test_score
 
 
 if __name__ == '__main__':
-    tagger = POSTagger()
+    tagger = POSTagger(context=mx.gpu(3))
     model_path = 'data/model/pos/wsj'
-    with mx.Context(mxnet_prefer_gpu()):
-        tagger.load(model_path)
-        # tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
-        #              conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
-        #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
-        #              forward_language_model='data/model/lm-news-forward',
-        #              backward_language_model='data/model/lm-news-backward',
-        #              max_epochs=1,
-        #              embeddings_in_memory=False)
-        test = conll_to_documents('data/dat/en-pos.tst', headers={0: 'text', 1: 'pos'})
-        # sent = tagger.decode(test)[0][SENS][3]
-        # print(sent[POS])
-        print(tagger.evaluate(test))
+    tagger.load(model_path)
+    # tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
+    #              conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),
+    #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
+    #              forward_language_model='data/model/lm-news-forward',
+    #              backward_language_model='data/model/lm-news-backward',
+    #              max_epochs=1,
+    #              embeddings_in_memory=False)
+    test = conll_to_documents('data/dat/en-pos.tst', headers={0: 'text', 1: 'pos'})
+    # sent = tagger.decode(test)[0][SENS][3]
+    # print(sent[POS])
+    print(tagger.evaluate(test))

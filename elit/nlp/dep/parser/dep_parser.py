@@ -35,12 +35,13 @@ from mxnet import gluon, autograd
 
 
 class DepParser(object):
-    def __init__(self, config_file_path, extra_args=None) -> None:
+    def __init__(self, config_file_path, context: mx.Context = None, extra_args=None) -> None:
         super().__init__()
         np.random.seed(666)
         self._config = ParserConfig(config_file_path, extra_args)
         self._parser = None
         self._vocab = None
+        self.context = context if context else mxnet_prefer_gpu()
 
     @property
     def vocab(self) -> ParserVocabulary:
@@ -56,7 +57,7 @@ class DepParser(object):
         vocab.save(self._config.save_vocab_path)
         vocab.log_info(logger)
 
-        with mx.Context(mxnet_prefer_gpu()):
+        with self.context:
 
             self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
                                                    config.dropout_emb,
@@ -123,7 +124,7 @@ class DepParser(object):
     def load(self):
         config = self._config
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
-        with mx.Context(mxnet_prefer_gpu()):
+        with self.context:
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
                                           config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
@@ -136,7 +137,7 @@ class DepParser(object):
         parser = self._parser
         vocab = self._vocab
         config = self._config
-        with mx.Context(mxnet_prefer_gpu()):
+        with self.context:
             UAS, LAS, speed = evaluate_official_script(parser, vocab, config.num_buckets_valid, config.test_batch_size,
                                                        config.test_file, os.path.join(config.save_dir, 'valid_tmp'))
         if logger is None:
@@ -155,7 +156,7 @@ class DepParser(object):
         for i, (word, tag) in enumerate(sentence):
             words[i + 1, 0], tags[i + 1, 0] = vocab.word2id(word.lower()), vocab.tag2id(tag)
 
-        with mx.Context(mxnet_prefer_gpu()):
+        with self.context:
             outputs = self._parser.run(words, tags, is_train=False)
         words = []
         for arc, rel, (word, tag) in zip(outputs[0][0], outputs[0][1], sentence):

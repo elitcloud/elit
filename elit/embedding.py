@@ -20,9 +20,11 @@ from typing import List, Sequence, Union
 import abc
 import fastText
 import numpy as np
+import mxnet as mx
 from gensim.models import KeyedVectors
 
 from elit.nlp.language_models.contextual_string_model import ContextualStringModel
+from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.structure import Document
 
 __author__ = 'Jinho D. Choi'
@@ -160,13 +162,14 @@ class ContextualStringEmbedding(Embedding):
     :class:`ContextualStringEmbedding` is the context-based model proposed by `Akbik et al., 2018 <http://aclweb.org/anthology/C18-1139>`_.
     """
 
-    def __init__(self, model_path: str, detach: bool = True):
+    def __init__(self, model_path: str, detach: bool = True, context: mx.Context = None):
         """
         :param model_path: the path to the model file.
         :param detach: if `False`, the gradient will propagate into the language model,
                        which dramatically slows down training and often leads to worse results.
         """
-        self.lm = ContextualStringModel.load_language_model(model_path)
+        self.context = context if context else mxnet_prefer_gpu()
+        self.lm = ContextualStringModel.load_language_model(model_path, context)
         super().__init__(self.lm.embedding_size)
 
         self.detach = detach

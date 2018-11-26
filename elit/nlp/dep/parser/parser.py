@@ -27,7 +27,7 @@ from mxnet import gluon, autograd
 from elit.component import NLPComponent
 from elit.nlp.dep.common.utils import init_logger, Progbar
 from elit.nlp.dep.parser import DEFAULT_CONFIG_FILE
-from elit.nlp.dep.parser.biaffine_parser import BiaffineParser
+from elit.nlp.dep.parser.biaffine_parser import BiaffineParser as _BiaffineParser
 from elit.nlp.dep.parser.common.data import ParserVocabulary, DataLoader, np, ConllSentence, ConllWord
 from elit.nlp.dep.parser.common.exponential_scheduler import ExponentialScheduler
 from elit.nlp.dep.parser.evaluate import evaluate_official_script
@@ -41,11 +41,12 @@ class BiaffineParser(NLPComponent):
     An implementation of "Deep Biaffine Attention for Neural Dependency Parsing" Dozat and Manning (2016)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, context: mx.Context = None) -> None:
         super().__init__()
         self._config = None  # type: ParserConfig
         self._vocab = None  # type: ParserVocabulary
         self._parser = None  # type: BiaffineParser
+        self.context = context if context else mxnet_prefer_gpu()
 
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str, **kwargs) -> float:
         # read config file
@@ -61,15 +62,9 @@ class BiaffineParser(NLPComponent):
         logger = init_logger(config.save_dir)
         vocab.log_info(logger)
         # training
-        with mx.Context(mxnet_prefer_gpu()):
+        with self.context:
 
-            self._parser = parser = BiaffineParser(vocab, config.word_dims, config.tag_dims,
-                                                   config.dropout_emb,
-                                                   config.lstm_layers,
-                                                   config.lstm_hiddens, config.dropout_lstm_input,
-                                                   config.dropout_lstm_hidden,
-                                                   config.mlp_arc_size,
-                                                   config.mlp_rel_size, config.dropout_mlp, config.debug)
+            self._parser = parser = self._create_parser(config, vocab)
             parser.initialize()
             scheduler = ExponentialScheduler(config.learning_rate, config.decay, config.decay_steps)
             optimizer = mx.optimizer.Adam(config.learning_rate, config.beta_1, config.beta_2, config.epsilon,
@@ -132,13 +127,14 @@ class BiaffineParser(NLPComponent):
         record = data_loader.idx_sequence
         results = [None] * len(record)
         idx = 0
-        for words, tags, arcs, rels in data_loader.get_batches(
-                batch_size=self._config.test_batch_size, shuffle=False):
-            outputs = self._parser.run(words, tags, is_train=False)
-            for output in outputs:
-                sent_idx = record[idx]
-                results[sent_idx] = output
-                idx += 1
+        with self.context:
+            for words, tags, arcs, rels in data_loader.get_batches(
+                    batch_size=self._config.test_batch_size, shuffle=False):
+                outputs = self._parser.run(words, tags, is_train=False)
+                for output in outputs:
+                    sent_idx = record[idx]
+                    results[sent_idx] = output
+                    idx += 1
         idx = 0
         for d in docs:
             for s in d:
@@ -155,10 +151,11 @@ class BiaffineParser(NLPComponent):
         :return: (UAS, LAS, speed) speed is measured in sentences per second
         """
         assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
-        UAS, LAS, speed = evaluate_official_script(self._parser, self._vocab, self._config.num_buckets_valid,
-                                                   self._config.test_batch_size,
-                                                   self._config.test_file,
-                                                   None, documents=docs)
+        with self.context:
+            UAS, LAS, speed = evaluate_official_script(self._parser, self._vocab, self._config.num_buckets_valid,
+                                                       self._config.test_batch_size,
+                                                       self._config.test_file,
+                                                       None, documents=docs)
         return UAS, LAS, speed
 
     def load(self, model_path: str, **kwargs):
@@ -166,8 +163,8 @@ class BiaffineParser(NLPComponent):
             return self
         self._config = ParserConfig(os.path.join(model_path, 'config.ini'))
         self._vocab = ParserVocabulary.load(self._config.save_vocab_path)
-        self._parser = self._create_parser(self._config, self._vocab)
-        pass
+        with self.context:
+            self._parser = self._create_parser(self._config, self._vocab)
 
     def save(self, model_path: str, **kwargs):
         self._config.save_dir = model_path
@@ -194,20 +191,21 @@ class BiaffineParser(NLPComponent):
         for i, (word, tag) in enumerate(sentence):
             words[i + 1, 0], tags[i + 1, 0] = vocab.word2id(word.lower()), vocab.tag2id(tag)
 
-        outputs = self._parser.run(words, tags, is_train=False)
+        with self.context:
+            outputs = self._parser.run(words, tags, is_train=False)
         words = []
         for arc, rel, (word, tag) in zip(outputs[0][0], outputs[0][1], sentence):
             words.append(ConllWord(id=len(words) + 1, form=word, pos=tag, head=arc, relation=vocab.id2rel(rel)))
         return ConllSentence(words)
 
     def _create_parser(self, config, vocab):
-        return BiaffineParser(vocab, config.word_dims, config.tag_dims,
-                              config.dropout_emb,
-                              config.lstm_layers,
-                              config.lstm_hiddens, config.dropout_lstm_input,
-                              config.dropout_lstm_hidden,
-                              config.mlp_arc_size,
-                              config.mlp_rel_size, config.dropout_mlp, config.debug)
+        return _BiaffineParser(vocab, config.word_dims, config.tag_dims,
+                               config.dropout_emb,
+                               config.lstm_layers,
+                               config.lstm_hiddens, config.dropout_lstm_input,
+                               config.dropout_lstm_hidden,
+                               config.mlp_arc_size,
+                               config.mlp_rel_size, config.dropout_mlp, config.debug)
 
 
 def _load_conll(path) -> Document:

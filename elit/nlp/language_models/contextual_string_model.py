@@ -131,16 +131,17 @@ class ContextualStringModel(nn.Block):
         self.collect_params().setattr('grad_req', 'null')
 
     @classmethod
-    def load_language_model(cls, model_file):
+    def load_language_model(cls, model_file, context: mx.Context = None):
         config = LanguageModelConfig.load(os.path.join(model_file, 'config.pkl'))
-        model = ContextualStringModel(config.dictionary,
-                                      config.is_forward_lm,
-                                      config.hidden_size,
-                                      config.nlayers,
-                                      config.embedding_size,
-                                      config.nout,
-                                      config.dropout)
-        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
+        with context:
+            model = ContextualStringModel(config.dictionary,
+                                          config.is_forward_lm,
+                                          config.hidden_size,
+                                          config.nlayers,
+                                          config.embedding_size,
+                                          config.nout,
+                                          config.dropout)
+        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=context)
         return model
 
     @staticmethod
@@ -222,7 +223,7 @@ class ContextualStringModelTrainer:
                 self.model.initialize()
                 best_val_loss = 100000000
                 scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
-                                                                 patience=patience)
+                                              patience=patience)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
                 trainer = gluon.Trainer(self.model.collect_params(),
                                         optimizer=optimizer)
@@ -400,10 +401,10 @@ def _convert_dumped_model():
 def _train():
     corpus = TextCorpus('data/raw')
     language_model = ContextualStringModel(corpus.dictionary,
-                                   is_forward_lm=False,
-                                   hidden_size=1024,
-                                   nlayers=1,
-                                   dropout=0.25)
+                                           is_forward_lm=False,
+                                           hidden_size=1024,
+                                           nlayers=1,
+                                           dropout=0.25)
     trainer = ContextualStringModelTrainer(language_model, corpus)
     trainer.train('data/model/lm-jumbo-backward1024',
                   sequence_length=250,

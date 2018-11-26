@@ -166,32 +166,38 @@ class SequenceTagger(nn.Block):
             self.save_parameters(model_path)
 
     @classmethod
-    def load_from_file(cls, model_folder, **kwargs):
+    def load_from_file(cls, model_folder, context: mx.Context = None, **kwargs):
+        if context is None:
+            context = mxnet_prefer_gpu()
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'rb') as f:
             config = pickle.load(f)
-            embedding_types = [
+            with context:
+                embedding_types = [
 
-                WordEmbeddings('{}data/embedding/fasttext100.vec.txt'.format(kwargs.get('word_embedding_path', ''))),
+                    WordEmbeddings(
+                        '{}data/embedding/fasttext100.vec.txt'.format(kwargs.get('word_embedding_path', ''))),
 
-                # comment in this line to use character embeddings
-                # CharacterEmbeddings(),
+                    # comment in this line to use character embeddings
+                    # CharacterEmbeddings(),
 
-                # comment in these lines to use contextual string embeddings
-                CharLMEmbeddings('{}data/model/lm-news-forward'.format(kwargs.get('word_embedding_path', ''))),
-                CharLMEmbeddings('{}data/model/lm-news-backward'.format(kwargs.get('word_embedding_path', ''))),
-            ]
+                    # comment in these lines to use contextual string embeddings
+                    CharLMEmbeddings('{}data/model/lm-news-forward'.format(kwargs.get('word_embedding_path', '')),
+                                     context=context),
+                    CharLMEmbeddings('{}data/model/lm-news-backward'.format(kwargs.get('word_embedding_path', '')),
+                                     context=context),
+                ]
 
-            embeddings = StackedEmbeddings(embeddings=embedding_types)
-            model = SequenceTagger(
-                hidden_size=config['hidden_size'],
-                embeddings=embeddings,
-                tag_dictionary=config['tag_dictionary'],
-                tag_type=config['tag_type'],
-                use_crf=config['use_crf'],
-                use_rnn=config['use_rnn'],
-                rnn_layers=config['rnn_layers'])
-            model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
+                embeddings = StackedEmbeddings(embeddings=embedding_types)
+                model = SequenceTagger(
+                    hidden_size=config['hidden_size'],
+                    embeddings=embeddings,
+                    tag_dictionary=config['tag_dictionary'],
+                    tag_type=config['tag_type'],
+                    use_crf=config['use_crf'],
+                    use_rnn=config['use_rnn'],
+                    rnn_layers=config['rnn_layers'])
+                model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=context)
             return model
 
     def forward(self, sentences: List[Sentence]) -> Tuple[nd.NDArray, nd.NDArray, List]:
