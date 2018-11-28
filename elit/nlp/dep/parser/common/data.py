@@ -154,29 +154,25 @@ class ParserVocabulary(Savable):
     def get_pret_embs(self, word_dims=None):
         assert (self._pret_file is not None), "No pretrained file provided."
         embs = [[]] * len(self._id2word)
-        train = True
-        try:
-            with open(self._pret_file) as f:
-                dim = None
-                for line in f:
-                    line = line.strip().split()
-                    if len(line) > 2:
-                        if dim is None:
-                            dim = len(line)
-                        else:
-                            if len(line) != dim:
-                                continue
-                        word, data = line[0], line[1:]
-                        embs[self._word2id[word]] = data
-        except FileNotFoundError:
-            train = False
+        with open(self._pret_file) as f:
+            dim = None
+            for line in f:
+                line = line.strip().split()
+                if len(line) > 2:
+                    if dim is None:
+                        dim = len(line)
+                    else:
+                        if len(line) != dim:
+                            continue
+                    word, data = line[0], line[1:]
+                    embs[self._word2id[word]] = data
         if word_dims is None:
             word_dims = len(data)
         for idx, emb in enumerate(embs):
             if not emb:
                 embs[idx] = np.zeros(word_dims)
         pret_embs = np.array(embs, dtype=np.float32)
-        return pret_embs / np.std(pret_embs) if train else pret_embs
+        return pret_embs / np.std(pret_embs)
 
     def get_word_embs(self, word_dims):
         if self._pret_file is not None:
