@@ -31,7 +31,6 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
              {'model': 'elit-ner-flair-en-ontonotes'},
              {'model': 'elit-pos-flair-en-mixed'},
              {'model': 'elit-morph-lexrule-en'},
-             {'model': 'elit-dep-biaffine-en-mixed'},
              {'model': 'uw-coref-e2e-en-ontonotes'}]
 
          request = {'input': doc, 'models': models}
