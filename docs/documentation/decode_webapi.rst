@@ -28,8 +28,8 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
 
          models = [
              {'model': 'elit-tok-lexrule-en'},
-             {'model': 'elit-ner-flair-en-ontonotes'},
-             {'model': 'elit-pos-flair-en-mixed'},
+             {'model': 'elit-ner-bilstm-en-ontonotes'},
+             {'model': 'elit-pos-bilstm-en-mixed'},
              {'model': 'elit-morph-lexrule-en'},
              {'model': 'uw-coref-e2e-en-ontonotes'}]
 
