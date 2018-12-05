@@ -1,6 +1,6 @@
 {
   "org": "elit",
-  "name": "elit_ner_bilstm_en_mixed",
+  "name": "elit_ner_bilstm_en_ontonotes",
   "github": "",
   "entry_point": "",
   "component": "",
@@ -10,10 +10,10 @@
     "checksum": "97150d471ee2a2525798ea84c0562c3f96fbc5cb"
   }],
   "models": [{
-    "name": "elit_ner_bilstm_en_mixed.params",
+    "name": "elit_ner_bilstm_en_ontonotes.params",
     "checksum": "9c6e8a3bd0f3729f15e1d778554ecf784313442b"
   }, {
-    "name": "elit_ner_bilstm_en_mixed.pkl",
+    "name": "elit_ner_bilstm_en_ontonotes.pkl",
     "checksum": "6731d9c180958d373f92a6c4758ef55396becd82"
   }]
 }
