@@ -2,15 +2,15 @@ Decode with Web API
 ===================
 
 ELIT provides web API that allows anyone to decode raw text into NLP structures using its `built-in models <models.html>`_.
-The web API does not require the `ELIT installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
+The web API does not require `installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
 
 
 ---------------
 Single Document
 ---------------
 
-The following codes take an input document and run the NLP pipeline for
-tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, and coreference resolution using the default parameters:
+The following codes take a single document and run the NLP pipeline for
+tokenization, part-of-speech tagging, named entity recognition, dependency parsing, morphological analysis, and coreference resolution using default parameters:
 
 .. tabs::
 
@@ -27,11 +27,12 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                'He is the founder of the ELIT project.'
 
          models = [
-             {'model': 'elit-tok-lexrule-en'},
-             {'model': 'elit-ner-bilstm-en-ontonotes'},
-             {'model': 'elit-pos-bilstm-en-mixed'},
-             {'model': 'elit-morph-lexrule-en'},
-             {'model': 'uw-coref-e2e-en-ontonotes'}]
+             {'model': 'elit_tok_lexrule_en'},
+             {'model': 'elit_pos_rnn_en_mixed'},
+             {'model': 'elit_ner_cnn_en_ontonotes'},
+             {'model': 'elit_dep_biaffine_en_mixed'},
+             {'model': 'elit_morph_lexrule_en'},
+             {'model': 'uw_coref_e2e_en_ontonotes'}]
 
          request = {'input': doc, 'models': models}
          r = requests.post(url, json=request)
@@ -41,6 +42,7 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
 
       .. code-block:: java
 
+         import org.apache.http.HttpEntity;
          import org.apache.http.HttpResponse;
          import org.apache.http.client.HttpClient;
          import org.apache.http.client.methods.HttpPost;
@@ -51,29 +53,29 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
 
          public class ELITWebAPI
          {
-             public static void main(String[] args) throws Exception
-             {
-                 HttpPost post = new HttpPost("https://elit.cloud/api/public/decode/doc");
-                 HttpClient client = HttpClientBuilder.create().build();
+           public static void main(String[] args) throws Exception
+           {
+             HttpPost post = new HttpPost("https://elit.cloud/api/public/decode/doc");
+             HttpClient client = HttpClientBuilder.create().build();
 
-                 String doc = "Jinho Choi is a professor at Emory University in Atlanta, GA. " +
-                              "Dr. Choi started the Emory NLP Research Group in 2014. " +
-                              "He is the founder of the ELIT project.";
+             String text = "Jinho Choi is a professor at Emory University in Atlanta, GA. " +
+                           "Dr. Choi started the Emory NLP Research Group in 2014. " +
+                           "He is the founder of the ELIT project.";
 
-                 String models = "[" +
-                         "{\"model\": \"elit-tok-lexrule-en\"}," +
-                         "{\"model\": \"elit-ner-flair-en-ontonotes\"}," +
-                         "{\"model\": \"elit-pos-flair-en-mixed\"}," +
-                         "{\"model\": \"elit-morph-lexrule-en\"}," +
-                         "{\"model\": \"elit-dep-biaffine-en-mixed\"}," +
-                         "{\"model\": \"uw-coref-e2e-en-ontonotes\"}]";
+             String models = "[" +
+                     "{\"model\":\"elit_tok_lexrule_en\"}, " +
+                     "{\"model\":\"elit_pos_rnn_en_mixed\"}, " +
+                     "{\"model\":\"elit_ner_cnn_en_ontonotes\"}, " +
+                     "{\"model\":\"elit_dep_biaffine_en_mixed\"}, " +
+                     "{\"model\":\"elit_morph_lexrule_en\"}, " +
+                     "{\"model\":\"uw_coref_e2e_en_ontonotes\"}]";
 
-                 String request = "{\"input\": " + doc + ", \"models\": " + models + "}";
-
-                 post.setEntity(new StringEntity(request, ContentType.create("application/json")));
-                 HttpResponse response = client.execute(post);
-                 System.out.println(EntityUtils.toString(response.getEntity()));
-             }
+             String request = "{\"input\":\"" + text + "\",\"models\":" + models + "}";
+             post.setEntity(new StringEntity(request, ContentType.create("application/json")));
+             HttpResponse response = client.execute(post);
+             HttpEntity e = response.getEntity();
+             System.out.println(EntityUtils.toString(e));
+           }
          }
 
       Add the following dependency to ``pom.xml``.
@@ -104,24 +106,41 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
 
 The following shows the output in the JSON format (see the `output format <../documentation/output_format.html>`_ for more details):
 
-.. code-block:: json
+.. code-block:: javascript
 
-   {"sens":
-      [{"sen_id": 0,
-        "tok": ["Jinho", "Choi", "is", "a", "professor", "at", "Emory", "University", "."],
-        "ner": [[0, 2, "PERSON"], [6, 8, "ORG"]],
-        "pos": ["NNP", "NNP", "VBZ", "DT", "NN", "IN", "NNP", "NNP", "."],
-        "mor": [[("jinho", "NN")], [("choi", "NN")], [("be", "VB"), ("", "I_3PS")],
-                [("a", "DT")], [ ("pro+", "P"), ("fess", "VB"), ("+or", "N_ER")],
-                [("at", "IN")], [("emory", 'NN')], [("university", "NN")], [(".", "PU")]],
-        "dep": [[1, "compound"], [2, "nsbj"], [4, "cop"], [4, "det"], [-1, "root"],
-                [7, "case"], [7, "compound"], [4, "ppmod"], [4,"punct"]]},
-       {"sen_id": 1,
-        "tok": ["He","is","the","director","of","EmoryNLP","in","Atlanta",",","GA","."], ...},
-       {"sen_id": 2,
-        "tok": ["Dr.","Choi","is","happy","to","be","at","AWS","re:Invent","2018","."], ...}],
-     "coref": [{[0, 0, 2], [1, 0, 1], [2, 0, 2]}]}
-
+   {"sens": [
+       {"sid": 0,
+        "tok": ["Jinho", "Choi", "is", "a", "professor", "at", "Emory", "University", "in", "Atlanta", ", ", "GA", "."],
+        "off": [[0, 5], [6, 10], [11, 13], [14, 15], [16, 25], [26, 28], [29, 34], [35, 45], [46, 48], [49, 56], [56, 57], [58, 60], [60, 61]],
+        "pos": ["NNP", "NNP", "VBZ", "DT", "NN", "IN", "NNP", "NNP", "IN", "NNP", ", ", "NNP", "."],
+        "ner": [[0, 2, "PERSON"], [6, 8, "ORG"], [9, 10, "GPE"], [11, 12, "GPE"]],
+        "dep": [[1, "com"], [4, "nsbj"], [4, "cop"], [4, "det"], [-1, "root"], [7, "case"],
+                [7, "com"], [4, "ppmod"], [9, "case"], [7, "ppmod"], [9, "p"], [9, "appo"], [4, "p"]],
+        "morph": [[["jinho", "NN"]], [["choi", "NN"]], [["be", "VB"], ["", "I_3PS"]],
+                  [["a", "DT"]], [["profess", "VB"], ["+or", "N_ER"]],
+                  [["at", "IN"]], [["emory", "NN"]], [["university", "NN"]], [["in", "IN"]],
+                  [["atlanta", "NN"]], [[", ", "PU"]], [["ga", "NN"]], [[".", "PU"]]]},
+       {"sid": 1,
+        "tok": ["Dr.", "Choi", "started", "the", "Emory", "NLP", "Research", "Group", "in", "2014", "."]},
+        "off": [[62, 65], [66, 70], [71, 78], [79, 82], [83, 88], [89, 92], [93, 101], [102, 107], [108, 110], [111, 115], [115, 116]],
+        "pos": ["NNP", "NNP", "VBD", "DT", "NNP", "NNP", "NNP", "NNP", "IN", "CD", "."],
+        "ner": [[0, 2, "PERSON"], [3, 8, "ORG"], [9, 10, "DATE"]],
+        "dep": [[1, "com"], [2, "nsbj"], [-1, "root"], [7, "det"], [7, "com"], [7, "com"],
+                [7, "com"], [2, "obj"], [9, "case"], [2, "ppmod"], [2, "p"]],
+        "morph": [[["dr.", "NN"]], [["choi", "NN"]], [["start", "VB"], ["+ed", "I_PST"]],
+                  [["the", "DT"]], [["emory", "NN"]], [["nlp", "NN"]], [["research", "NN"]],
+                  [["group", "NN"]], [["in", "IN"]], [["2014", "CD"]], [[".", "PU"]]]},
+       {"sid": 2,
+        "tok": ["He", "is", "the", "founder", "of", "the", "ELIT", "project", "."],
+        "off": [[117, 119], [120, 122], [123, 126], [127, 134], [135, 137], [138, 141], [142, 146], [147, 154], [154, 155]],
+        "ner": [[6, 7, "ORG"]],
+        "dep": [[3, "nsbj"], [3, "cop"], [3, "det"], [-1, "root"], [7, "case"], [7, "det"],
+                [7, "com"], [3, "ppmod"], [2, "p"]],
+        "morph": [[["he", "PR"]], [["be", "VB"], ["", "I_3PS"]], [["the", "DT"]],
+                  [["found", "VB"], ["+er", "N_ER"]], [["of", "IN"]], [["the", "DT"]],
+                  [["elit", "NN"]], [["project", "NN"]], [[".", "PU"]]]}]
+    "coref": [
+       [[0, 0, 2], [1, 0, 2], [2, 0, 1]]]}
 
 See the `available models <models.html>`_ for the list of all built-in models and their parameter settings.
 
@@ -130,4 +149,4 @@ See the `available models <models.html>`_ for the list of all built-in models an
 Multiple Documents
 ------------------
 
-To be filled.
+`Coming soon`.

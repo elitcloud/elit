@@ -13,7 +13,6 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    :maxdepth: 1
    :caption: Documentation
 
-   documentation/install
    documentation/decode_webapi
    documentation/decode_python
    documentation/deploy
