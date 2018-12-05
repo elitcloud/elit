@@ -27,11 +27,11 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
                'He is the founder of the ELIT project.'
 
          models = [
-             {'model': 'elit-tok-lexrule-en'},
-             {'model': 'elit-ner-bilstm-en-ontonotes'},
-             {'model': 'elit-pos-bilstm-en-mixed'},
-             {'model': 'elit-morph-lexrule-en'},
-             {'model': 'uw-coref-e2e-en-ontonotes'}]
+             {'model': 'elit_tok_lexrule_en'},
+             {'model': 'elit_ner_bilstm_en_ontonotes'},
+             {'model': 'elit_pos_bilstm_en_mixed'},
+             {'model': 'elit_morph_lexrule_en'},
+             {'model': 'uw_coref_e2e_en_ontonotes'}]
 
          request = {'input': doc, 'models': models}
          r = requests.post(url, json=request)
