@@ -14,7 +14,6 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    :caption: Documentation
 
    documentation/decode_webapi
-   documentation/decode_python
    documentation/deploy
    documentation/models
    documentation/output_format
@@ -23,6 +22,7 @@ ELIT is developed by the `NLP Research Group <http://nlp.mathcs.emory.edu>`_ at 
    :maxdepth: 1
    :caption: Coming Soon
 
+   documentation/decode_python
    documentation/decode_cli
    documentation/train_cli
 

@@ -1,5 +1,11 @@
 # Dependency Parsing
 
+## Output Format
+
+The key `coref` is inserted on the [document](../documentation/output_format.html#document) level, where the value is a list of entity clusters.
+The example below shows output for the input text, "_Mr. Johnson bought a truck. He likes it very much!_":
+
+
 ## Biaffine Parser
 
 This is ELIT's replication of the dependency parser using deep biaffine attention introduced by Stanford University.

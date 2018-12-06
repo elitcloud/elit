@@ -2,14 +2,14 @@ Decode with Web API
 ===================
 
 ELIT provides web API that allows anyone to decode raw text into NLP structures using its `built-in models <models.html>`_.
-The web API does not require `installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
+The web API does not require installation and can be used by any programming language that supports HTTP request/response.
 
 
 ---------------
 Single Document
 ---------------
 
-The following codes take a single document and run the NLP pipeline for
+The following code takes a single document and runs the NLP pipeline for
 tokenization, part-of-speech tagging, named entity recognition, dependency parsing, morphological analysis, and coreference resolution using default parameters:
 
 .. tabs::
@@ -88,22 +88,6 @@ tokenization, part-of-speech tagging, named entity recognition, dependency parsi
              <version>4.5.6</version>
          </dependency>
 
-   .. tab:: Ruby
-
-      .. code-block:: ruby
-
-         text = 'Jinho Choi is a professor at Emory University in Atlanta, GA. ' \
-                'Dr. Choi started the Emory NLP Research Group in 2014. ' \
-                'He is the founder of the ELIT project.'
-
-   .. tab:: Node.js
-
-      .. code-block:: javascript
-
-         text = 'Jinho Choi is a professor at Emory University in Atlanta, GA. ' +
-                'Dr. Choi started the Emory NLP Research Group in 2014. ' +
-                'He is the founder of the ELIT project.'
-
 The following shows the output in the JSON format (see the `output format <../documentation/output_format.html>`_ for more details):
 
 .. code-block:: javascript
@@ -121,7 +105,7 @@ The following shows the output in the JSON format (see the `output format <../do
                   [["at", "IN"]], [["emory", "NN"]], [["university", "NN"]], [["in", "IN"]],
                   [["atlanta", "NN"]], [[", ", "PU"]], [["ga", "NN"]], [[".", "PU"]]]},
        {"sid": 1,
-        "tok": ["Dr.", "Choi", "started", "the", "Emory", "NLP", "Research", "Group", "in", "2014", "."]},
+        "tok": ["Dr.", "Choi", "started", "the", "Emory", "NLP", "Research", "Group", "in", "2014", "."],
         "off": [[62, 65], [66, 70], [71, 78], [79, 82], [83, 88], [89, 92], [93, 101], [102, 107], [108, 110], [111, 115], [115, 116]],
         "pos": ["NNP", "NNP", "VBD", "DT", "NNP", "NNP", "NNP", "NNP", "IN", "CD", "."],
         "ner": [[0, 2, "PERSON"], [3, 8, "ORG"], [9, 10, "DATE"]],
@@ -142,7 +126,7 @@ The following shows the output in the JSON format (see the `output format <../do
     "coref": [
        [[0, 0, 2], [1, 0, 2], [2, 0, 1]]]}
 
-See the `available models <models.html>`_ for the list of all built-in models and their parameter settings.
+See the `available models <models.html>`_ page for the list of all built-in models and their parameter settings.
 
 
 ------------------

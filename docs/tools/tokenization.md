@@ -10,6 +10,12 @@ ELIT's tokenizers provide an option of performing several types of sentence segm
 * `3`: segment by `1` and `2`.
 
 
+## Output Format
+
+The key `coref` is inserted on the [document](../documentation/output_format.html#document) level, where the value is a list of entity clusters.
+The example below shows output for the input text, "_Mr. Johnson bought a truck. He likes it very much!_":
+
+
 ## Space Tokenizer
 
 The Space Tokenizer splits input text by whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
@@ -98,7 +104,7 @@ print(tok.decode(text, segment=2))  # segment by symbol rules (default)
   {
     "sid": 0,
     "tok": ["Mr.", "Johnson", "does", "n't", "like", "cats", "!"], 
-    "off": [[0, 3], [4, 11], [12, 16], [16, 19], [20, 24], [25, 29], [29, 30]], 
+    "off": [[0, 3], [4, 11], [12, 16], [16, 19], [20, 24], [25, 29], [29, 30]] 
   }, 
   {
     "sid": 1,
