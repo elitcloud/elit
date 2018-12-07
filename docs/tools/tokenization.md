@@ -12,23 +12,45 @@ ELIT's tokenizers provide an option of performing several types of sentence segm
 
 ## Output Format
 
-The key `coref` is inserted on the [document](../documentation/output_format.html#document) level, where the value is a list of entity clusters.
-The example below shows output for the input text, "_Mr. Johnson bought a truck. He likes it very much!_":
+The keys `tok` and `off` are inserted to the [sentence](../documentation/output_format.html#sentence), where the values are lists of tokens and their character offsets in the original text, respectively.
+The example below shows output for the input text, "_John bought a car. Mary sold a truck._":
 
+```json
+{"sens": [
+  {
+    "sid": 0,
+    "tok": ["John", "bought", "a", "car", "."], 
+    "off": [[0, 4], [5, 11], [12, 13], [14, 17], [17, 18]] 
+  }, 
+  {
+    "sid": 1,
+    "tok": ["Mary", "sold", "a", "truck", "."], 
+    "off": [[19, 23], [24, 28], [29, 30], [31, 36], [36, 37]] 
+   }
+]}
+```
+
+Each character offset is represented by a tuple of the following two fields:
+
+* `begin_offset`: the offset of the first character in the corresponding token (inclusive).
+* `end_offset`: the offset of the last character in the corresponding token (exclusive).
+
+Offsets start with 0 such that `[0, 4]` in the above example indicates the first word in the first sentence, "_John_", and `[19, 23]` indicates the first word in the second sentence, "_Mary_".
+For each sentence, the number of character offsets must match the number of tokens. 
 
 ## Space Tokenizer
 
 The Space Tokenizer splits input text by whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
 
-* Associated models: `elit-tok-space-un`
-* API reference: [SpaceTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.SpaceTokenizer)
+* Source: [https://github.com/elitcloud/tokenizer](https://github.com/elitcloud/tokenizer)
+* Associated models: `elit_tok_space_un`
 * Decode parameters:
   * `segment`: `0`, `1` (_default_), `2`, or `3`
 
 ### Web-API
 
 ```json
-{"model": "elit-tok-whitespace-un", "args": {"segment": 1}}
+{"model": "elit_tok_space_un", "args": {"segment": 1}}
 ```
 
 ### Python API
@@ -62,8 +84,8 @@ print(tok.decode(text, segment=1))  # segment by newlines (default)
 
 The English Tokenizer splits input text into linguistic tokens using lexicalized rules.
 
-* Associated models: `elit-tok-lexrule-en`
-* API reference: [EnglishTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.EnglishTokenizer)
+* Source: [https://github.com/elitcloud/tokenizer](https://github.com/elitcloud/tokenizer)
+* Associated models: `elit_tok_lexrule_en`
 * Decode parameters:
   * `segment`: `0`, `1`, `2` (_default_), or `3`
 
@@ -85,7 +107,7 @@ The followings show key features of this tokenizer:
 ### Web-API
 
 ```json
-{"model": "elit-tok-lexrule-en", "args": {"segment": 2}}
+{"model": "elit_tok_lexrule_en", "args": {"segment": 2}}
 ```
 
 ### Python API

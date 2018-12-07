@@ -19,7 +19,7 @@
 
 | Model ID | PRE |
 |----------|:---:|
-| [elit_morph_idprule_en](../tools/morphological_analysis.html#english-analyzer) | [&#10035;-pos-&#10035;-en-inmixed](#part-of-speech-tagging) |
+| [elit_morph_lexrule_en](../tools/morphological_analysis.html#english-analyzer) | [&#10035;-pos-&#10035;-en-inmixed](#part-of-speech-tagging) |
 
 
 ## Part-of-Speech Tagging

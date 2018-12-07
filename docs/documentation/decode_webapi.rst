@@ -1,8 +1,8 @@
-Decode with Web API
+Run Models in ELIT through Web-APIs
 ===================
 
-ELIT provides web API that allows anyone to decode raw text into NLP structures using its `built-in models <models.html>`_.
-The web API does not require installation and can be used by any programming language that supports HTTP request/response.
+ELIT provides web APIs that allow anyone to decode raw text into NLP structures using cutting-edge `models <models.html>`_.
+The web APIs do not require the ELIT installation and can be used by any programming language that supports HTTP request/response.
 
 
 ---------------
