@@ -132,7 +132,7 @@ def setup_package():
         install_requires=[
             'argparse==1.4.0',
             'pybind11==2.2.3',
-            'yafasttext==0.8.22.2',
+            'yafasttext==0.8.22.2018120701',
             'gensim==3.6.0',
             'numpy==1.14.5',
             'ujson==1.35',
