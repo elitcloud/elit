@@ -47,3 +47,5 @@ def ner_formatter(docs):
                         ent = ""
                 idx += 1
             sen[NER] = tags
+
+    return docs
