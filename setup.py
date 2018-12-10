@@ -12,7 +12,7 @@ __author__ = "Gary Lai"
 
 MAJOR = 0
 MINOR = 1
-MICRO = 26
+MICRO = 27
 ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
