@@ -19,7 +19,7 @@ from typing import List, Sequence
 
 import numpy as np
 
-from elit.nlp.embedding import Embedding
+from elit.embedding import Embedding
 from elit.structure import Document
 
 __author__ = "Gary Lai"

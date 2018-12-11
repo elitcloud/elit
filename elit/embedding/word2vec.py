@@ -13,33 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-
 import logging
 
-import fastText
 import numpy as np
+from gensim.models import KeyedVectors
 
-from elit.nlp.embedding import TokenEmbedding
+from elit.embedding import TokenEmbedding
 
 __author__ = "Gary Lai"
 
 
-class FastText(TokenEmbedding):
+class Word2Vec(TokenEmbedding):
     """
-    :class:`FastText` is a token-based model trained by `FastText <https://github.com/facebookresearch/fastText>`_.
+    :class:`Word2Vec` is a token-based model trained by `Word2Vec <https://github.com/tmikolov/word2vec>`_.
     """
 
     def __init__(self, filepath: str):
         """
-        :param filepath: the path to the binary file containing a word embedding model trained by FastText (``*.bin``).
+        :param filepath: the path to the binary file containing a word embedding model trained by Word2Vec (``*.bin``).
         """
-        logging.info('FastText')
+        logging.info('Word2Vec')
         logging.info('- model: {}'.format(filepath))
-        self.model = fastText.load_model(filepath)
-        dim = self.model.get_dimension()
+        self.model = KeyedVectors.load(filepath) if filepath.lower().endswith('.gnsm') else KeyedVectors.load_word2vec_format(filepath, binary=True)
+        dim = self.model.syn0.shape[1]
         super().__init__(dim)
-        logging.info('- vocab = %d, dim = %d' % (len(self.model.get_words()), dim))
+        logging.info('- vocab = %d, dim = %d' % (len(self.model.vocab), dim))
 
     # override
     def emb(self, value: str) -> np.ndarray:
-        return self.model.get_word_vector(value)
+        vocab = self.model.vocab.get(value, None)
+        return self.model.syn0[vocab.index] if vocab else self.pad

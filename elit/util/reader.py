@@ -53,7 +53,7 @@ def tsv_reader(tsv_directory: str,
     logging.info('Reading tsv from:')
     logging.info('- directory: %s' % tsv_directory)
 
-    for filename in glob.glob('{}/*.tsv'.format(tsv_directory)):
+    for filename in glob.glob('{}/*'.format(tsv_directory)):
         # avoid reading unexpected files, such as hidden files.
         if not os.path.isfile(filename):
             continue
@@ -63,24 +63,23 @@ def tsv_reader(tsv_directory: str,
         sid = 0
         fields = {k: [] for k in cols.keys()}
 
-        fin = open(filename)
-        for line in fin:
-            if line.startswith('#'):
-                continue
-            l = line.split()
+        with open(filename) as fin:
+            for line in fin.readlines():
+                if line.startswith('#'):
+                    continue
+                l = line.split()
 
-            if l:
-                for k, v in fields.items():
-                    v.append(l[cols[k]])
-            elif len(fields[TOK]) > 0:
+                if l:
+                    for k, v in fields.items():
+                        v.append(l[cols[k]])
+                elif len(fields[TOK]) > 0:
+                    wc += len(fields[TOK])
+                    sentences.append(Sentence(fields))
+                    fields = {k: [] for k in cols.keys()}
+
+            if len(fields[TOK]) > 0:
                 wc += len(fields[TOK])
                 sentences.append(Sentence(fields))
-                fields = {k: [] for k in cols.keys()}
-
-        if len(fields[TOK]) > 0:
-            wc += len(fields[TOK])
-            sentences.append(Sentence(fields))
-        fin.close()
 
         [[label_map.add(i) for i in sent[to_gold(key)]] for sent in sentences]
         [sent.update({SID: i}) for i, sent in enumerate(sentences)]

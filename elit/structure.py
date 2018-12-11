@@ -37,6 +37,14 @@ SENTI_NEGATIVE = 'n'
 SENTI_NEUTRAL = '0'
 
 
+def to_gold(key: str) -> str:
+    return key + '-gold'
+
+
+def to_out(key: str) -> str:
+    return key + '-out'
+
+
 class Sentence(dict):
     def __init__(self, d=None, **kwargs):
         """
@@ -141,14 +149,6 @@ class Document(dict):
 
     def add_sentences(self, sentences: Sequence[Sentence]):
         self.sentences.extend(sentences)
-
-
-def to_gold(key: str) -> str:
-    return key + '-gold'
-
-
-def to_out(key: str) -> str:
-    return key + '-out'
 
 
 class BILOU(object):
