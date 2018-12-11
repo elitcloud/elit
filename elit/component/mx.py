@@ -25,7 +25,7 @@ from mxnet.gluon.data import DataLoader
 from tqdm import trange
 
 from elit.component import NLPComponent
-from elit.nlp.embedding import Embedding
+from elit.embedding import Embedding
 from elit.structure import Document
 from elit.util.mx import mx_loss
 

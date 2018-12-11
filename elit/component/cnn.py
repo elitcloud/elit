@@ -21,7 +21,7 @@ import mxnet as mx
 from mxnet.gluon.data import DataLoader
 
 from elit.component import MXComponent
-from elit.nlp.embedding import Embedding
+from elit.embedding import Embedding
 from elit.model import CNNModel
 from elit.structure import Document
 

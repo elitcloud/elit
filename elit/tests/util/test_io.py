@@ -86,7 +86,7 @@ def test_tsv_reader():
 
 def test_json_reader():
     docs, label_map = json_reader(
-        filepath=resource_filename('elit.tests.resources', 'json/pos/trn/sample.json'),
+        filepath=resource_filename('elit.tests.resources', 'pos_trn_sample.json'),
         key='pos'
     )
     assert docs == [{'sens': [
@@ -97,7 +97,7 @@ def test_json_reader():
         'doc_id': 0}]
     assert len(label_map) == 7
     docs, label_map = json_reader(
-        filepath=resource_filename('elit.tests.resources', 'json/pos/dev/sample.json'),
+        filepath=resource_filename('elit.tests.resources', 'pos_dev_sample.json'),
         key='pos'
     )
     assert docs == [{'sens': [
@@ -108,7 +108,7 @@ def test_json_reader():
         'doc_id': 0}]
     assert len(label_map) == 7
     docs, label_map = json_reader(
-        filepath=resource_filename('elit.tests.resources', 'json/ner/trn/sample.json'),
+        filepath=resource_filename('elit.tests.resources', 'ner_trn_sample.json'),
         key='ner'
     )
     assert docs == [{'sens': [
@@ -119,7 +119,7 @@ def test_json_reader():
         'doc_id': 0}]
     assert len(label_map) == 8
     docs, label_map = json_reader(
-        filepath=resource_filename('elit.tests.resources', 'json/ner/dev/sample.json'),
+        filepath=resource_filename('elit.tests.resources', 'ner_dev_sample.json'),
         key='ner'
     )
     assert docs == [{'sens': [
