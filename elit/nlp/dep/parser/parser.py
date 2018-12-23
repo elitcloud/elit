@@ -158,12 +158,13 @@ class BiaffineParser(NLPComponent):
                                                        None, documents=docs)
         return UAS, LAS, speed
 
-    def load(self, model_path: str, **kwargs):
+    def load(self, model_path: str, embedding_path, **kwargs):
         if self._parser:  # already loaded, ignore
             return self
         self._config = ParserConfig(os.path.join(model_path, 'config.ini'))
         self._config.save_dir = model_path
         self._vocab = ParserVocabulary.load(self._config.save_vocab_path)
+        self.vocab._pret_file = embedding_path
         with self.context:
             self._parser = self._create_parser(self._config, self._vocab)
 
