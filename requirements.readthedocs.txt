@@ -1,6 +1,6 @@
 Sphinx
 sphinx-autobuild
 sphinx-tabs
-recommonmarkw
+recommonmark
 sphinx_rtd_theme
 sphinx-markdown-tables
