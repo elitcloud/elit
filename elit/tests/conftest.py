@@ -18,7 +18,7 @@ import os
 import pytest
 
 from elit.util.reader import tsv_reader, json_reader
-
+from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 
 __author__ = "Gary Lai"
 
@@ -33,3 +33,18 @@ def tsv_reader():
 @pytest.fixture()
 def json_reader():
     return json_reader
+
+
+@pytest.fixture()
+def tokenizer():
+    return Tokenizer()
+
+
+@pytest.fixture()
+def space_tokenizer():
+    return SpaceTokenizer()
+
+
+@pytest.fixture()
+def english_tokenizer():
+    return EnglishTokenizer()
