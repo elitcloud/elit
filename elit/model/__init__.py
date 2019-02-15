@@ -13,18 +13,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import os
 
 import pytest
 
-from elit.component.base import Component
+from elit.util.reader import tsv_reader, json_reader
+from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 
 __author__ = "Gary Lai"
 
+current_path = os.path.abspath(os.path.dirname(__file__))
 
-def test_component():
-    class TestComponent(Component):
-        pass
 
-    with pytest.raises(TypeError):
-        TestComponent()
+@pytest.fixture()
+def tsv_reader():
+    return tsv_reader
 
+
+@pytest.fixture()
+def json_reader():
+    return json_reader
+
+
+@pytest.fixture()
+def tokenizer():
+    return Tokenizer()
+
+
+@pytest.fixture()
+def space_tokenizer():
+    return SpaceTokenizer()
+
+
+@pytest.fixture()
+def english_tokenizer():
+    return EnglishTokenizer()
