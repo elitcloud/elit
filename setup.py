@@ -13,7 +13,7 @@ __author__ = "Gary Lai"
 MAJOR = 0
 MINOR = 1
 MICRO = 28
-ISRELEASED = False
+ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 
@@ -126,6 +126,8 @@ def setup_package():
         author='Jinho D. Choi',
         author_email='jinho.choi@emory.edu',
         description='The Emory Language Information Toolkit (ELIT).',
+        long_description=open('README.md', 'r').read(),
+        long_description_content_type='text/markdown',
         license='ALv2',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         package_data={'': ['*.txt', '*.json']},
