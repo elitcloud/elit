@@ -98,7 +98,7 @@ if sys.version_info[:2] < (3, 5):
 #   3 - Alpha
 #   4 - Beta
 #   5 - Production/Stable
-CLASSIFIERS = """\
+CLASSIFIERS = """
 Development Status :: 3 - Alpha
 Intended Audience :: Science/Research
 Intended Audience :: Developers
@@ -133,16 +133,11 @@ def setup_package():
         package_data={'': ['*.txt', '*.json']},
         install_requires=[
             'argparse==1.4.0',
-            'pybind11==2.2.3',
-            'yafasttext==0.8.22.2018120701',
-            'gensim==3.6.0',
             'numpy==1.14.5',
-            'ujson==1.35',
-            'mxnet==1.3.0',
-            'gluonnlp==0.4.0',
-            'marisa_trie==0.7.5',
+            'mxnet==1.4.0',
+            'gluonnlp==0.6.0',
             'tqdm==4.26.0',
-            'gitpython==2.1.11',
+            'gensim==3.6.0',
         ],
         extras_require={
           'cu92': ['mxnet-cu92==1.3.0']

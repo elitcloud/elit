@@ -15,8 +15,9 @@
 # ========================================================================
 
 import logging
+from typing import Sequence
 
-import fastText
+import gluonnlp as nlp
 import numpy as np
 
 from elit.embedding import TokenEmbedding
@@ -35,11 +36,21 @@ class FastText(TokenEmbedding):
         """
         logging.info('FastText')
         logging.info('- model: {}'.format(filepath))
-        self.model = fastText.load_model(filepath)
-        dim = self.model.get_dimension()
+        self.model = nlp.model.train.FasttextEmbeddingModel.load_fasttext_format(filepath)
+        dim = self.model._kwargs['output_dim']
         super().__init__(dim)
-        logging.info('- vocab = %d, dim = %d' % (len(self.model.get_words()), dim))
+        logging.info('- vocab = %d, dim = %d' % (self.model._kwargs['num_words'], dim))
 
     # override
-    def emb(self, value: str) -> np.ndarray:
-        return self.model.get_word_vector(value)
+    def emb(self, token: str) -> np.ndarray:
+        assert isinstance(token, str)
+        return self.model[token].asnumpy()
+
+    # override
+    def emb_list(self, tokens: Sequence[str]) -> Sequence[np.ndarray]:
+        """
+        :param tokens: the sequence of input tokens.
+        :return: the list of embeddings for the corresponding tokens.
+        """
+        assert isinstance(tokens, list)
+        return self.model[tokens].asnumpy()
