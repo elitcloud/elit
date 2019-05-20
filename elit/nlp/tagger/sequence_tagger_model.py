@@ -127,12 +127,15 @@ class SequenceTagger(nn.Block):
         else:
             self.linear = nn.Dense(in_units=self.embeddings.embedding_length, units=len(tag_dictionary), flatten=False)
 
+        transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
+        transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
+        transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
         if self.use_crf:
-            transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
-            transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
-            transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
             self.transitions = self.params.get('transitions', shape=(self.tagset_size, self.tagset_size),
                                                init=mx.init.Constant(transitions))
+        else:
+            # this transition matrix will be updated through statistic, not GD
+            self.transitions = transitions
 
     def save(self, model_folder: str):
         os.makedirs(model_folder, exist_ok=True)
