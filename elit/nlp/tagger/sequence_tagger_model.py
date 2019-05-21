@@ -127,14 +127,15 @@ class SequenceTagger(nn.Block):
         else:
             self.linear = nn.Dense(in_units=self.embeddings.embedding_length, units=len(tag_dictionary), flatten=False)
 
-        transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
-        transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
-        transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
         if self.use_crf:
+            transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
+            transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
+            transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
             self.transitions = self.params.get('transitions', shape=(self.tagset_size, self.tagset_size),
                                                init=mx.init.Constant(transitions))
         else:
             # this transition matrix will be updated through statistic, not GD
+            transitions = nd.zeros((self.tagset_size, self.tagset_size))
             self.transitions = transitions
 
     def save(self, model_folder: str):
@@ -458,6 +459,26 @@ class SequenceTagger(nn.Block):
     def load(model: str):
         tagger: SequenceTagger = SequenceTagger.load_from_file(model)
         return tagger
+
+    def count_transition_matrix(self, train_data: List[Sentence]):
+        num_per_tag = [0] * len(self.tag_dictionary)
+        for sentence in train_data:
+            tag_idx = [self.tag_dictionary.get_idx_for_item(START_TAG)]
+            for token in sentence:
+                # get the tag
+                tag_idx.append(self.tag_dictionary.get_idx_for_item(token.get_tag(self.tag_type)))
+            tag_idx.append(self.tag_dictionary.get_idx_for_item(STOP_TAG))
+            for tag in tag_idx:
+                num_per_tag[tag] += 1
+            for pre, cur in zip(tag_idx[:-1], tag_idx[1:]):
+                self.transitions[pre, cur] += 1
+        for pre in self.tag_dictionary.item2idx.values():
+            for cur in self.tag_dictionary.item2idx.values():
+                self.transitions[pre, cur] = self.transitions[pre, cur] / num_per_tag[pre]
+        pass
+
+    def softmax_viterbi_decode(self, feats):
+        pass
 
 
 class LockedDropout(nn.Block):
