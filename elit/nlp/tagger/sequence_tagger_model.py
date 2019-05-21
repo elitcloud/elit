@@ -184,7 +184,7 @@ class SequenceTagger(nn.Block):
             model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
             return model
 
-    def forward(self, sentences: List[Sentence]) -> Tuple[nd.NDArray, nd.NDArray, List]:
+    def forward(self, sentences: List[Sentence], embed_ctx=None) -> Tuple[nd.NDArray, nd.NDArray, List]:
         """
 
         :param sentences:
@@ -194,7 +194,7 @@ class SequenceTagger(nn.Block):
         sentences.sort(key=lambda x: len(x), reverse=True)
         longest_token_sequence_in_batch: int = len(sentences[0])
 
-        self.embeddings.embed(sentences)
+        self.embeddings.embed(sentences, ctx=None if embed_ctx != mx.cpu() else mx.cpu())
 
         all_sentence_tensors = []
         lengths: List[int] = []
@@ -222,6 +222,8 @@ class SequenceTagger(nn.Block):
                 word_embeddings.append(padding)
 
             word_embeddings_tensor = nd.concat(*word_embeddings, dim=0)
+            if embed_ctx == mx.cpu():
+                word_embeddings_tensor = word_embeddings_tensor.as_in_context(embed_ctx)
 
             # if torch.cuda.is_available():
             #     tag_list.append(torch.cuda.LongTensor(tag_idx))
@@ -327,11 +329,8 @@ class SequenceTagger(nn.Block):
         best_path.reverse()
         return path_score, best_path
 
-    def neg_log_likelihood(self, sentences: List[Sentence], tag_type: str):
-        feats, tags, lens_ = self.forward(sentences)
-
-        # feats, lens_ = pad_tensors(feats)
-        # tags, _ = pad_tensors(tags, torch.LongTensor)
+    def neg_log_likelihood(self, sentences: List[Sentence], embed_ctx=None):
+        feats, tags, lens_ = self.forward(sentences, embed_ctx=embed_ctx)
 
         if self.use_crf:
 

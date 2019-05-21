@@ -67,6 +67,7 @@ if __name__ == '__main__':
             trainer.train(model_path,
                           learning_rate=0.1,
                           mini_batch_size=32,
+                          embeddings_in_gpu=False,
                           max_epochs=150)
 
         tagger = SequenceTagger.load(model_path, embeddings=embeddings)

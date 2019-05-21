@@ -30,7 +30,7 @@ class Embeddings(nn.Block):
     def embedding_type(self) -> str:
         pass
 
-    def embed(self, sentences: Union[Sentence, List[Sentence]]) -> List[Sentence]:
+    def embed(self, sentences: Union[Sentence, List[Sentence]], ctx=None) -> List[Sentence]:
         """Add embeddings to all words in a list of sentences. If embeddings are already added, updates only if embeddings
         are non-static."""
 
@@ -50,6 +50,10 @@ class Embeddings(nn.Block):
 
         if not everything_embedded or not self.static_embeddings:
             self._add_embeddings_internal(sentences)
+            if ctx:
+                for sentence in sentences:
+                    for token in sentence.tokens:
+                        token._embeddings[self.name] = token._embeddings[self.name].as_in_context(ctx)
 
         return sentences
 
