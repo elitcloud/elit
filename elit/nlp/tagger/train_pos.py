@@ -11,15 +11,20 @@ from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 import mxnet as mx
 
 if __name__ == '__main__':
-    data_folder = 'data/dat'
+    # data_folder = 'data/dat'
+    data_folder = 'data/wsj-pos'
 
     # get training, test and dev data
     columns = {0: 'text', 1: 'pos'}
     corpus = NLPTaskDataFetcher.fetch_column_corpus(data_folder,
                                                     columns,
-                                                    train_file='en-pos.trn',
-                                                    test_file='en-pos.tst',
-                                                    dev_file='en-pos.dev')
+                                                    # train_file='en-pos.trn',
+                                                    # test_file='en-pos.tst',
+                                                    # dev_file='en-pos.dev',
+                                                    train_file='train.tsv',
+                                                    test_file='test.tsv',
+                                                    dev_file='dev.tsv',
+                                                    )
 
     # 2. what tag do we want to predict?
     tag_type = 'pos'
