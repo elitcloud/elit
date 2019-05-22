@@ -235,13 +235,13 @@ class StackedEmbeddings(TokenEmbeddings):
         for embedding in embeddings:
             self.__embedding_length += embedding.embedding_length
 
-    def embed(self, sentences: Union[Sentence, List[Sentence]], static_embeddings: bool = True):
+    def embed(self, sentences: Union[Sentence, List[Sentence]], static_embeddings: bool = True, ctx=None):
         # if only one sentence is passed, convert to list of sentence
         if type(sentences) is Sentence:
             sentences = [sentences]
 
         for embedding in self.embeddings:
-            embedding.embed(sentences)
+            embedding.embed(sentences, ctx=ctx)
 
     @property
     def embedding_type(self) -> str:

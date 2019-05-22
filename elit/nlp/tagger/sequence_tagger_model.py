@@ -194,7 +194,7 @@ class SequenceTagger(nn.Block):
         sentences.sort(key=lambda x: len(x), reverse=True)
         longest_token_sequence_in_batch: int = len(sentences[0])
 
-        self.embeddings.embed(sentences, ctx=None if embed_ctx != mx.cpu() else mx.cpu())
+        self.embeddings.embed(sentences, ctx=None if not embed_ctx else mx.cpu())
 
         all_sentence_tensors = []
         lengths: List[int] = []
@@ -215,15 +215,16 @@ class SequenceTagger(nn.Block):
                 # get the tag
                 tag_idx.append(self.tag_dictionary.get_idx_for_item(token.get_tag(self.tag_type)))
                 # get the word embeddings
-                word_embeddings.append(token.get_embedding().reshape((1, -1)))
+                embedding = token.get_embedding().reshape((1, -1))
+                if embed_ctx:
+                    embedding = embedding.as_in_context(embed_ctx)
+                word_embeddings.append(embedding)
 
             # pad shorter sentences out
             for add in range(longest_token_sequence_in_batch - len(sentence.tokens)):
                 word_embeddings.append(padding)
 
             word_embeddings_tensor = nd.concat(*word_embeddings, dim=0)
-            if embed_ctx == mx.cpu():
-                word_embeddings_tensor = word_embeddings_tensor.as_in_context(embed_ctx)
 
             # if torch.cuda.is_available():
             #     tag_list.append(torch.cuda.LongTensor(tag_idx))
