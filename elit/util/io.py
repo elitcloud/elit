@@ -114,7 +114,8 @@ def file_exist(filename) -> bool:
 
 
 def remove_file(filename):
-    os.remove(filename)
+    if file_exist(filename):
+        os.remove(filename)
 
 
 def sha1sum(filename):
