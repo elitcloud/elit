@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import re
 import sys
 from typing import Set
@@ -148,5 +149,29 @@ def download(source, filename):
                         pbar.update(len(data))
     except KeyboardInterrupt:
         if file_exist(filename):
-           os.remove(filename)
+            os.remove(filename)
         sys.exit()
+
+
+def data_dir_default():
+    """
+
+    :return: default data directory depending on the platform and environment variables
+    """
+    system = platform.system()
+    if system == 'Windows':
+        return os.path.join(os.environ.get('APPDATA'), 'elit')
+    else:
+        return os.path.join(os.path.expanduser("~"), '.elit')
+
+
+def data_dir():
+    """
+
+    :return: data directory in the filesystem for storage, for example when downloading models
+    """
+    return os.getenv('ELIT_HOME', data_dir_default())
+
+
+if __name__ == '__main__':
+    print(data_dir())
