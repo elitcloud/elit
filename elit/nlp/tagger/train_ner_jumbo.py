@@ -72,4 +72,4 @@ if __name__ == '__main__':
 
         tagger = SequenceTagger.load(model_path, embeddings=embeddings)
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
-        trainer.evaluate(corpus.test, evaluation_method='span-F1')
+        print(trainer.evaluate(corpus.test, evaluation_method='span-F1'))
