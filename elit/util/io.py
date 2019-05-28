@@ -153,7 +153,7 @@ def download(source, filename):
         sys.exit()
 
 
-def data_dir_default():
+def elit_data_dir_default():
     """
 
     :return: default data directory depending on the platform and environment variables
@@ -165,13 +165,13 @@ def data_dir_default():
         return os.path.join(os.path.expanduser("~"), '.elit')
 
 
-def data_dir():
+def elit_data_dir():
     """
 
     :return: data directory in the filesystem for storage, for example when downloading models
     """
-    return os.getenv('ELIT_HOME', data_dir_default())
+    return os.getenv('ELIT_HOME', elit_data_dir_default())
 
 
 if __name__ == '__main__':
-    print(data_dir())
+    print(elit_data_dir())
