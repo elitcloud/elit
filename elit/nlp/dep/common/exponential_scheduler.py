@@ -16,41 +16,26 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-import pickle
+from mxnet.lr_scheduler import LRScheduler
 
 
-class Savable(object):
-    """
-    A super class for save/load operations.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def save(self, path):
-        """Save to path
+class ExponentialScheduler(LRScheduler):
+    def __init__(self, base_lr=0.01, decay_rate=0.5, decay_every=1):
+        """A simple learning rate decay scheduler
+            lr = base_lr * decay_rate ^ (num_update / decay_every)
 
         Parameters
         ----------
-        path : str
-            file path
+        base_lr : float
+            the initial learning rate.
+        decay_rate : float
+            what percentage does the learning rate decreases to in every decay compared to last one
+        decay_every : float
+            how often does the decay occurs
         """
-        with open(path, 'wb') as f:
-            pickle.dump(self, f)
+        super().__init__(base_lr)
+        self.decay_rate = decay_rate
+        self.decay_every = decay_every
 
-    @staticmethod
-    def load(path):
-        """Load from path
-
-        Parameters
-        ----------
-        path : str
-            file path
-
-        Returns
-        -------
-        Savable
-            An object
-        """
-        with open(path, 'rb') as f:
-            return pickle.load(f)
+    def __call__(self, num_update):
+        return self.base_lr * self.decay_rate ** (num_update / self.decay_every)
