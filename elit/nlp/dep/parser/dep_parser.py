@@ -294,14 +294,15 @@ if __name__ == '__main__':
     #              num_buckets_valid=4,
     #              num_buckets_test=4,
     #              validate_every=10, debug=True)
-    parser.train(train_file='../elit/data/dat/en-ddr.trn',
-                 dev_file='../elit/data/dat/en-ddr.dev',
-                 test_file='../elit/data/dat/en-ddr.tst', save_dir='tests/data/model/dep-jumbo',
+    save_dir = 'data/model/dep/jumbo'
+    parser.train(train_file='data/dat/en-ddr.trn',
+                 dev_file='data/dat/en-ddr.dev',
+                 test_file='data/dat/en-ddr.tst', save_dir=save_dir,
                  pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
-    parser.load('tests/data/model/dep-jumbo')
+    parser.load(save_dir)
     # parser.evaluate(test_file='tests/data/biaffine/ptb/test-debug.conllx', save_dir='tests/data/biaffine/model',
     #                 num_buckets_test=4)
-    parser.evaluate(test_file='../elit/data/dat/en-ddr.tst', save_dir='tests/data/model/dep-jumbo')
+    parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)
     sentence = [('Is', 'VBZ'), ('this', 'DT'), ('the', 'DT'), ('future', 'NN'), ('of', 'IN'), ('chamber', 'NN'),
                 ('music', 'NN'), ('?', '.')]
     print(parser.parse(sentence))
