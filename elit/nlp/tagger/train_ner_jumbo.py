@@ -48,7 +48,7 @@ if __name__ == '__main__':
         # 5. initialize sequence tagger
         USE_CRF = False
         train = True
-        model_path = 'data/model/{}/{}'.format(os.path.basename(data_folder), 'crf' if USE_CRF else 'viterbi')
+        model_path = 'data/model/ner/jumbo'
         if train:
             tagger: SequenceTagger = SequenceTagger(hidden_size=256,
                                                     embeddings=embeddings,

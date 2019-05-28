@@ -52,8 +52,8 @@ if __name__ == '__main__':
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types = [
             WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-            CharLMEmbeddings('data/model/lm-news-forward'),
-            CharLMEmbeddings('data/model/lm-news-backward'),
+            # CharLMEmbeddings('data/model/lm-news-forward'),
+            # CharLMEmbeddings('data/model/lm-news-backward'),
         ]
 
         embeddings = StackedEmbeddings(embeddings=embedding_types)
