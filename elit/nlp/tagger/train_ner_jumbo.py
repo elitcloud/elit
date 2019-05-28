@@ -37,12 +37,7 @@ if __name__ == '__main__':
     # 4. initialize embeddings
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types: List[TokenEmbeddings] = [
-
-            WordEmbeddings('data/embedding/glove/glove.6B.100d.txt'),
-
-            # comment in this line to use character embeddings
-            # CharacterEmbeddings(),
-
+            WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
             # comment in these lines to use contextual string embeddings
             CharLMEmbeddings('data/model/lm-news-forward'),
             CharLMEmbeddings('data/model/lm-news-backward'),
