@@ -24,8 +24,8 @@ import gluonnlp
 import numpy as np
 
 from elit.nlp.dep.common.k_means import KMeans
+from elit.nlp.dep.common.savable import Savable
 from elit.structure import Document, DEP
-from .savable import Savable
 
 
 class ConllWord(object):
@@ -495,3 +495,24 @@ class DataLoader(object):
             arc_targets = self._buckets[bkt_idx][:, bkt_batch, 2]
             rel_targets = self._buckets[bkt_idx][:, bkt_batch, 3]
             yield word_inputs, tag_inputs, arc_targets, rel_targets
+
+
+def conll_8_to_10(src, dst):
+    with open(src) as src, open(dst, 'w') as out:
+        for line in src:
+            info = line.strip().split()
+            if info:
+                arc_offset = 5
+                rel_offset = 6
+                if len(info) == 10:
+                    arc_offset = 6
+                    rel_offset = 7
+                idx, word, lemma, tag, head, rel = info[0], info[1], info[2], info[3], info[arc_offset], info[
+                    rel_offset]
+                out.write('\t'.join([idx, word, lemma, tag, '_', '_', head, rel, '_', '_']))
+            out.write('\n')
+
+
+if __name__ == '__main__':
+    conll_8_to_10('data/dat/en-ddr.trn', 'data/dat/en-ddr.trn.conllx')
+    conll_8_to_10('data/dat/en-ddr.tst', 'data/dat/en-ddr.tst.conllx')
