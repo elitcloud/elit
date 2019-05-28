@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # 4. initialize embeddings
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types = [
-            WordEmbeddings(('glove', 'glove.6B.100d')),
+            WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
             CharLMEmbeddings('data/model/lm-news-forward'),
             CharLMEmbeddings('data/model/lm-news-backward'),
         ]
@@ -71,7 +71,7 @@ if __name__ == '__main__':
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
             # 7. start training
-            trainer.train(model_path, learning_rate=0.1, mini_batch_size=32, max_epochs=2,
+            trainer.train(model_path, learning_rate=0.1, mini_batch_size=32, max_epochs=100,
                           embeddings_in_gpu=False)
         tagger = SequenceTagger.load(model_path, embeddings)
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
