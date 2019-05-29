@@ -22,7 +22,10 @@ import math
 import os
 import sys
 import time
+import zipfile
 from typing import Sequence
+from urllib.parse import urlparse
+from urllib.request import urlretrieve
 
 import mxnet as mx
 import mxnet.ndarray as nd
@@ -32,7 +35,9 @@ from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
 from elit.nlp.dep.common.data import ConllWord, ConllSentence, ParserVocabulary
 from elit.nlp.dep.common.tarjan import Tarjan
+from elit.resources.constant import RESOURCE_URL_PREFIX, LM_NEWS_FORWARD
 from elit.structure import Document, DEP, Sentence, POS, SENS
+from elit.util.io import elit_data_dir, remove_file, eprint
 
 
 class Progbar(object):
@@ -557,3 +562,94 @@ def _load_conll(path) -> Document:
                 sents.append(sent)
                 sent = create_sentence()
     return Document({SENS: sents})
+
+
+def download_friendly(url, path=None, prefix=RESOURCE_URL_PREFIX):
+    if not path:
+        path = path_from_url(url, path, prefix)
+        os.makedirs(path, exist_ok=True)
+    if os.path.isfile(path):
+        print('Using local {}, ignore {}'.format(path, url))
+        return path
+    else:
+        if os.path.isdir(path):
+            path = os.path.join(path, url.split('/')[-1])
+        print('Downloading {} to {}'.format(url, path))
+        tmp_path = '{}.downloading'.format(path)
+        remove_file(tmp_path)
+        try:
+            def reporthook(count, block_size, total_size):
+                global start_time, progress_size
+                if count == 0:
+                    start_time = time.time()
+                    progress_size = 0
+                    return
+                duration = time.time() - start_time
+                duration = max(1e-8, duration)
+                progress_size = int(count * block_size)
+                if progress_size > total_size:
+                    progress_size = total_size
+                speed = int(progress_size / (1024 * duration))
+                ratio = progress_size / total_size
+                ratio = max(1e-8, ratio)
+                percent = ratio * 100
+                eta = duration / ratio * (1 - ratio)
+                minutes = eta / 60
+                seconds = eta % 60
+                sys.stdout.write("\r%.2f%%, %d MB, %d KB/s, ETA %d min %d s" %
+                                 (percent, progress_size / (1024 * 1024), speed, minutes, seconds))
+                sys.stdout.flush()
+
+            import socket
+            socket.setdefaulttimeout(10)
+            urlretrieve(url, tmp_path, reporthook)
+            print()
+        except Exception as e:
+            remove_file(tmp_path)
+            try:
+                if os.name != 'nt':
+                    os.system('wget {} -O {}'.format(url, tmp_path))
+                else:
+                    raise e
+            except:
+                eprint('Failed to download {}'.format(url))
+                return None
+        remove_file(path)
+        os.rename(tmp_path, path)
+    return path
+
+
+def path_from_url(url, prefix=RESOURCE_URL_PREFIX, parent=True):
+    path = elit_data_dir()
+    parsed = urlparse(url[len(prefix):] if url.startswith(prefix) else url)
+    if parsed.path:
+        path = os.path.join(path, *parsed.path.strip('/').split('/'))
+        if parent:
+            path = os.path.dirname(path)
+    return path
+
+
+def unzip(path, folder=None, remove_zip=True):
+    if folder is None:
+        folder = os.path.dirname(path)
+    with zipfile.ZipFile(path, "r") as archive:
+        archive.extractall(folder)
+    if remove_zip:
+        remove_file(path)
+    return folder
+
+
+def fetch_resource(path: str, auto_unzip=True):
+    if path.startswith(RESOURCE_URL_PREFIX):
+        realpath = path_from_url(path, parent=False)
+        if realpath.endswith('.zip'):
+            realpath = realpath[:-len('.zip')]
+        if os.path.isdir(realpath) or os.path.isfile(realpath):
+            return realpath
+        path = download_friendly(path)
+    if path.endswith('.zip'):
+        unzip(path)
+
+
+if __name__ == '__main__':
+    fetch_resource(LM_NEWS_FORWARD)

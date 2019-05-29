@@ -119,6 +119,10 @@ def remove_file(filename):
         os.remove(filename)
 
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def sha1sum(filename):
     buf_size = 65536
     sha1 = hashlib.sha1()
