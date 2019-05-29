@@ -76,6 +76,10 @@ class TokenEmbeddings(Embeddings):
     def embedding_type(self) -> str:
         return 'word-level'
 
+    @property
+    def constructor_params(self):
+        return None
+
 
 class WordEmbeddings(TokenEmbeddings):
     """Standard static word embeddings, such as GloVe or FastText."""
@@ -84,6 +88,7 @@ class WordEmbeddings(TokenEmbeddings):
         """Init one of: 'glove', 'extvec', 'ft-crawl', 'ft-german'.
         Constructor downloads required files if not there."""
 
+        self.embedding_file = embedding_file
         self.precomputed_word_embeddings, self.__embedding_length = read_pretrained_embeddings(embedding_file)
 
         # self.name = embeddings
@@ -94,6 +99,10 @@ class WordEmbeddings(TokenEmbeddings):
     @property
     def embedding_length(self) -> int:
         return self.__embedding_length
+
+    @property
+    def constructor_params(self):
+        return self.embedding_file
 
     def _add_embeddings_internal(self, sentences: List[Sentence]) -> List[Sentence]:
 
@@ -138,6 +147,7 @@ class CharLMEmbeddings(TokenEmbeddings):
                 if set to false, the gradient will propagate into the language model. this dramatically slows down
                 training and often leads to worse results, so not recommended.
         """
+        self.model = model
         self.static_embeddings = detach
 
         self.lm = LanguageModel.load_language_model(model)
@@ -155,6 +165,10 @@ class CharLMEmbeddings(TokenEmbeddings):
     @property
     def embedding_length(self) -> int:
         return self.__embedding_length
+
+    @property
+    def constructor_params(self):
+        return self.model
 
     def _add_embeddings_internal(self, sentences: List[Sentence]) -> List[Sentence]:
 
@@ -257,3 +271,16 @@ class StackedEmbeddings(TokenEmbeddings):
             embedding._add_embeddings_internal(sentences)
 
         return sentences
+
+    def to_list(self):
+        items = []
+        for embedding in self.embeddings:
+            items.append((type(embedding), embedding.constructor_params))
+        return items
+
+    @staticmethod
+    def from_list(items):
+        embeddings = []
+        for (cls, param) in items:
+            embeddings.append(cls(param))
+        return StackedEmbeddings(embeddings=embeddings)

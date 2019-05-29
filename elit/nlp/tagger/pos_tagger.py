@@ -2,11 +2,11 @@
 # Author: hankcs
 # Date: 2018-11-14 10:42
 import tempfile
-from typing import Sequence
+from typing import Sequence, Union
 
 import mxnet as mx
 
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents
+from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, Sentence, Token
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.nlp.tagger.tagger import Tagger
@@ -53,6 +53,27 @@ class POSTagger(Tagger):
                                             embeddings_in_memory=False)
         print('TEST   \t%d\t' % test_score)
         return test_score
+
+    def tag(self, tokens: Union[Sequence[str], Sequence[Sequence[str]]]):
+        if len(tokens) == 0:
+            return []
+        if isinstance(tokens[0], str):
+            tokens = [tokens]
+        samples = []
+        for sent in tokens:  # type:Sentence
+            sentence = Sentence()
+            for word in sent:
+                t = Token(word)
+                sentence.add_token(t)
+            samples.append(sentence)
+        with self.context:
+            sentences = self.tagger.predict(samples)
+            results = []
+            for sent in sentences:
+                results.append([(word.text, word.pos) for word in sent.tokens])
+            if len(results) == 1:
+                results = results[0]
+            return results
 
 
 if __name__ == '__main__':
