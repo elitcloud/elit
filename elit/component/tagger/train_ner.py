@@ -3,11 +3,11 @@
 # Date: 2018-09-19 15:12
 from typing import List
 
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher
-from elit.nlp.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
-from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
+from elit.component.tagger.corpus import NLPTaskDataFetcher
+from elit.component.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.tagger.sequence_tagger_model import SequenceTagger
+from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 import mxnet as mx
 
 if __name__ == '__main__':

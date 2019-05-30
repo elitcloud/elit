@@ -31,8 +31,8 @@ import mxnet as mx
 import mxnet.ndarray as nd
 import numpy as np
 
-from elit.nlp.dep.common.utils import make_sure_path_exists
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.dep.common.utils import make_sure_path_exists
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.structure import Document, NER, POS, SENS
 from elit.structure import Sentence as ElitSentence
 

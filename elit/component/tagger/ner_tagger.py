@@ -1,3 +1,18 @@
+# ========================================================================
+# Copyright 2018 ELIT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
 # -*- coding:utf-8 -*-
 # Author：hankcs
 # Date: 2018-09-27 21:03
@@ -6,12 +21,11 @@ from typing import Sequence
 
 import mxnet as mx
 
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_chunks
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.nlp.tagger.tagger import Tagger
-from elit.util.structure import Document, NER, SEN
-from elit.util.structure import Sentence as ElitSentence
+from elit.component.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_chunks
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
+from elit.component.tagger.tagger import Tagger
+from elit.structure import Document, NER, SENS
 
 
 class NERTagger(Tagger):
@@ -35,19 +49,19 @@ class NERTagger(Tagger):
 
     def decode(self, docs: Sequence[Document], **kwargs):
         samples = NLPTaskDataFetcher.convert_elit_documents(docs)
-        sentences = self.tagger.predict(samples)
+        with self.context:
+            sentences = self.tagger.predict(samples)
         idx = 0
         for d in docs:
             for s in d:
-                s: ElitSentence = s
                 s[NER] = get_chunks([t.tags['ner'] for t in sentences[idx]])
                 idx += 1
         return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
         print('test... ')
-        with mx.Context(mxnet_prefer_gpu()):
-            trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
+        with self.context:
+            trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
             test_score, test_fp, test_result = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                                                 tempfile.gettempdir(),
                                                                 evaluation_method='span-F1',
@@ -57,16 +71,15 @@ class NERTagger(Tagger):
 
 
 if __name__ == '__main__':
-    with mx.Context(mxnet_prefer_gpu()):
-        tagger = NERTagger()
-        model_path = 'data/model/ner/jumbo'
-        # tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
-        #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
-        #              forward_language_model='data/model/lm-news-forward',
-        #              backward_language_model='data/model/lm-news-backward',
-        #              max_epochs=1)
-        tagger.load(model_path)
-        test = conll_to_documents('data/dat/en-ner.tst',headers={0: 'text', 1: 'pos', 2: 'ner'})
-        sent = tagger.decode(test)[0][SEN][3]
-        print(sent[NER])
-        print(tagger.evaluate(test))
+    tagger = NERTagger(mx.gpu(3))
+    model_path = 'data/model/ner/jumbo'
+    # tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
+    #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',
+    #              forward_language_model='data/model/lm-news-forward',
+    #              backward_language_model='data/model/lm-news-backward',
+    #              max_epochs=1)
+    tagger.load(model_path)
+    test = conll_to_documents('data/dat/en-ner.tst', headers={0: 'text', 1: 'pos', 2: 'ner'})
+    sent = tagger.decode(test)[0][SENS][3]
+    print(sent[NER])
+    print(tagger.evaluate(test))

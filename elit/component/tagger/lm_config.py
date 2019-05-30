@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # Author：hankcs
 # Date: 2018-09-27 20:29
-from elit.nlp.dep.common.savable import Savable
+from elit.component.dep.common.savable import Savable
 
 
 class LanguageModelConfig(Savable):

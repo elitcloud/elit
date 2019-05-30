@@ -23,8 +23,8 @@ from typing import Sequence
 import gluonnlp
 import numpy as np
 
-from elit.nlp.dep.common.k_means import KMeans
-from elit.nlp.dep.common.savable import Savable
+from elit.component.dep.common.k_means import KMeans
+from elit.component.dep.common.savable import Savable
 from elit.structure import Document, DEP
 
 

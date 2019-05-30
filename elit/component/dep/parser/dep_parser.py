@@ -23,12 +23,12 @@ import os
 import mxnet as mx
 import numpy as np
 from mxnet import gluon, autograd
-from elit.nlp.dep.common.config import _Config
-from elit.nlp.dep.common.data import ParserVocabulary, DataLoader, ConllWord, ConllSentence
-from elit.nlp.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.nlp.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
-from elit.nlp.dep.parser.biaffine_parser import BiaffineParser
-from elit.nlp.dep.parser.evaluate import evaluate_official_script
+from elit.component.dep.common.config import _Config
+from elit.component.dep.common.data import ParserVocabulary, DataLoader, ConllWord, ConllSentence
+from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
+from elit.component.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
+from elit.component.dep.parser.biaffine_parser import BiaffineParser
+from elit.component.dep.parser.evaluate import evaluate_official_script
 
 
 class DepParser(object):

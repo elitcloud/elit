@@ -28,7 +28,7 @@ from tqdm import tqdm
 
 from elit.component import RNNComponent
 from elit.dataset import LabelMap, sequence_batchify_fn, SequencesDataset
-from elit.nlp.embedding import Embedding
+from elit.component.embedding import Embedding
 from elit.eval import ChunkF1
 from elit.model import RNNModel
 from elit.structure import Document, to_gold

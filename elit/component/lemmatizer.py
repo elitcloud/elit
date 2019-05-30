@@ -23,7 +23,7 @@ from elit.lemmatization.english.suffix_rule import SuffixRule
 from pkg_resources import resource_filename
 
 from elit.component import NLPComponent
-from elit.nlp.lemmatization.english.inflection import Inflection
+from elit.component.lemmatization.english.inflection import Inflection
 
 __author__ = "Liyan Xu"
 

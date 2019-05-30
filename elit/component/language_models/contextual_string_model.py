@@ -14,11 +14,11 @@ from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 
-from elit.nlp.dep.common.utils import make_sure_path_exists
-from elit.nlp.tagger.corpus import Dictionary, TextCorpus
-from elit.nlp.tagger.lm_config import LanguageModelConfig
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
+from elit.component.dep.common.utils import make_sure_path_exists
+from elit.component.tagger.corpus import Dictionary, TextCorpus
+from elit.component.tagger.lm_config import LanguageModelConfig
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
 class ContextualStringModel(nn.Block):

@@ -18,8 +18,8 @@ import json
 import sys
 
 from elit.cli import ComponentCLI
-from elit.nlp.embedding import init_emb
-from elit.nlp.token_tagger import TokenTaggerConfig
+from elit.component.embedding import init_emb
+from elit.component.token_tagger import TokenTaggerConfig
 from elit.util.logger import set_logger
 
 __author__ = "Gary Lai"
@@ -65,11 +65,11 @@ class TokenTaggerCLI(ComponentCLI):
 
         embs = [init_emb(config) for config in args.embs_config]
         if args.mode == 'rnn':
-            from elit.nlp.token_tagger import RNNTokenTagger
+            from elit.component.token_tagger import RNNTokenTagger
             comp = RNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs=embs, chunking=config.chunking,
                                   rnn_config=config.rnn_config, output_config=config.output_config)
         elif args.mode == 'cnn':
-            from elit.nlp.token_tagger import CNNTokenTagger
+            from elit.component.token_tagger import CNNTokenTagger
             comp = CNNTokenTagger(ctx=config.ctx, key=args.key, label_map=label_map, embs=embs, chunking=config.chunking,
                                   input_config=config.input_config,
                                   output_config=config.output_config,
@@ -118,10 +118,10 @@ class TokenTaggerCLI(ComponentCLI):
 
         comp = None
         if args.mode == 'rnn':
-            from elit.nlp.token_tagger import RNNTokenTagger
+            from elit.component.token_tagger import RNNTokenTagger
             comp = RNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
         elif args.mode == 'cnn':
-            from elit.nlp.token_tagger import CNNTokenTagger
+            from elit.component.token_tagger import CNNTokenTagger
             comp = CNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
 
         comp.load(args.model_path)
@@ -164,10 +164,10 @@ class TokenTaggerCLI(ComponentCLI):
 
         comp = None
         if args.mode == 'rnn':
-            from elit.nlp.token_tagger import RNNTokenTagger
+            from elit.component.token_tagger import RNNTokenTagger
             comp = RNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
         elif args.mode == 'cnn':
-            from elit.nlp.token_tagger import CNNTokenTagger
+            from elit.component.token_tagger import CNNTokenTagger
             comp = CNNTokenTagger(ctx=config.ctx, key=args.key, embs=embs)
 
         comp.load(args.model_path)

@@ -18,7 +18,7 @@ import logging
 import numpy as np
 from gensim.models import KeyedVectors
 
-from elit.nlp.embedding import TokenEmbedding
+from elit.component.embedding import TokenEmbedding
 
 __author__ = "Gary Lai"
 

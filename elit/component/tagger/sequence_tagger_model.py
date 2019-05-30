@@ -1,22 +1,39 @@
+# ========================================================================
+# Copyright 2018 ELIT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
 # -*- coding:utf-8 -*-
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-21 21:10
 import os
 import pickle
-import warnings
+import sys
 from typing import List, Tuple, Union
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.nlp.tagger.corpus import Dictionary, Sentence, Token
-from elit.nlp.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
-from mxnet import autograd
+from mxnet import autograd, initializer
 from mxnet.gluon import nn, rnn
+import numpy as np
 
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.dep.common.savable import pickle_save, pickle_load, Savable
+from elit.component.tagger.corpus import Dictionary, Sentence, Token
+from elit.component.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 
-START_TAG: str = '<START>'
-STOP_TAG: str = '<STOP>'
+START_TAG = '<START>'
+STOP_TAG = '<STOP>'
 
 
 def to_scalar(var: nd.NDArray):
@@ -31,7 +48,7 @@ def argmax(vec: nd.NDArray):
 
 
 def log_sum_exp(vec: nd.NDArray):
-    max_score: nd.NDArray = vec[0, argmax(vec)]
+    max_score = vec[0, argmax(vec)]
     # max_score_broadcast = max_score.reshape(1, -1).expand(1, vec.size()[1])
     return max_score + nd.log(nd.sum(nd.exp(vec - max_score)))
 
@@ -43,7 +60,7 @@ def argmax_batch(vecs: nd.NDArray):
 
 
 def log_sum_exp_batch(vecs):
-    maxi: nd.NDArray = nd.max(vecs, 1)
+    maxi = nd.max(vecs, 1)
     maxi_bc = maxi.expand_dims(1).tile((1, vecs.shape[1]))
     recti_ = nd.log(nd.sum(nd.exp(vecs - maxi_bc), 1))
     return maxi + recti_
@@ -65,7 +82,7 @@ class SequenceTagger(nn.Block):
 
     def __init__(self,
                  hidden_size: int,
-                 embeddings: TokenEmbeddings,
+                 embeddings: StackedEmbeddings,
                  tag_dictionary: Dictionary,
                  tag_type: str,
                  use_crf: bool = True,
@@ -73,75 +90,75 @@ class SequenceTagger(nn.Block):
                  rnn_layers: int = 1):
 
         super(SequenceTagger, self).__init__()
-
-        self.use_rnn = use_rnn
-        self.hidden_size = hidden_size
-        self.use_crf: bool = use_crf
-        self.rnn_layers: int = rnn_layers
-
-        self.trained_epochs: int = 0
-
         self.embeddings = embeddings
+        with self.name_scope():
+            self.use_rnn = use_rnn
+            self.hidden_size = hidden_size
+            self.use_crf = use_crf
+            self.rnn_layers = rnn_layers
 
-        # set the dictionaries
-        self.tag_dictionary: Dictionary = tag_dictionary
-        self.tag_type: str = tag_type
-        self.tagset_size: int = len(tag_dictionary)
+            self.trained_epochs = 0
 
-        # initialize the network architecture
-        self.nlayers: int = rnn_layers
-        self.hidden_word = None
+            # set the dictionaries
+            self.tag_dictionary = tag_dictionary
+            self.tag_type = tag_type
+            self.tagset_size = len(tag_dictionary)
 
-        self.dropout = nn.Dropout(0.5, axes=[0])
+            # initialize the network architecture
+            self.nlayers = rnn_layers
+            self.hidden_word = None
 
-        # self.dropout: nn.Block = LockedDropout(0.5)
+            self.dropout = nn.Dropout(0.5, axes=[0])
 
-        rnn_input_dim: int = self.embeddings.embedding_length
+            # self.dropout: nn.Block = LockedDropout(0.5)
 
-        self.relearn_embeddings: bool = True
+            rnn_input_dim = self.embeddings.embedding_length
 
-        if self.relearn_embeddings:
-            self.embedding2nn = nn.Dense(in_units=rnn_input_dim, units=rnn_input_dim, flatten=False)
+            self.relearn_embeddings = True
 
-        # bidirectional LSTM on top of embedding layer
-        self.rnn_type = 'LSTM'
-        # if self.rnn_type in ['LSTM', 'GRU']:
-        #
-        #     if self.nlayers == 1:
-        #         self.rnn = getattr(rnn, self.rnn_type)(rnn_input_dim, hidden_size,
-        #                                               num_layers=self.nlayers,
-        #                                               bidirectional=True)
-        #     else:
-        #         self.rnn = getattr(rnn, self.rnn_type)(rnn_input_dim, hidden_size,
-        #                                               num_layers=self.nlayers,
-        #                                               dropout=0.5,
-        #                                               bidirectional=True)
-        self.rnn = rnn.LSTM(input_size=rnn_input_dim, hidden_size=hidden_size, num_layers=self.nlayers,
-                            bidirectional=True)
+            if self.relearn_embeddings:
+                self.embedding2nn = nn.Dense(in_units=rnn_input_dim, units=rnn_input_dim, flatten=False)
 
-        # self.nonlinearity = nn.Tanh()
+            # bidirectional LSTM on top of embedding layer
+            self.rnn_type = 'LSTM'
+            # if self.rnn_type in ['LSTM', 'GRU']:
+            #
+            #     if self.nlayers == 1:
+            #         self.rnn = getattr(rnn, self.rnn_type)(rnn_input_dim, hidden_size,
+            #                                               num_layers=self.nlayers,
+            #                                               bidirectional=True)
+            #     else:
+            #         self.rnn = getattr(rnn, self.rnn_type)(rnn_input_dim, hidden_size,
+            #                                               num_layers=self.nlayers,
+            #                                               dropout=0.5,
+            #                                               bidirectional=True)
+            self.rnn = rnn.LSTM(input_size=rnn_input_dim, hidden_size=hidden_size, num_layers=self.nlayers,
+                                bidirectional=True)
 
-        # final linear map to tag space
-        if self.use_rnn:
-            self.linear = nn.Dense(in_units=hidden_size * 2, units=len(tag_dictionary), flatten=False)
-        else:
-            self.linear = nn.Dense(in_units=self.embeddings.embedding_length, units=len(tag_dictionary), flatten=False)
+            # self.nonlinearity = nn.Tanh()
 
-        if self.use_crf:
-            transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
-            transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
-            transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
-            self.transitions = self.params.get('transitions', shape=(self.tagset_size, self.tagset_size),
-                                               init=mx.init.Constant(transitions))
-        else:
-            # this transition matrix will be updated through statistic, not GD
-            transitions = nd.zeros((self.tagset_size, self.tagset_size))
-            self.transitions = transitions
+            # final linear map to tag space
+            if self.use_rnn:
+                self.linear = nn.Dense(in_units=hidden_size * 2, units=len(tag_dictionary), flatten=False)
+            else:
+                self.linear = nn.Dense(in_units=self.embeddings.embedding_length, units=len(tag_dictionary),
+                                       flatten=False)
+
+            if self.use_crf:
+                transitions = nd.random.normal(0, 1, (self.tagset_size, self.tagset_size))
+                transitions[self.tag_dictionary.get_idx_for_item(START_TAG), :] = -10000
+                transitions[:, self.tag_dictionary.get_idx_for_item(STOP_TAG)] = -10000
+                self.transitions = self.params.get('transitions', shape=(self.tagset_size, self.tagset_size),
+                                                   init=mx.init.Constant(transitions))
+            else:
+                # this transition matrix will be updated through statistic, not GD
+                transitions = nd.zeros((self.tagset_size, self.tagset_size))
+                self.transitions = transitions
 
     def save(self, model_folder: str):
         os.makedirs(model_folder, exist_ok=True)
         config = {
-            # 'embeddings': self.embeddings,
+            'embeddings': self.embeddings.to_list(),
             'hidden_size': self.hidden_size,
             'tag_dictionary': self.tag_dictionary,
             'tag_type': self.tag_type,
@@ -152,36 +169,53 @@ class SequenceTagger(nn.Block):
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'wb') as f:
             pickle.dump(config, f)
-            model_path = os.path.join(model_folder, 'model.bin')
-            self.save_parameters(model_path)
+            assert True, 'debug'
+        model_path = os.path.join(model_folder, 'model.bin')
+        self.save_parameters(model_path)
+        if not self.use_crf:
+            pickle_save(self.transitions, os.path.join(model_folder, 'transitions.pkl'))
 
     @classmethod
-    def load_from_file(cls, model_folder):
+    def load_from_file(cls, model_folder, context: mx.Context = None, embeddings=None, **kwargs):
+        if context is None:
+            context = mxnet_prefer_gpu()
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'rb') as f:
-            config = pickle.load(f)
-            embedding_types: List[TokenEmbeddings] = [
+            config = pickle.load(f)  # type:dict
+            with context:
+                if not embeddings:
+                    # embedding_types = [
+                    #
+                    #     WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
+                    #
+                    #     # comment in this line to use character embeddings
+                    #     # CharacterEmbeddings(),
+                    #
+                    #     # comment in these lines to use contextual string embeddings
+                    #     # CharLMEmbeddings('{}data/model/lm-news-forward'.format(kwargs.get('word_embedding_path', '')),
+                    #     #                  context=context),
+                    #     # CharLMEmbeddings('{}data/model/lm-news-backward'.format(kwargs.get('word_embedding_path', '')),
+                    #     #                  context=context),
+                    # ]
+                    #
+                    # embeddings = StackedEmbeddings(embeddings=embedding_types)
+                    # config['embeddings'] = embeddings.to_list()
+                    # pickle_save(config, config_path)
+                    embeddings = StackedEmbeddings.from_list(config['embeddings'])
+                model = SequenceTagger(
+                    hidden_size=config['hidden_size'],
+                    embeddings=embeddings,
+                    tag_dictionary=config['tag_dictionary'],
+                    tag_type=config['tag_type'],
+                    use_crf=config['use_crf'],
+                    use_rnn=config['use_rnn'],
+                    rnn_layers=config['rnn_layers'])
+                # print(config)
+                model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=context)
+                if not model.use_crf:
+                    model.transitions: nd.NDArray = pickle_load(os.path.join(model_folder, 'transitions.pkl'))
+                    model.transitions = model.transitions.as_in_context(context)
 
-                WordEmbeddings('data/embedding/fasttext100.vec.txt'),
-
-                # comment in this line to use character embeddings
-                # CharacterEmbeddings(),
-
-                # comment in these lines to use contextual string embeddings
-                CharLMEmbeddings('data/model/lm-news-forward'),
-                CharLMEmbeddings('data/model/lm-news-backward'),
-            ]
-
-            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
-            model = SequenceTagger(
-                hidden_size=config['hidden_size'],
-                embeddings=embeddings,
-                tag_dictionary=config['tag_dictionary'],
-                tag_type=config['tag_type'],
-                use_crf=config['use_crf'],
-                use_rnn=config['use_rnn'],
-                rnn_layers=config['rnn_layers'])
-            model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
             return model
 
     def forward(self, sentences: List[Sentence], embed_ctx=None) -> Tuple[nd.NDArray, nd.NDArray, List]:
@@ -192,20 +226,20 @@ class SequenceTagger(nn.Block):
         """
         # first, sort sentences by number of tokens
         sentences.sort(key=lambda x: len(x), reverse=True)
-        longest_token_sequence_in_batch: int = len(sentences[0])
+        longest_token_sequence_in_batch = len(sentences[0])
 
         self.embeddings.embed(sentences, ctx=None if not embed_ctx else mx.cpu())
 
         all_sentence_tensors = []
-        lengths: List[int] = []
-        tag_list: List = []
+        lengths = []
+        tag_list = []
 
         padding = nd.zeros((1, self.embeddings.embedding_length), dtype='float32')
 
         for sentence in sentences:
 
             # get the tags in this sentence
-            tag_idx: List[int] = []
+            tag_idx = []
 
             lengths.append(len(sentence.tokens))
 
@@ -234,7 +268,7 @@ class SequenceTagger(nn.Block):
             all_sentence_tensors.append(word_embeddings_tensor.expand_dims(1))
 
         # padded tensor for entire batch
-        sentence_tensor = nd.concat(*all_sentence_tensors, dim=1)  # (T, N, C)
+        sentence_tensor = nd.concat(*all_sentence_tensors, dim=1)  # (IN, NN, C)
         # if torch.cuda.is_available():
         #     sentence_tensor = sentence_tensor.cuda()
 
@@ -255,7 +289,7 @@ class SequenceTagger(nn.Block):
 
             sentence_tensor = self.dropout(sentence_tensor)
 
-        features: nd.NDArray = self.linear(sentence_tensor)
+        features = self.linear(sentence_tensor)
         tags = nd.zeros((len(tag_list), lengths[0]), dtype='int32')
         for i, (t, l) in enumerate(zip(tag_list, lengths)):
             tags[i, :l] = t
@@ -344,14 +378,7 @@ class SequenceTagger(nn.Block):
 
         else:
 
-            score = 0
-            for i in range(len(feats)):
-                sentence_feats = feats[i]
-                sentence_tags = tags[i]
-
-                tag_tensor = nd.array(sentence_tags)
-                score += nn.functional.cross_entropy(sentence_feats, tag_tensor)
-
+            score = nd.softmax_cross_entropy(feats.reshape([-1, feats.shape[-1]]), tags.astype('float32').reshape([-1]))
             return score
 
     def _forward_alg(self, feats, lens_):
@@ -404,8 +431,10 @@ class SequenceTagger(nn.Block):
         if self.use_crf:
             score, tag_seq = self.viterbi_decode(feats)
         else:
-            score, tag_seq = nd.max(feats, 1)
-            tag_seq = list(tag_seq.cpu().data)
+            score = None
+            # tag_seq = feats.argmax(axis=1)
+            # tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
+            tag_seq = self.softmax_viterbi_decode(feats)
 
         return score, tag_seq
 
@@ -429,7 +458,7 @@ class SequenceTagger(nn.Block):
                 all_tokens.extend(sentence.tokens)
 
             for (token, pred_id) in zip(all_tokens, predicted_id):
-                token: Token = token
+                token = token
                 # get the predicted tag
                 predicted_tag = self.tag_dictionary.get_item_for_index(pred_id)
                 token.add_tag(self.tag_type, predicted_tag)
@@ -447,8 +476,7 @@ class SequenceTagger(nn.Block):
             if self.use_crf:
                 score, tag_seq = self.viterbi_decode(feats)
             else:
-                score, tag_seq = nd.max(feats, 1)
-                tag_seq = list(tag_seq.data())
+                tag_seq = self.softmax_viterbi_decode(feats)
 
             # overall_score += score
             all_tags_seqs.extend(tag_seq)
@@ -456,8 +484,8 @@ class SequenceTagger(nn.Block):
         return overall_score, all_tags_seqs
 
     @staticmethod
-    def load(model: str):
-        tagger: SequenceTagger = SequenceTagger.load_from_file(model)
+    def load(model: str, embeddings=None):
+        tagger = SequenceTagger.load_from_file(model, embeddings=embeddings)
         return tagger
 
     def count_transition_matrix(self, train_data: List[Sentence]):
@@ -475,10 +503,41 @@ class SequenceTagger(nn.Block):
         for pre in self.tag_dictionary.item2idx.values():
             for cur in self.tag_dictionary.item2idx.values():
                 self.transitions[pre, cur] = self.transitions[pre, cur] / num_per_tag[pre]
-        pass
 
     def softmax_viterbi_decode(self, feats):
-        pass
+        feats = nd.softmax(feats).asnumpy()
+        transitions = self.transitions.asnumpy()
+
+        label_size = len(self.tag_dictionary)
+        sent_len = len(feats)
+        pre_matrix = np.zeros((sent_len, label_size), dtype=int)
+        score_matrix = np.zeros((2, label_size))
+        score_matrix[0] = feats[0]
+        for i in range(1, sent_len):
+            _i = i & 1
+            _i_1 = 1 - _i
+            for cur_label in range(label_size):
+                max_score = -sys.float_info.max
+                for pre_label in range(label_size):
+                    score = feats[i, cur_label]
+                    cur_score = score_matrix[_i_1][pre_label] * transitions[pre_label, cur_label] * score
+                    if max_score < cur_score:
+                        max_score = cur_score
+                        pre_matrix[i, cur_label] = pre_label
+                        score_matrix[_i][cur_label] = max_score
+
+        last_time = (sent_len - 1) & 1
+        max_score = score_matrix[last_time].max()
+        max_index = np.argmax(score_matrix[last_time])
+
+        labels = []
+        for i in range(sent_len - 1, -1, -1):
+            labels.insert(0, max_index)
+            max_index = pre_matrix[i, max_index]
+        return labels
+
+    def initialize(self, init=initializer.Uniform(), ctx=None, verbose=False, force_reinit=False):
+        self.collect_params(select=self.name).initialize(init, ctx, verbose, force_reinit)
 
 
 class LockedDropout(nn.Block):
@@ -492,7 +551,7 @@ class LockedDropout(nn.Block):
 
         keep_rate = 1. - self.dropout_rate
         m = nd.random.negative_binomial(1, keep_rate, (1, x.shape[1], x.shape[2]))
-        mask: nd.NDArray = m / keep_rate
+        mask = m / keep_rate
         return nd.broadcast_mul(x, mask)
 
 

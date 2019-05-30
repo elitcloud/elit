@@ -33,8 +33,8 @@ import numpy as np
 from mxnet.gluon import rnn
 from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
-from elit.nlp.dep.common.data import ConllWord, ConllSentence, ParserVocabulary
-from elit.nlp.dep.common.tarjan import Tarjan
+from elit.component.dep.common.data import ConllWord, ConllSentence, ParserVocabulary
+from elit.component.dep.common.tarjan import Tarjan
 from elit.resources.constant import RESOURCE_URL_PREFIX, LM_NEWS_FORWARD
 from elit.structure import Document, DEP, Sentence, POS, SENS
 from elit.util.io import elit_data_dir, remove_file, eprint

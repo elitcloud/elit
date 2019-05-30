@@ -19,7 +19,7 @@ import logging
 import fastText
 import numpy as np
 
-from elit.nlp.embedding import TokenEmbedding
+from elit.component.embedding import TokenEmbedding
 
 __author__ = "Gary Lai"
 

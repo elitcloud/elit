@@ -15,8 +15,8 @@
 # ========================================================================
 from typing import Sequence
 
-from elit.nlp.embedding import Embedding
-from elit.nlp.language_models.contextual_string_model import ContextualStringModel
+from elit.component.embedding import Embedding
+from elit.component.language_models.contextual_string_model import ContextualStringModel
 from elit.structure import Document
 
 __author__ = "Gary Lai"

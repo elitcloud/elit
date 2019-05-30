@@ -1,3 +1,18 @@
+# ========================================================================
+# Copyright 2018 ELIT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
 # -*- coding:utf-8 -*-
 # Author：ported from PyTorch implementation of flair: https://github.com/zalandoresearch/flair to MXNet
 # Date: 2018-09-22 18:24
@@ -8,14 +23,15 @@ import re
 import sys
 import time
 from subprocess import run, PIPE
+from typing import List
 
-from elit.nlp.tagger.corpus import TaggedCorpus, Sentence, Token
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
-from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
 import mxnet as mx
 from mxnet import autograd, gluon
-from typing import List
+
+from elit.component.tagger.corpus import TaggedCorpus, Sentence
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
+from elit.component.tagger.sequence_tagger_model import SequenceTagger
 
 
 class Metric(object):
@@ -71,9 +87,9 @@ class Metric(object):
 
 class SequenceTaggerTrainer:
     def __init__(self, model: SequenceTagger, corpus: TaggedCorpus, test_mode: bool = False) -> None:
-        self.model: SequenceTagger = model
-        self.corpus: TaggedCorpus = corpus
-        self.test_mode: bool = test_mode
+        self.model = model
+        self.corpus = corpus
+        self.test_mode = test_mode
 
     def train(self,
               base_path: str,
@@ -83,8 +99,9 @@ class SequenceTaggerTrainer:
               anneal_factor: float = 0.5,
               patience: int = 2,
               save_model: bool = True,
-              embeddings_in_memory: bool = True,
-              train_with_dev: bool = False) -> float:
+              embeddings_in_gpu: bool = True,
+              train_with_dev: bool = False,
+              context: mx.Context = None) -> float:
         """
 
         :param base_path: a folder to store model, log etc.
@@ -94,13 +111,15 @@ class SequenceTaggerTrainer:
         :param anneal_factor:
         :param patience:
         :param save_model:
-        :param embeddings_in_memory:
+        :param embeddings_in_gpu:
         :param train_with_dev:
         :return: best dev f1
         """
         evaluation_method = 'F1'
-        if self.model.tag_type in ['ner', 'np', 'srl']: evaluation_method = 'span-F1'
-        if self.model.tag_type in ['pos', 'upos']: evaluation_method = 'accuracy'
+        if self.model.tag_type in ['ner', 'np', 'srl']:
+            evaluation_method = 'span-F1'
+        if self.model.tag_type in ['pos', 'upos']:
+            evaluation_method = 'accuracy'
         print(evaluation_method)
 
         os.makedirs(base_path, exist_ok=True)
@@ -117,78 +136,80 @@ class SequenceTaggerTrainer:
 
         # At any point you can hit Ctrl + C to break out of training early.
         try:
-            self.model.initialize()
-            scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
-                                                             patience=patience, mode=anneal_mode)
-            optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
-            trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
-            for epoch in range(0, max_epochs):
-                current_loss: float = 0
-                if not self.test_mode:
-                    random.shuffle(train_data)
+            if not context:
+                context = mxnet_prefer_gpu()
+            with mx.Context(context):
+                self.model.initialize()
+                if not self.model.use_crf:
+                    self.model.count_transition_matrix(train_data)
+                scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                                              patience=patience, mode=anneal_mode)
+                optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler, clip_gradient=5.0)
+                trainer = gluon.Trainer(self.model.collect_params(), optimizer=optimizer)
+                for epoch in range(0, max_epochs):
+                    current_loss = 0
+                    if not self.test_mode:
+                        random.shuffle(train_data)
 
-                batches = [train_data[x:x + mini_batch_size] for x in
-                           range(0, len(train_data), mini_batch_size)]
+                    batches = [train_data[x:x + mini_batch_size] for x in
+                               range(0, len(train_data), mini_batch_size)]
 
-                batch_no: int = 0
+                    batch_no = 0
 
-                for batch in batches:
-                    batch: List[Sentence] = batch
-                    batch_no += 1
+                    for batch in batches:
+                        batch = batch
+                        batch_no += 1
 
-                    if batch_no % 100 == 0:
-                        print("%d of %d (%f)" % (batch_no, len(batches), float(batch_no / len(batches))))
+                        if batch_no % 100 == 0:
+                            print("%d of %d (%f)" % (batch_no, len(batches), float(batch_no / len(batches))))
 
-                    # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
-                    with autograd.record():
-                        loss = self.model.neg_log_likelihood(batch, self.model.tag_type)
+                        # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+                        with autograd.record():
+                            loss = self.model.neg_log_likelihood(batch, None if embeddings_in_gpu else context)
 
-                    current_loss += loss.sum().asscalar()
+                        current_loss += loss.sum().asscalar()
 
-                    loss.backward()
+                        loss.backward()
 
-                    # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+                        # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
 
-                    # optimizer.step()
-                    trainer.step(len(batch))
+                        # optimizer.step()
+                        trainer.step(len(batch))
 
-                    sys.stdout.write('.')
-                    sys.stdout.flush()
+                        sys.stdout.write('.')
+                        sys.stdout.flush()
 
-                    if not embeddings_in_memory:
-                        self.clear_embeddings_in_batch(batch)
+                    current_loss /= len(train_data)
 
-                current_loss /= len(train_data)
+                    if not train_with_dev:
+                        print('.. evaluating... dev... ')
+                        dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
+                                                                      evaluation_method=evaluation_method,
+                                                                      embeddings_in_memory=embeddings_in_gpu)
+                    else:
+                        dev_fp = 0
+                        dev_result = '_'
 
-                if not train_with_dev:
-                    print('.. evaluating... dev... ')
-                    dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
-                                                                  evaluation_method=evaluation_method,
-                                                                  embeddings_in_memory=embeddings_in_memory)
-                else:
-                    dev_fp = 0
-                    dev_result = '_'
+                    # anneal against train loss if training with dev, otherwise anneal against dev score
+                    scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
 
-                # anneal against train loss if training with dev, otherwise anneal against dev score
-                scheduler.step(current_loss) if train_with_dev else scheduler.step(dev_score)
-
-                # save if model is current best and we use dev data for model selection
-                if save_model and not train_with_dev and dev_score == scheduler.best:
-                    self.model.save(base_path)
-                summary = '%d' % epoch + '\t({:%H:%M:%S})'.format(datetime.datetime.now()) \
-                          + '\t%f\t%d\t%f\tDEV   %d\t' % (
-                              current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
-                summary = summary.replace('\n', '')
-                if self.corpus.test and len(self.corpus.test):
-                    print('test... ')
-                    test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
-                                                                     evaluation_method=evaluation_method,
-                                                                     embeddings_in_memory=embeddings_in_memory)
-                    summary += '\tTEST   \t%d\t' % test_fp + test_result
-                with open(loss_txt, "a") as loss_file:
-                    loss_file.write('%s\n' % summary)
-                    loss_file.close()
-                print(summary)
+                    # save if model is current best and we use dev data for model selection
+                    if save_model and not train_with_dev and dev_score == scheduler.best:
+                        self.model.save(base_path)
+                    summary = '%d' % epoch + '\t({:%H:%M:%S})'.format(datetime.datetime.now()) \
+                              + '\t%f\t%d\t%f\tDEV   %d\t' % (
+                                  current_loss, scheduler.num_bad_epochs, learning_rate, dev_fp) + dev_result
+                    summary = summary.replace('\n', '')
+                    # if self.corpus.test and len(self.corpus.test):
+                    #     print('test... ')
+                    #     test_score, test_fp, test_result = self.evaluate(self.corpus.test, base_path,
+                    #                                                      evaluation_method=evaluation_method,
+                    #                                                      embeddings_in_memory=embeddings_in_gpu)
+                    #     summary += '\tTEST   \t%d\t' % test_fp + test_result
+                    with open(loss_txt, "a") as loss_file:
+                        loss_file.write('%s\n' % summary)
+                        loss_file.close()
+                    print(summary)
 
             # if we do not use dev data for model selection, save final model
             if save_model and train_with_dev:
@@ -206,17 +227,17 @@ class SequenceTaggerTrainer:
     def evaluate(self, evaluation: List[Sentence], out_path=None, evaluation_method: str = 'F1',
                  embeddings_in_memory: bool = True):
 
-        tp: int = 0
-        fp: int = 0
+        tp = 0
+        fp = 0
 
-        batch_no: int = 0
+        batch_no = 0
         mini_batch_size = 32
         batches = [evaluation[x:x + mini_batch_size] for x in
                    range(0, len(evaluation), mini_batch_size)]
 
         metric = Metric('')
 
-        lines: List[str] = []
+        lines = []
 
         start_time = time.time()
         for batch in batches:
@@ -226,7 +247,7 @@ class SequenceTaggerTrainer:
 
             for sentence in batch:
 
-                sentence: Sentence = sentence
+                sentence = sentence
 
                 # Step 3. Run our forward pass.
                 score, tag_seq = self.model.predict_scores(sentence)
@@ -234,7 +255,7 @@ class SequenceTaggerTrainer:
                 # Step 5. Compute predictions
                 predicted_id = tag_seq
                 for (token, pred_id) in zip(sentence.tokens, predicted_id):
-                    token: Token = token
+                    token = token
                     # get the predicted tag
                     predicted_tag = self.model.tag_dictionary.get_item_for_index(pred_id)
                     token.add_tag('predicted', predicted_tag)

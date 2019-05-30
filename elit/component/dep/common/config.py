@@ -19,7 +19,7 @@
 import os
 import pickle
 
-from elit.nlp.dep.common.savable import Savable
+from elit.component.dep.common.savable import Savable
 
 
 class _Config(Savable):

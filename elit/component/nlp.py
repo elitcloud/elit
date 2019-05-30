@@ -17,7 +17,7 @@ import abc
 import inspect
 from typing import Sequence
 
-from elit.component import Component
+from elit.component.base import Component
 from elit.structure import Document
 
 __author__ = "Gary Lai"

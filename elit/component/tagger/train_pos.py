@@ -19,11 +19,11 @@
 
 import mxnet as mx
 
-from elit.nlp.tagger.corpus import NLPTaskDataFetcher
-from elit.nlp.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.nlp.tagger.sequence_tagger_model import SequenceTagger
-from elit.nlp.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
+from elit.component.tagger.corpus import NLPTaskDataFetcher
+from elit.component.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
+from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.component.tagger.sequence_tagger_model import SequenceTagger
+from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 
 if __name__ == '__main__':
     data_folder = 'data/dat'

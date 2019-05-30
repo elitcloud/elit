@@ -26,7 +26,7 @@ from tqdm import tqdm
 
 from elit.component import CNNComponent
 from elit.dataset import LabelMap, TokensDataset
-from elit.nlp.embedding import Embedding
+from elit.component.embedding import Embedding
 from elit.eval import ChunkF1
 from elit.model import CNNModel
 from elit.structure import Document, to_gold

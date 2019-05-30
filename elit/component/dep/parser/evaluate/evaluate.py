@@ -22,8 +22,8 @@ import tempfile
 import time
 from functools import reduce
 
-from elit.nlp.dep.common.data import DataLoader
-from elit.nlp.dep.common.utils import _save_conll
+from elit.component.dep.common.data import DataLoader
+from elit.component.dep.common.utils import _save_conll
 
 
 def evaluate_official_script(parser, vocab, num_buckets_test, test_batch_size, test_file, output_file,
