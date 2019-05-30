@@ -6,23 +6,22 @@ import math
 import os
 import pickle
 import time
+from typing import List, Dict
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.nlp.dep.common.savable import Savable
-from elit.nlp.dep.common.utils import make_sure_path_exists
-from elit.nlp.tagger.corpus import Dictionary, TextCorpus
-from elit.nlp.tagger.lm_config import LanguageModelConfig
-from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
-from typing import List, Dict
 
+from elit.nlp.dep.common.utils import make_sure_path_exists
+from elit.nlp.tagger.corpus import Dictionary, TextCorpus
+from elit.nlp.tagger.lm_config import LanguageModelConfig
 from elit.nlp.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.nlp.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 
 
-class LanguageModel(nn.HybridBlock):
+class ContextualStringModel(nn.Block):
     """
     Container module with an encoder, a recurrent module, and a decoder.
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
@@ -38,10 +37,10 @@ class LanguageModel(nn.HybridBlock):
                  dropout=0.5,
                  init_params: Dict = None):
 
-        super(LanguageModel, self).__init__()
+        super(ContextualStringModel, self).__init__()
 
         self.dictionary = dictionary
-        self.is_forward_lm: bool = is_forward_lm
+        self.is_forward_lm = is_forward_lm
 
         self.dropout = dropout
         self.hidden_size = hidden_size
@@ -84,7 +83,7 @@ class LanguageModel(nn.HybridBlock):
     def set_hidden(self, hidden):
         self.hidden = hidden
 
-    def hybrid_forward(self, F, input, hidden, cell):
+    def forward(self, input, hidden, cell, ordered_sequence_lengths=None):
         encoded = self.encoder(input)
         emb = self.drop(encoded)
 
@@ -94,14 +93,15 @@ class LanguageModel(nn.HybridBlock):
         if self.proj is not None:
             output = self.proj(output)
 
-        output: nd.NDArray = self.drop(output)
+        output = self.drop(output)
 
-        decoded = self.decoder(output.reshape((-1, self.hidden_size)))
-        return decoded, output, hidden, cell
+        decoded = self.decoder(output.reshape(-1, output.shape[2]))
+
+        return decoded.reshape(output.shape[0], output.shape[1], decoded.shape[1]), output, hidden, cell
 
     def get_representation(self, strings: List[str], detach_from_lm=True):
 
-        sequences_as_char_indices: List[List[int]] = []
+        sequences_as_char_indices = []
         for string in strings:
             char_indices = [self.dictionary.get_idx_for_item(char) for char in string]
             sequences_as_char_indices.append(char_indices)
@@ -131,16 +131,17 @@ class LanguageModel(nn.HybridBlock):
         self.collect_params().setattr('grad_req', 'null')
 
     @classmethod
-    def load_language_model(cls, model_file):
+    def load_language_model(cls, model_file, context: mx.Context = None):
         config = LanguageModelConfig.load(os.path.join(model_file, 'config.pkl'))
-        model = LanguageModel(config.dictionary,
-                              config.is_forward_lm,
-                              config.hidden_size,
-                              config.nlayers,
-                              config.embedding_size,
-                              config.nout,
-                              config.dropout)
-        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=mx.Context(mxnet_prefer_gpu()))
+        with context:
+            model = ContextualStringModel(config.dictionary,
+                                          config.is_forward_lm,
+                                          config.hidden_size,
+                                          config.nlayers,
+                                          config.embedding_size,
+                                          config.nout,
+                                          config.dropout)
+        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=context)
         return model
 
     @staticmethod
@@ -159,14 +160,14 @@ class LanguageModel(nn.HybridBlock):
                 dictionary.idx2item.append(k.decode('UTF-8'))
             config = LanguageModelConfig(dictionary, params['is_forward_lm'], params['hidden_size'],
                                          params['nlayers'], params['embedding_size'], params['nout'], params['dropout'])
-            model = LanguageModel(config.dictionary,
-                                  config.is_forward_lm,
-                                  config.hidden_size,
-                                  config.nlayers,
-                                  config.embedding_size,
-                                  config.nout,
-                                  config.dropout,
-                                  params)
+            model = ContextualStringModel(config.dictionary,
+                                          config.is_forward_lm,
+                                          config.hidden_size,
+                                          config.nlayers,
+                                          config.embedding_size,
+                                          config.nout,
+                                          config.dropout,
+                                          params)
             return model
 
     def save(self, file):
@@ -187,16 +188,15 @@ class LanguageModel(nn.HybridBlock):
         return nd.zeros((self.nlayers, mini_batch_size, self.hidden_size))
 
 
-class LanguageModelTrainer:
+class ContextualStringModelTrainer:
     """
     Ported from PyTorch implementation https://github.com/zalandoresearch/flair
     """
 
-    def __init__(self, model: LanguageModel, corpus: TextCorpus, test_mode: bool = False):
-        self.model: LanguageModel = model
-        model.hybridize()
-        self.corpus: TextCorpus = corpus
-        self.test_mode: bool = test_mode
+    def __init__(self, model: ContextualStringModel, corpus: TextCorpus, test_mode: bool = False):
+        self.model = model
+        self.corpus = corpus
+        self.test_mode = test_mode
 
         self.loss_function = SoftmaxCrossEntropyLoss()
         self.log_interval = 100
@@ -216,14 +216,14 @@ class LanguageModelTrainer:
 
         os.makedirs(base_path, exist_ok=True)
         loss_txt = os.path.join(base_path, 'loss.txt')
-        savefile = base_path
+        savefile = os.path.join(base_path, 'best-lm.pt')
 
         try:
             with mx.Context(mxnet_prefer_gpu()):
                 self.model.initialize()
                 best_val_loss = 100000000
-                scheduler: ReduceLROnPlateau = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
-                                                                 patience=patience)
+                scheduler = ReduceLROnPlateau(lr=learning_rate, verbose=True, factor=anneal_factor,
+                                              patience=patience)
                 optimizer = mx.optimizer.SGD(learning_rate=learning_rate, lr_scheduler=scheduler)
                 trainer = gluon.Trainer(self.model.collect_params(),
                                         optimizer=optimizer)
@@ -269,9 +269,9 @@ class LanguageModelTrainer:
 
                         # do the forward pass in the model
                         with autograd.record():
-                            output, rnn_output, hidden, cell = self.run(data, hidden, cell)
+                            output, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
                             # try to predict the targets
-                            loss: nd.NDArray = self.loss_function(output.reshape(-1, ntokens), targets).mean()
+                            loss = self.loss_function(output.reshape(-1, ntokens), targets).mean()
                             loss.backward()
 
                         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -338,10 +338,6 @@ class LanguageModelTrainer:
             print('-' * 89)
             print('Exiting from training early')
 
-    def run(self, data, hidden, cell):
-        decoded, output, hidden, cell = self.model(data, hidden, cell)
-        return decoded.reshape((data.shape[0], data.shape[1], len(self.model.dictionary))), output, hidden, cell
-
     @staticmethod
     def _safe_exp(val_loss):
         return float('nan') if val_loss > 100 else math.exp(val_loss)
@@ -349,7 +345,7 @@ class LanguageModelTrainer:
     def evaluate(self, data_source, eval_batch_size, sequence_length):
         # Turn on evaluation mode which disables dropout.
         # self.model.eval()
-        total_loss: float = 0
+        total_loss = 0
         ntokens = len(self.corpus.dictionary)
 
         hidden = self.model.init_hidden(eval_batch_size)
@@ -357,20 +353,20 @@ class LanguageModelTrainer:
 
         for i in range(0, len(data_source) - 1, sequence_length):
             data, targets = self._get_batch(data_source, i, sequence_length)
-            prediction, rnn_output, hidden, cell = self.run(data, hidden, cell)
+            prediction, rnn_output, hidden, cell = self.model.forward(data, hidden, cell)
             output_flat = prediction.reshape(-1, ntokens)
-            total_loss += len(data) * self.loss_function(output_flat, targets).mean().asscalar()
+            total_loss += len(data) * self.loss_function(output_flat, targets).mean()
             hidden = self._repackage_hidden(hidden)
             cell = cell.detach()
-        return total_loss / len(data_source)
+        return total_loss.asscalar() / len(data_source)
 
     @staticmethod
     def _batchify(data: nd.NDArray, batch_size):
         """
         Make a batch tensor out of a vector
         :param data: vector
-        :param batch_size: N
-        :return: (T,N) tensor
+        :param batch_size: NN
+        :return: (IN,NN) tensor
         """
         # Work out how cleanly we can divide the dataset into bsz parts.
         nbatch = len(data) // batch_size
@@ -397,19 +393,19 @@ class LanguageModelTrainer:
 
 def _convert_dumped_model():
     for path in ['data/model/lm-news-forward', 'data/model/lm-news-backward']:
-        model = LanguageModel.load_dumped_model(path + '/params.pkl')
+        model = ContextualStringModel.load_dumped_model(path + '/params.pkl')
         model.initialize()
         model.save(path)
 
 
 def _train():
     corpus = TextCorpus('data/raw')
-    language_model = LanguageModel(corpus.dictionary,
-                                   is_forward_lm=False,
-                                   hidden_size=1024,
-                                   nlayers=1,
-                                   dropout=0.25)
-    trainer = LanguageModelTrainer(language_model, corpus)
+    language_model = ContextualStringModel(corpus.dictionary,
+                                           is_forward_lm=False,
+                                           hidden_size=1024,
+                                           nlayers=1,
+                                           dropout=0.25)
+    trainer = ContextualStringModelTrainer(language_model, corpus)
     trainer.train('data/model/lm-jumbo-backward1024',
                   sequence_length=250,
                   mini_batch_size=100,
@@ -418,7 +414,7 @@ def _train():
 
 
 def _load():
-    lm = LanguageModel.load_language_model('data/model/lm-news-forward')
+    lm = ContextualStringModel.load_language_model('data/model/lm-news-forward')
 
 
 if __name__ == '__main__':

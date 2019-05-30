@@ -14,4 +14,4 @@
 # limitations under the License.
 # ========================================================================
 
-__author__ = "Gary Lai"
+__author__ = 'Jinho D. Choi'
