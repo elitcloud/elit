@@ -68,7 +68,6 @@ if __name__ == '__main__':
                                     tag_type=tag_type,
                                     use_crf=False)
             tagger.save(model_path)
-            assert True, 'just for debugging'
             # 6. initialize trainer
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
