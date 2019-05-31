@@ -43,7 +43,7 @@ class Tagger(NLPComponent):
                save_model: bool = True,
                embeddings_in_memory: bool = True,
                train_with_dev: bool = False,
-               **kwargs) -> float:
+               use_crf=True, **kwargs) -> float:
         corpus = TaggedCorpus(NLPTaskDataFetcher.convert_elit_documents(trn_docs),
                               NLPTaskDataFetcher.convert_elit_documents(dev_docs),
                               [])
@@ -51,16 +51,12 @@ class Tagger(NLPComponent):
 
         with mx.Context(self.context):
             embedding_types = [
-
                 WordEmbeddings(pretrained_embeddings),
-
-                # comment in this line to use character embeddings
-                # CharacterEmbeddings(),
-
-                # comment in these lines to use contextual string embeddings
-                CharLMEmbeddings(forward_language_model, self.context),
-                CharLMEmbeddings(backward_language_model, self.context),
             ]
+            if forward_language_model:
+                embedding_types.append(CharLMEmbeddings(forward_language_model, self.context))
+            if backward_language_model:
+                embedding_types.append(CharLMEmbeddings(backward_language_model, self.context))
 
             embeddings = StackedEmbeddings(embeddings=embedding_types)
 
@@ -68,7 +64,7 @@ class Tagger(NLPComponent):
                                          embeddings=embeddings,
                                          tag_dictionary=tag_dictionary,
                                          tag_type=tag_type,
-                                         use_crf=True)
+                                         use_crf=use_crf)
 
             trainer = SequenceTaggerTrainer(self.tagger, corpus, test_mode=False)
 

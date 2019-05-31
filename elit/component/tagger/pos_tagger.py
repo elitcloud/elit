@@ -16,8 +16,8 @@ from elit.structure import Document, POS, SENS
 class POSTagger(Tagger):
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
               pretrained_embeddings,
-              forward_language_model,
-              backward_language_model,
+              forward_language_model=None,
+              backward_language_model=None,
               learning_rate: float = 0.1,
               mini_batch_size: int = 32,
               max_epochs: int = 100,

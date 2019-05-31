@@ -17,7 +17,6 @@
 import argparse
 import sys
 
-
 __author__ = "Gary Lai"
 
 
@@ -28,6 +27,7 @@ class ElitCli(object):
 
         commands:
             token_tagger: use token tagger
+            pos_tagger: run pos tagger
             install: Install model
             download: download pre-trained model or word embedding
         '''
@@ -37,6 +37,9 @@ class ElitCli(object):
         if args.command == 'token_tagger':
             from elit.component.token_tagger import TokenTaggerCLI
             TokenTaggerCLI()
+        elif args.command == 'pos_tagger':
+            from elit.component.tagger.pos_cli import POSTaggerCLI
+            POSTaggerCLI()
         elif args.command == 'install':
             from elit.cli.install import InstallCLI
             InstallCLI()

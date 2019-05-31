@@ -177,5 +177,17 @@ def elit_data_dir():
     return os.getenv('ELIT_HOME', elit_data_dir_default())
 
 
+def merge_args_with_config(args) -> dict:
+    args = vars(args)
+    if args.get('config_path', None):
+        with open(args.get('config_path')) as src:
+            json_args = json.load(src)  # type: dict
+            for k, v in json_args.items():
+                if k not in args:
+                    args[k] = v
+            # args = parser.parse_args(' '.join('--{} {}'.format(k, v) for k, v in args.items()))
+    return args
+
+
 if __name__ == '__main__':
     print(elit_data_dir())
