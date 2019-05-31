@@ -9,6 +9,7 @@ from elit.cli import ComponentCLI
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSTagger
 from elit.component.tokenizer import Tokenizer, EnglishTokenizer
+from elit.resources.pre_trained_models import POS_JUMBO
 from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
@@ -53,7 +54,8 @@ class POSTaggerCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a pos tagger to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, help='file path to the saved model')
+        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+                            help='file path to the saved model')
         args = None
         try:
             args = parser.parse_args(sys.argv[3:])
@@ -76,7 +78,8 @@ class POSTaggerCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
-        parser.add_argument('--model_path', type=str, required=True, help='file path to the saved model')
+        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+                            help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
         args = None
         try:

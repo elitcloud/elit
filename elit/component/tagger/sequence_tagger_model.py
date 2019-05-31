@@ -23,6 +23,7 @@ from typing import List, Tuple, Union
 
 import mxnet as mx
 import mxnet.ndarray as nd
+from elit.component.dep.common.utils import fetch_resource
 from mxnet import autograd, initializer
 from mxnet.gluon import nn, rnn
 import numpy as np
@@ -177,6 +178,7 @@ class SequenceTagger(nn.Block):
 
     @classmethod
     def load_from_file(cls, model_folder, context: mx.Context = None, embeddings=None, **kwargs):
+        model_folder = fetch_resource(model_folder)
         if context is None:
             context = mxnet_prefer_gpu()
         config_path = os.path.join(model_folder, 'config.pkl')
