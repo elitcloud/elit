@@ -8,5 +8,4 @@ from elit.component.tagger.pos_tagger import POSTagger
 tagger = POSTagger()
 model_path = 'data/model/pos/jumbo'
 tagger.load(model_path)
-time.sleep(60)
 print(tagger.tag('Is this the future of chamber music ?'.split()))

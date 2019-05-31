@@ -8,6 +8,8 @@ import sys
 from elit.cli import ComponentCLI
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tokenizer import Tokenizer, EnglishTokenizer
+from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
 
@@ -50,7 +52,26 @@ class POSTaggerCLI(ComponentCLI):
 
     @classmethod
     def decode(cls):
-        pass
+        parser = argparse.ArgumentParser(description='Use a pos tagger to decode raw text')
+        parser.add_argument('--model_path', type=str, help='file path to the saved model')
+        args = None
+        try:
+            args = parser.parse_args(sys.argv[3:])
+        except SystemExit:
+            parser.print_help()
+            exit(1)
+        tagger = POSTagger()
+        tagger.load(args.model_path)
+        components = [EnglishTokenizer(), tagger]
+        for line in sys.stdin:
+            line = line.strip()
+            docs = line
+            for c in components:
+                docs = c.decode(docs)
+            for d in docs:  # type: Document
+                for sent in d:  # type: Sentence
+                    print(' '.join(
+                        '{}/{}'.format(word, pos) for word, pos in zip(sent.tokens, sent.part_of_speech_tags)))
 
     @classmethod
     def evaluate(cls):

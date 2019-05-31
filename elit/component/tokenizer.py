@@ -19,9 +19,9 @@ import os
 import re
 from typing import List, Tuple
 
+from elit.component.base import Component
 from pkg_resources import resource_filename
 
-from elit.component import Component
 from elit.structure import TOK, OFF, Document, Sentence, SID
 from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *

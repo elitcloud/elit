@@ -33,6 +33,8 @@ class POSTagger(Tagger):
                            embeddings_in_memory, train_with_dev)
 
     def decode(self, docs: Sequence[Document], **kwargs):
+        if isinstance(docs, Document):
+            docs = [docs]
         samples = NLPTaskDataFetcher.convert_elit_documents(docs)
         with self.context:
             sentences = self.tagger.predict(samples)
