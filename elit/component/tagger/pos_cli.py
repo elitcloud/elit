@@ -53,7 +53,7 @@ class POSTaggerCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a pos tagger to decode raw text')
-        parser.add_argument('--model_path', type=str, help='file path to the saved model')
+        parser.add_argument('--model_path', type=str, required=True, help='file path to the saved model')
         args = None
         try:
             args = parser.parse_args(sys.argv[3:])
@@ -75,4 +75,15 @@ class POSTaggerCLI(ComponentCLI):
 
     @classmethod
     def evaluate(cls):
-        pass
+        parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
+        parser.add_argument('--model_path', type=str, required=True, help='file path to the saved model')
+        parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
+        args = None
+        try:
+            args = parser.parse_args(sys.argv[3:])
+        except SystemExit:
+            parser.print_help()
+            exit(1)
+        tagger = POSTagger()
+        tagger.load(args.model_path)
+        tagger.evaluate(conll_to_documents(args.test_path, headers={0: 'text', 1: 'pos'}))

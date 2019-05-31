@@ -53,7 +53,7 @@ class POSTagger(Tagger):
                                                 tempfile.gettempdir(),
                                                 evaluation_method='accuracy',
                                                 embeddings_in_memory=False)
-        print('TEST   \t%d\t' % test_score)
+        print('Accuracy: %.2f%%' % (test_score * 100))
         return test_score
 
     def tag(self, tokens: Union[Sequence[str], Sequence[Sequence[str]]]):
