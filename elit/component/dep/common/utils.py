@@ -566,7 +566,7 @@ def _load_conll(path) -> Document:
 
 def download_friendly(url, path=None, prefix=RESOURCE_URL_PREFIX):
     if not path:
-        path = path_from_url(url, path, prefix)
+        path = path_from_url(url, prefix)
         os.makedirs(path, exist_ok=True)
     if os.path.isfile(path):
         print('Using local {}, ignore {}'.format(path, url))
@@ -647,9 +647,11 @@ def fetch_resource(path: str, auto_unzip=True):
         if os.path.isdir(realpath) or os.path.isfile(realpath):
             return realpath
         path = download_friendly(path)
-    if path.endswith('.zip'):
+    if auto_unzip and path.endswith('.zip'):
         unzip(path)
+        path = path[:-len('.zip')]
+    return path
 
 
 if __name__ == '__main__':
-    fetch_resource(LM_NEWS_FORWARD)
+    print(fetch_resource(LM_NEWS_FORWARD))

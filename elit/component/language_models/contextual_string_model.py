@@ -14,7 +14,7 @@ from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 
-from elit.component.dep.common.utils import make_sure_path_exists
+from elit.component.dep.common.utils import make_sure_path_exists, fetch_resource
 from elit.component.tagger.corpus import Dictionary, TextCorpus
 from elit.component.tagger.lm_config import LanguageModelConfig
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
@@ -132,7 +132,8 @@ class ContextualStringModel(nn.Block):
 
     @classmethod
     def load_language_model(cls, model_file, context: mx.Context = None):
-        config = LanguageModelConfig.load(os.path.join(model_file, 'config.pkl'))
+        realpath = fetch_resource(model_file)
+        config = LanguageModelConfig.load(os.path.join(realpath, 'config.pkl'))
         with context:
             model = ContextualStringModel(config.dictionary,
                                           config.is_forward_lm,
@@ -418,6 +419,6 @@ def _load():
 
 
 if __name__ == '__main__':
-    _train()
-    # _convert_dumped_model()
+    # _train()
+    _convert_dumped_model()
     # _load()

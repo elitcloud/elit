@@ -22,7 +22,7 @@ from mxnet import nd, gluon
 from mxnet.ndarray import NDArray
 from tqdm import tqdm
 
-from elit.embedding import Embedding
+from elit.component.embedding import Embedding, TokenEmbedding
 from elit.structure import to_gold, Sentence, Document
 
 __author__ = "Gary Lai"
@@ -87,7 +87,7 @@ class LabelMap(object):
 
 class Dataset(gluon.data.Dataset):
 
-    def __init__(self, docs: Sequence[Document], embs: List[Union[Embedding]], key: str, label_map: LabelMap, label: bool = True, transform=None):
+    def __init__(self, docs: Sequence[Document], embs: List[Union[Embedding, TokenEmbedding]], key: str, label_map: LabelMap, label: bool = True, transform=None):
         self._data = []
         self.embs = embs
         self.key = key
@@ -159,3 +159,7 @@ class SequencesDataset(Dataset):
 
 
 sequence_batchify_fn = batchify.Tuple((batchify.Stack(), batchify.Stack(), batchify.Pad(), batchify.Pad(pad_val=-1)))
+# stack doc idx
+# stack sen idx
+# pad sen
+# pad label

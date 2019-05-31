@@ -17,6 +17,7 @@
 import argparse
 import sys
 
+
 __author__ = "Gary Lai"
 
 
@@ -34,7 +35,7 @@ class ElitCli(object):
         parser.add_argument('command', help='command to run')
         args = parser.parse_args(sys.argv[1:2])
         if args.command == 'token_tagger':
-            from elit.nlp.token_tagger import TokenTaggerCLI
+            from elit.component.token_tagger import TokenTaggerCLI
             TokenTaggerCLI()
         elif args.command == 'install':
             from elit.cli.install import InstallCLI
