@@ -31,3 +31,16 @@ It is as simple as one line to install elit by:
 ```
 pip install elit
 ```
+
+
+
+
+## Requirements
+
+```
+pip install sphinx
+pip install sphinx_tabs
+pip install sphinx-markdown-tables
+pip install sphinx_rtd_theme
+pip install recommonmark
+```
