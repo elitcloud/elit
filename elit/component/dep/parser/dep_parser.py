@@ -132,6 +132,7 @@ class DepParser(object):
                                                pretrained_embeddings,
                                                min_occur_count)
         vocab.save(config.save_vocab_path)
+        # assert False, 'config saved.'
         vocab.log_info(logger)
 
         with mx.Context(mxnet_prefer_gpu()):
@@ -219,7 +220,7 @@ class DepParser(object):
                                           config.lstm_layers,
                                           config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
                                           config.mlp_arc_size,
-                                          config.mlp_rel_size, config.dropout_mlp, config.debug)
+                                          config.mlp_rel_size, config.dropout_mlp, True)
             self._parser.load(config.save_model_path)
         return self
 
@@ -299,7 +300,7 @@ if __name__ == '__main__':
                  dev_file='data/dat/en-ddr.dev.conllx',
                  test_file='data/dat/en-ddr.tst.conllx', save_dir=save_dir,
                  pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
-    parser.load(save_dir)
+    # parser.load(save_dir)
     # parser.evaluate(test_file='tests/data/biaffine/ptb/test-debug.conllx', save_dir='tests/data/biaffine/model',
     #                 num_buckets_test=4)
     parser.evaluate(test_file='data/dat/en-ddr.tst.conllx', save_dir=save_dir)

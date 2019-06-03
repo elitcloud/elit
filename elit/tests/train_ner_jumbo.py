@@ -14,11 +14,6 @@ import mxnet as mx
 from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
 
 if __name__ == '__main__':
-    embedding_types: List[TokenEmbeddings] = [
-        WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-        CharLMEmbeddings(LM_NEWS_FORWARD),
-        CharLMEmbeddings(LM_NEWS_BACKWARD),
-    ]
     # use your own data path
     # data_folder = 'data/conll-03/debug'
     # data_folder = 'data/conll-03'
@@ -43,6 +38,11 @@ if __name__ == '__main__':
 
     # 4. initialize embeddings
     with mx.Context(mxnet_prefer_gpu()):
+        embedding_types: List[TokenEmbeddings] = [
+            WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
+            CharLMEmbeddings(LM_NEWS_FORWARD),
+            CharLMEmbeddings(LM_NEWS_BACKWARD),
+        ]
         embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
 
         # 5. initialize sequence tagger
