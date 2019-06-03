@@ -63,7 +63,7 @@ class DepParser(object):
         pretrained_embeddings : tuple
             (embedding_name, source), used for gluonnlp.embedding.create(embedding_name, source)
         min_occur_count : int
-            threshold of rare words, which will be replaced with UNKs,
+            threshold of rare words, which will be replaced with UNKs
         lstm_layers : int
             layers of lstm
         word_dims : int

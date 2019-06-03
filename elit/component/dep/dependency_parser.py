@@ -52,7 +52,7 @@ class DependencyParser(NLPComponent):
               dropout_lstm_input=0.33, dropout_lstm_hidden=0.33, mlp_arc_size=500, mlp_rel_size=100,
               dropout_mlp=0.33, learning_rate=2e-3, decay=.75, decay_steps=5000, beta_1=.9, beta_2=.9, epsilon=1e-12,
               num_buckets_train=40, num_buckets_valid=10, num_buckets_test=10, train_iters=50000, train_batch_size=5000,
-              test_batch_size=5000, validate_every=100, save_after=5000, debug=False) -> float:
+              test_batch_size=5000, validate_every=100, save_after=5000, debug=False, **kwargs) -> float:
 
         logger = init_logger(save_dir)
         config = _Config(trn_docs, dev_docs, '', save_dir, pretrained_embeddings, min_occur_count,
