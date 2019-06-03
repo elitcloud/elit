@@ -9,6 +9,6 @@ tagger = NERTagger()
 model_path = 'data/model/ner/jumbo'
 tagger.load(model_path)
 test = conll_to_documents('data/dat/en-ner.debug.tsv', headers={0: 'text', 2: 'ner'})
-sent = tagger.decode(test)[0][SENS][3]
+sent = tagger.decode(test)[0][SENS][-2]
 print(sent[NER])
 print(tagger.evaluate(test))
