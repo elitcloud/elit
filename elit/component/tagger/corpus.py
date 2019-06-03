@@ -1595,7 +1595,8 @@ def conll_to_documents(path, headers={0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}) -
         sent[POS] = []
         for t in s.tokens:
             sent.tokens.append(t.text)
-            sent[POS].append(t.tags['pos'])
+            if 'pos' in t.tags:
+                sent[POS].append(t.tags['pos'])
         if has_ner:
             ner_tags = [t.tags['ner'] for t in s.tokens]
             sent[NER] = get_chunks(ner_tags)

@@ -11,11 +11,11 @@ from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 import mxnet as mx
 
-from elit.resources.constant import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
+from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
 
 if __name__ == '__main__':
     embedding_types: List[TokenEmbeddings] = [
-        # WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
+        WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
         # comment in these lines to use contextual string embeddings
         CharLMEmbeddings(LM_NEWS_FORWARD),
         CharLMEmbeddings(LM_NEWS_BACKWARD),
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                     tag_dictionary=tag_dictionary,
                                                     tag_type=tag_type,
                                                     use_crf=USE_CRF)
-            tagger.save(model_path)
+            # tagger.save(model_path)
 
             # 6. initialize trainer
             trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)

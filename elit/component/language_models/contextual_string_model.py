@@ -142,7 +142,7 @@ class ContextualStringModel(nn.Block):
                                           config.embedding_size,
                                           config.nout,
                                           config.dropout)
-        model.load_parameters(os.path.join(model_file, 'model.bin'), ctx=context)
+        model.load_parameters(os.path.join(realpath, 'model.bin'), ctx=context)
         return model
 
     @staticmethod
