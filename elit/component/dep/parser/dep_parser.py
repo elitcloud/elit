@@ -24,7 +24,8 @@ import mxnet as mx
 import numpy as np
 from mxnet import gluon, autograd
 from elit.component.dep.common.config import _Config
-from elit.component.dep.common.data import ParserVocabulary, DataLoader, ConllWord, ConllSentence
+from elit.component.dep.common.data import ParserVocabulary, DataLoader
+from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
 from elit.component.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
@@ -266,7 +267,7 @@ class DepParser(object):
 
         Returns
         -------
-        ConllSentence
+        elit.component.dep.common.conll.ConllSentence
             ConllSentence object
         """
         words = np.zeros((len(sentence) + 1, 1), np.int32)

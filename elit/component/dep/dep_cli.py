@@ -94,13 +94,14 @@ class DependencyParserCLI(ComponentCLI):
         components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:
             line = line.strip()
+            if not line:
+                continue
             docs = line
             for c in components:
                 docs = c.decode(docs)
             for d in docs:  # type: Document
-                for sent in d:  # type: Sentence
-                    print(' '.join(
-                        '{}/{}'.format(word, pos) for word, pos in zip(sent.tokens, sent.part_of_speech_tags)))
+                for sent in d.to_conll():
+                    print(sent)
 
     @classmethod
     def evaluate(cls):

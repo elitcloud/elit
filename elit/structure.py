@@ -16,6 +16,8 @@
 import itertools
 from typing import List, Tuple, Sequence
 
+from elit.component.dep.common.conll import ConllWord, ConllSentence
+
 __author__ = 'Jinho D. Choi'
 
 DOC_ID = 'doc_id'  # document ID
@@ -150,11 +152,20 @@ class Document(dict):
     def add_sentences(self, sentences: Sequence[Sentence]):
         self.sentences.extend(sentences)
 
-    def to_conll(self) -> str:
+    def to_conll(self) -> Sequence[ConllSentence]:
         """
-
+        Convert this document to str in CoNLL format
         """
-        pass
+        conll_sents = []
+        for sent in self:  # type: Sentence
+            words = []
+            for i, token in enumerate(sent.tokens):
+                word = ConllWord(i + 1, token, cpos=sent.part_of_speech_tags[i] if POS in sent else None,
+                                 head=sent[DEP][i][0] if DEP in sent else None,
+                                 relation=sent[DEP][i][1] if DEP in sent else None)
+                words.append(word)
+            conll_sents.append(ConllSentence(words))
+        return conll_sents
 
 
 class BILOU(object):

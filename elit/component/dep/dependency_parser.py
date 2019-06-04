@@ -26,7 +26,7 @@ import mxnet as mx
 from mxnet import gluon, autograd
 import numpy as np
 from elit.component.dep.common.config import _Config
-from elit.component.dep.common.data import DataLoader, ParserVocabulary, ConllSentence, ConllWord
+from elit.component.dep.common.data import DataLoader, ParserVocabulary
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
 from elit.component.dep.common.utils import init_logger, Progbar, _load_conll
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
@@ -34,6 +34,7 @@ from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.structure import Document, DEP
+from elit.component.dep.common.conll import ConllWord, ConllSentence
 
 
 class DependencyParser(NLPComponent):
@@ -238,7 +239,7 @@ class DependencyParser(NLPComponent):
 
         Returns
         -------
-        ConllSentence
+        elit.component.dep.common.conll.ConllSentence
             ConllSentence object
         """
         words = np.zeros((len(sentence) + 1, 1), np.int32)
