@@ -42,6 +42,9 @@ class ElitCli(object):
         elif args.command == 'pos_tagger':
             from elit.component.tagger.pos_cli import POSTaggerCLI
             POSTaggerCLI()
+        elif args.command == 'ner_tagger':
+            from elit.component.tagger.ner_cli import NERTaggerCLI
+            NERTaggerCLI()
         elif args.command == 'dep_parser':
             from elit.component.dep.dep_cli import DependencyParserCLI
             DependencyParserCLI()
