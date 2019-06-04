@@ -108,7 +108,7 @@ class DependencyParserCLI(ComponentCLI):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
         parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
                             help='file path to the saved model')
-        parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
+        parser.add_argument('--test_path', type=str, required=True, help='gold file in conll format')
         args = None
         try:
             args = parser.parse_args(sys.argv[3:])

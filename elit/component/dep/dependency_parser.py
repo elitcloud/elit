@@ -28,7 +28,7 @@ import numpy as np
 from elit.component.dep.common.config import _Config
 from elit.component.dep.common.data import DataLoader, ParserVocabulary
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.component.dep.common.utils import init_logger, Progbar, _load_conll
+from elit.component.dep.common.utils import init_logger, Progbar, _load_conll, fetch_resource
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
@@ -210,6 +210,7 @@ class DependencyParser(NLPComponent):
             parser itself
             :param **kwargs:
         """
+        path = fetch_resource(path)
         config = _Config.load(os.path.join(path, 'config.pkl'))
         config.save_dir = path  # redirect root path to what user specified
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
