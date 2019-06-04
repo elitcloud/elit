@@ -18,11 +18,11 @@ import codecs
 from typing import Sequence
 from xml.etree import ElementTree
 
-from elit.lemmatization.english.suffix_group import SuffixGroup
-from elit.lemmatization.english.suffix_rule import SuffixRule
+from elit.component.lemmatization.english.suffix_group import SuffixGroup
+from elit.component.lemmatization.english.suffix_rule import SuffixRule
+from elit.component.nlp import NLPComponent
 from pkg_resources import resource_filename
 
-from elit.component import NLPComponent
 from elit.component.lemmatization.english.inflection import Inflection
 
 __author__ = "Liyan Xu"
@@ -81,11 +81,10 @@ class Lemmatizer(NLPComponent):
 
 
 class EnglishLemmatizer(Lemmatizer):
-
     CONST_CARDINAL = "#crd#"
     CONST_ORDINAL = "#ord#"
 
-    PATH_ROOT = "elit.resources.lemmatizer.english"
+    PATH_ROOT = "elit.resources.morph_analyzer.english"
     FILENAME_ABBREVIATION = "abbreviation.rule"
     FILENAME_CARDINAL = "cardinal.txt"
     FILENAME_ORDINAL = "ordinal.txt"
@@ -192,6 +191,7 @@ class EnglishLemmatizer(Lemmatizer):
         :param file_path:
         :return:
         """
+
         def key_value(line: str):
             tokens = line.strip().split()
             return cls.__generate_abbreviation_key__(tokens[0], tokens[1]), tokens[2]
@@ -288,7 +288,7 @@ class EnglishLemmatizer(Lemmatizer):
         return s is not None and s.lower() == "true"
 
 
-'''if __name__ == "__main__":
+if __name__ == "__main__":
     lemmatizer = EnglishLemmatizer()
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
@@ -316,4 +316,4 @@ class EnglishLemmatizer(Lemmatizer):
     print(lemmatizer.decode(docs))
 
     docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
-    print(lemmatizer.decode(docs))'''
+    print(lemmatizer.decode(docs))

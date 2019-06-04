@@ -15,7 +15,7 @@
 # ========================================================================
 from typing import Sequence
 
-from elit.component.lemmatization import SuffixRule
+from elit.component.lemmatization.english.suffix_rule import SuffixRule
 
 __author__ = "Liyan Xu"
 
