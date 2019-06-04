@@ -150,6 +150,12 @@ class Document(dict):
     def add_sentences(self, sentences: Sequence[Sentence]):
         self.sentences.extend(sentences)
 
+    def to_conll(self) -> str:
+        """
+
+        """
+        pass
+
 
 class BILOU(object):
     B = 'B'  # beginning

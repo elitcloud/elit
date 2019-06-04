@@ -133,7 +133,12 @@ class DependencyParser(NLPComponent):
         return best_UAS
 
     def decode(self, docs: Sequence[Document], num_buckets_test=10, test_batch_size=5000, **kwargs):
+        if isinstance(docs, Document):
+            docs = [docs]
         assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
+        for d in docs:
+            for s in d:
+                s[DEP] = [(0, self._vocab.id2rel(0))] * len(s)
         data_loader = DataLoader(docs, num_buckets_test, self._vocab)
         record = data_loader.idx_sequence
         results = [None] * len(record)
@@ -154,6 +159,7 @@ class DependencyParser(NLPComponent):
                 for head, rel in zip(results[idx][0], results[idx][1]):
                     s[DEP].append((head, self._vocab.id2rel(rel)))
                 idx += 1
+        return docs
 
     def evaluate(self, test_file, save_dir=None, logger=None, num_buckets_test=10, test_batch_size=5000):
         """Run evaluation on test set

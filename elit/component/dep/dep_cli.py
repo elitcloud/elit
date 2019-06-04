@@ -77,7 +77,7 @@ class DependencyParserCLI(ComponentCLI):
 
     @classmethod
     def decode(cls):
-        parser = argparse.ArgumentParser(description='Use a pos tagger to decode raw text')
+        parser = argparse.ArgumentParser(description='Use a dependency parser to decode raw text')
         parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
                             help='file path to the saved model')
         args = None
@@ -86,9 +86,12 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = POSTagger()
-        tagger.load(args.model_path)
-        components = [EnglishTokenizer(), tagger]
+
+        this_module = DependencyParser()
+        this_module.load(args.model_path)
+        pos_tagger = POSTagger()
+        pos_tagger.load(POS_JUMBO)
+        components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:
             line = line.strip()
             docs = line
