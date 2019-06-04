@@ -10,7 +10,7 @@ from elit.component.dep.dependency_parser import DependencyParser
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSTagger
 from elit.component.tokenizer import EnglishTokenizer
-from elit.resources.pre_trained_models import POS_JUMBO
+from elit.resources.pre_trained_models import POS_JUMBO, DEP_JUMBO
 from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
@@ -78,7 +78,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a dependency parser to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+        parser.add_argument('--model_path', type=str, required=True, default=DEP_JUMBO,
                             help='file path to the saved model')
         args = None
         try:

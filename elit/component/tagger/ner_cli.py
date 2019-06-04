@@ -2,15 +2,14 @@
 # Author: hankcs
 # Date: 2019-05-31 11:02
 import argparse
-import json
 import sys
 
 from elit.cli import ComponentCLI
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.embeddings import CharLMEmbeddings
 from elit.component.tagger.ner_tagger import NERTagger
-from elit.component.tokenizer import Tokenizer, EnglishTokenizer
-from elit.resources.pre_trained_models import POS_JUMBO, LM_NEWS_FORWARD, LM_NEWS_BACKWARD
+from elit.component.tokenizer import EnglishTokenizer
+from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD, NER_JUMBO
 from elit.structure import Document, Sentence, NER
 from elit.util.io import eprint, merge_args_with_config
 
@@ -59,7 +58,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a NER tagger to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+        parser.add_argument('--model_path', type=str, required=True, default=NER_JUMBO,
                             help='file path to the saved model')
         args = None
         try:
@@ -82,7 +81,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a NER tagger')
-        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+        parser.add_argument('--model_path', type=str, required=True, default=NER_JUMBO,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
         args = None
