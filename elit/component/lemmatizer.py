@@ -197,7 +197,7 @@ class EnglishLemmatizer(Lemmatizer):
 
         fin = codecs.open(file_path, mode='r', encoding='utf-8')
         d = dict(key_value(line) for line in fin)
-        print('Init: %s(keys=%d)' % (file_path, len(d)))
+        # print('Init: %s(keys=%d)' % (file_path, len(d)))
         return d
 
     @classmethod
@@ -218,7 +218,7 @@ class EnglishLemmatizer(Lemmatizer):
         """
         fin = codecs.open(file_path, mode='r', encoding='utf-8')
         s = set(line.strip() for line in fin)
-        print('Init: %s(keys=%d)' % (file_path, len(s)))
+        # print('Init: %s(keys=%d)' % (file_path, len(s)))
         return s
 
     @classmethod
@@ -230,7 +230,7 @@ class EnglishLemmatizer(Lemmatizer):
         """
         fin = codecs.open(file_path, mode='r', encoding='utf-8')
         d = dict(line.strip().split() for line in fin)
-        print('Init: %s(keys=%d)' % (file_path, len(d)))
+        # print('Init: %s(keys=%d)' % (file_path, len(d)))
         return d
 
     @classmethod
