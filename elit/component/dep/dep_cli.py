@@ -115,6 +115,6 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = POSTagger()
-        tagger.load(args.model_path)
-        tagger.evaluate(conll_to_documents(args.test_path))
+        this_module = DependencyParser()
+        this_module.load(args.model_path)
+        this_module.evaluate(test_file=args.test_path)
