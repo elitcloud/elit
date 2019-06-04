@@ -87,6 +87,10 @@ class Sentence(dict):
         return self._tokens
 
     @property
+    def lemmatized_tokens(self):
+        return self[LEM]
+
+    @property
     def part_of_speech_tags(self):
         """
         :return: the list of part-of-speech tags corresponding to the tokens in this sentence.

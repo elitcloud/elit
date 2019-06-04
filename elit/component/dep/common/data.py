@@ -25,7 +25,7 @@ import numpy as np
 
 from elit.component.dep.common.k_means import KMeans
 from elit.component.dep.common.savable import Savable
-from elit.structure import DEP
+from elit.structure import DEP, LEM, Sentence
 
 
 class ParserVocabulary(Savable):
@@ -323,9 +323,12 @@ class DataLoader(object):
         if isinstance(input_file, list):
             documents = input_file
             for d in documents:
-                for s in d:
+                for s in d:  # type: Sentence
                     sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, 0, ParserVocabulary.ROOT]]
-                    for word, tag, head_rel in zip(s.tokens, s.part_of_speech_tags, s[DEP]):
+                    tokens = s.tokens
+                    # if LEM in s:
+                    #     tokens = s.lemmatized_tokens
+                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[DEP]):
                         head, rel = head_rel
                         sent.append([vocab.word2id(word.lower()), vocab.tag2id(tag), int(head), vocab.rel2id(rel)])
                     sents.append(sent)
