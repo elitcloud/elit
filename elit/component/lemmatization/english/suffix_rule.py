@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 ELIT
+# Copyright 2018 Emory University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class SuffixRule:
 
     def get_base_form(self, lower: str):
         """
-        Get base form by enumerating each token_affixes.
+        Get base form by enumerating each replacements.
         :param lower:
         :return:
         """

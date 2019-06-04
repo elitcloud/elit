@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright 2018 ELIT
+# Copyright 2018 Emory University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,14 @@
 # ========================================================================
 import abc
 import codecs
-from typing import Sequence
 from xml.etree import ElementTree
+from pkg_resources import resource_filename
+from typing import Sequence
 
+from elit.component.lemmatization.english.inflection import Inflection
 from elit.component.lemmatization.english.suffix_group import SuffixGroup
 from elit.component.lemmatization.english.suffix_rule import SuffixRule
 from elit.component.nlp import NLPComponent
-from pkg_resources import resource_filename
-
-from elit.component.lemmatization.english.inflection import Inflection
 
 __author__ = "Liyan Xu"
 
@@ -84,10 +83,10 @@ class EnglishLemmatizer(Lemmatizer):
     CONST_CARDINAL = "#crd#"
     CONST_ORDINAL = "#ord#"
 
-    PATH_ROOT = "elit.resources.morph_analyzer.english"
+    PATH_ROOT = "elit.resources.lemmatizer.english"
     FILENAME_ABBREVIATION = "abbreviation.rule"
-    FILENAME_CARDINAL = "cardinal.txt"
-    FILENAME_ORDINAL = "ordinal.txt"
+    FILENAME_CARDINAL = "cardinal.base"
+    FILENAME_ORDINAL = "ordinal.base"
     FILENAME_INFLECTION = "inflection_suffix.xml"
 
     BASE_POS_VERB = "VB"
@@ -269,8 +268,8 @@ class EnglishLemmatizer(Lemmatizer):
             rules = affix.findall("rule")
             for rule in rules:
                 suffix_rule = SuffixRule(
-                    rule.get("affix"),
-                    [r.strip() for r in rule.get("token_affixes").split(",")],
+                    rule.get("affix_form"),
+                    [r.strip() for r in rule.get("replacements").split(",")],
                     cls.str_to_bool(rule.get("doubleConsonants")),
                     set_base
                 )
