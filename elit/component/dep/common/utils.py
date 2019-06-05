@@ -30,7 +30,7 @@ from urllib.request import urlretrieve
 import mxnet as mx
 import mxnet.ndarray as nd
 import numpy as np
-from mxnet.gluon import rnn
+from mxnet.gluon import rnn, nn
 from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
 from elit.component.dep.common.data import ParserVocabulary
@@ -653,6 +653,91 @@ def fetch_resource(path: str, auto_unzip=True):
         unzip(path)
         path = path[:-len('.zip')]
     return path
+
+
+def flatten_numpy(ndarray):
+    """Flatten nd-array to 1-d column vector
+
+    Parameters
+    ----------
+    ndarray : numpy.ndarray
+        input tensor
+
+    Returns
+    -------
+    numpy.ndarray
+        A column vector
+
+    """
+    return np.reshape(ndarray, (-1,), 'F')
+
+
+def flatten_numpy(ndarray):
+    """Flatten nd-array to 1-d column vector
+
+    Parameters
+    ----------
+    ndarray : numpy.ndarray
+        input tensor
+
+    Returns
+    -------
+    numpy.ndarray
+        A column vector
+
+    """
+    return np.reshape(ndarray, (-1,), 'F')
+
+
+def embedding_from_numpy(we, trainable=True):
+    word_embs = nn.Embedding(we.shape[0], we.shape[1], weight_initializer=mx.init.Constant(we))
+    if not trainable:
+        word_embs.collect_params().setattr('grad_req', 'null')
+    return word_embs
+
+
+def parameter_from_numpy(model, name, array):
+    """ Create parameter with its value initialized according to a numpy tensor
+
+    Parameters
+    ----------
+    name : str
+        parameter name
+    array : np.ndarray
+        initiation value
+
+    Returns
+    -------
+    mxnet.gluon.parameter
+        a parameter object
+    """
+    p = model.params.get(name, shape=array.shape, init=mx.init.Constant(array))
+    return p
+
+
+def parameter_init(model, name, shape, init):
+    """Create parameter given name, shape and initiator
+
+    Parameters
+    ----------
+    name : str
+        parameter name
+    shape : tuple
+        parameter shape
+    init : mxnet.initializer
+        an initializer
+
+    Returns
+    -------
+    mxnet.gluon.parameter
+        a parameter object
+    """
+    p = model.params.get(name, shape=shape, init=init)
+    return p
+
+
+def freeze(model):
+    model.collect_params().setattr('grad_req', 'null')
 
 
 if __name__ == '__main__':
