@@ -340,8 +340,16 @@ class SDPDataLoader(object):
                 info = line.strip().split()
                 if info:
                     word, tag = vocab.word2id(info[1].lower()), vocab.tag2id(info[3])
-                    token = info[8]
-                    hs, rs = [], []
+                    token = info[-1]
+                    hs, rs = [int(info[5])], []
+
+                    def insert_rel(rel):
+                        if rel not in vocab._rel2id:
+                            rel = '<pad>'
+                        rs.append(vocab.rel2id(rel))
+
+                    insert_rel(info[6])
+
                     if token != '_':
                         token = token.split('|')
                         for edge in token:
@@ -349,9 +357,7 @@ class SDPDataLoader(object):
                             head = int(head)
                             hs.append(head)
                             # assert rel in vocab._rel2id, 'Relation OOV: %s' % line
-                            if rel not in vocab._rel2id:
-                                rel = '<pad>'
-                            rs.append(vocab.rel2id(rel))
+                            insert_rel(rel)
                     sent.append([word, tag, hs, rs])
                 else:
                     sents.append(sent)

@@ -46,9 +46,9 @@ if __name__ == '__main__':
         embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
 
         # 5. initialize sequence tagger
-        USE_CRF = False
+        USE_CRF = True
         train = True
-        model_path = 'data/model/ner/jumbo'
+        model_path = 'data/model/ner/jumbo-crf'
         if train:
             tagger: SequenceTagger = SequenceTagger(hidden_size=256,
                                                     embeddings=embeddings,

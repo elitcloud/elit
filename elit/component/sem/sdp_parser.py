@@ -305,27 +305,11 @@ class SDPParser(object):
 
 if __name__ == '__main__':
     parser = SDPParser()
-    # parser.train(train_file='data/SemEval-2016/train/news.train.debug.conll',
-    #              dev_file='data/SemEval-2016/train/news.train.debug.conll',
-    #              save_dir='data/model/sdp',
-    #              pretrained_embeddings_file='data/embedding/glove/glove.6B.100d.debug.txt',
-    #              train_iters=100, num_buckets_train=1,
-    #              num_buckets_valid=1,
-    #              validate_every=10,
-    #              root='Root',
-    #              debug=True)
-    parser.train(train_file='data/semeval15/en.psd.debug.conll',
-                 dev_file='data/semeval15/en.psd.debug.conll',
-                 save_dir='data/model/sdp',
-                 pretrained_embeddings_file=('glove', 'glove.6B.100d'),
-                 num_buckets_train=1,
-                 num_buckets_valid=1,
-                 )
-    parser.load('data/model/dep')
-    parser.evaluate(test_file='data/semeval15/en.psd.debug.conll', save_dir='data/model/dep',
-                    num_buckets_test=10)
-
-    # # parser.evaluate(test_file='data/ptb/test.conllx', save_dir='data/model/dep')
-    # sentence = [('Is', 'VBZ'), ('this', 'DT'), ('the', 'DT'), ('future', 'NN'), ('of', 'IN'), ('chamber', 'NN'),
-    #             ('music', 'NN'), ('?', '.')]
-    # print(parser.parse(sentence))
+    save_dir = 'data/model/sdp'
+    parser.train(train_file='data/dat/en-ddr.debug.conll',
+                 dev_file='data/dat/en-ddr.debug.conll',
+                 save_dir=save_dir,
+                 pretrained_embeddings_file=('glove', 'glove.6B.100d'), train_iters=100, num_buckets_train=1,
+                 num_buckets_valid=1)
+    parser.load(save_dir)
+    parser.evaluate(test_file='data/dat/en-ddr.debug.conll', save_dir='data/model/dep', num_buckets_test=1)

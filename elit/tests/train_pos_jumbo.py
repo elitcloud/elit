@@ -52,8 +52,8 @@ if __name__ == '__main__':
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types = [
             WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-            # CharLMEmbeddings('data/model/lm-news-forward'),
-            # CharLMEmbeddings('data/model/lm-news-backward'),
+            CharLMEmbeddings('data/model/lm-news-forward'),
+            CharLMEmbeddings('data/model/lm-news-backward'),
         ]
 
         embeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -66,8 +66,7 @@ if __name__ == '__main__':
                                     embeddings=embeddings,
                                     tag_dictionary=tag_dictionary,
                                     tag_type=tag_type,
-                                    use_crf=False)
-            tagger.save(model_path)
+                                    use_crf=True)
             # 6. initialize trainer
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
