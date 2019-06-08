@@ -47,20 +47,17 @@ if __name__ == '__main__':
     # 3. make the tag dictionary from the corpus
     tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
     print(tag_dictionary.idx2item)
-
-    # 4. initialize embeddings
+    model_path = 'data/model/pos/jumbo-fasttext'
     with mx.Context(mxnet_prefer_gpu()):
-        embedding_types = [
-            WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-            CharLMEmbeddings('data/model/lm-news-forward'),
-            CharLMEmbeddings('data/model/lm-news-backward'),
-        ]
-
-        embeddings = StackedEmbeddings(embeddings=embedding_types)
-
-        train = True
-        model_path = 'data/model/pos/jumbo'
+        train = False
         if train:
+            embedding_types = [
+                WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
+                CharLMEmbeddings('data/model/lm-news-forward'),
+                CharLMEmbeddings('data/model/lm-news-backward'),
+            ]
+
+            embeddings = StackedEmbeddings(embeddings=embedding_types)
             # 5. initialize sequence tagger
             tagger = SequenceTagger(hidden_size=256,
                                     embeddings=embeddings,
@@ -73,6 +70,6 @@ if __name__ == '__main__':
             # 7. start training
             trainer.train(model_path, learning_rate=0.1, mini_batch_size=32, max_epochs=100,
                           embeddings_in_gpu=False)
-        tagger = SequenceTagger.load(model_path, embeddings)
+        tagger = SequenceTagger.load(model_path)
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
         print(trainer.evaluate(corpus.test, evaluation_method='accuracy'))

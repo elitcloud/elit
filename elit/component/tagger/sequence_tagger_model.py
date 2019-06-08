@@ -434,9 +434,9 @@ class SequenceTagger(nn.Block):
             score, tag_seq = self.viterbi_decode(feats)
         else:
             score = None
-            tag_seq = feats.argmax(axis=1)
-            tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
-            # tag_seq = self.softmax_viterbi_decode(feats)
+            # tag_seq = feats.argmax(axis=1)
+            # tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
+            tag_seq = self.softmax_viterbi_decode(feats)
 
         return score, tag_seq
 

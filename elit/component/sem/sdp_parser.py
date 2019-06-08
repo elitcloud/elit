@@ -19,6 +19,7 @@
 
 import math
 import os
+import shutil
 
 import mxnet as mx
 import numpy as np
@@ -122,6 +123,7 @@ class SDPParser(object):
         """
         if pretrained_embeddings_file is None:
             word_dims = 0
+        shutil.rmtree(save_dir, ignore_errors=True)
         logger = init_logger(save_dir)
         config = _Config(train_file, dev_file, None, save_dir, pretrained_embeddings_file, min_occur_count,
                          lstm_layers, word_dims, tag_dims, dropout_emb, lstm_hiddens, dropout_lstm_input,
@@ -305,11 +307,10 @@ class SDPParser(object):
 
 if __name__ == '__main__':
     parser = SDPParser()
-    save_dir = 'data/model/sdp'
-    parser.train(train_file='data/dat/en-ddr.debug.conll',
-                 dev_file='data/dat/en-ddr.debug.conll',
+    save_dir = 'data/model/sdp/jumbo'
+    parser.train(train_file='data/dat/en-ddr.trn',
+                 dev_file='data/dat/en-ddr.dev',
                  save_dir=save_dir,
-                 pretrained_embeddings_file=('glove', 'glove.6B.100d'), train_iters=100, num_buckets_train=1,
-                 num_buckets_valid=1)
+                 pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'))
     parser.load(save_dir)
-    parser.evaluate(test_file='data/dat/en-ddr.debug.conll', save_dir='data/model/dep', num_buckets_test=1)
+    parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)

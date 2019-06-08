@@ -58,11 +58,13 @@ class ParserVocabulary(Savable):
                     word_counter[word] += 1
                     tag_set.add(tag)
                     rel_set.add(cell[6])
-                    token = cell[-1]
+                    token = cell[7]
                     if token != '_':
                         token = token.split('|')
                         for edge in token:
-                            head, rel = edge.split(':', 1)
+                            pair = edge.split(':', 1)
+                            assert len(pair) == 2, 'Illegal {}'.format(line)
+                            head, rel = pair
                             if rel != root:
                                 rel_set.add(rel)
 
@@ -322,7 +324,7 @@ class SDPDataLoader(object):
                 info = line.strip().split()
                 if info:
                     word, tag = vocab.word2id(info[1].lower()), vocab.tag2id(info[3])
-                    token = info[-1]
+                    token = info[7]
                     hs, rs = [int(info[5])], []
 
                     def insert_rel(rel):
