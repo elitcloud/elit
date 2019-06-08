@@ -48,41 +48,23 @@ class ParserVocabulary(Savable):
         tag_set = set()
         rel_set = set()
 
-        if input_file.endswith('.conllu'):
-            with open(input_file) as f:
-                for line in f:
-                    if line.startswith('#'):
-                        continue
-                    cell = line.strip().split()
-                    if cell:
-                        word, tag = cell[1].lower(), cell[3]
-                        word_counter[word] += 1
-                        tag_set.add(tag)
-                        token = cell[8]
-                        if token != '_':
-                            token = token.split('|')
-                            for edge in token:
-                                head, rel = edge.split(':', 1)
-                                if rel != root:
-                                    rel_set.add(rel)
-        else:
-            with open(input_file) as f:
-                for line in f:
-                    info = line.strip().split()
-                    if info:
-                        if len(info) == 10:
-                            arc_offset = 6
-                            rel_offset = 7
-                        elif len(info) == 8:
-                            arc_offset = 5
-                            rel_offset = 6
-                        # else:
-                        #     raise RuntimeError('Illegal line: %s' % line)
-                        word, tag, head, rel = info[1].lower(), info[3], int(info[arc_offset]), info[rel_offset]
-                        word_counter[word] += 1
-                        tag_set.add(tag)
-                        if rel != root:
-                            rel_set.add(rel)
+        with open(input_file) as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                cell = line.strip().split()
+                if cell:
+                    word, tag = cell[1].lower(), cell[3]
+                    word_counter[word] += 1
+                    tag_set.add(tag)
+                    rel_set.add(cell[6])
+                    token = cell[-1]
+                    if token != '_':
+                        token = token.split('|')
+                        for edge in token:
+                            head, rel = edge.split(':', 1)
+                            if rel != root:
+                                rel_set.add(rel)
 
         self._id2word = ['<pad>', '<root>', '<unk>']
         self._id2tag = ['<pad>', '<root>', '<unk>']
