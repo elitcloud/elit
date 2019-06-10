@@ -23,7 +23,7 @@ import gluonnlp
 import numpy as np
 from elit.component.dep.common.k_means import KMeans
 from elit.component.dep.common.savable import Savable
-from elit.structure import Sentence, POS, DEP, SENS, Document
+from elit.structure import Sentence, POS, DEP, SENS, Document, SEM
 
 
 class ParserVocabulary(Savable):
@@ -574,7 +574,7 @@ def conll_to_sdp_document(path):
     def create_sentence() -> Sentence:
         sent = Sentence()
         sent[POS] = []
-        sent[DEP] = []
+        sent[SEM] = []
         return sent
 
     sents = []
@@ -583,11 +583,18 @@ def conll_to_sdp_document(path):
         for line in src:
             info = line.strip().split()
             if info:
-                assert (len(info) == 10), 'Illegal line: %s' % line
-                word, tag, head, rel = info[1], info[3], int(info[6]), info[7]
+                assert (len(info) == 8), 'Illegal line: %s' % line
+                word, tag, head, rel, extra = info[1], info[3], int(info[5]), info[6], info[7]
                 sent.tokens.append(word)
                 sent.part_of_speech_tags.append(tag)
-                sent[DEP].append((head, rel))
+                arcs = [(head, rel)]
+                if extra != '_':
+                    extra = extra.split('|')
+                    for edge in extra:
+                        head, rel = edge.split(':', 1)
+                        head = int(head)
+                        arcs.append((head, rel))
+                sent[SEM].append(arcs)
             else:
                 sents.append(sent)
                 sent = create_sentence()
@@ -613,6 +620,7 @@ if __name__ == '__main__':
     # # vocab.save('data/model/dm-debug/vocab-local.pkl')
     # data_loader = DataLoader(train_file, 2, vocab, bert='data/semeval15/en.dev.bert')
     # next(data_loader.get_batches(10, shuffle=False))
-    with open('data/semeval15/en.dm.train.conllu') as src:
-        sents = src.read().split('\n\n')
-        print(len(sents))
+    # with open('data/semeval15/en.dm.train.conllu') as src:
+    #     sents = src.read().split('\n\n')
+    #     print(len(sents))
+    conll_to_sdp_document('data/dat/en-ddr.debug.conll')
