@@ -41,7 +41,7 @@ class BiaffineSDPParser(object):
 
     def __init__(self):
         super().__init__()
-        self._parser = None
+        self._parser = None  # type BiaffineParser
         self._vocab = None
 
     def train(self, train_file, dev_file, save_dir, pretrained_embeddings_file=None, min_occur_count=2,
@@ -203,7 +203,7 @@ class BiaffineSDPParser(object):
 
         return self
 
-    def load(self, path, debug=False):
+    def load(self, path, context=mxnet_prefer_gpu(), debug=False):
         """Load from disk
 
         Parameters
@@ -220,7 +220,7 @@ class BiaffineSDPParser(object):
         if debug:
             print(config)
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
-        with mx.Context(mxnet_prefer_gpu()):
+        with context:
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
                                           config.lstm_hiddens, config.dropout_lstm_input, config.dropout_lstm_hidden,
@@ -230,8 +230,8 @@ class BiaffineSDPParser(object):
             self._parser.load(config.save_model_path)
         return self
 
-    def evaluate(self, test_file, save_dir=None, logger=None, num_buckets_test=10, test_batch_size=5000,
-                 bert_path=None, chinese=False, debug=False):
+    def evaluate(self, test_file, save_dir=None, logger=None, num_buckets_test=10, test_batch_size=5000, bert_path=None,
+                 chinese=False, debug=False):
         """Run evaluation on test set
 
         Parameters
@@ -308,9 +308,9 @@ class BiaffineSDPParser(object):
 if __name__ == '__main__':
     parser = BiaffineSDPParser()
     save_dir = 'data/model/sdp/jumbo'
-    parser.train(train_file='data/dat/en-ddr.trn',
-                 dev_file='data/dat/en-ddr.dev',
-                 save_dir=save_dir,
-                 pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
+    # parser.train(train_file='data/dat/en-ddr.trn',
+    #              dev_file='data/dat/en-ddr.dev',
+    #              save_dir=save_dir,
+    #              pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
     parser.load(save_dir)
     parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)

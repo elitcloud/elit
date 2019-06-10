@@ -49,25 +49,38 @@ class ParserVocabulary(Savable):
         tag_set = set()
         rel_set = set()
 
-        with open(input_file) as f:
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                cell = line.strip().split()
-                if cell:
-                    word, tag = cell[1].lower(), cell[3]
-                    word_counter[word] += 1
-                    tag_set.add(tag)
-                    rel_set.add(cell[6])
-                    token = cell[7]
-                    if token != '_':
-                        token = token.split('|')
-                        for edge in token:
-                            pair = edge.split(':', 1)
-                            assert len(pair) == 2, 'Illegal {}'.format(line)
-                            head, rel = pair
-                            if rel != root:
-                                rel_set.add(rel)
+        if isinstance(input_file, str):
+            with open(input_file) as f:
+                for line in f:
+                    if line.startswith('#'):
+                        continue
+                    cell = line.strip().split()
+                    if cell:
+                        word, tag = cell[1].lower(), cell[3]
+                        word_counter[word] += 1
+                        tag_set.add(tag)
+                        rel_set.add(cell[6])
+                        token = cell[7]
+                        if token != '_':
+                            token = token.split('|')
+                            for edge in token:
+                                pair = edge.split(':', 1)
+                                assert len(pair) == 2, 'Illegal {}'.format(line)
+                                head, rel = pair
+                                if rel != root:
+                                    rel_set.add(rel)
+        else:
+            documents = input_file
+            for d in documents:
+                for s in d:  # type: Sentence
+                    tokens = s.tokens
+                    # if LEM in s:
+                    #     tokens = s.lemmatized_tokens
+                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SEM]):
+                        word_counter[word] += 1
+                        tag_set.add(tag)
+                        for (head, rel) in head_rel:
+                            rel_set.add(rel)
 
         self._id2word = ['<pad>', '<root>', '<unk>']
         self._id2tag = ['<pad>', '<root>', '<unk>']
@@ -318,43 +331,58 @@ class SDPDataLoader(object):
         self.vocab = vocab
         sents = []
         sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, [0], [ParserVocabulary.ROOT]]]
-        with open(input_file) as f:
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                info = line.strip().split()
-                if info:
-                    word, tag = vocab.word2id(info[1].lower()), vocab.tag2id(info[3])
-                    token = info[7]
-                    hs, rs = [int(info[5])], []
+        if isinstance(input_file, str):
+            with open(input_file) as f:
+                for line in f:
+                    if line.startswith('#'):
+                        continue
+                    info = line.strip().split()
+                    if info:
+                        word, tag = vocab.word2id(info[1].lower()), vocab.tag2id(info[3])
+                        token = info[7]
+                        hs, rs = [int(info[5])], []
 
-                    def insert_rel(rel):
-                        if rel not in vocab._rel2id:
-                            rel = '<pad>'
-                        rs.append(vocab.rel2id(rel))
+                        def insert_rel(rel):
+                            if rel not in vocab._rel2id:
+                                rel = '<pad>'
+                            rs.append(vocab.rel2id(rel))
 
-                    insert_rel(info[6])
+                        insert_rel(info[6])
 
-                    if token != '_':
-                        token = token.split('|')
-                        for edge in token:
-                            head, rel = edge.split(':', 1)
-                            head = int(head)
-                            hs.append(head)
-                            # assert rel in vocab._rel2id, 'Relation OOV: %s' % line
-                            insert_rel(rel)
-                    sent.append([word, tag, hs, rs])
-                else:
+                        if token != '_':
+                            token = token.split('|')
+                            for edge in token:
+                                head, rel = edge.split(':', 1)
+                                head = int(head)
+                                hs.append(head)
+                                # assert rel in vocab._rel2id, 'Relation OOV: %s' % line
+                                insert_rel(rel)
+                        sent.append([word, tag, hs, rs])
+                    else:
+                        sents.append(sent)
+                        sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, [0], [ParserVocabulary.ROOT]]]
+
+                if len(sent) > 1:  # last sent in file without '\n'
                     sents.append(sent)
+        else:
+            documents = input_file
+            for d in documents:
+                for s in d:  # type: Sentence
                     sent = [[ParserVocabulary.ROOT, ParserVocabulary.ROOT, [0], [ParserVocabulary.ROOT]]]
-
-            if len(sent) > 1:  # last sent in file without '\n'
-                sents.append(sent)
+                    tokens = s.tokens
+                    # if LEM in s:
+                    #     tokens = s.lemmatized_tokens
+                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SEM]):
+                        heads = [item[0] for item in head_rel]
+                        rels = [vocab.rel2id(item[1]) for item in head_rel]
+                        sent.append([vocab.word2id(word.lower()), vocab.tag2id(tag), heads, rels])
+                    sents.append(sent)
 
         self.samples = len(sents)
         len_counter = Counter()
         for sent in sents:
             len_counter[len(sent)] += 1
+        n_bkts = min(n_bkts, len(len_counter))
         self._bucket_lengths = KMeans(n_bkts, len_counter).splits
         self._buckets = [[] for i in range(n_bkts)]
         """bkt_idx x length x sent_idx x 4"""

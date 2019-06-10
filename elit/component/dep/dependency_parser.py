@@ -139,7 +139,7 @@ class DependencyParser(NLPComponent):
         assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
         for d in docs:
             for s in d:
-                s[DEP] = [(0, self._vocab.id2rel(0))] * len(s)
+                s[DEP] = [(0, self._vocab.id2rel(0))] * len(s)  # placeholder
         data_loader = DataLoader(docs, num_buckets_test, self._vocab)
         record = data_loader.idx_sequence
         results = [None] * len(record)
