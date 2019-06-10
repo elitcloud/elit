@@ -23,6 +23,7 @@ import gluonnlp
 import numpy as np
 from elit.component.dep.common.k_means import KMeans
 from elit.component.dep.common.savable import Savable
+from elit.structure import Sentence, POS, DEP, SENS, Document
 
 
 class ParserVocabulary(Savable):
@@ -567,6 +568,30 @@ def slice_train_file(train, ratio):
     with open(train) as src, open(train.replace('.conllu', '.{}.conllu'.format(int(ratio * 100))), 'w') as out:
         sents = src.read().split('\n\n')
         out.write("\n\n".join(s for s in sents[:int(len(sents) * ratio)]))
+
+
+def conll_to_sdp_document(path):
+    def create_sentence() -> Sentence:
+        sent = Sentence()
+        sent[POS] = []
+        sent[DEP] = []
+        return sent
+
+    sents = []
+    with open(path) as src:
+        sent = create_sentence()
+        for line in src:
+            info = line.strip().split()
+            if info:
+                assert (len(info) == 10), 'Illegal line: %s' % line
+                word, tag, head, rel = info[1], info[3], int(info[6]), info[7]
+                sent.tokens.append(word)
+                sent.part_of_speech_tags.append(tag)
+                sent[DEP].append((head, rel))
+            else:
+                sents.append(sent)
+                sent = create_sentence()
+    return Document({SENS: sents})
 
 
 if __name__ == '__main__':

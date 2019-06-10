@@ -30,6 +30,7 @@ POS = 'pos'
 MORPH = 'morph'
 NER = 'ner'
 DEP = 'dep'
+SEM = 'dem'
 COREF = 'coref'
 SENTI = 'senti'
 

@@ -34,8 +34,8 @@ from elit.component.sem.biaffine_parser import BiaffineParser
 from elit.component.sem.data import ParserVocabulary, SDPDataLoader
 
 
-class SDPParser(object):
-    """User interfaces for biaffine dependency parser. It wraps a biaffine model inside, provides training,
+class BiaffineSDPParser(object):
+    """User interfaces for biaffine semantic dependency parser. It wraps a biaffine model inside, provides training,
         evaluating and parsing
     """
 
@@ -118,7 +118,7 @@ class SDPParser(object):
 
         Returns
         -------
-        SDPParser
+        BiaffineSDPParser
             parser itself
         """
         if pretrained_embeddings_file is None:
@@ -213,7 +213,7 @@ class SDPParser(object):
 
         Returns
         -------
-        SDPParser
+        BiaffineSDPParser
             parser itself
         """
         config: _Config = _Config.load(os.path.join(path, 'config.pkl'))
@@ -306,11 +306,11 @@ class SDPParser(object):
 
 
 if __name__ == '__main__':
-    parser = SDPParser()
+    parser = BiaffineSDPParser()
     save_dir = 'data/model/sdp/jumbo'
     parser.train(train_file='data/dat/en-ddr.trn',
                  dev_file='data/dat/en-ddr.dev',
                  save_dir=save_dir,
-                 pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'))
+                 pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
     parser.load(save_dir)
     parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)
