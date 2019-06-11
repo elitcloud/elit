@@ -44,8 +44,8 @@ class ConllWord(object):
         self.pdeprel = pdeprel
 
     def __str__(self):
-        values = [str(self.id), self.form, self.lemma, self.cpos, self.pos, self.feats, str(self.head), self.relation,
-                  self.phead, self.pdeprel]
+        values = [str(self.id), self.form, self.lemma, self.cpos, self.pos, self.feats,
+                  None if self.head is None else str(self.head), self.relation, self.phead, self.pdeprel]
         return '\t'.join(['_' if v is None else v for v in values])
 
 

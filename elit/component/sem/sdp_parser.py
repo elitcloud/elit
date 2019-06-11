@@ -312,12 +312,12 @@ class BiaffineSDPParser(object):
         return ConllSentence(words)
 
 
-if __name__ == '__main__':
-    parser = BiaffineSDPParser()
-    save_dir = 'data/model/sdp/jumbo'
-    # parser.train(train_file='data/dat/en-ddr.trn',
-    #              dev_file='data/dat/en-ddr.dev',
-    #              save_dir=save_dir,
-    #              pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
-    parser.load(save_dir)
-    parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)
+# if __name__ == '__main__':
+#     parser = BiaffineSDPParser()
+#     save_dir = 'data/model/sdp/jumbo'
+#     # parser.train(train_file='data/dat/en-ddr.trn',
+#     #              dev_file='data/dat/en-ddr.dev',
+#     #              save_dir=save_dir,
+#     #              pretrained_embeddings_file=('fasttext', 'crawl-300d-2M-subword'), word_dims=300)
+#     parser.load(save_dir)
+#     parser.evaluate(test_file='data/dat/en-ddr.tst', save_dir=save_dir)

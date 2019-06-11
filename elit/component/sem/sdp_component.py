@@ -147,7 +147,9 @@ class SDPParser(NLPComponent):
         parser.load(model_path, self.context)
 
     def save(self, model_path: str, **kwargs):
-        pass
+        raise NotImplementedError(
+            'save is not implemented, use copy & paste to make a new copy of your model, use train to create a new '
+            'model. Why save is needed?')
 
 
 if __name__ == '__main__':
@@ -156,4 +158,3 @@ if __name__ == '__main__':
     parser.load(save_dir)
     docs = [conll_to_sdp_document('data/dat/en-ddr.debug.conll')]
     print(parser.evaluate(docs))
-    pass

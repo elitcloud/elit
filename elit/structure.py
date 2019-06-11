@@ -167,7 +167,9 @@ class Document(dict):
             for i, token in enumerate(sent.tokens):
                 word = ConllWord(i + 1, token, cpos=sent.part_of_speech_tags[i] if POS in sent else None,
                                  head=sent[DEP][i][0] if DEP in sent else None,
-                                 relation=sent[DEP][i][1] if DEP in sent else None)
+                                 relation=sent[DEP][i][1] if DEP in sent else None,
+                                 pdeprel='|'.join('{}:{}'.format(head, rel) for head, rel in sent[SEM][i])
+                                 )
                 words.append(word)
             conll_sents.append(ConllSentence(words))
         return conll_sents
