@@ -13,24 +13,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import os
+
+import pytest
+
+from elit.component.morph_analyzer import EnglishMorphAnalyzer
+from elit.component.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.util.reader import tsv_reader, json_reader
 
 __author__ = "Gary Lai"
 
-from .base import Embedding
-from .token import TokenEmbedding
-from .fasttext import FastText
-from .word2vec import Word2Vec
-from .contextual_string_embedding import ContextualStringEmbedding
-
-from typing import Union
+current_path = os.path.abspath(os.path.dirname(__file__))
 
 
-def init_emb(config: list) -> Union[Word2Vec, FastText]:
-    model, path = config
-    if model.lower() == 'word2vec':
-        emb = Word2Vec
-    elif model.lower() == 'fasttext':
-        emb = FastText
-    else:
-        raise TypeError('model {} is not supported'.format(model))
-    return emb(path)
+@pytest.fixture()
+def tokenizer():
+    return Tokenizer()
+
+
+@pytest.fixture()
+def space_tokenizer():
+    return SpaceTokenizer()
+
+
+@pytest.fixture()
+def english_tokenizer():
+    return EnglishTokenizer()
+
+
+@pytest.fixture()
+def en_morph_analyzer():
+    return EnglishMorphAnalyzer()
+
+
+@pytest.fixture()
+def tsv_reader():
+    return tsv_reader
+
+
+@pytest.fixture()
+def json_reader():
+    return json_reader
