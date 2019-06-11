@@ -14,7 +14,17 @@
 # limitations under the License.
 # ========================================================================
 
+import pytest
+
+from elit.component.base import Component
+
 __author__ = "Gary Lai"
 
-from .rnn import RNNModel
-from .cnn import CNNModel
+
+def test_component():
+    class TestComponent(Component):
+        pass
+
+    with pytest.raises(TypeError):
+        TestComponent()
+
