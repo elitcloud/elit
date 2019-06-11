@@ -21,7 +21,7 @@ from typing import Sequence, Set, List, Optional, Tuple, Dict, Any
 
 from pkg_resources import resource_filename
 
-from elit.component import NLPComponent
+from elit.component.nlp import NLPComponent
 from elit.structure import Document, MORPH
 from elit.util import io
 from elit.util.io import read_word_set, NoIndent, NoIndentEncoder
