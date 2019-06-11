@@ -140,7 +140,7 @@ class SDPParser(NLPComponent):
         return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
-        pass
+        return self._parser.evaluate(test_file=docs, context=self.context)
 
     def load(self, model_path: str, **kwargs):
         parser = self._parser = BiaffineSDPParser()
@@ -155,5 +155,5 @@ if __name__ == '__main__':
     parser = SDPParser()
     parser.load(save_dir)
     docs = [conll_to_sdp_document('data/dat/en-ddr.debug.conll')]
-    print(parser.decode(docs))
+    print(parser.evaluate(docs))
     pass

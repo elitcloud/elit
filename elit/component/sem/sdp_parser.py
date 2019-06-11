@@ -20,6 +20,7 @@
 import math
 import os
 import shutil
+import tempfile
 
 import mxnet as mx
 import numpy as np
@@ -231,7 +232,7 @@ class BiaffineSDPParser(object):
         return self
 
     def evaluate(self, test_file, save_dir=None, logger=None, num_buckets_test=10, test_batch_size=5000, bert_path=None,
-                 chinese=False, debug=False):
+                 chinese=False, debug=False, context=mxnet_prefer_gpu()):
         """Run evaluation on test set
 
         Parameters
@@ -254,9 +255,13 @@ class BiaffineSDPParser(object):
         """
         parser = self._parser
         vocab = self._vocab
+        is_temp_dir = False
+        if not save_dir:
+            save_dir = tempfile.mkdtemp()
+            is_temp_dir = True
         if logger is None:
             logger = init_logger(save_dir, 'test.log')
-        with mx.Context(mxnet_prefer_gpu()):
+        with mx.Context(context):
             if chinese:
                 result, speed = evaluate_chinese_sdp(parser, vocab, num_buckets_test, test_batch_size,
                                                      test_file, os.path.join(save_dir, 'test.predict.conllu'),
@@ -264,16 +269,18 @@ class BiaffineSDPParser(object):
                 logger.info(test_file)
                 for k, v in result.items():
                     logger.info('%s=%.2f%%' % (k, v))
-                return result
             else:
                 UF, LF, speed = evaluate_sdp(parser, vocab, num_buckets_test, test_batch_size,
-                                             test_file, os.path.join(save_dir, os.path.basename(test_file)),
+                                             test_file, os.path.join(save_dir, os.path.basename(test_file) if isinstance(test_file, str) else 'test.conll'),
                                              bert=bert_path, debug=debug)
                 UF = UF * 100
                 LF = LF * 100
                 logger.info('Test: UF=%.2f%% LF=%.2f%% %d sents/s' % (UF, LF, speed))
 
-                return LF
+                result = LF
+        if is_temp_dir:
+            shutil.rmtree(save_dir)
+        return result
 
     def parse(self, sentence):
         """Parse raw sentence into ConllSentence
