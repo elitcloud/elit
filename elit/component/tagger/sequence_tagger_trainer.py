@@ -291,7 +291,7 @@ class SequenceTaggerTrainer:
             if not embeddings_in_memory:
                 self.clear_embeddings_in_batch(batch)
         cost_time = time.time() - start_time
-        print('Speed: {0:.2f} sent/s'.format(len(evaluation) / cost_time * 1000))
+        print('Speed: {0:.2f} sent/s'.format(len(evaluation) / cost_time))
         if out_path is not None:
             test_tsv = os.path.join(out_path, "test.tsv")
             with open(test_tsv, "w", encoding='utf-8') as outfile:
