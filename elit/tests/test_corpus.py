@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # Author：hankcs
 # Date: 2018-09-13 18:34
-from elit.nlp.tagger.corpus import Dictionary
+from elit.component.tagger.corpus import Dictionary
 
 
 def test_dictionary():
