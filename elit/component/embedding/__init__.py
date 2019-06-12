@@ -15,42 +15,6 @@
 # ========================================================================
 import os
 
-import pytest
-
-from elit.component.morph_analyzer import EnglishMorphAnalyzer
-from elit.component.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
-from elit.util.reader import tsv_reader, json_reader
-
 __author__ = "Gary Lai"
 
 current_path = os.path.abspath(os.path.dirname(__file__))
-
-
-@pytest.fixture()
-def tokenizer():
-    return Tokenizer()
-
-
-@pytest.fixture()
-def space_tokenizer():
-    return SpaceTokenizer()
-
-
-@pytest.fixture()
-def english_tokenizer():
-    return EnglishTokenizer()
-
-
-@pytest.fixture()
-def en_morph_analyzer():
-    return EnglishMorphAnalyzer()
-
-
-@pytest.fixture()
-def tsv_reader():
-    return tsv_reader
-
-
-@pytest.fixture()
-def json_reader():
-    return json_reader

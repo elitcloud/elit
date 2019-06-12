@@ -22,7 +22,8 @@ from mxnet import nd, gluon
 from mxnet.ndarray import NDArray
 from tqdm import tqdm
 
-from elit.component.embedding import Embedding, TokenEmbedding
+from elit.component.embedding.base import Embedding
+from elit.component.embedding.token import TokenEmbedding
 from elit.structure import to_gold, Sentence, Document
 
 __author__ = "Gary Lai"

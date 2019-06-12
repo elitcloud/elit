@@ -14,8 +14,8 @@
 # limitations under the License.
 # ========================================================================
 import pytest
+import elit.component
 from elit.component.morph_analyzer import EnglishMorphTag as MT
-
 from elit.component.morph_analyzer import extract_suffix
 
 __author__ = "Jinho D. Choi"
