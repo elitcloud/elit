@@ -13,4 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-__author__ = 'Jinho D. Choi'
+
+__author__ = "Gary Lai"
+
+from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tagger.ner_tagger import NERTagger
+from elit.component.dep.dependency_parser import DependencyParser
+from elit.component.sem.sdp_parser import SDPParser
