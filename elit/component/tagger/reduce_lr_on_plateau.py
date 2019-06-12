@@ -64,7 +64,7 @@ class ReduceLROnPlateau(LRScheduler):
             raise ValueError('Factor should be < 1.0.')
         self.factor = factor
 
-        self.min_lrs: float = min_lr
+        self.min_lrs = min_lr
 
         self.patience = patience
         self.verbose = verbose
