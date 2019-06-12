@@ -1,0 +1,35 @@
+{
+  "reader": "tsv",
+  "tsv_heads": {
+    "tok": 0,
+    "pos": 1,
+    "ner": 2
+  },
+  "log_path": null,
+  "chunking": true,
+  "feature_windows": [3, 2, 1, 0, -1, -2, -3],
+  "input_config": {
+    "dropout": 0.5
+  },
+  "fuse_conv_config": null,
+  "ngram_conv_config": {
+    "ngrams": [1, 2, 3, 4, 5],
+    "filters": 128,
+    "activation": "relu",
+    "dropout": 0.2
+  },
+  "hidden_configs": [],
+  "output_config": {
+    "dropout": 0.2
+  },
+  "device": "gpu",
+  "core": 0,
+  "epoch": 100,
+  "trn_batch": 64,
+  "dev_batch": 2048,
+  "loss": "softmaxcrossentropyloss",
+  "optimizer": "adagrad",
+  "optimizer_params": {
+    "learning_rate": 0.01
+  }
+}

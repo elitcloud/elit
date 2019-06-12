@@ -1,0 +1,10 @@
+{
+  "best": [["well", "RB"], ["", "I_SUP"]],
+  "better": [["well", "RB"], ["", "I_COM"]],
+  "farther": [["far", "RB"], ["+ther", "I_COM"]],
+  "farthest": [["far", "RB"], ["+thest", "I_SUP"]],
+  "further": [["far", "RB"], ["+urthe+", "I_COM"]],
+  "furthest": [["far", "RB"], ["+urthest", "I_SUP"]],
+  "worse": [["bad", "RB"], ["", "I_COM"]],
+  "worst": [["bad", "RB"], ["", "I_SUP"]]
+}

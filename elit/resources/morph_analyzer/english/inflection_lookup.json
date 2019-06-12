@@ -1,0 +1,20 @@
+{
+  "n't RB": [["not", "RB"]],
+  "'nt RB": [["not", "RB"]],
+  "'d MD": [["would", "MD"]],
+  "'d VBD": [["have", "VB"], ["+d", "I_PST"]],
+  "'ll MD": [["will", "MD"]],
+  "'ve VBP": [["have", "VB"]],
+  "'ve": [["have", "VB"]],
+  "'m VBP": [["be", "VB"]],
+  "'re VBP": [["be", "VB"]],
+  "ai VBP": [["be", "VB"]],
+  "am VBP": [["be", "VB"]],
+  "are VBP": [["be", "VB"]],
+  "is VBZ": [["be", "VB"], ["", "I_3PS"]],
+  "was VBD": [["be", "VB"], ["", "I_3PS"], ["", "I_PST"]],
+  "were VBD": [["be", "VB"], ["", "I_PST"]],
+  "ca MD": [["can", "MD"]],
+  "na TO": [["to", "IN"]],
+  "gon VBG": [["go", "VB"], ["+ing", "I_GRD"]]
+}

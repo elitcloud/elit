@@ -1,0 +1,38 @@
+{
+  "VB": [
+    {"affix_tag": "I_3PS", "affix": "ies", "token_affixes": ["y"], "token_tags": ["VBZ"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_3PS", "affix": "es", "token_affixes": [""], "token_tags": ["VBZ"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_3PS", "affix": "s", "token_affixes": [""], "token_tags": ["VBZ"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_GRD", "affix": "ying", "token_affixes": ["ie"], "token_tags": ["VBG"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_GRD", "affix": "ing", "token_affixes": ["", "e"], "token_tags": ["VBG"], "lemma_tag": "VB", "double_consonants": true},
+    {"affix_tag": "I_PST", "affix": "ied", "token_affixes": ["y"], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_PST", "affix": "ed", "token_affixes": [""], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": true},
+    {"affix_tag": "I_PST", "affix": "d", "token_affixes": [""], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_PST", "affix": "en", "token_affixes": ["", "e"], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": true},
+    {"affix_tag": "I_PST", "affix": "n", "token_affixes": [""], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": false},
+    {"affix_tag": "I_PST", "affix": "ung", "token_affixes": ["ing"], "token_tags": ["VBD", "VBN"], "lemma_tag": "VB", "double_consonants": false}
+  ],
+  "NN": [
+    {"affix_tag": "I_PLR", "affix": "ies", "token_affixes": ["y"], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "es", "token_affixes": [""], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "s", "token_affixes": [""], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "men", "token_affixes": ["man"], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "ae", "token_affixes": ["a"], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "i", "token_affixes": ["us"], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false},
+    {"affix_tag": "I_PLR", "affix": "a", "token_affixes": ["um"], "token_tags": ["NNPS", "NNS"], "lemma_tag": "NN", "double_consonants": false}
+  ],
+  "JJ": [
+    {"affix_tag": "I_COM", "affix": "ier", "token_affixes": ["y"], "token_tags": ["JJR"], "lemma_tag": "JJ", "double_consonants": false},
+    {"affix_tag": "I_COM", "affix": "er", "token_affixes": [""], "token_tags": ["JJR"], "lemma_tag": "JJ", "double_consonants": true},
+    {"affix_tag": "I_COM", "affix": "er", "token_affixes": ["e"], "token_tags": ["JJR"], "lemma_tag": "JJ", "double_consonants": false},
+    {"affix_tag": "I_SUP", "affix": "iest", "token_affixes": ["y"], "token_tags": ["JJS"], "lemma_tag": "JJ", "double_consonants": false},
+    {"affix_tag": "I_SUP", "affix": "est", "token_affixes": ["e"], "token_tags": ["JJS"], "lemma_tag": "JJ", "double_consonants": false},
+    {"affix_tag": "I_SUP", "affix": "est", "token_affixes": [""], "token_tags": ["JJS"], "lemma_tag": "JJ", "double_consonants": true}
+  ],
+  "RB": [
+    {"affix_tag": "I_COM", "affix": "ier", "token_affixes": ["y"], "token_tags": ["RBR"], "lemma_tag": "RB", "double_consonants": false},
+    {"affix_tag": "I_COM", "affix": "er", "token_affixes": ["", "e"], "token_tags": ["RBR"], "lemma_tag": "RB", "double_consonants": false},
+    {"affix_tag": "I_SUP", "affix": "iest", "token_affixes": ["y"], "token_tags": ["RBS"], "lemma_tag": "RB", "double_consonants": false},
+    {"affix_tag": "I_SUP", "affix": "est", "token_affixes": ["", "e"], "token_tags": ["RBS"], "lemma_tag": "RB", "double_consonants": false}
+  ]
+}
