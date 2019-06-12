@@ -80,6 +80,7 @@ class POSTagger(Tagger):
 
     def load(self, model_path: str = POS_JUMBO, **kwargs):
         super().load(model_path, **kwargs)
+        return self
 
 
 if __name__ == '__main__':

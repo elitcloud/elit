@@ -7,6 +7,7 @@ from elit.component.nlp import NLPComponent
 from elit.component.sem.data import SDPDataLoader, conll_to_sdp_document
 from elit.component.sem.biaffine_sdp import BiaffineSDPParser
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.resources.pre_trained_models import SDP_JUMBO
 from elit.structure import Document, SEM
 
 
@@ -142,9 +143,10 @@ class SDPParser(NLPComponent):
     def evaluate(self, docs: Sequence[Document], **kwargs):
         return self._parser.evaluate(test_file=docs, context=self.context)
 
-    def load(self, model_path: str, **kwargs):
+    def load(self, model_path: str=SDP_JUMBO, **kwargs):
         parser = self._parser = BiaffineSDPParser()
         parser.load(model_path, self.context)
+        return self
 
     def save(self, model_path: str, **kwargs):
         raise NotImplementedError(

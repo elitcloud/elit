@@ -33,6 +33,7 @@ from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.resources.pre_trained_models import DEP_JUMBO
 from elit.structure import Document, DEP
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 
@@ -196,7 +197,7 @@ class DependencyParser(NLPComponent):
 
         return UAS, LAS, speed
 
-    def load(self, path, **kwargs):
+    def load(self, path=DEP_JUMBO, **kwargs):
         """Load from disk
 
         Parameters
