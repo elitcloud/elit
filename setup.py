@@ -138,6 +138,7 @@ def setup_package():
             'gluonnlp==0.6.0',
             'tqdm==4.26.0',
             'gensim==3.6.0',
+            'marisa_trie==0.7.5',
         ],
         extras_require={
           'cu92': ['mxnet-cu92==1.3.0']
