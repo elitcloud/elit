@@ -178,3 +178,5 @@ data
 *.bin
 *.p
 *.params
+
+html/*
