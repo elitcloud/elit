@@ -180,3 +180,5 @@ data
 *.params
 
 html/*
+/ptb
+/demo/ptb
