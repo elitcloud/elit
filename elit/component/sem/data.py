@@ -461,7 +461,7 @@ class SDPDataLoader(object):
         for bkt_idx, bkt_batch in batches:
             word_inputs = self._buckets[bkt_idx][:, bkt_batch, 0]  # word_id x sent_id
             tag_inputs = self._buckets[bkt_idx][:, bkt_batch, 1]
-            arc_targets: np.ndarray = self._buckets[bkt_idx][:, bkt_batch, 2: 2 + word_inputs.shape[0]]
+            arc_targets = self._buckets[bkt_idx][:, bkt_batch, 2: 2 + word_inputs.shape[0]]  # type: np.ndarray
             arc_targets = arc_targets.transpose((2, 0, 1))  # head x dep x batch
             rel_targets = self._buckets[bkt_idx][:, bkt_batch, 2 + word_inputs.shape[0]:]
             rel_targets = rel_targets.transpose((2, 0, 1))  # head x dep x batch
