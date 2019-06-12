@@ -215,7 +215,7 @@ class SequenceTagger(nn.Block):
                 # print(config)
                 model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=context)
                 if not model.use_crf:
-                    model.transitions: nd.NDArray = pickle_load(os.path.join(model_folder, 'transitions.pkl'))
+                    model.transitions = pickle_load(os.path.join(model_folder, 'transitions.pkl'))  # type:nd.NDArray
                     model.transitions = model.transitions.as_in_context(context)
 
             return model
