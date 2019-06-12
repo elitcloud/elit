@@ -217,7 +217,7 @@ class BiaffineSDPParser(object):
         BiaffineSDPParser
             parser itself
         """
-        config: _Config = _Config.load(os.path.join(path, 'config.pkl'))
+        config = _Config.load(os.path.join(path, 'config.pkl'))  # type:_Config
         if debug:
             print(config)
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
@@ -271,7 +271,9 @@ class BiaffineSDPParser(object):
                     logger.info('%s=%.2f%%' % (k, v))
             else:
                 UF, LF, speed = evaluate_sdp(parser, vocab, num_buckets_test, test_batch_size,
-                                             test_file, os.path.join(save_dir, os.path.basename(test_file) if isinstance(test_file, str) else 'test.conll'),
+                                             test_file, os.path.join(save_dir,
+                                                                     os.path.basename(test_file) if isinstance(
+                                                                         test_file, str) else 'test.conll'),
                                              bert=bert_path, debug=debug)
                 UF = UF * 100
                 LF = LF * 100
@@ -310,7 +312,6 @@ class BiaffineSDPParser(object):
         for arc, rel, (word, tag) in zip(outputs[0][0], outputs[0][1], sentence):
             words.append(ConllWord(id=len(words) + 1, form=word, pos=tag, head=arc, relation=vocab.id2rel(rel)))
         return ConllSentence(words)
-
 
 # if __name__ == '__main__':
 #     parser = BiaffineSDPParser()
