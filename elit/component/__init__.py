@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import pytest
-from elit.component.tagger.pos_tagger import POSTagger
-from elit.component.tagger.ner_tagger import NERTagger
 from elit.component.dep.dependency_parser import DependencyParser
-from elit.component.sem.sdp_parser import SDPParser
 from elit.component.morph_analyzer import EnglishMorphAnalyzer
-from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
+from elit.component.sem.sdp_parser import SDPParser
+from elit.component.tagger.ner_tagger import NERTagger
+from elit.component.tagger.pos_tagger import POSTagger
