@@ -17,7 +17,6 @@
 import argparse
 import sys
 
-
 __author__ = "Gary Lai"
 
 
@@ -29,7 +28,9 @@ class ElitCli(object):
         commands:
             token_tagger: use token tagger
             pos_tagger: run pos tagger
-            dep_parser: run dep parser
+            ner_tagger: run ner tagger
+            dep_parser: run syntactic dependency parser
+            sdp_parser: run semantic dependency parser
             install: Install model
             download: download pre-trained model or word embedding
         '''
