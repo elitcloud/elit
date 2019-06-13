@@ -209,8 +209,8 @@ class BiAffine(nn.Block):
             arc_loss = nd.sum(losses * mask_1D_tensor) / mask_1D_tensor.sum()
             # return arc_accuracy, 0, 0, arc_loss
         W_rel = self.rel_W.data()
-        rel_logits: nd.NDArray = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, seq_len, batch_size,
-                                          num_outputs=self._vocab.rel_size, bias_x=True, bias_y=True)
+        rel_logits = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, seq_len, batch_size,
+                              num_outputs=self._vocab.rel_size, bias_x=True, bias_y=True)  # type: nd.NDArray
         # #head x rel_size x #dep x batch_size
         flat_rel_logits = reshape_fortran(rel_logits.transpose([1, 0, 2, 3]),
                                           (self._vocab.rel_size, seq_len * seq_len * batch_size))
