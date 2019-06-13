@@ -216,8 +216,8 @@ class BiAffine(nn.Block):
                                           (self._vocab.rel_size, seq_len * seq_len * batch_size))
         # rel_size x (#head x #dep x batch_size)
         if is_train or arc_targets is not None:
-            mask_rel: nd.NDArray = reshape_fortran(nd.array(mask * arc_targets),
-                                                   (1, seq_len * seq_len * batch_size))
+            mask_rel = reshape_fortran(nd.array(mask * arc_targets),
+                                       (1, seq_len * seq_len * batch_size))  # type: nd.NDArray
             flat_rel_preds = flat_rel_logits.argmax(0)
             flat_rel_target = nd.array(reshape_fortran(rel_targets, (1, seq_len * seq_len * batch_size))).squeeze(
                 axis=0)
