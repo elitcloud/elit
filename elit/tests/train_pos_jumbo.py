@@ -24,6 +24,7 @@ from elit.component.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, S
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
+from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
 
 if __name__ == '__main__':
     data_folder = 'data/dat'
@@ -47,14 +48,14 @@ if __name__ == '__main__':
     # 3. make the tag dictionary from the corpus
     tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
     print(tag_dictionary.idx2item)
-    model_path = 'data/model/pos/jumbo-fasttext'
+    model_path = 'data/model/pos/jumbo'
     with mx.Context(mxnet_prefer_gpu()):
-        train = False
+        train = True
         if train:
             embedding_types = [
                 WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-                CharLMEmbeddings('data/model/lm-news-forward'),
-                CharLMEmbeddings('data/model/lm-news-backward'),
+                CharLMEmbeddings(LM_NEWS_FORWARD),
+                CharLMEmbeddings(LM_NEWS_BACKWARD),
             ]
 
             embeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -64,6 +65,7 @@ if __name__ == '__main__':
                                     tag_dictionary=tag_dictionary,
                                     tag_type=tag_type,
                                     use_crf=True)
+            tagger.save(model_path)
             # 6. initialize trainer
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 

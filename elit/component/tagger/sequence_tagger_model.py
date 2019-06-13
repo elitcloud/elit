@@ -170,7 +170,7 @@ class SequenceTagger(nn.Block):
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'wb') as f:
             pickle.dump(config, f)
-        # exit(1)
+        # assert False, 'Config saved'
         model_path = os.path.join(model_folder, 'model.bin')
         self.save_parameters(model_path)
         if not self.use_crf:
