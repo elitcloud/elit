@@ -96,6 +96,7 @@ class SequenceTagger(nn.Block):
             self.use_rnn = use_rnn
             self.hidden_size = hidden_size
             self.use_crf = use_crf
+            self.use_viterbi = False
             self.rnn_layers = rnn_layers
 
             self.trained_epochs = 0
@@ -434,13 +435,15 @@ class SequenceTagger(nn.Block):
             score, tag_seq = self.viterbi_decode(feats)
         else:
             score = None
-            tag_seq = feats.argmax(axis=1)
-            tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
-            # tag_seq = self.softmax_viterbi_decode(feats)
+            if self.use_viterbi:
+                tag_seq = self.softmax_viterbi_decode(feats)
+            else:
+                tag_seq = feats.argmax(axis=1)
+                tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
 
         return score, tag_seq
 
-    def predict(self, sentences: Union[List[Sentence], Sentence], mini_batch_size=32) -> List[Sentence]:
+    def predict(self, sentences: Union[List[Sentence], Sentence], mini_batch_size=32, dropout=0) -> List[Sentence]:
 
         if type(sentences) is Sentence:
             sentences = [sentences]
@@ -478,7 +481,11 @@ class SequenceTagger(nn.Block):
             if self.use_crf:
                 score, tag_seq = self.viterbi_decode(feats)
             else:
-                tag_seq = self.softmax_viterbi_decode(feats)
+                if self.use_viterbi:
+                    tag_seq = self.softmax_viterbi_decode(feats)
+                else:
+                    tag_seq = feats.argmax(axis=1)
+                    tag_seq = list(int(tag.asscalar()) for tag in tag_seq)
 
             # overall_score += score
             all_tags_seqs.extend(tag_seq)

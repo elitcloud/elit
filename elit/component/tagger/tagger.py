@@ -18,7 +18,7 @@ from elit.structure import Document
 class Tagger(NLPComponent):
     def __init__(self, context: mx.Context = None) -> None:
         super().__init__()
-        self.tagger = None
+        self.tagger = None  # type: SequenceTagger
         self.context = context if context else mxnet_prefer_gpu()
 
     def init(self, **kwargs):
