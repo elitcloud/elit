@@ -27,7 +27,8 @@ from mxnet.gluon import nn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss, SigmoidBinaryCrossEntropyLoss
 
 from elit.component.sem.data import ParserVocabulary
-from elit.component.dep.common.utils import orthonormal_VanillaLSTMBuilder, bilinear, reshape_fortran, leaky_relu, biLSTM, \
+from elit.component.dep.common.utils import orthonormal_VanillaLSTMBuilder, bilinear, reshape_fortran, leaky_relu, \
+    biLSTM, \
     orthonormal_initializer, flatten_numpy, embedding_from_numpy, mxnet_prefer_gpu, parameter_from_numpy, \
     parameter_init, freeze, rel_argmax, arc_argmax
 
@@ -187,9 +188,9 @@ class BiAffine(nn.Block):
         batch_size = mask.shape[1]
         seq_len = mask.shape[0]
         W_arc = self.arc_W.data()
-        arc_logits: nd.NDArray = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size,
-                                          num_outputs=1,
-                                          bias_x=True, bias_y=False)
+        arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size,
+                              num_outputs=1,
+                              bias_x=True, bias_y=False)  # type: nd.NDArray
         if blend is not None:
             arc_logits = arc_logits + blend
         # (#head x #dep) x batch_size
@@ -350,9 +351,9 @@ class UnlabeledBiAffine(nn.Block):
         batch_size = mask.shape[1]
         seq_len = mask.shape[0]
         W_arc = self.arc_W.data()
-        arc_logits: nd.NDArray = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size,
-                                          num_outputs=1,
-                                          bias_x=True, bias_y=False)
+        arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size,
+                              num_outputs=1,
+                              bias_x=True, bias_y=False)  # type: nd.NDArray
         # #head x #dep x batch_size
         if not is_train:
             return arc_logits
