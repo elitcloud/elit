@@ -78,7 +78,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a dependency parser to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, default=DEP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
                             help='file path to the saved model')
         args = None
         try:
@@ -106,7 +106,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
-        parser.add_argument('--model_path', type=str, required=True, default=POS_JUMBO,
+        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in conll format')
         args = None

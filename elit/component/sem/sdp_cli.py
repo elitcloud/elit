@@ -76,7 +76,7 @@ class SemanticDependencyParserCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a semantic dependency parser to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, default=SDP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=SDP_JUMBO,
                             help='file path to the saved model')
         args = None
         try:
@@ -104,7 +104,7 @@ class SemanticDependencyParserCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
-        parser.add_argument('--model_path', type=str, required=True, default=SDP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=SDP_JUMBO,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in conll format')
         args = None
