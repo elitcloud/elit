@@ -58,7 +58,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a NER tagger to decode raw text')
-        parser.add_argument('--model_path', type=str, required=True, default=NER_JUMBO,
+        parser.add_argument('--model_path', type=str, default=NER_JUMBO,
                             help='file path to the saved model')
         args = None
         try:
@@ -81,7 +81,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a NER tagger')
-        parser.add_argument('--model_path', type=str, required=True, default=NER_JUMBO,
+        parser.add_argument('--model_path', type=str, default=NER_JUMBO,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
         args = None
