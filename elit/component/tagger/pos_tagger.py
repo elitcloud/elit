@@ -46,12 +46,12 @@ class POSTagger(Tagger):
                 idx += 1
         return docs
 
-    def evaluate(self, docs: Sequence[Document], dropout=0, **kwargs):
+    def evaluate(self, docs: Sequence[Document], dropout=0, output_dir=tempfile.gettempdir(), **kwargs):
         print('test... ')
         with self.context:
             trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
             test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
-                                                tempfile.gettempdir(),
+                                                output_dir,
                                                 evaluation_method='accuracy',
                                                 embeddings_in_memory=False)
         print('Accuracy: %.2f%%' % (test_score * 100))
