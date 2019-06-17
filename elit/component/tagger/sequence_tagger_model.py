@@ -221,7 +221,7 @@ class SequenceTagger(nn.Block):
 
             return model
 
-    def forward(self, sentences: List[Sentence], embed_ctx=None) -> Tuple[nd.NDArray, nd.NDArray, List]:
+    def forward(self, sentences: List[Sentence], embed_ctx=None, dropout=None) -> Tuple[nd.NDArray, nd.NDArray, List]:
         """
 
         :param sentences:
@@ -292,6 +292,8 @@ class SequenceTagger(nn.Block):
 
             sentence_tensor = self.dropout(sentence_tensor)
 
+        if dropout:
+            sentence_tensor = nd.Dropout(sentence_tensor, dropout)
         features = self.linear(sentence_tensor)
         tags = nd.zeros((len(tag_list), lengths[0]), dtype='int32')
         for i, (t, l) in enumerate(zip(tag_list, lengths)):
@@ -456,7 +458,7 @@ class SequenceTagger(nn.Block):
         batches = [sentences[x:x + mini_batch_size] for x in range(0, len(sentences), mini_batch_size)]
 
         for batch in batches:
-            score, tag_seq = self._predict_scores_batch(batch)
+            score, tag_seq = self._predict_scores_batch(batch, dropout)
             predicted_id = tag_seq
             all_tokens = []
             for sentence in batch:
@@ -470,7 +472,7 @@ class SequenceTagger(nn.Block):
 
         return sentences
 
-    def _predict_scores_batch(self, sentences: List[Sentence]):
+    def _predict_scores_batch(self, sentences: List[Sentence], dropout=0):
         all_feats, tags, lengths = self.forward(sentences)
 
         overall_score = 0
