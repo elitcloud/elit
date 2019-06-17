@@ -46,7 +46,7 @@ class POSTagger(Tagger):
                 idx += 1
         return docs
 
-    def evaluate(self, docs: Sequence[Document], **kwargs):
+    def evaluate(self, docs: Sequence[Document], dropout=0, **kwargs):
         print('test... ')
         with self.context:
             trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
