@@ -225,7 +225,7 @@ class SequenceTaggerTrainer:
             print('done')
 
     def evaluate(self, evaluation: List[Sentence], out_path=None, evaluation_method: str = 'F1',
-                 embeddings_in_memory: bool = True):
+                 embeddings_in_memory: bool = True, dropout=0):
 
         tp = 0
         fp = 0
@@ -250,7 +250,7 @@ class SequenceTaggerTrainer:
                 sentence = sentence
 
                 # Step 3. Run our forward pass.
-                score, tag_seq = self.model.predict_scores(sentence)
+                score, tag_seq = self.model.predict_scores(sentence, dropout=dropout)
 
                 # Step 5. Compute predictions
                 predicted_id = tag_seq

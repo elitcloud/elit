@@ -429,8 +429,8 @@ class SequenceTagger(nn.Block):
 
         return alpha
 
-    def predict_scores(self, sentence: Sentence):
-        feats, tags, lengths = self.forward([sentence])
+    def predict_scores(self, sentence: Sentence, dropout=0):
+        feats, tags, lengths = self.forward([sentence], dropout=dropout)
         feats = feats[0]
         tags = tags[0]
         if self.use_crf:
