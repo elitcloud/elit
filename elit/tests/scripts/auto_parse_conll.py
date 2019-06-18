@@ -8,4 +8,5 @@ from elit.resources.pre_trained_models import POS_JUMBO
 tagger = POSTagger()
 model_path = POS_JUMBO
 tagger.load(model_path)
-print(tagger.evaluate(conll_to_documents('data/dat/en-ddr.tst', headers={1: 'text', 3: 'pos'})))
+print(tagger.evaluate(conll_to_documents('data/dat/en-ddr.trn', headers={1: 'text', 3: 'pos'}), output_dir='data/dat',
+                      dropout=0.1))
