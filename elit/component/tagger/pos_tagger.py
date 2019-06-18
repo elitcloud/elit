@@ -53,7 +53,7 @@ class POSTagger(Tagger):
             test_score, _, _ = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                                 output_dir,
                                                 evaluation_method='accuracy',
-                                                embeddings_in_memory=False)
+                                                embeddings_in_memory=False, dropout=dropout)
         print('Accuracy: %.2f%%' % (test_score * 100))
         return test_score
 

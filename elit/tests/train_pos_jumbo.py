@@ -48,9 +48,9 @@ if __name__ == '__main__':
     # 3. make the tag dictionary from the corpus
     tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
     print(tag_dictionary.idx2item)
-    model_path = 'data/model/pos/jumbo'
+    model_path = 'data/model/pos/jumbo-gluonfasttext-lm'
     with mx.Context(mxnet_prefer_gpu()):
-        train = True
+        train = False
         if train:
             embedding_types = [
                 WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
