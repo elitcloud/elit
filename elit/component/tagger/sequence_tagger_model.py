@@ -293,7 +293,7 @@ class SequenceTagger(nn.Block):
             sentence_tensor = self.dropout(sentence_tensor)
 
         if dropout:
-            sentence_tensor = nd.Dropout(sentence_tensor, dropout)
+            sentence_tensor = nd.Dropout(sentence_tensor, dropout, mode='always')
         features = self.linear(sentence_tensor)
         tags = nd.zeros((len(tag_list), lengths[0]), dtype='int32')
         for i, (t, l) in enumerate(zip(tag_list, lengths)):
