@@ -608,14 +608,7 @@ def download_friendly(url, path=None, prefix=RESOURCE_URL_PREFIX):
             print()
         except Exception as e:
             remove_file(tmp_path)
-            try:
-                if os.name != 'nt':
-                    os.system('wget {} -O {}'.format(url, tmp_path))
-                else:
-                    raise e
-            except:
-                eprint('Failed to download {}'.format(url))
-                return None
+            raise e
         remove_file(path)
         os.rename(tmp_path, path)
     return path

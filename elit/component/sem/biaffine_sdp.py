@@ -218,6 +218,7 @@ class BiaffineSDPParser(object):
             parser itself
         """
         config = _Config.load(os.path.join(path, 'config.pkl'))  # type:_Config
+        config.save_dir = path
         if debug:
             print(config)
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)

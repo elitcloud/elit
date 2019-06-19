@@ -3,6 +3,7 @@
 # Date: 2019-06-08 18:28
 from typing import Sequence
 
+from elit.component.dep.common.utils import fetch_resource
 from elit.component.nlp import NLPComponent
 from elit.component.sem.data import SDPDataLoader, conll_to_sdp_document
 from elit.component.sem.biaffine_sdp import BiaffineSDPParser
@@ -145,6 +146,7 @@ class SDPParser(NLPComponent):
 
     def load(self, model_path: str=SDP_JUMBO, **kwargs):
         parser = self._parser = BiaffineSDPParser()
+        model_path = fetch_resource(model_path)
         parser.load(model_path, self.context)
         return self
 
