@@ -48,7 +48,7 @@ if __name__ == '__main__':
         # 5. initialize sequence tagger
         USE_CRF = True
         train = True
-        model_path = 'data/model/ner/jumbo-crf'
+        model_path = 'data/model/ner/jumbo'
         if train:
             tagger: SequenceTagger = SequenceTagger(hidden_size=256,
                                                     embeddings=embeddings,
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                           learning_rate=0.1,
                           mini_batch_size=32,
                           embeddings_in_gpu=False,
-                          max_epochs=150)
+                          max_epochs=100)
 
         tagger = SequenceTagger.load(model_path, embeddings=embeddings)
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
