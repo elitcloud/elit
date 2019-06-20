@@ -17,7 +17,7 @@ import abc
 import inspect
 import os
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Sequence
 
 from elit.component.base import Component
 from pkg_resources import resource_filename
@@ -30,7 +30,7 @@ __author__ = "Jinho D. Choi, Gary Lai"
 
 
 class Tokenizer(Component):
-    def decode(self, input_text: str, init_offset: int = 0, segment: int = 2, **kwargs) -> Document:
+    def decode(self, input_text: str, init_offset: int = 0, segment: int = 2, **kwargs) -> Sequence[Document]:
         """
         :param input_text: the input text.
         :param init_offset: the initial offset of the first token.
@@ -59,7 +59,7 @@ class Tokenizer(Component):
                     else: document.add_sentences(self.segment(tokens, offsets))
 
         for i, sentence in enumerate(document.sentences): sentence[SID] = i
-        return document
+        return [document]
 
     @abc.abstractmethod
     def tokenize(self, input_text: str, init_offset: int = 0) -> Tuple[List[str], List[Tuple[int, int]]]:
