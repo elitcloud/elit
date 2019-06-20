@@ -9,7 +9,7 @@ from elit.component.sem.data import SDPDataLoader, conll_to_sdp_document
 from elit.component.sem.biaffine_sdp import BiaffineSDPParser
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.resources.pre_trained_models import SDP_JUMBO
-from elit.structure import Document, SEM
+from elit.structure import Document, SDP
 
 
 class SDPParser(NLPComponent):
@@ -109,7 +109,7 @@ class SDPParser(NLPComponent):
         vocab = self._parser._vocab
         for d in docs:
             for s in d:
-                s[SEM] = [[(0, vocab.id2rel(0))]] * len(s)  # placeholder
+                s[SDP] = [[(0, vocab.id2rel(0))]] * len(s)  # placeholder
         data_loader = SDPDataLoader(docs, num_buckets_test, self._parser._vocab)
         record = data_loader.idx_sequence
         parser = self._parser._parser
@@ -129,7 +129,7 @@ class SDPParser(NLPComponent):
         idx = 0
         for d in docs:
             for s in d:
-                s[SEM] = []
+                s[SDP] = []
                 arcs, rels = results[idx]
                 length = arcs.shape[0]
                 for i in range(1, length):
@@ -137,7 +137,7 @@ class SDPParser(NLPComponent):
                     for j in range(0, length):
                         if arcs[j, i]:
                             head_rel.append((j, data_loader.vocab.id2rel(int(rels[j, i].asscalar()))))
-                    s[SEM].append(head_rel)
+                    s[SDP].append(head_rel)
                 idx += 1
         return docs
 
