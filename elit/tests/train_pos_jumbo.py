@@ -51,6 +51,7 @@ if __name__ == '__main__':
     model_path = 'data/model/pos/jumbo'
     with mx.Context(mxnet_prefer_gpu()):
         train = True
+        use_crf = True
         if train:
             embedding_types = [
                 WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
@@ -64,8 +65,7 @@ if __name__ == '__main__':
                                     embeddings=embeddings,
                                     tag_dictionary=tag_dictionary,
                                     tag_type=tag_type,
-                                    use_crf=True)
-            tagger.save(model_path)
+                                    use_crf=use_crf)
             # 6. initialize trainer
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
