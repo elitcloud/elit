@@ -134,7 +134,7 @@ def setup_package():
         install_requires=[
             'argparse==1.4.0',
             'numpy==1.14.5',
-            'mxnet==1.4.0',
+            'mxnet-cu92==1.4.1',
             'gluonnlp==0.6.0',
             'tqdm==4.26.0',
             'gensim==3.6.0',
