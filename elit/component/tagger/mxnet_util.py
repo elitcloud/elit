@@ -7,14 +7,17 @@ import mxnet as mx
 
 
 def mxnet_prefer_gpu():
-    '''
-    If gpu available return gpu, else cpu
-    :return:
-    '''
-    if 'cuda' not in os.environ['PATH']:
-        return mx.cpu()
+    """If gpu available return gpu, else cpu
+
+    Returns
+    -------
+    context : Context
+        The preferable GPU context.
+    """
     gpu = int(os.environ.get('MXNET_GPU', default=0))
-    return mx.gpu(gpu)
+    if gpu in mx.test_utils.list_gpus():
+        return mx.gpu(gpu)
+    return mx.cpu()
 
 
 def mxnet_gpus():
