@@ -6,9 +6,9 @@ import sys
 
 from elit.cli import ComponentCLI
 from elit.component.dep.common.utils import _load_conll
-from elit.component.dep.dependency_parser import DependencyParser
+from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.component.tagger.corpus import conll_to_documents
-from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
 from elit.resources.pre_trained_models import POS_JUMBO, DEP_JUMBO
 from elit.structure import Document, Sentence
@@ -72,7 +72,7 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        dep_parser = DependencyParser()
+        dep_parser = DEPBiaffineParser()
         dep_parser.train(**args)
 
     @classmethod
@@ -87,9 +87,9 @@ class DependencyParserCLI(ComponentCLI):
             parser.print_help()
             exit(1)
 
-        this_module = DependencyParser()
+        this_module = DEPBiaffineParser()
         this_module.load(args.model_path)
-        pos_tagger = POSTagger()
+        pos_tagger = POSFlairTagger()
         pos_tagger.load(POS_JUMBO)
         components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:
@@ -115,6 +115,6 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        this_module = DependencyParser()
+        this_module = DEPBiaffineParser()
         this_module.load(args.model_path)
         this_module.evaluate(test_file=args.test_path)

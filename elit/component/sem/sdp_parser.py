@@ -12,7 +12,7 @@ from elit.resources.pre_trained_models import SDP_JUMBO
 from elit.structure import Document, SDP
 
 
-class SDPParser(NLPComponent):
+class SDPBiaffineParser(NLPComponent):
 
     def __init__(self, context=mxnet_prefer_gpu()) -> None:
         super().__init__()
@@ -158,7 +158,7 @@ class SDPParser(NLPComponent):
 
 if __name__ == '__main__':
     save_dir = 'data/model/sdp/jumbo'
-    parser = SDPParser()
+    parser = SDPBiaffineParser()
     parser.load(save_dir)
     docs = [conll_to_sdp_document('data/dat/en-ddr.debug.conll')]
     print(parser.evaluate(docs))

@@ -7,7 +7,7 @@ import sys
 
 from elit.cli import ComponentCLI
 from elit.component.tagger.corpus import conll_to_documents
-from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import Tokenizer, EnglishTokenizer
 from elit.resources.pre_trained_models import POS_JUMBO
 from elit.structure import Document, Sentence
@@ -48,7 +48,7 @@ class POSTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = POSTagger()
+        tagger = POSFlairTagger()
         tagger.train(**args)
 
     @classmethod
@@ -62,7 +62,7 @@ class POSTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = POSTagger()
+        tagger = POSFlairTagger()
         tagger.load(args.model_path)
         components = [EnglishTokenizer(), tagger]
         for line in sys.stdin:
@@ -87,6 +87,6 @@ class POSTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = POSTagger()
+        tagger = POSFlairTagger()
         tagger.load(args.model_path)
         tagger.evaluate(conll_to_documents(args.test_path, headers={0: 'text', 1: 'pos'}))

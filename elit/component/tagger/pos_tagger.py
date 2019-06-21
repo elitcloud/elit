@@ -14,7 +14,7 @@ from elit.resources.pre_trained_models import POS_JUMBO
 from elit.structure import Document, POS, SENS
 
 
-class POSTagger(Tagger):
+class POSFlairTagger(Tagger):
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
               pretrained_embeddings,
               forward_language_model=None,
@@ -84,7 +84,7 @@ class POSTagger(Tagger):
 
 
 if __name__ == '__main__':
-    tagger = POSTagger(context=mx.gpu(3))
+    tagger = POSFlairTagger(context=mx.gpu(3))
     model_path = 'data/model/pos/wsj'
     tagger.load(model_path)
     # tagger.train(conll_to_documents('data/dat/en-pos.dev', headers={0: 'text', 1: 'pos'}),

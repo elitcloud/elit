@@ -38,7 +38,7 @@ from elit.structure import Document, DEP
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 
 
-class DependencyParser(NLPComponent):
+class DEPBiaffineParser(NLPComponent):
     """
     An implementation of "Deep Biaffine Attention for Neural Dependency Parsing" Dozat and Manning (2016)
     """
@@ -265,7 +265,7 @@ if __name__ == '__main__':
     train = _load_conll('data/ptb/dep/train-debug.conllx')
     dev = _load_conll('data/ptb/dep/dev-debug.conllx')
     # _save_conll([dev], 'dev.conllx')
-    parser = DependencyParser()
+    parser = DEPBiaffineParser()
     model_path = 'data/model/ptb/dep-debug'
     parser.train([train], [dev], save_dir=model_path, train_iters=200,
                  pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), debug=True)

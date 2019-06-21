@@ -16,7 +16,7 @@
 
 __author__ = "Gary Lai"
 
-from elit.component.tagger.pos_tagger import POSTagger
-from elit.component.tagger.ner_tagger import NERTagger
-from elit.component.dep.dependency_parser import DependencyParser
-from elit.component.sem.sdp_parser import SDPParser
+from elit.component.tagger.pos_tagger import POSFlairTagger
+from elit.component.tagger.ner_tagger import NERFlairTagger
+from elit.component.dep.dependency_parser import DEPBiaffineParser
+from elit.component.sem.sdp_parser import SDPBiaffineParser

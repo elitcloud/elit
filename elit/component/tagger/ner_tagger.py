@@ -29,7 +29,7 @@ from elit.resources.pre_trained_models import NER_JUMBO
 from elit.structure import Document, NER, SENS
 
 
-class NERTagger(Tagger):
+class NERFlairTagger(Tagger):
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
               pretrained_embeddings,
               forward_language_model,
@@ -78,7 +78,7 @@ class NERTagger(Tagger):
 
 
 if __name__ == '__main__':
-    tagger = NERTagger(mx.gpu(3))
+    tagger = NERFlairTagger(mx.gpu(3))
     model_path = 'data/model/ner/jumbo'
     # tagger.train(conll_to_documents('data/conll-03/debug/eng.trn'), conll_to_documents('data/conll-03/debug/eng.dev'),
     #              model_path, pretrained_embeddings='data/embedding/glove/glove.6B.100d.debug.txt',

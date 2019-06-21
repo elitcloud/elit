@@ -6,7 +6,7 @@ import sys
 
 from elit.cli import ComponentCLI
 from elit.component.sem.sdp_component import SDPParser
-from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
 from elit.resources.pre_trained_models import POS_JUMBO, DEP_JUMBO, SDP_JUMBO
 from elit.structure import Document
@@ -87,7 +87,7 @@ class SemanticDependencyParserCLI(ComponentCLI):
 
         this_module = SDPParser()
         this_module.load(args.model_path)
-        pos_tagger = POSTagger()
+        pos_tagger = POSFlairTagger()
         pos_tagger.load(POS_JUMBO)
         components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:

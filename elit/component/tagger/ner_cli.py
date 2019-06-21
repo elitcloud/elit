@@ -7,7 +7,7 @@ import sys
 from elit.cli import ComponentCLI
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.embeddings import CharLMEmbeddings
-from elit.component.tagger.ner_tagger import NERTagger
+from elit.component.tagger.ner_tagger import NERFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
 from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD, NER_JUMBO
 from elit.structure import Document, Sentence, NER
@@ -52,7 +52,7 @@ class NERTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = NERTagger()
+        tagger = NERFlairTagger()
         tagger.train(**args)
 
     @classmethod
@@ -66,7 +66,7 @@ class NERTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = NERTagger()
+        tagger = NERFlairTagger()
         tagger.load(args.model_path)
         components = [EnglishTokenizer(), tagger]
         for line in sys.stdin:
@@ -90,6 +90,6 @@ class NERTaggerCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        tagger = NERTagger()
+        tagger = NERFlairTagger()
         tagger.load(args.model_path)
         tagger.evaluate(conll_to_documents(args.test_path, headers={0: 'text', 1: 'ner'}))

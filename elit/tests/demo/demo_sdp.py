@@ -1,14 +1,14 @@
 # -*- coding:utf-8 -*-
 # Author: hankcs
 # Date: 2019-05-30 18:24
-from elit.component import POSTagger, SDPParser
-from elit.component.dep.dependency_parser import DependencyParser
+from elit.component import POSFlairTagger, SDPBiaffineParser
+from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.resources.pre_trained_models import DEP_JUMBO
 from elit.tokenizer import EnglishTokenizer
 
-parser = SDPParser()
+parser = SDPBiaffineParser()
 parser.load()
-pos_tagger = POSTagger()
+pos_tagger = POSFlairTagger()
 pos_tagger.load()
 components = [EnglishTokenizer(), pos_tagger, parser]
 docs = 'Is this the future of chamber music ?'
