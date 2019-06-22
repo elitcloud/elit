@@ -123,25 +123,25 @@ def setup_package():
         name='elit',
         url='https://github.com/elitcloud/elit',
         download_url='https://github.com/elitcloud/elit/tree/master',
-        author='Jinho D. Choi',
+        author='Emory NLP',
         author_email='jinho.choi@emory.edu',
-        description='The Emory Language Information Toolkit (ELIT).',
+        description='ELIT: Evolution of Language and Information Technology',
         long_description=open('README.md', 'r').read(),
         long_description_content_type='text/markdown',
-        license='ALv2',
+        license='Apache 2.0',
         packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
         package_data={'': ['*.txt', '*.json']},
         install_requires=[
+            # 'mxnet-cu92==1.4.1',
             'argparse==1.4.0',
             'numpy==1.14.5',
-            'mxnet-cu92==1.4.1',
             'gluonnlp==0.6.0',
             'tqdm==4.26.0',
             'gensim==3.6.0',
             'marisa_trie==0.7.5',
         ],
         extras_require={
-          'cu92': ['mxnet-cu92==1.3.0']
+        #   'cu92': ['mxnet-cu92==1.3.0']
         },
         tests_require=[
             'pytest',
