@@ -185,7 +185,7 @@ class SequenceTagger(nn.Block):
             pickle_save(self.transitions, os.path.join(model_folder, 'transitions.pkl'))
 
     @classmethod
-    def load_from_file(cls, model_folder, context: mx.Context = None, embeddings=None, **kwargs):
+    def load_from_file(cls, model_folder, context: mx.Context = None, **kwargs):
         model_folder = fetch_resource(model_folder)
         if context is None:
             context = mxnet_prefer_gpu()
@@ -198,8 +198,7 @@ class SequenceTagger(nn.Block):
         config['embeddings'] = embeddings
         config['tag_dictionary'] = Dictionary.from_dict(config['tag_dictionary'])
         with context:
-            if not embeddings:
-                embeddings = StackedEmbeddings.from_list(config['embeddings'])
+            embeddings = StackedEmbeddings.from_list(config['embeddings'])
             model = SequenceTagger(
                 hidden_size=config['hidden_size'],
                 embeddings=embeddings,
