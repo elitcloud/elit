@@ -50,7 +50,8 @@ if __name__ == '__main__':
     print(tag_dictionary.idx2item)
     model_path = 'data/model/pos/jumbo'
     with mx.Context(mxnet_prefer_gpu()):
-        train = True
+        train = False
+        print(train)
         use_crf = True
         if train:
             embedding_types = [
@@ -74,4 +75,4 @@ if __name__ == '__main__':
                           embeddings_in_gpu=False)
         tagger = SequenceTagger.load(model_path)
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
-        print(trainer.evaluate(corpus.test, evaluation_method='accuracy'))
+        print(trainer.evaluate(corpus.test, evaluation_method='accuracy', embeddings_in_gpu=False))

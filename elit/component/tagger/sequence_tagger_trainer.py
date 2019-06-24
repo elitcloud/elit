@@ -185,7 +185,7 @@ class SequenceTaggerTrainer:
                         print('.. evaluating... dev... ')
                         dev_score, dev_fp, dev_result = self.evaluate(self.corpus.dev, base_path,
                                                                       evaluation_method=evaluation_method,
-                                                                      embeddings_in_memory=embeddings_in_gpu)
+                                                                      embeddings_in_gpu=embeddings_in_gpu)
                     else:
                         dev_fp = 0
                         dev_result = '_'
@@ -225,7 +225,7 @@ class SequenceTaggerTrainer:
             print('done')
 
     def evaluate(self, evaluation: List[Sentence], out_path=None, evaluation_method: str = 'F1',
-                 embeddings_in_memory: bool = True, dropout=0):
+                 embeddings_in_gpu: bool = True, dropout=0):
 
         tp = 0
         fp = 0
@@ -288,7 +288,7 @@ class SequenceTaggerTrainer:
 
                 lines.append('\n')
 
-            if not embeddings_in_memory:
+            if not embeddings_in_gpu:
                 self.clear_embeddings_in_batch(batch)
         cost_time = time.time() - start_time
         print('Speed: {0:.2f} sent/s'.format(len(evaluation) / cost_time))

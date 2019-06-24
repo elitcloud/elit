@@ -68,7 +68,7 @@ class NERFlairTagger(Tagger):
             test_score, test_fp, test_result = trainer.evaluate(NLPTaskDataFetcher.convert_elit_documents(docs),
                                                                 tempfile.gettempdir(),
                                                                 evaluation_method='span-F1',
-                                                                embeddings_in_memory=False)
+                                                                embeddings_in_gpu=False)
         print('TEST   \t%d\t' % test_fp + test_result)
         return test_score
 
