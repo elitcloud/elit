@@ -32,7 +32,8 @@ from elit.component.dep.common.savable import pickle_save, pickle_load, Savable
 from elit.component.tagger.corpus import Dictionary, Sentence, Token
 from elit.component.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.util.io import save_json
+from elit.util.io import save_json, load_json
+from elit.util.reflection import type_to_str, str_to_type
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
@@ -169,9 +170,14 @@ class SequenceTagger(nn.Block):
             'use_rnn': self.use_rnn,
             'rnn_layers': self.rnn_layers,
         }
-        config_path = os.path.join(model_folder, 'config.pkl')
-        with open(config_path, 'wb') as f:
-            pickle.dump(config, f)
+        # convert embedding type to str
+        embeddings = []
+        for classpath, param in config['embeddings']:
+            embeddings.append((type_to_str(classpath), param))
+        config['embeddings'] = embeddings
+        config['tag_dictionary'] = config['tag_dictionary'].to_dict()
+        config_path = os.path.join(model_folder, 'config.json')
+        save_json(config, config_path)
         # assert False, 'Config saved'
         model_path = os.path.join(model_folder, 'model.bin')
         self.save_parameters(model_path)
@@ -183,48 +189,32 @@ class SequenceTagger(nn.Block):
         model_folder = fetch_resource(model_folder)
         if context is None:
             context = mxnet_prefer_gpu()
-        config_path = os.path.join(model_folder, 'config.pkl')
-        with open(config_path, 'rb') as f:
-            config = pickle.load(f)  # type:dict
+        config_path = os.path.join(model_folder, 'config.json')
+        config = load_json(config_path)
+        # convert embedding str to type
+        embeddings = []
+        for classpath, param in config['embeddings']:
+            embeddings.append((str_to_type(classpath), param))
+        config['embeddings'] = embeddings
+        config['tag_dictionary'] = Dictionary.from_dict(config['tag_dictionary'])
+        with context:
+            if not embeddings:
+                embeddings = StackedEmbeddings.from_list(config['embeddings'])
+            model = SequenceTagger(
+                hidden_size=config['hidden_size'],
+                embeddings=embeddings,
+                tag_dictionary=config['tag_dictionary'],
+                tag_type=config['tag_type'],
+                use_crf=config['use_crf'],
+                use_rnn=config['use_rnn'],
+                rnn_layers=config['rnn_layers'])
+            # print(config)
+            model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=context)
+            if not model.use_crf:
+                model.transitions = pickle_load(os.path.join(model_folder, 'transitions.pkl'))  # type:nd.NDArray
+                model.transitions = model.transitions.as_in_context(context)
 
-            config['tag_dictionary'] = config['tag_dictionary'].to_dict()
-            save_json(config, os.path.join(model_folder, 'config.json'))
-            assert False, '{} json saved'.format(config_path)
-            with context:
-                if not embeddings:
-                    # embedding_types = [
-                    #
-                    #     WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-                    #
-                    #     # comment in this line to use character embeddings
-                    #     # CharacterEmbeddings(),
-                    #
-                    #     # comment in these lines to use contextual string embeddings
-                    #     # CharLMEmbeddings('{}data/model/lm-news-forward'.format(kwargs.get('word_embedding_path', '')),
-                    #     #                  context=context),
-                    #     # CharLMEmbeddings('{}data/model/lm-news-backward'.format(kwargs.get('word_embedding_path', '')),
-                    #     #                  context=context),
-                    # ]
-                    #
-                    # embeddings = StackedEmbeddings(embeddings=embedding_types)
-                    # config['embeddings'] = embeddings.to_list()
-                    # pickle_save(config, config_path)
-                    embeddings = StackedEmbeddings.from_list(config['embeddings'])
-                model = SequenceTagger(
-                    hidden_size=config['hidden_size'],
-                    embeddings=embeddings,
-                    tag_dictionary=config['tag_dictionary'],
-                    tag_type=config['tag_type'],
-                    use_crf=config['use_crf'],
-                    use_rnn=config['use_rnn'],
-                    rnn_layers=config['rnn_layers'])
-                # print(config)
-                model.load_parameters(os.path.join(model_folder, 'model.bin'), ctx=context)
-                if not model.use_crf:
-                    model.transitions = pickle_load(os.path.join(model_folder, 'transitions.pkl'))  # type:nd.NDArray
-                    model.transitions = model.transitions.as_in_context(context)
-
-            return model
+        return model
 
     def forward(self, sentences: List[Sentence], embed_ctx=None, dropout=None) -> Tuple[nd.NDArray, nd.NDArray, List]:
         """
