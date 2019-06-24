@@ -58,6 +58,7 @@ def read_concat_word_dict(filename) -> dict:
     :param filename: the name of the file containing one key per line.
     :return: a dictionary whose key is the concatenated word and value is the list of split points.
     """
+
     def key_value(line):
         l = [i for i, c in enumerate(line) if c == ' ']
         l = [i - o for o, i in enumerate(l)]
@@ -187,6 +188,16 @@ def merge_args_with_config(args) -> dict:
                     args[k] = v
             # args = parser.parse_args(' '.join('--{} {}'.format(k, v) for k, v in args.items()))
     return args
+
+
+def save_json(item, path):
+    with open(path, 'w') as out:
+        json.dump(item, out, ensure_ascii=False, indent=2)
+
+
+def load_json(path):
+    with open(path) as src:
+        return json.load(src)
 
 
 if __name__ == '__main__':
