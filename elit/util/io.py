@@ -190,9 +190,9 @@ def merge_args_with_config(args) -> dict:
     return args
 
 
-def save_json(item, path):
+def save_json(item: dict, path: str, ensure_ascii=False):
     with open(path, 'w') as out:
-        json.dump(item, out, ensure_ascii=False, indent=2)
+        json.dump(item, out, ensure_ascii=ensure_ascii, indent=2)
 
 
 def load_json(path):

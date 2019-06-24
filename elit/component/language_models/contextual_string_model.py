@@ -19,6 +19,7 @@ from elit.component.tagger.corpus import Dictionary, TextCorpus
 from elit.component.tagger.lm_config import LanguageModelConfig
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.component.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
+from elit.util.io import save_json, load_json
 
 
 class ContextualStringModel(nn.Block):
@@ -133,7 +134,8 @@ class ContextualStringModel(nn.Block):
     @classmethod
     def load_language_model(cls, model_file, context: mx.Context = None):
         realpath = fetch_resource(model_file)
-        config = LanguageModelConfig.load(os.path.join(realpath, 'config.pkl'))
+        config = LanguageModelConfig.from_dict(
+            load_json(os.path.join(realpath, 'config.json')))  # type: LanguageModelConfig
         with context:
             model = ContextualStringModel(config.dictionary,
                                           config.is_forward_lm,
@@ -173,7 +175,7 @@ class ContextualStringModel(nn.Block):
 
     def save(self, file):
         config = LanguageModelConfig(
-            dictionary=self.dictionary,
+            dictionary=self.dictionary.to_dict(),
             is_forward_lm=self.is_forward_lm,
             hidden_size=self.hidden_size,
             nlayers=self.nlayers,
@@ -182,7 +184,7 @@ class ContextualStringModel(nn.Block):
             dropout=self.dropout
         )
         make_sure_path_exists(file)
-        config.save(os.path.join(file, 'config.pkl'))
+        save_json(config.to_dict(), os.path.join(file, 'config.json'))
         self.save_parameters(os.path.join(file, 'model.bin'))
 
     def init_hidden(self, mini_batch_size) -> nd.NDArray:
