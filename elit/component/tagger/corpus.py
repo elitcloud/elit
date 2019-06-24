@@ -358,6 +358,7 @@ class Dictionary:
         dst = Dictionary()
         dst.idx2item = src['idx2item']
         dst.item2idx = src['item2idx']
+        return dst
 
 
 class TextCorpus(object):
