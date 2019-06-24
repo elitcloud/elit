@@ -15,8 +15,8 @@ CUDA Environment
 
 ELIT requires the following `CUDA <https://developer.nvidia.com/cuda-toolkit>`_ environment:
 
-* Supported Versions of the CUDA Toolkit: `8.0 <https://developer.nvidia.com/cuda-80-download-archive>`_, `9.0 <https://developer.nvidia.com/cuda-90-download-archive>`_, `9.2 <https://developer.nvidia.com/cuda-92-download-archive>`_, `10.0 <https://developer.nvidia.com/cuda-10.0-download-archive>`_, `10.1 <https://developer.nvidia.com/cuda-10.1-download-archive>`_.
-* CUDA Deep Neural Network Library: `cuDNN <https://developer.nvidia.com/cudnn>`_.
+* Supported versions of the CUDA Toolkit: `8.0 <https://developer.nvidia.com/cuda-80-download-archive>`_, `9.0 <https://developer.nvidia.com/cuda-90-download-archive>`_, `9.2 <https://developer.nvidia.com/cuda-92-download-archive>`_, `10.0 <https://developer.nvidia.com/cuda-10.0-download-archive>`_, `10.1 <https://developer.nvidia.com/cuda-10.1-download-archive>`_.
+* CUDA Deep Neural Network library: `cuDNN <https://developer.nvidia.com/cudnn>`_.
 
 The followings show how to install the `CUDA Toolkit 10.1 <https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork>`_ on Ubuntu 18.04:
 
@@ -75,15 +75,15 @@ The followings show how to setup a virtualenv using Python 3.6:
 MXNet Installation
 ------------------
 
-ELIT uses `MXNet <https://mxnet.incubator.apache.org>`_ to develop deep learning models.
-The followings show how to install `MXNet 1.4.1 <https://mxnet.incubator.apache.org/versions/master/install/index.html?platform=Linux&language=Python&processor=GPU>`_ for CUDA 10.1:
+ELIT uses `Apache MXNet <https://mxnet.incubator.apache.org>`_ to develop deep learning models.
+The followings show how to install `MXNet 1.4.1 <https://mxnet.incubator.apache.org/versions/master/install/index.html?platform=Linux&language=Python&processor=GPU>`_ based on `CUDA Toolkit 10.1 <https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork>`_:
 
 .. code-block:: console
 
    (.elit) $ pip install mxnet-cu101
-   (.elit) $ pip show mxnet
-   Name: mxnet
-   Version: 1.4.0
+   (.elit) $ pip show mxnet-cu101
+   Name: mxnet-cu101
+   Version: 1.4.1
 
 ------------------
 ELIT Installation
@@ -94,3 +94,5 @@ Finally, the followings show how to install the latest version of ELIT:
 .. code-block:: console
 
    (.elit) $ pip install elit
+   Name: elit
+   Version: 0.2.0

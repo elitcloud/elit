@@ -1,11 +1,11 @@
-Available Models
+Pre-trained Models
 ======================================================
 
 All models take the following naming convention:
 
 .. code-block:: text
 
-   [team]-[task]-[method]-[language]-[training_data]*
+   [team]_[task]_[method]_[language]_[training_data]*
 
 * ``team``: the team who developed this model.
 * ``task``: the task that this model is developed for.
@@ -25,3 +25,5 @@ All models take the following naming convention:
    :caption: Datasets
 
    english_datasets
+
+
