@@ -347,6 +347,18 @@ class Dictionary:
                         d.add_item(c)
         return d
 
+    def to_dict(self):
+        return {
+            'idx2item': self.idx2item,
+            'item2idx': self.item2idx
+        }
+
+    @staticmethod
+    def from_dict(src):
+        dst = Dictionary()
+        dst.idx2item = src['idx2item']
+        dst.item2idx = src['item2idx']
+
 
 class TextCorpus(object):
     def __init__(self, path, dictionary: Dictionary = None, forward: bool = True, character_level: bool = True):

@@ -32,6 +32,7 @@ from elit.component.dep.common.savable import pickle_save, pickle_load, Savable
 from elit.component.tagger.corpus import Dictionary, Sentence, Token
 from elit.component.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.io import save_json
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
@@ -185,6 +186,10 @@ class SequenceTagger(nn.Block):
         config_path = os.path.join(model_folder, 'config.pkl')
         with open(config_path, 'rb') as f:
             config = pickle.load(f)  # type:dict
+
+            config['tag_dictionary'] = config['tag_dictionary'].to_dict()
+            save_json(config, os.path.join(model_folder, 'config.json'))
+            assert False, '{} json saved'.format(config_path)
             with context:
                 if not embeddings:
                     # embedding_types = [
