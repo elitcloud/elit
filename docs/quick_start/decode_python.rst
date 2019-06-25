@@ -55,6 +55,6 @@ The followings show how to import models for ``pos``, ``ner``, ``dep``, and ``sd
    dep.load(ELIT_DEP_BIAFFINE_EN_MIXED)
    sdp.load(ELIT_SDP_BIAFFINE_EN_MIXED)
 
-The ``load`` function supports paths from both local and remote directories.
-
+The ``load`` function takes a path from either a local directory or a remote file.
+When the remote file is specified (e.g., `elit_pos_flair_en_mixed_*.zip <https://s3.console.aws.amazon.com/s3/object/elit-models/elit_pos_flair_en_mixed_20190626.zip?region=us-east-1&tab=overview>`_), it uncompresses all files under ``~/.elit/models`` such that the above code will generate the following files under the home directory:
 
