@@ -635,7 +635,11 @@ def unzip(path, folder=None, remove_zip=True):
 
 
 def fetch_resource(path: str, auto_unzip=True):
-    if path.startswith(RESOURCE_URL_PREFIX):
+    if os.path.isdir(path):
+        return path
+    elif os.path.isfile(path):
+        pass
+    elif path.startswith(RESOURCE_URL_PREFIX):
         realpath = path_from_url(path, parent=False)
         if realpath.endswith('.zip'):
             realpath = realpath[:-len('.zip')]
