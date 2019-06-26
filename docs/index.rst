@@ -20,6 +20,7 @@ ELIT is under the `Apache 2 <http://www.apache.org/licenses/LICENSE-2.0>`_ licen
    quick_start/install
    quick_start/decode_webapi
    quick_start/decode_python
+   quick_start/train_cli
 
 
 .. toctree::
