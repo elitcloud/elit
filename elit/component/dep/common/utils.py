@@ -634,12 +634,19 @@ def unzip(path, folder=None, remove_zip=True):
     return folder
 
 
-def fetch_resource(path: str, auto_unzip=True):
+def fetch_resource(path: str, auto_unzip=True, root=os.path.join(elit_data_dir(), 'models')):
+    """
+    Fetch real path for a resource (model, corpus, whatever)
+    :param path: the general path (can be a url or a real path)
+    :param auto_unzip: whether to unzip it if it's a zip file
+    :param root:
+    :return: the real path to the resource
+    """
     if os.path.isdir(path):
         return path
     elif os.path.isfile(path):
         pass
-    elif path.startswith(RESOURCE_URL_PREFIX):
+    elif path.startswith('http:') or path.startswith('https:'):
         realpath = path_from_url(path, parent=False)
         if realpath.endswith('.zip'):
             realpath = realpath[:-len('.zip')]
