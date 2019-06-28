@@ -13,17 +13,11 @@ All models take the following naming convention:
 * ``language``: the input language (`ISO 639-1 <https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes>`_; use ``un`` for universal models).
 * ``training_data``: the training data used to build this model (if applicable).
 
-
 .. toctree::
    :maxdepth: 1
    :caption: Models
 
    english_models
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Datasets
-
    english_datasets
 
 

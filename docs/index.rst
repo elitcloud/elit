@@ -12,26 +12,14 @@ ELIT is under the `Apache 2 <http://www.apache.org/licenses/LICENSE-2.0>`_ licen
 
 * Latest release: `0.2.0 <documentation/release.html#0.2>`_.
 
-
 .. toctree::
    :maxdepth: 1
    :caption: Quick Start
 
    quick_start/install
-   quick_start/decode_webapi
    quick_start/decode_python
+   quick_start/decode_webapi
    quick_start/train_cli
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Documentation
-
-   documentation/models
-   documentation/release
-   documentation/structures
-   documentation/formats
-
 
 .. toctree::
    :maxdepth: 1
@@ -43,11 +31,24 @@ ELIT is under the `Apache 2 <http://www.apache.org/licenses/LICENSE-2.0>`_ licen
    tools/named_entity_recognition
    tools/dependency_parsing
    tools/semantic_dependency_parsing
-   tools/coreference_resolution
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Documentation
+
+   documentation/release
+   documentation/models
+   documentation/structures
+   documentation/formats
+   documentation/apidocs
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API Reference
 
 
-References
-----------
+Media
+-----
 
 * `Chalk talk <https://reinvent2018.lanyonevents.com/connect/sessionDetail.ww?SESSION_ID=88736>`_ about the ELIT framework presented at AWS re:Invent 2018.
 * `Live interview <https://www.youtube.com/watch?v=ZsgFqE4cV38>`_ about the ELIT project by Twitch.

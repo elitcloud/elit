@@ -26,8 +26,6 @@
 
 | Model ID | PRE | DATA | EVAL | BM |
 |----------|:---:|:----:|:----:|:--:|
-| [elit_pos_cnn_en_mixed](../tools/part_of_speech_tagging.html#cnn-tagger)     | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | |
-| [elit_pos_rnn_en_mixed](../tools/part_of_speech_tagging.html#rnn-tagger)     | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.xx | | 
 | [elit_pos_flair_en_mixed](../tools/part_of_speech_tagging.html#flair-tagger) | [tokseg](#tokenization) | [Mixed](english_datasets.html#mixed) | 97.80 | 97.72 |
 
 * EVAL: accuracy.
@@ -38,12 +36,10 @@
 
 | Model ID | PRE | DATA | EVAL | BM |
 |----------|:---:|:----:|:----:|:--:|
-| [elit_ner_cnn_en_ontonotes](../tools/named_entity_recognition.html#cnn-tagger)     | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 87.xx | |
-| [elit_ner_rnn_en_ontonotes](../tools/named_entity_recognition.html#rnn-tagger)     | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 86.xx | |
 | [elit_ner_flair_en_ontonotes](../tools/named_entity_recognition.html#flair-tagger) | [tokseg](#tokenization) | [OntoNotes](english_datasets.html#ontonotes) | 88.75 | 92.74 | 
 
 * EVAL: F1-score.
-* BM: F1-score on the English dataset distributed by the [CoNLL'03 shared task](https://www.clips.uantwerpen.be/conll2003/ner/).
+* BM: F1-score on the English dataset distributed by the [CoNLL 2003 shared task](https://www.clips.uantwerpen.be/conll2003/ner/).
 
 
 ## Dependency Parsing
@@ -57,7 +53,17 @@
 and the [Stanford typed dependencies](https://nlp.stanford.edu/software/stanford-dependencies.html).
 
 
-## Coreference Resolution
+## Semantic Dependency Parsing
+
+| Model ID | PRE | DATA | EVAL | BM |
+|----------|:---:|:----:|:----:|:--:|
+| [elit_sdp_biaffine_en_mixed](../tools/semantic_dependency_parsing.html#biaffine-parser) | [&#10035;-pos-&#10035;-en-inmixed](#part-of-speech-tagging) | [Mixed](english_datasets.html#mixed) | ? | 90.68/85.34 |  
+
+* EVAL: Labeled F1 score.
+* BM: Average labeled F1 scores on the in-domain and out-of-domain test sets distributed by the [SemEval 2015 shared task](http://alt.qcri.org/semeval2015/task18/).
+
+
+<!--## Coreference Resolution
 
 | Model ID | PRE | DATA | EVAL |
 |----------|:---:|:----:|:----:|
@@ -65,7 +71,7 @@ and the [Stanford typed dependencies](https://nlp.stanford.edu/software/stanford
 
 * EVAL: F1-scores of MUC/B3/CEAF.
 * CoNLL12: the English dataset distributed by the [CoNLL'12 shared task](http://conll.cemantix.org/2012/).
-
+-->
 
 <!--
 ## Sentiment Analysis

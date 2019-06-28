@@ -1,16 +1,23 @@
-Decode with Web API
-===================
+Decode with Web APIs
+====================
 
-ELIT provides web API that allows anyone to decode raw text into NLP structures using its `built-in models <models.html>`_.
-The web API does not require the `ELIT installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
+ELIT provides web APIs to decode raw text into NLP structures using `pre-trained models <../documentation/models.html>`_.
+The web APIs do not require `installation <install.html>`_ and can be used by any programming language that supports HTTP request/response.
 
 
+Decode via HTTP
 ---------------
-Single Document
----------------
 
-The following codes take an input document and run the NLP pipeline for
-tokenization, named entity recognition, part-of-speech tagging , morphological analysis, dependency parsing, and coreference resolution using the default parameters:
+The followings show how to send a list of documents to ELIT and receive the `NLP output`_ consisting of decoding results from 6 models:
+
+* Tokenization: `elit_tok_lexrule_en <../tools/tokenization.html#english-tokenizer>`_
+* Morphological analysis: `elit_morph_lexrule_en <../tools/morphological_analysis.html#english-analyzer>`_
+* Part-Of-Speech tagging: `elit_pos_flair_en_mixed <../tools/part_of_speech_tagging.html#flair-tagger>`_
+* Named Entity recognization: `elit_ner_flair_en_ontonotes <../tools/named_entity_recognition.html#flair-tagger>`_
+* Dependency parsing: `elit_dep_biaffine_en_mixed <../tools/dependency_parsing.html#biaffine-parser>`_
+* Semantic dependency parsing: `elit_sdp_biaffine_en_mixed <../tools/semantic_dependency_parsing.html#biaffine-parser>`_
+
+Take a look at the individual model page for more details and their parameter settings.
 
 .. tabs::
 
@@ -20,20 +27,21 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
 
          import requests
 
-         url = 'https://elit.cloud/api/public/decode/doc'
+         url = 'https://elit.cloud/api/public/decode/raw'
 
-         doc = 'Jinho Choi is a professor at Emory University in Atlanta, GA. ' \
-               'Dr. Choi started the Emory NLP Research Group in 2014. ' \
-               'He is the founder of the ELIT project.'
+         docs = [
+             'Emory University is a private research university in Atlanta, Georgia. The university is ranked 21st nationally according to U.S. News.',
+             'Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.']
 
          models = [
              {'model': 'elit_tok_lexrule_en'},
-             {'model': 'elit_ner_bilstm_en_ontonotes'},
-             {'model': 'elit_pos_bilstm_en_mixed'},
+             {'model': 'elit_pos_flair_en_mixed'},
              {'model': 'elit_morph_lexrule_en'},
-             {'model': 'uw_coref_e2e_en_ontonotes'}]
+             {'model': 'elit_ner_flair_en_ontonotes'},
+             {'model': 'elit_dep_biaffine_en_mixed'},
+             {'model': 'elit_sdp_biaffine_en_mixed'}]
 
-         request = {'input': doc, 'models': models}
+         request = {'input': docs, 'models': models}
          r = requests.post(url, json=request)
          print(r.text)
 
@@ -53,22 +61,22 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
          {
              public static void main(String[] args) throws Exception
              {
-                 HttpPost post = new HttpPost("https://elit.cloud/api/public/decode/doc");
+                 HttpPost post = new HttpPost("https://elit.cloud/api/public/decode/raw");
                  HttpClient client = HttpClientBuilder.create().build();
 
-                 String doc = "Jinho Choi is a professor at Emory University in Atlanta, GA. " +
-                              "Dr. Choi started the Emory NLP Research Group in 2014. " +
-                              "He is the founder of the ELIT project.";
+                 String docs = String.format("["\%s\", "\%s\"]",
+                     "Emory University is a private research university in Atlanta, Georgia. The university is ranked 21st nationally according to U.S. News.",
+                     "Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.");
 
-                 String models = "[" +
-                         "{\"model\": \"elit-tok-lexrule-en\"}," +
-                         "{\"model\": \"elit-ner-flair-en-ontonotes\"}," +
-                         "{\"model\": \"elit-pos-flair-en-mixed\"}," +
-                         "{\"model\": \"elit-morph-lexrule-en\"}," +
-                         "{\"model\": \"elit-dep-biaffine-en-mixed\"}," +
-                         "{\"model\": \"uw-coref-e2e-en-ontonotes\"}]";
+                 String models = String.format("[{\"model\": \"%s\"}, {\"model\": \"%s\"}, {\"model\": \"%s\"}, {\"model\": \"%s\"}, {\"model\": \"%s\"}, {\"model\": \"%s\"}]",
+                     "elit_tok_lexrule_en",
+                     "elit_pos_flair_en_mixed",
+                     "elit_morph_lexrule_en",
+                     "elit_ner_flair_en_ontonotes",
+                     "elit_dep_biaffine_en_mixed",
+                     "elit_sdp_biaffine_en_mixed");
 
-                 String request = "{\"input\": " + doc + ", \"models\": " + models + "}";
+                 String request = "{\"input\": " + docs + ", \"models\": " + models + "}";
 
                  post.setEntity(new StringEntity(request, ContentType.create("application/json")));
                  HttpResponse response = client.execute(post);
@@ -83,51 +91,17 @@ tokenization, named entity recognition, part-of-speech tagging , morphological a
          <dependency>
              <groupId>org.apache.httpcomponents</groupId>
              <artifactId>httpclient</artifactId>
-             <version>4.5.6</version>
+             <version>4.5.9</version>
          </dependency>
 
-   .. tab:: Ruby
 
-      .. code-block:: ruby
+NLP Output
+----------
 
-         text = 'Jinho Choi is a professor at Emory University in Atlanta, GA. ' \
-                'Dr. Choi started the Emory NLP Research Group in 2014. ' \
-                'He is the founder of the ELIT project.'
+The followings show the printed output of the above code:
 
-   .. tab:: Node.js
+.. code:: python
 
-      .. code-block:: javascript
+   To be filled
 
-         text = 'Jinho Choi is a professor at Emory University in Atlanta, GA. ' +
-                'Dr. Choi started the Emory NLP Research Group in 2014. ' +
-                'He is the founder of the ELIT project.'
-
-The following shows the output in the JSON format (see the `output format <../documentation/output_format.html>`_ for more details):
-
-.. code-block:: json
-
-   {"sens":
-      [{"sen_id": 0,
-        "tok": ["Jinho", "Choi", "is", "a", "professor", "at", "Emory", "University", "."],
-        "ner": [[0, 2, "PERSON"], [6, 8, "ORG"]],
-        "pos": ["NNP", "NNP", "VBZ", "DT", "NN", "IN", "NNP", "NNP", "."],
-        "mor": [[("jinho", "NN")], [("choi", "NN")], [("be", "VB"), ("", "I_3PS")],
-                [("a", "DT")], [ ("pro+", "P"), ("fess", "VB"), ("+or", "N_ER")],
-                [("at", "IN")], [("emory", 'NN')], [("university", "NN")], [(".", "PU")]],
-        "dep": [[1, "compound"], [2, "nsbj"], [4, "cop"], [4, "det"], [-1, "root"],
-                [7, "case"], [7, "compound"], [4, "ppmod"], [4,"punct"]]},
-       {"sen_id": 1,
-        "tok": ["He","is","the","director","of","EmoryNLP","in","Atlanta",",","GA","."], ...},
-       {"sen_id": 2,
-        "tok": ["Dr.","Choi","is","happy","to","be","at","AWS","re:Invent","2018","."], ...}],
-     "coref": [{[0, 0, 2], [1, 0, 1], [2, 0, 2]}]}
-
-
-See the `available models <models.html>`_ for the list of all built-in models and their parameter settings.
-
-
-------------------
-Multiple Documents
-------------------
-
-To be filled.
+See the `Formats <../documentation/formats.html>`_ page for more details about how the decoding results are added to `Document <../documentation/structures.html#document>`_.

@@ -1,13 +1,13 @@
-Decode with Python API
-======================
+Decode with Python APIs
+=======================
 
-Once ELIT is `installed <install.html>`_, NLP components can be used to decode raw text into linguistic structures.
+Once ELIT is `installed <install.html>`_, NLP components can be used to decode raw text into NLP structures.
 
 
-Create NLP Pipeline
--------------------
+Create NLP Tools
+----------------
 
-The followings show how to create an NLP pipeline with 6 core components:
+The followings show how to create NLP tools for 6 core components:
 
 .. code:: python
 
@@ -25,7 +25,7 @@ The followings show how to create an NLP pipeline with 6 core components:
    dep = DEPBiaffineParser()
    sdp = SDPBiaffineParser()
 
-   tools = [tok, morph, pos, ner, dep, sdp]
+   tools = [tok, pos, morph, ner, dep, sdp]
 
 Take a look at the individual tool page for more details about available components:
 
@@ -59,9 +59,8 @@ The ``load`` function takes two parameters, ``model_path`` and ``model_root``:
 
 * ``model_path`` indicates either the name of the model (e.g., ``elit_pos_flair_en_mixed_20190626``) or a public URL to the model file compressed in the zip format (e.g., https://elit-models.s3-us-west-2.amazonaws.com/elit_pos_flair_en_mixed_20190626.zip).
 * ``model_root`` indicates the root directory in the local machine where all models are saved, and has the default value of ``~/.elit/models/``.
-
-If ``model_path`` points to an URL, this function downloads the remote file and unzips it under the directory indicated by ``model_root``, which will create a directory with the same model name (e.g., ``~/.elit/models/elit_pos_flair_en_mixed_20190626/``).
-Each model directory has the configuration file, ``config.json``, that may indicate dependencies to other models, in which case, it will recursively download all necessary models and uncompresses them under the ``model_root`` directory (see the `Train with CLI <train_cli.html>`_ page for more details about how models are saved).
+* If ``model_path`` points to an URL, this function downloads the remote file and unzips it under the directory indicated by ``model_root``, which will create a directory with the same model name (e.g., ``~/.elit/models/elit_pos_flair_en_mixed_20190626/``).
+* Each model directory has the configuration file, ``config.json``, that may indicate dependencies to other models, in which case, it will recursively download all necessary models and unzip them under ``model_root`` (see `Train with CLI <train_cli.html>`_ for more details about how models are saved).
 
 
 Prepare Raw Text
@@ -73,16 +72,15 @@ The followings show how to prepare raw text for decoding:
 
    docs = [
        'Emory University is a private research university in Atlanta, Georgia. The university is ranked 21st nationally according to U.S. News.',
-       'Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.'
-   ]
+       'Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.']
 
 ELIT accepts a list of strings as input, where each string represents a document such that there are two documents in ``docs``.
 
 
-Decode with NLP Pipeline
+Decode with NLP Tools
 ------------------------
 
-Finally, the followings show how to decode the raw text with the NLP pipeline:
+Finally, the followings show how to decode the raw text with the NLP tools:
 
 .. code:: python
 
@@ -118,17 +116,16 @@ The followings put all the codes together:
    dep = DEPBiaffineParser().load(ELIT_DEP_BIAFFINE_EN_MIXED)
    sdp = SDPBiaffineParser().load(ELIT_SDP_BIAFFINE_EN_MIXED)
 
-   tools = [tok, morph, pos, ner, dep, sdp]
+   tools = [tok, pos, morph, ner, dep, sdp]
 
    docs = [
        'Emory University is a private research university in Atlanta, Georgia. The university is ranked 21st nationally according to U.S. News.',
-       'Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.'
-   ]
+       'Emory University was founded in 1836 by the Methodist Episcopal Church. It was named in honor of John Emory who was a Methodist bishop.']
 
    for tool in tools:
        docs = tool.decode(docs)
 
-    print(docs)
+   print(docs)
 
 
 NLP Output
@@ -136,7 +133,7 @@ NLP Output
 
 The followings show the printed output of the above code:
 
-.. code:: json
+.. code:: python
 
    To be filled
 
