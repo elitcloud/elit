@@ -22,7 +22,7 @@ from typing import List, Tuple, Sequence, Union
 from elit.component.base import Component
 from pkg_resources import resource_filename
 
-from elit.structure import TOK, OFF, Document, Sentence, SID
+from elit.structure import TOK, OFF, Document, Sentence, SID, DOC_ID
 from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *
 
@@ -42,10 +42,16 @@ class Tokenizer(Component):
         if isinstance(input_text, str):
             return self._tokenize_str(input_text, init_offset, segment)
         else:
-            return [self._tokenize_str(text, init_offset, segment) for text in input_text]
+            docs = []
+            for idx, text in enumerate(input_text):
+                doc = self._tokenize_str(text, init_offset, segment)
+                doc[DOC_ID] = idx
+                docs.append(doc)
+            return docs
 
-    def _tokenize_str(self, input_text, init_offset, segment):
+    def _tokenize_str(self, input_text, init_offset, segment) -> Document:
         document = Document()
+        document[DOC_ID] = 0
         if segment == 0:
             tokens, offsets = self.tokenize(input_text, init_offset)
             document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
