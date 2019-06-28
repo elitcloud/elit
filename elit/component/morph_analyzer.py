@@ -159,6 +159,7 @@ class EnglishMorphAnalyzer(NLPComponent):
         for doc in docs:
             for sen in doc:
                 sen[MORPH] = [self.analyze(token, pos, derivation, prefix) for token, pos in zip(sen.tokens, sen.part_of_speech_tags)]
+        return docs
 
     def save(self, **kwargs):
         pass
