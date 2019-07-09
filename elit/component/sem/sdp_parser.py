@@ -136,7 +136,9 @@ class SDPBiaffineParser(NLPComponent):
                     head_rel = []
                     for j in range(0, length):
                         if arcs[j, i]:
-                            head_rel.append((j, data_loader.vocab.id2rel(int(rels[j, i].asscalar()))))
+                            head = j
+                            rel = data_loader.vocab.id2rel(int(rels[j, i].asscalar()))
+                            head_rel.append((head, rel))
                     s[SDP].append(head_rel)
                 idx += 1
         return docs
