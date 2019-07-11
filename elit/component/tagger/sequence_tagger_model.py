@@ -186,7 +186,7 @@ class SequenceTagger(nn.Block):
 
     @classmethod
     def load_from_file(cls, model_folder, context: mx.Context = None, model_root=None, **kwargs):
-        model_folder = fetch_resource(model_folder, model_root)
+        model_folder = fetch_resource(model_folder, model_root=model_root)
         if context is None:
             context = mxnet_prefer_gpu()
         config_path = os.path.join(model_folder, 'config.json')

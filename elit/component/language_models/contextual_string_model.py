@@ -133,7 +133,7 @@ class ContextualStringModel(nn.Block):
 
     @classmethod
     def load_language_model(cls, model_file, context: mx.Context = None, model_root=None):
-        realpath = fetch_resource(model_file, model_root)
+        realpath = fetch_resource(model_file, model_root=model_root)
         config = LanguageModelConfig.from_dict(
             load_json(os.path.join(realpath, 'config.json')))  # type: LanguageModelConfig
         with context:

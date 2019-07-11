@@ -161,6 +161,7 @@ class SDPBiaffineParser(NLPComponent):
 if __name__ == '__main__':
     save_dir = 'data/model/sdp/jumbo'
     parser = SDPBiaffineParser()
-    parser.load(save_dir)
     docs = [conll_to_sdp_document('data/dat/en-ddr.debug.conll')]
+    parser.train(docs, docs, model_path=save_dir)
+    parser.load(save_dir)
     print(parser.evaluate(docs))

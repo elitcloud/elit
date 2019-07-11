@@ -566,9 +566,9 @@ def _load_conll(path) -> Document:
     return Document({SENS: sents})
 
 
-def download_friendly(url, path=None, prefix=RESOURCE_URL_PREFIX):
+def download_friendly(url, path=None, model_root=elit_data_dir(), prefix=RESOURCE_URL_PREFIX):
     if not path:
-        path = path_from_url(url, prefix)
+        path = path_from_url(url, prefix, model_root=model_root)
         os.makedirs(path, exist_ok=True)
     if os.path.isfile(path):
         print('Using local {}, ignore {}'.format(path, url))
@@ -627,6 +627,7 @@ def path_from_url(url, prefix=RESOURCE_URL_PREFIX, parent=True, model_root=elit_
 def unzip(path, folder=None, remove_zip=True):
     if folder is None:
         folder = os.path.dirname(path)
+    print('Extracting {} to {}'.format(path, folder))
     with zipfile.ZipFile(path, "r") as archive:
         archive.extractall(folder)
     if remove_zip:
@@ -650,11 +651,14 @@ def fetch_resource(path: str, auto_unzip=True, model_root=os.path.join(elit_data
         pass
     elif path.startswith('http:') or path.startswith('https:'):
         realpath = path_from_url(path, parent=False, model_root=model_root)
-        if realpath.endswith('.zip'):
-            realpath = realpath[:-len('.zip')]
-        if os.path.isdir(realpath) or os.path.isfile(realpath):
-            return realpath
-        path = download_friendly(path)
+        if not os.path.isfile(realpath):
+            if realpath.endswith('.zip'):
+                realpath = realpath[:-len('.zip')]
+            if os.path.isdir(realpath) or os.path.isfile(realpath):
+                return realpath
+            path = download_friendly(url=path, model_root=model_root)
+        else:
+            path = realpath
     if auto_unzip and path.endswith('.zip'):
         unzip(path)
         path = path[:-len('.zip')]
