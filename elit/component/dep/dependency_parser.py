@@ -63,11 +63,11 @@ class DEPBiaffineParser(NLPComponent):
                          decay_steps,
                          beta_1, beta_2, epsilon, num_buckets_train, num_buckets_valid, num_buckets_test, train_iters,
                          train_batch_size, debug)
-        config.save()
+        config.save_json()
         self._vocab = vocab = ParserVocabulary(trn_docs,
                                                pretrained_embeddings,
                                                min_occur_count)
-        vocab.save(config.save_vocab_path)
+        vocab.save_json(config.save_vocab_path)
         vocab.log_info(logger)
 
         with mx.Context(mxnet_prefer_gpu()):
@@ -212,9 +212,12 @@ class DEPBiaffineParser(NLPComponent):
             :param **kwargs:
         """
         path = fetch_resource(path, model_root)
-        config = _Config.load(os.path.join(path, 'config.pkl'))
+        config = _Config.load_json(os.path.join(path, 'config.json'))
+        config = _Config(**config)
         config.save_dir = path  # redirect root path to what user specified
-        self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
+        vocab = ParserVocabulary.load_json(config.save_vocab_path)
+        vocab = ParserVocabulary(vocab)
+        self._vocab = vocab
         with mx.Context(mxnet_prefer_gpu()):
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
@@ -268,7 +271,7 @@ if __name__ == '__main__':
     parser = DEPBiaffineParser()
     model_path = 'data/model/ptb/dep-debug'
     parser.train([train], [dev], save_dir=model_path, train_iters=200,
-                 pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), debug=True)
+                 pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), word_dims=300, debug=True)
     parser.load(model_path)
     parser.decode([dev])
     test = _load_conll('data/ptb/dep/test-debug.conllx')

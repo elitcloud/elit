@@ -47,6 +47,9 @@ class ParserVocabulary(Savable):
             threshold of word frequency, those words with smaller frequency will be replaced by UNK
         """
         super().__init__()
+        if isinstance(input_file, dict):
+            self.__dict__.update(input_file)
+            return
         word_counter = Counter()
         tag_set = set()
         rel_set = set()

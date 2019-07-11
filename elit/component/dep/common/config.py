@@ -98,14 +98,22 @@ class _Config(Savable):
 
     @property
     def save_vocab_path(self):
-        return os.path.join(self.save_dir, 'vocab.pkl')
+        return os.path.join(self.save_dir, 'vocab.json')
 
     @property
     def save_config_path(self):
-        return os.path.join(self.save_dir, 'config.pkl')
+        return os.path.join(self.save_dir, 'config.json')
 
     def save(self, path=None):
         if not path:
             path = self.save_config_path
         with open(path, 'wb') as f:
             pickle.dump(self, f)
+
+    def save_json(self, path=None):
+        if isinstance(self.train_file, dict):
+            self.train_file = dict(list(self.train_file.items())[:3])
+            self.dev_file = dict(list(self.dev_file.items())[:3])
+        if not path:
+            path = self.save_config_path
+        super().save_json(path)
