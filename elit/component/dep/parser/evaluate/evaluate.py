@@ -25,7 +25,7 @@ from functools import reduce
 import numpy as np
 from elit.component.dep.common.data import DataLoader
 from elit.component.dep.common.utils import _save_conll
-from elit.component.sem.data import SDPDataLoader
+from elit.component.sdp.data import SDPDataLoader
 
 
 def prf(correct, pred_sum, gold_sum):

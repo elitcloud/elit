@@ -15,6 +15,6 @@
 # ========================================================================
 from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.component.morph_analyzer import EnglishMorphAnalyzer
-from elit.component.sem.sdp_parser import SDPBiaffineParser
+from elit.component.sdp.sdp_parser import SDPBiaffineParser
 from elit.component.tagger.ner_tagger import NERFlairTagger
 from elit.component.tagger.pos_tagger import POSFlairTagger

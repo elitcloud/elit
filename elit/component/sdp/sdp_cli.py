@@ -5,7 +5,7 @@ import argparse
 import sys
 
 from elit.cli import ComponentCLI
-from elit.component.sem.sdp_component import SDPParser
+from elit.component.sdp.sdp_component import SDPParser
 from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
 from elit.resources.pre_trained_models import POS_FLAIR_EN_MIXED, DEP_JUMBO, SDP_JUMBO

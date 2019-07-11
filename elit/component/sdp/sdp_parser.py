@@ -5,8 +5,8 @@ from typing import Sequence
 
 from elit.component.dep.common.utils import fetch_resource
 from elit.component.nlp import NLPComponent
-from elit.component.sem.data import SDPDataLoader, conll_to_sdp_document
-from elit.component.sem.biaffine_sdp import BiaffineSDPParser
+from elit.component.sdp.data import SDPDataLoader, conll_to_sdp_document
+from elit.component.sdp.biaffine_sdp import BiaffineSDPParser
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.resources.pre_trained_models import SDP_JUMBO
 from elit.structure import Document, SDP

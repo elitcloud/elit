@@ -31,8 +31,8 @@ from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
 from elit.component.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
 from elit.component.dep.parser.evaluate.evaluate import evaluate_sdp, evaluate_chinese_sdp
-from elit.component.sem.biaffine_parser import BiaffineParser
-from elit.component.sem.data import ParserVocabulary, SDPDataLoader
+from elit.component.sdp.biaffine_parser import BiaffineParser
+from elit.component.sdp.data import ParserVocabulary, SDPDataLoader
 
 
 class BiaffineSDPParser(object):
