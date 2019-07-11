@@ -10,7 +10,7 @@ from elit.component.tagger.corpus import NLPTaskDataFetcher, conll_to_documents,
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.component.tagger.tagger import Tagger
-from elit.resources.pre_trained_models import POS_JUMBO
+from elit.resources.pre_trained_models import POS_FLAIR_EN_MIXED
 from elit.structure import Document, POS, SENS
 
 
@@ -78,7 +78,7 @@ class POSFlairTagger(Tagger):
                 results = results[0]
             return results
 
-    def load(self, model_path: str = POS_JUMBO, **kwargs):
+    def load(self, model_path: str = POS_FLAIR_EN_MIXED, **kwargs):
         super().load(model_path, **kwargs)
         return self
 

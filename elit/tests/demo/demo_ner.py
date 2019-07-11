@@ -4,7 +4,7 @@
 from elit.component import NERFlairTagger
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSFlairTagger
-from elit.resources.pre_trained_models import POS_JUMBO
+from elit.resources.pre_trained_models import POS_FLAIR_EN_MIXED
 from elit.structure import SENS, POS, Document
 from elit.tokenizer import EnglishTokenizer
 

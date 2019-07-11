@@ -24,7 +24,7 @@ from elit.component.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, S
 from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
+from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11, EN_LM_FLAIR_BW_WMT11
 
 if __name__ == '__main__':
     data_folder = 'data/dat'
@@ -56,8 +56,8 @@ if __name__ == '__main__':
         if train:
             embedding_types = [
                 WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-                CharLMEmbeddings(LM_NEWS_FORWARD),
-                CharLMEmbeddings(LM_NEWS_BACKWARD),
+                CharLMEmbeddings(EN_LM_FLAIR_FW_WMT11),
+                CharLMEmbeddings(EN_LM_FLAIR_BW_WMT11),
             ]
 
             embeddings = StackedEmbeddings(embeddings=embedding_types)

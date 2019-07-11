@@ -9,7 +9,7 @@ from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.embeddings import CharLMEmbeddings
 from elit.component.tagger.ner_tagger import NERFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
-from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD, NER_JUMBO
+from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11, EN_LM_FLAIR_BW_WMT11, NER_FLAIR_EN_ONTONOTES
 from elit.structure import Document, Sentence, NER
 from elit.util.io import eprint, merge_args_with_config
 
@@ -47,8 +47,8 @@ class NERTaggerCLI(ComponentCLI):
             args['trn_docs'] = conll_to_documents(args['train_path'], headers={0: 'text', 1: 'ner'})
             args['dev_docs'] = conll_to_documents(args['dev_path'], headers={0: 'text', 1: 'ner'})
             if args['context_string_embedding']:
-                args['forward_language_model'] = CharLMEmbeddings(LM_NEWS_FORWARD)
-                args['backward_language_model'] = CharLMEmbeddings(LM_NEWS_BACKWARD)
+                args['forward_language_model'] = CharLMEmbeddings(EN_LM_FLAIR_FW_WMT11)
+                args['backward_language_model'] = CharLMEmbeddings(EN_LM_FLAIR_BW_WMT11)
         except SystemExit:
             parser.print_help()
             exit(1)
@@ -58,7 +58,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a NER tagger to decode raw text')
-        parser.add_argument('--model_path', type=str, default=NER_JUMBO,
+        parser.add_argument('--model_path', type=str, default=NER_FLAIR_EN_ONTONOTES,
                             help='file path to the saved model')
         args = None
         try:
@@ -81,7 +81,7 @@ class NERTaggerCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a NER tagger')
-        parser.add_argument('--model_path', type=str, default=NER_JUMBO,
+        parser.add_argument('--model_path', type=str, default=NER_FLAIR_EN_ONTONOTES,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in tsv format')
         args = None

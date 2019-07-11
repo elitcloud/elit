@@ -35,7 +35,7 @@ from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
 from elit.component.dep.common.data import ParserVocabulary
 from elit.component.dep.common.tarjan import Tarjan
-from elit.resources.pre_trained_models import RESOURCE_URL_PREFIX, LM_NEWS_FORWARD
+from elit.resources.pre_trained_models import RESOURCE_URL_PREFIX, EN_LM_FLAIR_FW_WMT11
 from elit.structure import Document, DEP, Sentence, POS, SENS
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.util.io import elit_data_dir, remove_file, eprint
@@ -745,4 +745,4 @@ def freeze(model):
 
 
 if __name__ == '__main__':
-    print(fetch_resource(LM_NEWS_FORWARD))
+    print(fetch_resource(EN_LM_FLAIR_FW_WMT11))
