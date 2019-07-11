@@ -20,7 +20,7 @@ class SDPBiaffineParser(NLPComponent):
         self._parser = None  # type: BiaffineSDPParser
 
     def train(self, trn_docs: Sequence[Document], dev_docs: Sequence[Document], model_path: str,
-              pretrained_embeddings_file=None, min_occur_count=2,
+              pretrained_embeddings=None, min_occur_count=2,
               lstm_layers=3, word_dims=100, tag_dims=100, dropout_emb=0.33, lstm_hiddens=400,
               dropout_lstm_input=0.33, dropout_lstm_hidden=0.33, mlp_arc_size=500, mlp_rel_size=100,
               dropout_mlp=0.33, learning_rate=1e-3, decay=.75, decay_steps=5000, beta_1=.9, beta_2=.9, epsilon=1e-12,
@@ -37,7 +37,7 @@ class SDPBiaffineParser(NLPComponent):
             path to dev set
         save_dir : str
             a directory for saving model and related meta-data
-        pretrained_embeddings_file : tuple
+        pretrained_embeddings : tuple
             pre-trained embeddings
         min_occur_count : int
             threshold of rare words, which will be replaced with UNKs,
@@ -98,7 +98,7 @@ class SDPBiaffineParser(NLPComponent):
             parser itself
         """
         parser = self._parser = BiaffineSDPParser()
-        parser.train(trn_docs, dev_docs, model_path, pretrained_embeddings_file, min_occur_count, lstm_layers,
+        parser.train(trn_docs, dev_docs, model_path, pretrained_embeddings, min_occur_count, lstm_layers,
                      word_dims, tag_dims, dropout_emb, lstm_hiddens, dropout_lstm_input, dropout_lstm_hidden,
                      mlp_arc_size, mlp_rel_size, dropout_mlp, learning_rate, decay, decay_steps, beta_1, beta_2,
                      epsilon, num_buckets_train, num_buckets_valid, train_iters, train_batch_size, dev_batch_size,
@@ -159,9 +159,15 @@ class SDPBiaffineParser(NLPComponent):
 
 
 if __name__ == '__main__':
-    save_dir = 'data/model/sdp/jumbo'
-    parser = SDPBiaffineParser()
     docs = [conll_to_sdp_document('data/dat/en-ddr.debug.conll')]
-    parser.train(docs, docs, model_path=save_dir)
-    parser.load(save_dir)
-    print(parser.evaluate(docs))
+    train = docs
+    dev = docs
+    parser = SDPBiaffineParser()
+    model_path = 'data/model/sdp-debug'
+    # parser.train(train, dev, model_path=model_path, train_iters=200,
+    #              pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), word_dims=300, debug=True)
+    parser.load(model_path)
+    parser.decode(dev)
+    test = docs
+    UAS, LAS, speed = parser.evaluate(test)
+    print('UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))

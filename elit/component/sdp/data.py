@@ -30,7 +30,7 @@ class ParserVocabulary(Savable):
     PAD, ROOT, UNK = 0, 1, 2
     """Padding, Root, Unknown"""
 
-    def __init__(self, input_file, pret_embeddings, min_occur_count=2, root='root', shared_vocab=None):
+    def __init__(self, input_file, pret_embeddings=None, min_occur_count=2, root='root', shared_vocab=None):
         """Vocabulary, holds word, tag and relation along with their id.
             Load from conll file
             Adopted from https://github.com/jcyk/Dynet-Biaffine-dependency-parser with some modifications
@@ -45,6 +45,9 @@ class ParserVocabulary(Savable):
             threshold of word frequency, those words with smaller frequency will be replaced by UNK
         """
         super().__init__()
+        if isinstance(input_file, dict):
+            self.__dict__.update(input_file)
+            return
         word_counter = Counter()
         tag_set = set()
         rel_set = set()

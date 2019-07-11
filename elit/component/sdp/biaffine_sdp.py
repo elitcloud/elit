@@ -136,13 +136,13 @@ class BiaffineSDPParser(object):
         self._vocab = vocab = ParserVocabulary(train_file,
                                                pretrained_embeddings_file,
                                                min_occur_count, root=root)
-        vocab.save(config.save_vocab_path)
+        vocab.save_json(config.save_vocab_path)
         vocab.log_info(logger)
 
         with mx.Context(mxnet_prefer_gpu()):
             data_loader = SDPDataLoader(train_file, num_buckets_train, vocab, bert=bert_path[0] if bert_path else None)
             config.bert_dim = data_loader.bert_dim
-            config.save()
+            config.save_json()
             self._parser = parser = BiaffineParser(vocab, word_dims, tag_dims,
                                                    dropout_emb,
                                                    lstm_layers,
@@ -217,11 +217,14 @@ class BiaffineSDPParser(object):
         BiaffineSDPParser
             parser itself
         """
-        config = _Config.load(os.path.join(path, 'config.pkl'))  # type:_Config
+        config = _Config.load_json(os.path.join(path, 'config.json'))  # type:_Config
+        config = _Config(**config)
         config.save_dir = path
         if debug:
             print(config)
-        self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
+        vocab = ParserVocabulary.load_json(config.save_vocab_path)
+        vocab = ParserVocabulary(vocab)
+        self._vocab = vocab
         with context:
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
