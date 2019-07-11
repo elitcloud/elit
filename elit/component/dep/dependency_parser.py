@@ -197,7 +197,7 @@ class DEPBiaffineParser(NLPComponent):
 
         return UAS, LAS, speed
 
-    def load(self, path=DEP_JUMBO, **kwargs):
+    def load(self, path=DEP_JUMBO, model_root=None, **kwargs):
         """Load from disk
 
         Parameters
@@ -211,7 +211,7 @@ class DEPBiaffineParser(NLPComponent):
             parser itself
             :param **kwargs:
         """
-        path = fetch_resource(path)
+        path = fetch_resource(path, model_root)
         config = _Config.load(os.path.join(path, 'config.pkl'))
         config.save_dir = path  # redirect root path to what user specified
         self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)

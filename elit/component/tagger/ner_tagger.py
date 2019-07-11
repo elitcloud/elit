@@ -72,8 +72,8 @@ class NERFlairTagger(Tagger):
         print('TEST   \t%d\t' % test_fp + test_result)
         return test_score
 
-    def load(self, model_path: str = NER_FLAIR_EN_ONTONOTES, **kwargs):
-        super().load(model_path, **kwargs)
+    def load(self, model_path: str = NER_FLAIR_EN_ONTONOTES, model_root=None, **kwargs):
+        super().load(model_path, model_root=model_root, **kwargs)
         return self
 
 

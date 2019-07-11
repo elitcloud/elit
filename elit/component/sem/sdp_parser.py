@@ -146,9 +146,9 @@ class SDPBiaffineParser(NLPComponent):
     def evaluate(self, docs: Sequence[Document], **kwargs):
         return self._parser.evaluate(test_file=docs, context=self.context)
 
-    def load(self, model_path: str=SDP_JUMBO, **kwargs):
+    def load(self, model_path: str=SDP_JUMBO, model_root=None, **kwargs):
         parser = self._parser = BiaffineSDPParser()
-        model_path = fetch_resource(model_path)
+        model_path = fetch_resource(model_path, model_root)
         parser.load(model_path, self.context)
         return self
 

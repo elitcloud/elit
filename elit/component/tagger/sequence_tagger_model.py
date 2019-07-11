@@ -185,8 +185,8 @@ class SequenceTagger(nn.Block):
             pickle_save(self.transitions, os.path.join(model_folder, 'transitions.pkl'))
 
     @classmethod
-    def load_from_file(cls, model_folder, context: mx.Context = None, **kwargs):
-        model_folder = fetch_resource(model_folder)
+    def load_from_file(cls, model_folder, context: mx.Context = None, model_root=None, **kwargs):
+        model_folder = fetch_resource(model_folder, model_root)
         if context is None:
             context = mxnet_prefer_gpu()
         config_path = os.path.join(model_folder, 'config.json')
@@ -489,8 +489,8 @@ class SequenceTagger(nn.Block):
         return overall_score, all_tags_seqs
 
     @staticmethod
-    def load(model: str, embeddings=None):
-        tagger = SequenceTagger.load_from_file(model, embeddings=embeddings)
+    def load(model: str, embeddings=None, model_root=None):
+        tagger = SequenceTagger.load_from_file(model, embeddings=embeddings, model_root=model_root)
         return tagger
 
     def count_transition_matrix(self, train_data: List[Sentence]):

@@ -614,8 +614,8 @@ def download_friendly(url, path=None, prefix=RESOURCE_URL_PREFIX):
     return path
 
 
-def path_from_url(url, prefix=RESOURCE_URL_PREFIX, parent=True):
-    path = elit_data_dir()
+def path_from_url(url, prefix=RESOURCE_URL_PREFIX, parent=True, model_root=elit_data_dir()):
+    path = model_root
     parsed = urlparse(url[len(prefix):] if url.startswith(prefix) else url)
     if parsed.path:
         path = os.path.join(path, *parsed.path.strip('/').split('/'))
@@ -634,20 +634,22 @@ def unzip(path, folder=None, remove_zip=True):
     return folder
 
 
-def fetch_resource(path: str, auto_unzip=True, root=os.path.join(elit_data_dir(), 'models')):
+def fetch_resource(path: str, auto_unzip=True, model_root=os.path.join(elit_data_dir(), 'models')):
     """
     Fetch real path for a resource (model, corpus, whatever)
     :param path: the general path (can be a url or a real path)
     :param auto_unzip: whether to unzip it if it's a zip file
-    :param root:
+    :param model_root:
     :return: the real path to the resource
     """
+    if not model_root:
+        model_root = os.path.join(elit_data_dir(), 'models')
     if os.path.isdir(path):
         return path
     elif os.path.isfile(path):
         pass
     elif path.startswith('http:') or path.startswith('https:'):
-        realpath = path_from_url(path, parent=False)
+        realpath = path_from_url(path, parent=False, model_root=model_root)
         if realpath.endswith('.zip'):
             realpath = realpath[:-len('.zip')]
         if os.path.isdir(realpath) or os.path.isfile(realpath):

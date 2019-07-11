@@ -132,8 +132,8 @@ class ContextualStringModel(nn.Block):
         self.collect_params().setattr('grad_req', 'null')
 
     @classmethod
-    def load_language_model(cls, model_file, context: mx.Context = None):
-        realpath = fetch_resource(model_file)
+    def load_language_model(cls, model_file, context: mx.Context = None, model_root=None):
+        realpath = fetch_resource(model_file, model_root)
         config = LanguageModelConfig.from_dict(
             load_json(os.path.join(realpath, 'config.json')))  # type: LanguageModelConfig
         with context:
