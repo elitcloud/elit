@@ -29,7 +29,8 @@ from mxnet import gluon, autograd
 from elit.component.dep.common.config import _Config
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.util.io import Progbar, mxnet_prefer_gpu
+from elit.util.io import Progbar
+from elit.util.mx import mxnet_prefer_gpu
 from elit.util.logger import init_logger
 from elit.component.dep.parser.evaluate.evaluate import evaluate_sdp, evaluate_chinese_sdp
 from elit.component.sdp.biaffine_parser import BiaffineParser

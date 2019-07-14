@@ -31,7 +31,7 @@ from elit.component.dep.common.utils import orthonormal_VanillaLSTMBuilder, bili
     biLSTM, \
     orthonormal_initializer, flatten_numpy, embedding_from_numpy, parameter_from_numpy, \
     parameter_init, freeze, rel_argmax, arc_argmax
-from elit.util.io import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 
 
 class RNN(nn.Block):

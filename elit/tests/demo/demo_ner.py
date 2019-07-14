@@ -2,11 +2,8 @@
 # Author: hankcs
 # Date: 2019-05-28 17:38
 from elit.component import NERFlairTagger
-from elit.component.tagger.corpus import conll_to_documents
-from elit.component.tagger.pos_tagger import POSFlairTagger
-from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED
-from elit.structure import SENS, POS, Document
-from elit.tokenizer import EnglishTokenizer
+from elit.component.tokenizer import EnglishTokenizer
+from elit.structure import Document
 
 tagger = NERFlairTagger()
 tagger.load()

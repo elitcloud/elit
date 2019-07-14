@@ -29,7 +29,6 @@ from typing import Set
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
-import mxnet as mx
 import numpy as np
 
 import requests
@@ -326,20 +325,6 @@ class Progbar(object):
 
     def add(self, n, values=[]):
         self.update(self.seen_so_far + n, values)
-
-
-def mxnet_prefer_gpu():
-    """If gpu available return gpu, else cpu
-
-    Returns
-    -------
-    context : Context
-        The preferable GPU context.
-    """
-    gpu = int(os.environ.get('MXNET_GPU', default=0))
-    if gpu in mx.test_utils.list_gpus():
-        return mx.gpu(gpu)
-    return mx.cpu()
 
 
 def make_sure_path_exists(path):
