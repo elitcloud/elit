@@ -128,11 +128,11 @@ class DepParser(object):
                          decay_steps,
                          beta_1, beta_2, epsilon, num_buckets_train, num_buckets_valid, num_buckets_test, train_iters,
                          train_batch_size, debug)
-        config.save()
+        config.save_json()
         self._vocab = vocab = ParserVocabulary(train_file,
                                                pretrained_embeddings,
                                                min_occur_count)
-        vocab.save(config.save_vocab_path)
+        vocab.save_json(config.save_vocab_path)
         # assert False, 'config saved.'
         vocab.log_info(logger)
 
@@ -213,9 +213,12 @@ class DepParser(object):
         DepParser
             parser itself
         """
-        config = _Config.load(os.path.join(path, 'config.pkl'))
+        config = _Config.load_json(os.path.join(path, 'config.json'))
+        config = _Config(**config)
         config.save_dir = path  # redirect root path to what user specified
-        self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
+        vocab = ParserVocabulary.load_json(config.save_vocab_path)
+        vocab = ParserVocabulary(vocab)
+        self._vocab = vocab
         with mx.Context(mxnet_prefer_gpu()):
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
