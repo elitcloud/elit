@@ -29,7 +29,7 @@ import mxnet as mx
 from mxnet import autograd, gluon
 
 from elit.component.tagger.corpus import TaggedCorpus, Sentence
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.reduce_lr_on_plateau import ReduceLROnPlateau
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 

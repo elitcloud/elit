@@ -23,7 +23,6 @@ from typing import List, Tuple, Union
 
 import mxnet as mx
 import mxnet.ndarray as nd
-from elit.component.dep.common.utils import fetch_resource
 from mxnet import autograd, initializer
 from mxnet.gluon import nn, rnn
 import numpy as np
@@ -31,8 +30,8 @@ import numpy as np
 from elit.component.dep.common.savable import pickle_save, pickle_load, Savable
 from elit.component.tagger.corpus import Dictionary, Sentence, Token
 from elit.component.tagger.embeddings import TokenEmbeddings, StackedEmbeddings, CharLMEmbeddings, WordEmbeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.util.io import save_json, load_json
+from elit.util.mx import mxnet_prefer_gpu
+from elit.util.io import save_json, load_json, fetch_resource
 from elit.util.reflection import type_to_str, str_to_type
 
 START_TAG = '<START>'

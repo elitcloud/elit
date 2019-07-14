@@ -27,7 +27,8 @@ from elit.component.dep.common.config import _Config
 from elit.component.dep.common.data import ParserVocabulary, DataLoader
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.component.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
+from elit.util.io import Progbar, mxnet_prefer_gpu
+from elit.util.logger import init_logger
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 

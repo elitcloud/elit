@@ -5,7 +5,7 @@ from typing import List
 
 from elit.component.tagger.corpus import NLPTaskDataFetcher
 from elit.component.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 import mxnet as mx

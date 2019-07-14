@@ -14,6 +14,7 @@
 # limitations under the License.
 # ========================================================================
 import logging
+import os
 import sys
 
 __author__ = "Gary Lai"
@@ -26,3 +27,31 @@ def set_logger(filename: str = None, level: int = logging.INFO, formatter: loggi
     if formatter is not None:
         ch.setFormatter(formatter)
     log.addHandler(ch)
+
+
+def init_logger(root_dir, name="train.log"):
+    """Initialize a logger
+
+    Parameters
+    ----------
+    root_dir : str
+        directory for saving log
+    name : str
+        name of logger
+
+    Returns
+    -------
+    logger : logging.Logger
+        a logger
+    """
+    os.makedirs(root_dir, exist_ok=True)
+    log_formatter = logging.Formatter("%(message)s")
+    logger = logging.getLogger(name)
+    file_handler = logging.FileHandler("{0}/{1}".format(root_dir, name), mode='w')
+    file_handler.setFormatter(log_formatter)
+    logger.addHandler(file_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
+    return logger

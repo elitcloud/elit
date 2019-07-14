@@ -17,15 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import logging
-import math
-import os
-import sys
-import time
-import zipfile
 from typing import Sequence
-from urllib.parse import urlparse
-from urllib.request import urlretrieve
 
 import mxnet as mx
 import mxnet.ndarray as nd
@@ -35,166 +27,10 @@ from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
 from elit.component.dep.common.data import ParserVocabulary
 from elit.component.dep.common.tarjan import Tarjan
-from elit.resources.pre_trained_models import RESOURCE_URL_PREFIX, EN_LM_FLAIR_FW_WMT11
+from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11
 from elit.structure import Document, DEP, Sentence, POS, SENS
 from elit.component.dep.common.conll import ConllWord, ConllSentence
-from elit.util.io import elit_data_dir, remove_file, eprint
-
-
-class Progbar(object):
-    """Progbar class copied from keras (https://github.com/fchollet/keras/)
-
-    Displays a progress bar.
-    Small edit : added strict arg to update
-    # Arguments
-        target: Total number of steps expected.
-        interval: Minimum visual progress update interval (in seconds).
-    """
-
-    def __init__(self, target, width=30, verbose=1):
-        self.width = width
-        self.target = target
-        self.sum_values = {}
-        self.unique_values = []
-        self.start = time.time()
-        self.total_width = 0
-        self.seen_so_far = 0
-        self.verbose = verbose
-
-    def update(self, current, values=[], exact=[], strict=[]):
-        """
-        Updates the progress bar.
-        # Arguments
-            current: Index of current step.
-            values: List of tuples (name, value_for_last_step).
-                The progress bar will display averages for these values.
-            exact: List of tuples (name, value_for_last_step).
-                The progress bar will display these values directly.
-        """
-
-        for k, v in values:
-            if k not in self.sum_values:
-                self.sum_values[k] = [v * (current - self.seen_so_far), current - self.seen_so_far]
-                self.unique_values.append(k)
-            else:
-                self.sum_values[k][0] += v * (current - self.seen_so_far)
-                self.sum_values[k][1] += (current - self.seen_so_far)
-
-        for cells in exact:
-            k, v, w = cells[0], cells[1], 4
-            if len(cells) == 3:
-                w = cells[2]
-            if k not in self.sum_values:
-                self.unique_values.append(k)
-            self.sum_values[k] = [v, 1, w]
-
-        for k, v in strict:
-            if k not in self.sum_values:
-                self.unique_values.append(k)
-            self.sum_values[k] = v
-
-        self.seen_so_far = current
-
-        now = time.time()
-        if self.verbose == 1:
-            prev_total_width = self.total_width
-            sys.stdout.write("\b" * prev_total_width)
-            sys.stdout.write("\r")
-
-            numdigits = 0 if self.target == 0 or math.isnan(self.target) else int(np.floor(np.log10(self.target))) + 1
-            barstr = '%%%dd/%%%dd [' % (numdigits, numdigits)
-            bar = barstr % (current, self.target)
-            prog = 0 if self.target == 0 else float(current) / self.target
-            prog_width = int(self.width * prog)
-            if prog_width > 0:
-                bar += ('=' * (prog_width - 1))
-                if current < self.target:
-                    bar += '>'
-                else:
-                    bar += '='
-            bar += ('.' * (self.width - prog_width))
-            bar += ']'
-            sys.stdout.write(bar)
-            self.total_width = len(bar)
-
-            if current:
-                time_per_unit = (now - self.start) / current
-            else:
-                time_per_unit = 0
-            eta = time_per_unit * (self.target - current)
-            info = ''
-            if current < self.target:
-                info += ' - ETA: %ds' % eta
-            else:
-                info += ' - %ds' % (now - self.start)
-            for k in self.unique_values:
-                if type(self.sum_values[k]) is list:
-                    info += (' - %s: %.' + str(self.sum_values[k][2]) + 'f') % (
-                        k, self.sum_values[k][0] / max(1, self.sum_values[k][1]))
-                else:
-                    info += ' - %s: %s' % (k, self.sum_values[k])
-
-            self.total_width += len(info)
-            if prev_total_width > self.total_width:
-                info += ((prev_total_width - self.total_width) * " ")
-
-            sys.stdout.write(info)
-            sys.stdout.flush()
-
-            if current >= self.target:
-                sys.stdout.write("\n")
-
-        if self.verbose == 2:
-            if current >= self.target:
-                info = '%ds' % (now - self.start)
-                for k in self.unique_values:
-                    info += ' - %s: %.4f' % (k, self.sum_values[k][0] / max(1, self.sum_values[k][1]))
-                sys.stdout.write(info + "\n")
-
-    def add(self, n, values=[]):
-        self.update(self.seen_so_far + n, values)
-
-
-def mxnet_prefer_gpu():
-    """If gpu available return gpu, else cpu
-
-    Returns
-    -------
-    context : Context
-        The preferable GPU context.
-    """
-    gpu = int(os.environ.get('MXNET_GPU', default=0))
-    if gpu in mx.test_utils.list_gpus():
-        return mx.gpu(gpu)
-    return mx.cpu()
-
-
-def init_logger(root_dir, name="train.log"):
-    """Initialize a logger
-
-    Parameters
-    ----------
-    root_dir : str
-        directory for saving log
-    name : str
-        name of logger
-
-    Returns
-    -------
-    logger : logging.Logger
-        a logger
-    """
-    os.makedirs(root_dir, exist_ok=True)
-    log_formatter = logging.Formatter("%(message)s")
-    logger = logging.getLogger(name)
-    file_handler = logging.FileHandler("{0}/{1}".format(root_dir, name), mode='w')
-    file_handler.setFormatter(log_formatter)
-    logger.addHandler(file_handler)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    logger.addHandler(console_handler)
-    logger.setLevel(logging.INFO)
-    return logger
+from elit.util.io import fetch_resource
 
 
 def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x=0., dropout_h=0., debug=False):
@@ -521,10 +357,6 @@ def reshape_fortran(tensor, shape):
     return tensor.T.reshape(tuple(reversed(shape))).T
 
 
-def make_sure_path_exists(path):
-    os.makedirs(path, exist_ok=True)
-
-
 def _save_conll(documents: Sequence[Document], out):
     with open(out, 'w') as out:
         for doc in documents:
@@ -564,105 +396,6 @@ def _load_conll(path) -> Document:
                 sents.append(sent)
                 sent = create_sentence()
     return Document({SENS: sents})
-
-
-def download_friendly(url, path=None, model_root=elit_data_dir(), prefix=RESOURCE_URL_PREFIX):
-    if not path:
-        path = path_from_url(url, prefix, model_root=model_root)
-        os.makedirs(path, exist_ok=True)
-    if os.path.isfile(path):
-        print('Using local {}, ignore {}'.format(path, url))
-        return path
-    else:
-        if os.path.isdir(path):
-            path = os.path.join(path, url.split('/')[-1])
-        print('Downloading {} to {}'.format(url, path))
-        tmp_path = '{}.downloading'.format(path)
-        remove_file(tmp_path)
-        try:
-            def reporthook(count, block_size, total_size):
-                global start_time, progress_size
-                if count == 0:
-                    start_time = time.time()
-                    progress_size = 0
-                    return
-                duration = time.time() - start_time
-                duration = max(1e-8, duration)
-                progress_size = int(count * block_size)
-                if progress_size > total_size:
-                    progress_size = total_size
-                speed = int(progress_size / (1024 * duration))
-                ratio = progress_size / total_size
-                ratio = max(1e-8, ratio)
-                percent = ratio * 100
-                eta = duration / ratio * (1 - ratio)
-                minutes = eta / 60
-                seconds = eta % 60
-                sys.stdout.write("\r%.2f%%, %d MB, %d KB/s, ETA %d min %d s" %
-                                 (percent, progress_size / (1024 * 1024), speed, minutes, seconds))
-                sys.stdout.flush()
-
-            import socket
-            socket.setdefaulttimeout(10)
-            urlretrieve(url, tmp_path, reporthook)
-            print()
-        except Exception as e:
-            remove_file(tmp_path)
-            raise e
-        remove_file(path)
-        os.rename(tmp_path, path)
-    return path
-
-
-def path_from_url(url, prefix=RESOURCE_URL_PREFIX, parent=True, model_root=elit_data_dir()):
-    path = model_root
-    parsed = urlparse(url[len(prefix):] if url.startswith(prefix) else url)
-    if parsed.path:
-        path = os.path.join(path, *parsed.path.strip('/').split('/'))
-        if parent:
-            path = os.path.dirname(path)
-    return path
-
-
-def unzip(path, folder=None, remove_zip=True):
-    if folder is None:
-        folder = os.path.dirname(path)
-    print('Extracting {} to {}'.format(path, folder))
-    with zipfile.ZipFile(path, "r") as archive:
-        archive.extractall(folder)
-    if remove_zip:
-        remove_file(path)
-    return folder
-
-
-def fetch_resource(path: str, auto_unzip=True, model_root=os.path.join(elit_data_dir(), 'models')):
-    """
-    Fetch real path for a resource (model, corpus, whatever)
-    :param path: the general path (can be a url or a real path)
-    :param auto_unzip: whether to unzip it if it's a zip file
-    :param model_root:
-    :return: the real path to the resource
-    """
-    if not model_root:
-        model_root = os.path.join(elit_data_dir(), 'models')
-    if os.path.isdir(path):
-        return path
-    elif os.path.isfile(path):
-        pass
-    elif path.startswith('http:') or path.startswith('https:'):
-        realpath = path_from_url(path, parent=False, model_root=model_root)
-        if not os.path.isfile(realpath):
-            if realpath.endswith('.zip'):
-                realpath = realpath[:-len('.zip')]
-            if os.path.isdir(realpath) or os.path.isfile(realpath):
-                return realpath
-            path = download_friendly(url=path, model_root=model_root)
-        else:
-            path = realpath
-    if auto_unzip and path.endswith('.zip'):
-        unzip(path)
-        path = path[:-len('.zip')]
-    return path
 
 
 def flatten_numpy(ndarray):

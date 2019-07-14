@@ -28,11 +28,13 @@ import numpy as np
 from elit.component.dep.common.config import _Config
 from elit.component.dep.common.data import DataLoader, ParserVocabulary
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.component.dep.common.utils import init_logger, Progbar, _load_conll, fetch_resource
+from elit.component.dep.common.utils import _load_conll
+from elit.util.io import Progbar, fetch_resource
+from elit.util.logger import init_logger
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.resources.pre_trained_models import DEP_JUMBO
 from elit.structure import Document, DEP
 from elit.component.dep.common.conll import ConllWord, ConllSentence
