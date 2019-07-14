@@ -17,11 +17,19 @@ from elit.structure import Document
 
 class Tagger(NLPComponent):
     def __init__(self, context: mx.Context = None) -> None:
+        """
+        Create a tagger
+        :param context: the context under which this component will run
+        """
         super().__init__()
         self.tagger = None  # type: SequenceTagger
         self.context = context if context else mxnet_prefer_gpu()
 
     def init(self, **kwargs):
+        """
+        Not used
+        :param kwargs: not used
+        """
         pass
 
     def load(self, model_path: str, model_root=None, **kwargs):

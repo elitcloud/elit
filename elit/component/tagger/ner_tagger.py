@@ -43,12 +43,37 @@ class NERFlairTagger(Tagger):
               embeddings_in_memory: bool = True,
               train_with_dev: bool = False,
               **kwargs) -> float:
+        """
+        Train a ner tagger
+        :param trn_docs: training set
+        :param dev_docs: dev set
+        :param model_path: the path to store trained model
+        :param pretrained_embeddings: which pretrained embeddings to use, see https://gluon-nlp.mxnet.io/examples/word_embedding/word_embedding.html
+        :param forward_language_model: which forward language model to use
+        :param backward_language_model: which backward language mdoel to use
+        :param learning_rate: learning rate
+        :param mini_batch_size: mini batch size
+        :param max_epochs: max epochs
+        :param anneal_factor: anneal factor for learning rate
+        :param patience: early top after how many epochs
+        :param save_model: whether save model or not
+        :param embeddings_in_memory: whether put embeddings in GPU memory or not
+        :param train_with_dev: merge dev set with training set
+        :param kwargs: not used
+        :return:
+        """
         return self._train(trn_docs, dev_docs, model_path, pretrained_embeddings, forward_language_model,
                            backward_language_model,
                            'ner', learning_rate, mini_batch_size, max_epochs, anneal_factor, patience, save_model,
                            embeddings_in_memory, train_with_dev)
 
     def decode(self, docs: Sequence[Document], **kwargs):
+        """
+        Decode documents
+        :param docs: list of documents
+        :param kwargs: not used
+        :return: documents passed in
+        """
         if isinstance(docs, Document):
             docs = [docs]
         samples = NLPTaskDataFetcher.convert_elit_documents(docs)
@@ -62,6 +87,14 @@ class NERFlairTagger(Tagger):
         return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
+        """
+        Evaluate this tagger
+        :param docs: test set
+        :param dropout: dropout in test phase, for simulating noise on training set
+        :param output_dir: the folder to store test output
+        :param kwargs: not used
+        :return: accuracy
+        """
         print('test... ')
         with self.context:
             trainer = SequenceTaggerTrainer(self.tagger, corpus=None, test_mode=True)
@@ -73,6 +106,13 @@ class NERFlairTagger(Tagger):
         return test_score
 
     def load(self, model_path: str = ELIT_NER_FLAIR_EN_ONTONOTES, model_root=None, **kwargs):
+        """
+        Load model
+        :param model_path: path to stored model
+        :param model_root: the root for model_path
+        :param kwargs: not used
+        :return: self
+        """
         super().load(model_path, model_root=model_root, **kwargs)
         return self
 
