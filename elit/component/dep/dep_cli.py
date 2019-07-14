@@ -10,7 +10,7 @@ from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
-from elit.resources.pre_trained_models import POS_FLAIR_EN_MIXED, DEP_JUMBO
+from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED, DEP_JUMBO
 from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
@@ -90,7 +90,7 @@ class DependencyParserCLI(ComponentCLI):
         this_module = DEPBiaffineParser()
         this_module.load(args.model_path)
         pos_tagger = POSFlairTagger()
-        pos_tagger.load(POS_FLAIR_EN_MIXED)
+        pos_tagger.load(ELIT_POS_FLAIR_EN_MIXED)
         components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:
             line = line.strip()

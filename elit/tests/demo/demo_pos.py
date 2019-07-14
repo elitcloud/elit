@@ -3,12 +3,12 @@
 # Date: 2019-05-28 17:38
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSFlairTagger
-from elit.resources.pre_trained_models import POS_FLAIR_EN_MIXED
+from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED
 from elit.structure import SENS, POS, Document
 from elit.tokenizer import EnglishTokenizer
 
 tagger = POSFlairTagger()
-model_path = POS_FLAIR_EN_MIXED
+model_path = ELIT_POS_FLAIR_EN_MIXED
 tagger.load(model_path)
 print(tagger.tag('Is this the future of chamber music ?'.split()))
 components = [EnglishTokenizer(), tagger]
