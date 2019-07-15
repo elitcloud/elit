@@ -46,6 +46,10 @@ class DEPBiaffineParser(NLPComponent):
     """
 
     def __init__(self, context: mx.Context = None) -> None:
+        """
+        Create a parser
+        :param context: the context under which this component will run
+        """
         super().__init__()
         self._parser = None  # type: BiaffineParser
         self._vocab = None  # type: ParserVocabulary

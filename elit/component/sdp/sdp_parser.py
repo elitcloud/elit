@@ -15,6 +15,10 @@ from elit.structure import Document, SDP
 class SDPBiaffineParser(NLPComponent):
 
     def __init__(self, context=mxnet_prefer_gpu()) -> None:
+        """
+        Create a parser
+        :param context: the context under which this component will run
+        """
         super().__init__()
         self.context = context
         self._parser = None  # type: BiaffineSDPParser
@@ -106,6 +110,14 @@ class SDPBiaffineParser(NLPComponent):
         return self
 
     def decode(self, docs: Sequence[Document], num_buckets_test=10, test_batch_size=5000, **kwargs):
+        """
+        Decode a list of documents
+        :param docs: a list of documents
+        :param num_buckets_test: number of clusters for test set
+        :param test_batch_size: batch size for test set
+        :param kwargs: not used
+        :return: docs
+        """
         vocab = self._parser._vocab
         for d in docs:
             for s in d:
@@ -144,6 +156,12 @@ class SDPBiaffineParser(NLPComponent):
         return docs
 
     def evaluate(self, docs: Sequence[Document], **kwargs):
+        """
+        Evaluate on test set
+        :param docs: test set
+        :param kwargs: not used
+        :return: LAS
+        """
         return self._parser.evaluate(test_file=docs, context=self.context)
 
     def load(self, model_path: str=SDP_JUMBO, model_root=None, **kwargs):
@@ -153,6 +171,11 @@ class SDPBiaffineParser(NLPComponent):
         return self
 
     def save(self, model_path: str, **kwargs):
+        """
+        Not implemented
+        :param model_path:
+        :param kwargs:
+        """
         raise NotImplementedError(
             'save is not implemented, use copy & paste to make a new copy of your model, use train to create a new '
             'model. Why save is needed?')
