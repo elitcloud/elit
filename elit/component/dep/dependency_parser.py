@@ -57,7 +57,41 @@ class DEPBiaffineParser(NLPComponent):
               dropout_mlp=0.33, learning_rate=2e-3, decay=.75, decay_steps=5000, beta_1=.9, beta_2=.9, epsilon=1e-12,
               num_buckets_train=40, num_buckets_valid=10, num_buckets_test=10, train_iters=50000, train_batch_size=5000,
               test_batch_size=5000, validate_every=100, save_after=5000, debug=False, **kwargs) -> float:
-
+        """
+        Train a DEP parser
+        :param trn_docs: training set
+        :param dev_docs: dev set
+        :param save_dir: folder for saving model
+        :param pretrained_embeddings: ptretrained embeddings
+        :param min_occur_count: filter out features with frequency less than this threshold
+        :param lstm_layers: lstm layers
+        :param word_dims: dim for word embeddings
+        :param tag_dims: dim for tag embeddings
+        :param dropout_emb: dropout on word/tag embeddings
+        :param lstm_hiddens: dim for lstm hidden states
+        :param dropout_lstm_input: dropout on lstm input
+        :param dropout_lstm_hidden: variational dropout
+        :param mlp_arc_size: arc representation size
+        :param mlp_rel_size: rel representation size
+        :param dropout_mlp: dropout on output of the mlp
+        :param learning_rate: learning rate
+        :param decay: see ExponentialScheduler
+        :param decay_steps: see ExponentialScheduler
+        :param beta_1:see ExponentialScheduler
+        :param beta_2: see ExponentialScheduler
+        :param epsilon: see ExponentialScheduler
+        :param num_buckets_train: cluster training set into this number of groups
+        :param num_buckets_valid: cluster dev set into this number of groups
+        :param num_buckets_test: cluster test set into this number of groups
+        :param train_iters: training iteration
+        :param train_batch_size: training batch size
+        :param test_batch_size: test batch size
+        :param validate_every: validate model on dev set every this number of steps
+        :param save_after: save after this number of steps
+        :param debug: debug mode
+        :param kwargs: not used
+        :return: best UAS during training
+        """
         logger = init_logger(save_dir)
         config = _Config(trn_docs, dev_docs, '', save_dir, pretrained_embeddings, min_occur_count,
                          lstm_layers, word_dims, tag_dims, dropout_emb, lstm_hiddens, dropout_lstm_input,
@@ -137,6 +171,14 @@ class DEPBiaffineParser(NLPComponent):
         return best_UAS
 
     def decode(self, docs: Sequence[Document], num_buckets_test=10, test_batch_size=5000, **kwargs):
+        """
+        Decode a list of documents
+        :param docs: a list of documents
+        :param num_buckets_test: number of clusters for test set
+        :param test_batch_size: batch size for test set
+        :param kwargs: not used
+        :return: docs
+        """
         if isinstance(docs, Document):
             docs = [docs]
         assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
@@ -230,10 +272,19 @@ class DEPBiaffineParser(NLPComponent):
         return self
 
     def save(self, model_path: str, **kwargs):
+        """
+        Save model to somewhere
+        :param model_path: the folder for storing model
+        :param kwargs: not used
+        """
         self._parser.save(model_path)
-        self._vocab.save(os.path.join(model_path, 'vocab.pkl'))
+        self._vocab.save(os.path.join(model_path, 'vocab.json'))
 
     def init(self, **kwargs):
+        """
+        Not used
+        :param kwargs:
+        """
         pass
 
     def parse(self, sentence: Sequence[Tuple]) -> ConllSentence:

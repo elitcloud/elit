@@ -22,7 +22,6 @@ from typing import Sequence
 import mxnet as mx
 
 from elit.component.tagger.corpus import NLPTaskDataFetcher, conll_to_documents, get_chunks
-from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.component.tagger.tagger import Tagger
 from elit.resources.pre_trained_models import ELIT_NER_FLAIR_EN_ONTONOTES
