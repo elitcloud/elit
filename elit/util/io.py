@@ -400,7 +400,7 @@ def unzip(path, folder=None, remove_zip=True):
     return folder
 
 
-def fetch_resource(path: str, auto_unzip=True, model_root=os.path.join(elit_data_dir(), 'models')):
+def fetch_resource(path: str, model_root=os.path.join(elit_data_dir(), 'models'), auto_unzip=True):
     """
     Fetch real path for a resource (model, corpus, whatever)
     :param path: the general path (can be a url or a real path)

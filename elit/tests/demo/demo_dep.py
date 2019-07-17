@@ -20,3 +20,4 @@ for c in components:
 for d in docs:  # type: Document
     for sent in d.to_conll():
         print(sent)
+    print(d)

@@ -36,7 +36,7 @@ from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
 from elit.util.mx import mxnet_prefer_gpu
 from elit.resources.pre_trained_models import ELIT_DEP_BIAFFINE_EN_MIXED
-from elit.structure import Document, DEP
+from elit.structure import Document, DEP, Sentence
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 
 
@@ -204,9 +204,12 @@ class DEPBiaffineParser(NLPComponent):
                     idx += 1
         idx = 0
         for d in docs:
-            for s in d:
+            for s in d: # type: Sentence
                 s[DEP] = []
                 for head, rel in zip(results[idx][0], results[idx][1]):
+                    head -= 1
+                    if head < 0:
+                        head = len(s)
                     s[DEP].append((head, self._vocab.id2rel(rel)))
                 idx += 1
         return docs
@@ -259,7 +262,7 @@ class DEPBiaffineParser(NLPComponent):
             parser itself
             :param **kwargs:
         """
-        path = fetch_resource(path, model_root)
+        path = fetch_resource(path, model_root=model_root)
         config = _Config.load_json(os.path.join(path, 'config.json'))
         config = _Config(**config)
         config.save_dir = path  # redirect root path to what user specified
