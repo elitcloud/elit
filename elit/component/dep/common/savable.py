@@ -18,6 +18,8 @@
 # under the License.
 import pickle
 
+from elit.util.io import save_json, load_json
+
 
 class Savable(object):
     """
@@ -54,6 +56,13 @@ class Savable(object):
         """
         with open(path, 'rb') as f:
             return pickle.load(f)
+
+    def save_json(self, path):
+        save_json(self.__dict__, path)
+
+    @staticmethod
+    def load_json(path):
+        return load_json(path)
 
 
 def pickle_save(item, path):

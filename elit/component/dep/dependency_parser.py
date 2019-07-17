@@ -28,22 +28,28 @@ import numpy as np
 from elit.component.dep.common.config import _Config
 from elit.component.dep.common.data import DataLoader, ParserVocabulary
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.component.dep.common.utils import init_logger, Progbar, _load_conll, fetch_resource
+from elit.component.dep.common.utils import _load_conll
+from elit.util.io import Progbar, fetch_resource
+from elit.util.logger import init_logger
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
-from elit.resources.pre_trained_models import DEP_JUMBO
-from elit.structure import Document, DEP
+from elit.util.mx import mxnet_prefer_gpu
+from elit.resources.pre_trained_models import ELIT_DEP_BIAFFINE_EN_MIXED
+from elit.structure import Document, DEP, Sentence
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 
 
-class DependencyParser(NLPComponent):
+class DEPBiaffineParser(NLPComponent):
     """
     An implementation of "Deep Biaffine Attention for Neural Dependency Parsing" Dozat and Manning (2016)
     """
 
     def __init__(self, context: mx.Context = None) -> None:
+        """
+        Create a parser
+        :param context: the context under which this component will run
+        """
         super().__init__()
         self._parser = None  # type: BiaffineParser
         self._vocab = None  # type: ParserVocabulary
@@ -55,7 +61,41 @@ class DependencyParser(NLPComponent):
               dropout_mlp=0.33, learning_rate=2e-3, decay=.75, decay_steps=5000, beta_1=.9, beta_2=.9, epsilon=1e-12,
               num_buckets_train=40, num_buckets_valid=10, num_buckets_test=10, train_iters=50000, train_batch_size=5000,
               test_batch_size=5000, validate_every=100, save_after=5000, debug=False, **kwargs) -> float:
-
+        """
+        Train a DEP parser
+        :param trn_docs: training set
+        :param dev_docs: dev set
+        :param save_dir: folder for saving model
+        :param pretrained_embeddings: ptretrained embeddings
+        :param min_occur_count: filter out features with frequency less than this threshold
+        :param lstm_layers: lstm layers
+        :param word_dims: dim for word embeddings
+        :param tag_dims: dim for tag embeddings
+        :param dropout_emb: dropout on word/tag embeddings
+        :param lstm_hiddens: dim for lstm hidden states
+        :param dropout_lstm_input: dropout on lstm input
+        :param dropout_lstm_hidden: variational dropout
+        :param mlp_arc_size: arc representation size
+        :param mlp_rel_size: rel representation size
+        :param dropout_mlp: dropout on output of the mlp
+        :param learning_rate: learning rate
+        :param decay: see ExponentialScheduler
+        :param decay_steps: see ExponentialScheduler
+        :param beta_1:see ExponentialScheduler
+        :param beta_2: see ExponentialScheduler
+        :param epsilon: see ExponentialScheduler
+        :param num_buckets_train: cluster training set into this number of groups
+        :param num_buckets_valid: cluster dev set into this number of groups
+        :param num_buckets_test: cluster test set into this number of groups
+        :param train_iters: training iteration
+        :param train_batch_size: training batch size
+        :param test_batch_size: test batch size
+        :param validate_every: validate model on dev set every this number of steps
+        :param save_after: save after this number of steps
+        :param debug: debug mode
+        :param kwargs: not used
+        :return: best UAS during training
+        """
         logger = init_logger(save_dir)
         config = _Config(trn_docs, dev_docs, '', save_dir, pretrained_embeddings, min_occur_count,
                          lstm_layers, word_dims, tag_dims, dropout_emb, lstm_hiddens, dropout_lstm_input,
@@ -63,11 +103,11 @@ class DependencyParser(NLPComponent):
                          decay_steps,
                          beta_1, beta_2, epsilon, num_buckets_train, num_buckets_valid, num_buckets_test, train_iters,
                          train_batch_size, debug)
-        config.save()
+        config.save_json()
         self._vocab = vocab = ParserVocabulary(trn_docs,
                                                pretrained_embeddings,
                                                min_occur_count)
-        vocab.save(config.save_vocab_path)
+        vocab.save_json(config.save_vocab_path)
         vocab.log_info(logger)
 
         with mx.Context(mxnet_prefer_gpu()):
@@ -135,6 +175,14 @@ class DependencyParser(NLPComponent):
         return best_UAS
 
     def decode(self, docs: Sequence[Document], num_buckets_test=10, test_batch_size=5000, **kwargs):
+        """
+        Decode a list of documents
+        :param docs: a list of documents
+        :param num_buckets_test: number of clusters for test set
+        :param test_batch_size: batch size for test set
+        :param kwargs: not used
+        :return: docs
+        """
         if isinstance(docs, Document):
             docs = [docs]
         assert isinstance(docs, Sequence), 'Expect docs to be Sequence of Document'
@@ -156,9 +204,12 @@ class DependencyParser(NLPComponent):
                     idx += 1
         idx = 0
         for d in docs:
-            for s in d:
+            for s in d: # type: Sentence
                 s[DEP] = []
                 for head, rel in zip(results[idx][0], results[idx][1]):
+                    head -= 1
+                    if head < 0:
+                        head = len(s)
                     s[DEP].append((head, self._vocab.id2rel(rel)))
                 idx += 1
         return docs
@@ -197,7 +248,7 @@ class DependencyParser(NLPComponent):
 
         return UAS, LAS, speed
 
-    def load(self, path=DEP_JUMBO, **kwargs):
+    def load(self, path=ELIT_DEP_BIAFFINE_EN_MIXED, model_root=None, **kwargs):
         """Load from disk
 
         Parameters
@@ -211,10 +262,13 @@ class DependencyParser(NLPComponent):
             parser itself
             :param **kwargs:
         """
-        path = fetch_resource(path)
-        config = _Config.load(os.path.join(path, 'config.pkl'))
+        path = fetch_resource(path, model_root=model_root)
+        config = _Config.load_json(os.path.join(path, 'config.json'))
+        config = _Config(**config)
         config.save_dir = path  # redirect root path to what user specified
-        self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
+        vocab = ParserVocabulary.load_json(config.save_vocab_path)
+        vocab = ParserVocabulary(vocab)
+        self._vocab = vocab
         with mx.Context(mxnet_prefer_gpu()):
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
@@ -225,10 +279,19 @@ class DependencyParser(NLPComponent):
         return self
 
     def save(self, model_path: str, **kwargs):
+        """
+        Save model to somewhere
+        :param model_path: the folder for storing model
+        :param kwargs: not used
+        """
         self._parser.save(model_path)
-        self._vocab.save(os.path.join(model_path, 'vocab.pkl'))
+        self._vocab.save(os.path.join(model_path, 'vocab.json'))
 
     def init(self, **kwargs):
+        """
+        Not used
+        :param kwargs:
+        """
         pass
 
     def parse(self, sentence: Sequence[Tuple]) -> ConllSentence:
@@ -265,10 +328,10 @@ if __name__ == '__main__':
     train = _load_conll('data/ptb/dep/train-debug.conllx')
     dev = _load_conll('data/ptb/dep/dev-debug.conllx')
     # _save_conll([dev], 'dev.conllx')
-    parser = DependencyParser()
+    parser = DEPBiaffineParser()
     model_path = 'data/model/ptb/dep-debug'
     parser.train([train], [dev], save_dir=model_path, train_iters=200,
-                 pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), debug=True)
+                 pretrained_embeddings=('fasttext', 'crawl-300d-2M-subword'), word_dims=300, debug=True)
     parser.load(model_path)
     parser.decode([dev])
     test = _load_conll('data/ptb/dep/test-debug.conllx')

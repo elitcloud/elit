@@ -21,10 +21,10 @@ import mxnet as mx
 
 from elit.component.tagger.corpus import NLPTaskDataFetcher
 from elit.component.tagger.embeddings import WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
-from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
+from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11, EN_LM_FLAIR_BW_WMT11
 
 if __name__ == '__main__':
     data_folder = 'data/dat'
@@ -48,14 +48,16 @@ if __name__ == '__main__':
     # 3. make the tag dictionary from the corpus
     tag_dictionary = corpus.make_tag_dictionary(tag_type=tag_type)
     print(tag_dictionary.idx2item)
-    model_path = 'data/model/pos/jumbo-gluonfasttext-lm'
+    model_path = 'data/model/pos/jumbo'
     with mx.Context(mxnet_prefer_gpu()):
         train = False
+        print(train)
+        use_crf = True
         if train:
             embedding_types = [
                 WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-                CharLMEmbeddings(LM_NEWS_FORWARD),
-                CharLMEmbeddings(LM_NEWS_BACKWARD),
+                CharLMEmbeddings(EN_LM_FLAIR_FW_WMT11),
+                CharLMEmbeddings(EN_LM_FLAIR_BW_WMT11),
             ]
 
             embeddings = StackedEmbeddings(embeddings=embedding_types)
@@ -64,8 +66,7 @@ if __name__ == '__main__':
                                     embeddings=embeddings,
                                     tag_dictionary=tag_dictionary,
                                     tag_type=tag_type,
-                                    use_crf=True)
-            tagger.save(model_path)
+                                    use_crf=use_crf)
             # 6. initialize trainer
             trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=False)
 
@@ -74,4 +75,4 @@ if __name__ == '__main__':
                           embeddings_in_gpu=False)
         tagger = SequenceTagger.load(model_path)
         trainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)
-        print(trainer.evaluate(corpus.test, evaluation_method='accuracy'))
+        print(trainer.evaluate(corpus.test, evaluation_method='accuracy', embeddings_in_gpu=False))

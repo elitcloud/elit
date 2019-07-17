@@ -18,8 +18,8 @@ import os
 import pytest
 
 from elit.component import EnglishMorphAnalyzer
+from elit.component.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 from elit.util.reader import tsv_reader, json_reader
-from elit.tokenizer import Tokenizer, SpaceTokenizer, EnglishTokenizer
 
 __author__ = "Gary Lai"
 

@@ -27,7 +27,9 @@ from elit.component.dep.common.config import _Config
 from elit.component.dep.common.data import ParserVocabulary, DataLoader
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
-from elit.component.dep.common.utils import init_logger, mxnet_prefer_gpu, Progbar
+from elit.util.io import Progbar
+from elit.util.mx import mxnet_prefer_gpu
+from elit.util.logger import init_logger
 from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 
@@ -128,11 +130,11 @@ class DepParser(object):
                          decay_steps,
                          beta_1, beta_2, epsilon, num_buckets_train, num_buckets_valid, num_buckets_test, train_iters,
                          train_batch_size, debug)
-        config.save()
+        config.save_json()
         self._vocab = vocab = ParserVocabulary(train_file,
                                                pretrained_embeddings,
                                                min_occur_count)
-        vocab.save(config.save_vocab_path)
+        vocab.save_json(config.save_vocab_path)
         # assert False, 'config saved.'
         vocab.log_info(logger)
 
@@ -213,9 +215,12 @@ class DepParser(object):
         DepParser
             parser itself
         """
-        config = _Config.load(os.path.join(path, 'config.pkl'))
+        config = _Config.load_json(os.path.join(path, 'config.json'))
+        config = _Config(**config)
         config.save_dir = path  # redirect root path to what user specified
-        self._vocab = vocab = ParserVocabulary.load(config.save_vocab_path)
+        vocab = ParserVocabulary.load_json(config.save_vocab_path)
+        vocab = ParserVocabulary(vocab)
+        self._vocab = vocab
         with mx.Context(mxnet_prefer_gpu()):
             self._parser = BiaffineParser(vocab, config.word_dims, config.tag_dims, config.dropout_emb,
                                           config.lstm_layers,
@@ -253,7 +258,11 @@ class DepParser(object):
                                                        test_file, os.path.join(save_dir, 'valid_tmp'))
         if logger is None:
             logger = init_logger(save_dir, 'test.log')
-        logger.info('Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
+        report = 'Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed)
+        logger.info(report)
+        if save_dir:
+            with open(os.path.join(save_dir, 'test.txt'), 'w') as out:
+                out.write(report)
 
         return UAS, LAS
 

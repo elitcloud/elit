@@ -6,7 +6,7 @@ ELIT's tokenizers provide an option of performing several types of sentence segm
 
 * `0`: no segmentation.
 * `1`: segment by newlines (`\n`).
-* `2`: segment by [symbol rules](../apidocs/tokenizers.html#elit.nlp.tokenizer.Tokenizer.segment).
+* `2`: segment by [symbol rules](../documentation/apidocs.html#elit.component.tokenizer.Tokenizer.segment).
 * `3`: segment by `1` and `2`.
 
 
@@ -14,41 +14,63 @@ ELIT's tokenizers provide an option of performing several types of sentence segm
 
 The Space Tokenizer splits input text by whitespaces, which is useful when the input text is already tokenized (either manually or by some other tool) such that no further tokenization is necessary.
 
-* Associated models: `elit-tok-space-un`
-* API reference: [SpaceTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.SpaceTokenizer)
+* Associated models: `elit_tok_space_en`
+* API reference: [SpaceTokenizer](../documentation/apidocs.html#elit.component.tokenizer.SpaceTokenizer)
 * Decode parameters:
   * `segment`: `0`, `1` (_default_), `2`, or `3`
 
-### Web-API
+### Web API
 
 ```json
-{"model": "elit-tok-whitespace-un", "args": {"segment": 1}}
+{"model": "elit_tok_space_en", "args": {"segment": 1}}
 ```
 
 ### Python API
 
 ```python
-from elit.nlp.tokenizer import SpaceTokenizer
+from elit.component import SpaceTokenizer
 tok = SpaceTokenizer()
-text = 'John bought a car\nMary sold a truck .'
+text = [
+    'This is the 1st sentence\nThis is the 2nd sentence',
+    'This is the 3rd sentence\nThis is the 4th sentence']
 print(tok.decode(text, segment=1))  # segment by newlines (default)
 ```
 
 ### Output
 
 ```json
-{"sens": [
+[
   {
-    "sid": 0,
-    "tok": ["John", "bought", "a", "car"], 
-    "off": [[0, 4], [5, 11], [12, 13], [14, 17]] 
-  }, 
+    "doc_id": 0,
+    "sens": [
+      {
+        "sid": 0,
+        "tok": ["This", "is", "the", "1st", "sentence"], 
+        "off": [[0, 4], [5, 7], [8, 11], [12, 15], [16, 24]]
+      },
+      {
+        "sid": 1,
+        "tok": ["This", "is", "the", "2nd", "sentence"], 
+        "off": [[25, 29], [30, 32], [33, 36], [37, 40], [41, 49]]
+      }
+    ]
+  },
   {
-    "sid": 1,
-    "tok": ["Mary", "sold", "a", "truck"], 
-    "off": [[18, 22], [23, 27], [28, 29], [30, 35]] 
-   }
-]}
+    "doc_id": 1,
+    "sens": [
+      {
+        "sid": 0,
+        "tok": ["This", "is", "the", "3rd", "sentence"], 
+        "off": [[0, 4], [5, 7], [8, 11], [12, 15], [16, 24]]
+      },
+      {
+        "sid": 1,
+        "tok": ["This", "is", "the", "4th", "sentence"], 
+        "off": [[25, 29], [30, 32], [33, 36], [37, 40], [41, 49]]
+      }
+    ]
+  }
+]
 ```
 
 
@@ -56,8 +78,8 @@ print(tok.decode(text, segment=1))  # segment by newlines (default)
 
 The English Tokenizer splits input text into linguistic tokens using lexicalized rules.
 
-* Associated models: `elit-tok-lexrule-en`
-* API reference: [EnglishTokenizer](../apidocs/tokenizers.html#elit.nlp.tokenizer.EnglishTokenizer)
+* Associated models: `elit_tok_lexrule_en`
+* API reference: [EnglishTokenizer](../documentation/apidocs.html#elit.component.tokenizer.EnglishTokenizer)
 * Decode parameters:
   * `segment`: `0`, `1`, `2` (_default_), or `3`
 
@@ -76,40 +98,56 @@ The followings show key features of this tokenizer:
 | Acronyms        | `I'm gonna miss Dr. Choi 'cause he isn't here.` | [`I`, `'m`, `gon`, `na`, `miss`, `Dr.`, `Choi`, `'cause`, `he`, `is`, `n't`, `here`, `.`] |
 
 
-### Web-API
+### Web API
 
 ```json
-{"model": "elit-tok-lexrule-en", "args": {"segment": 2}}
+{"model": "elit_tok_lexrule_en", "args": {"segment": 2}}
 ```
 
 ### Python API
 
 ```python
-from elit.nlp.tokenizer import EnglishTokenizer, SpaceTokenizer
+from elit.component import EnglishTokenizer
 tok = EnglishTokenizer()
-text = "Mr. Johnson doesn't like cats! What's his favorite then? He likes puffy-dogs."
+text = [
+    "Mr. Johnson doesn't like cats! What's his favorite then?",
+    "He likes puffy-dogs. He is gonna buy one."]
 print(tok.decode(text, segment=2))  # segment by symbol rules (default)
 ```
 
 ### Output
 
 ```json
-{"sens": [
+[
   {
-    "sid": 0,
-    "tok": ["Mr.", "Johnson", "does", "n't", "like", "cats", "!"], 
-    "off": [[0, 3], [4, 11], [12, 16], [16, 19], [20, 24], [25, 29], [29, 30]], 
-  }, 
+    "doc_id": 0,
+    "sens": [
+      {
+        "sid": 0,
+        "tok": ["Mr.", "Johnson", "does", "n't", "like", "cats", "!"], 
+        "off": [[0, 3], [4, 11], [12, 16], [16, 19], [20, 24], [25, 29], [29, 30]], 
+      },
+      {
+        "sid": 1,
+        "tok": ["This", "is", "the", "2nd", "sentence"], 
+        "off": [[25, 29], [30, 32], [33, 36], [37, 40], [41, 49]]
+      }
+    ]
+  },
   {
-    "sid": 1,
-    "tok": ["What", "'s", "his", "favorite", "then", "?"], 
-    "off": [[31, 35], [35, 37], [38, 41], [42, 50], [51, 55], [55, 56]] 
-  }, 
-  {
-    "sid": 2,
-    "tok": ["He", "likes", "puffy", "-", "dogs", "."], 
-    "off": [[57, 59], [60, 65], [66, 71], [71, 72], [72, 76], [76, 77]] 
+    "doc_id": 1,
+    "sens": [
+      {
+        "sid": 0,
+        "tok": ["He", "likes", "puffy", "-", "dogs", "."],
+        "off": [[0, 2], [3, 8], [9, 14], [14, 15], [15, 19], [19, 20]]
+      },
+      {
+        "sid": 1,
+        "tok": ["He", "is", "gon", "na", "buy", "one", "."], 
+        "off": [[21, 23], [24, 26], [27, 32], [33, 36], [37, 40], [40, 41]]
+      }
+    ]
   }
-]}
+]
 ```
-

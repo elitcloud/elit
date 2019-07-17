@@ -50,7 +50,7 @@ class ElitCli(object):
             from elit.component.dep.dep_cli import DependencyParserCLI
             DependencyParserCLI()
         elif args.command == 'sdp_parser':
-            from elit.component.sem.sdp_cli import SemanticDependencyParserCLI
+            from elit.component.sdp.sdp_cli import SemanticDependencyParserCLI
             SemanticDependencyParserCLI()
         elif args.command == 'install':
             from elit.cli.install import InstallCLI

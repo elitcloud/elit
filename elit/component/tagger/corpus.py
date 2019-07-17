@@ -31,8 +31,8 @@ import mxnet as mx
 import mxnet.ndarray as nd
 import numpy as np
 
-from elit.component.dep.common.utils import make_sure_path_exists
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.io import make_sure_path_exists
+from elit.util.mx import mxnet_prefer_gpu
 from elit.structure import Document, NER, POS, SENS
 from elit.structure import Sentence as ElitSentence
 
@@ -346,6 +346,19 @@ class Dictionary:
                     for c in line if char else line.split():
                         d.add_item(c)
         return d
+
+    def to_dict(self):
+        return {
+            'idx2item': self.idx2item,
+            'item2idx': self.item2idx
+        }
+
+    @staticmethod
+    def from_dict(src):
+        dst = Dictionary()
+        dst.idx2item = src['idx2item']
+        dst.item2idx = src['item2idx']
+        return dst
 
 
 class TextCorpus(object):

@@ -29,7 +29,7 @@ from mxnet.gluon import nn
 
 from elit.component.language_models.contextual_string_model import ContextualStringModel
 from elit.component.tagger.corpus import Sentence, Token, read_pretrained_embeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 
 
 class Embeddings(nn.Block):

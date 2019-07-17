@@ -26,11 +26,12 @@ from mxnet import nd, ndarray, autograd
 from mxnet.gluon import nn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss, SigmoidBinaryCrossEntropyLoss
 
-from elit.component.sem.data import ParserVocabulary
+from elit.component.sdp.data import ParserVocabulary
 from elit.component.dep.common.utils import orthonormal_VanillaLSTMBuilder, bilinear, reshape_fortran, leaky_relu, \
     biLSTM, \
-    orthonormal_initializer, flatten_numpy, embedding_from_numpy, mxnet_prefer_gpu, parameter_from_numpy, \
+    orthonormal_initializer, flatten_numpy, embedding_from_numpy, parameter_from_numpy, \
     parameter_init, freeze, rel_argmax, arc_argmax
+from elit.util.mx import mxnet_prefer_gpu
 
 
 class RNN(nn.Block):

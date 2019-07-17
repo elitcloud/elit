@@ -6,12 +6,12 @@ from typing import List
 
 from elit.component.tagger.corpus import NLPTaskDataFetcher
 from elit.component.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 import mxnet as mx
 
-from elit.resources.pre_trained_models import LM_NEWS_FORWARD, LM_NEWS_BACKWARD
+from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11, EN_LM_FLAIR_BW_WMT11
 
 if __name__ == '__main__':
     # use your own data path
@@ -40,15 +40,16 @@ if __name__ == '__main__':
     with mx.Context(mxnet_prefer_gpu()):
         embedding_types: List[TokenEmbeddings] = [
             WordEmbeddings(('fasttext', 'crawl-300d-2M-subword')),
-            CharLMEmbeddings(LM_NEWS_FORWARD),
-            CharLMEmbeddings(LM_NEWS_BACKWARD),
+            CharLMEmbeddings(EN_LM_FLAIR_FW_WMT11),
+            CharLMEmbeddings(EN_LM_FLAIR_BW_WMT11),
         ]
         embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
 
         # 5. initialize sequence tagger
         USE_CRF = True
-        train = True
-        model_path = 'data/model/ner/jumbo-crf'
+        train = False
+        print(train)
+        model_path = 'data/model/ner/jumbo'
         if train:
             tagger: SequenceTagger = SequenceTagger(hidden_size=256,
                                                     embeddings=embeddings,
@@ -63,7 +64,7 @@ if __name__ == '__main__':
                           learning_rate=0.1,
                           mini_batch_size=32,
                           embeddings_in_gpu=False,
-                          max_epochs=150)
+                          max_epochs=100)
 
         tagger = SequenceTagger.load(model_path, embeddings=embeddings)
         trainer: SequenceTaggerTrainer = SequenceTaggerTrainer(tagger, corpus, test_mode=True)

@@ -9,7 +9,7 @@ from elit.component.nlp import NLPComponent
 from elit.component.tagger.corpus import NLPTaskDataFetcher
 from elit.component.tagger.corpus import TaggedCorpus
 from elit.component.tagger.embeddings import TokenEmbeddings, WordEmbeddings, CharLMEmbeddings, StackedEmbeddings
-from elit.component.tagger.mxnet_util import mxnet_prefer_gpu
+from elit.util.mx import mxnet_prefer_gpu
 from elit.component.tagger.sequence_tagger_model import SequenceTagger
 from elit.component.tagger.sequence_tagger_trainer import SequenceTaggerTrainer
 from elit.structure import Document
@@ -17,15 +17,23 @@ from elit.structure import Document
 
 class Tagger(NLPComponent):
     def __init__(self, context: mx.Context = None) -> None:
+        """
+        Create a tagger
+        :param context: the context under which this component will run
+        """
         super().__init__()
         self.tagger = None  # type: SequenceTagger
         self.context = context if context else mxnet_prefer_gpu()
 
     def init(self, **kwargs):
+        """
+        Not used
+        :param kwargs: not used
+        """
         pass
 
-    def load(self, model_path: str, **kwargs):
-        self.tagger = SequenceTagger.load_from_file(model_path, context=self.context, **kwargs)
+    def load(self, model_path: str, model_root=None, **kwargs):
+        self.tagger = SequenceTagger.load_from_file(model_path, context=self.context, model_root=model_root, **kwargs)
 
     def save(self, model_path: str, **kwargs):
         self.tagger.save(model_path)

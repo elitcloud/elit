@@ -17,12 +17,12 @@ import abc
 import inspect
 import os
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Sequence, Union
 
 from elit.component.base import Component
 from pkg_resources import resource_filename
 
-from elit.structure import TOK, OFF, Document, Sentence, SID
+from elit.structure import TOK, OFF, Document, Sentence, SID, DOC_ID
 from elit.util.io import read_word_set, read_concat_word_dict
 from elit.util.string import *
 
@@ -30,7 +30,8 @@ __author__ = "Jinho D. Choi, Gary Lai"
 
 
 class Tokenizer(Component):
-    def decode(self, input_text: str, init_offset: int = 0, segment: int = 2, **kwargs) -> Document:
+    def decode(self, input_text: Union[str, Sequence[str]], init_offset: int = 0, segment: int = 2, **kwargs) -> Union[
+        Document, Sequence[Document]]:
         """
         :param input_text: the input text.
         :param init_offset: the initial offset of the first token.
@@ -38,8 +39,19 @@ class Tokenizer(Component):
         :return: the dictionary contains ('tok' = list of tokens) and ('off' = list of offsets);
                  see the comments for :meth:`Tokenizer.offsets` for more details about the offsets.
         """
-        document = Document()
+        if isinstance(input_text, str):
+            return self._tokenize_str(input_text, init_offset, segment)
+        else:
+            docs = []
+            for idx, text in enumerate(input_text):
+                doc = self._tokenize_str(text, init_offset, segment)
+                doc[DOC_ID] = idx
+                docs.append(doc)
+            return docs
 
+    def _tokenize_str(self, input_text, init_offset, segment) -> Document:
+        document = Document()
+        document[DOC_ID] = 0
         if segment == 0:
             tokens, offsets = self.tokenize(input_text, init_offset)
             document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
@@ -53,11 +65,12 @@ class Tokenizer(Component):
             for i in range(1, len(indices)):
                 bidx = indices[i - 1]
                 eidx = indices[i]
-                tokens, offsets = self.tokenize(input_text[bidx:eidx], bidx+init_offset)
+                tokens, offsets = self.tokenize(input_text[bidx:eidx], bidx + init_offset)
                 if tokens:
-                    if segment == 1: document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
-                    else: document.add_sentences(self.segment(tokens, offsets))
-
+                    if segment == 1:
+                        document.add_sentence(Sentence({TOK: tokens, OFF: offsets}))
+                    else:
+                        document.add_sentences(self.segment(tokens, offsets))
         for i, sentence in enumerate(document.sentences): sentence[SID] = i
         return document
 
@@ -384,7 +397,8 @@ class EnglishTokenizer(Tokenizer):
             if c == '-':  # -1
                 return i == 0 and self.is_digit(token, i + 1)
             if c == ',':  # 1,000,000
-                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1, i + 4) and not self.is_digit(token, i + 4)
+                return self.is_digit(token, i - 1) and self.is_digit(token, i + 1, i + 4) and not self.is_digit(token,
+                                                                                                                i + 4)
             if c == ':':
                 # 1:2
                 return self.is_digit(token, i - 1) and self.is_digit(token, i + 1)
@@ -408,7 +422,8 @@ class EnglishTokenizer(Tokenizer):
             return False
 
         def separator_0(c):
-            return c in {',', ';', ':', '~', '&', '|', '/'} or is_bracket(c) or is_arrow(c) or is_double_quote(c) or is_hyphen(c)
+            return c in {',', ';', ':', '~', '&', '|', '/'} or is_bracket(c) or is_arrow(c) or is_double_quote(
+                c) or is_hyphen(c)
 
         def edge_symbol_0(c):
             return is_single_quote(c) or is_final_mark(c)
@@ -435,7 +450,8 @@ class EnglishTokenizer(Tokenizer):
         return False
 
     def add_token(self, tokens, offsets, token, begin, end, offset):
-        if not self.concat_token(tokens, offsets, token, end) and not self.split_token(tokens, offsets, token, begin, end, offset):
+        if not self.concat_token(tokens, offsets, token, end) and not self.split_token(tokens, offsets, token, begin,
+                                                                                       end, offset):
             self.add_token_aux(tokens, offsets, token, begin, end, offset)
 
     def concat_token(self, tokens, offsets, token, end):
@@ -446,7 +462,8 @@ class EnglishTokenizer(Tokenizer):
             return curr == '.' and (self.RE_ABBREVIATION.match(prev) or prev in self.ABBREVIATION_PERIOD)
 
         def acronym(prev, curr, next):
-            return len(curr) == 1 and curr in {'&', '|', '/'} and (len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
+            return len(curr) == 1 and curr in {'&', '|', '/'} and (
+                    len(prev) <= 2 and len(next) <= 2 or prev.isupper() and next.isupper())
 
         def hyphenated(prev, curr, next):
             p = len(prev)
@@ -455,10 +472,12 @@ class EnglishTokenizer(Tokenizer):
                 if self.is_digit(prev, p - 3, p) and (p == 3 or is_hyphen(prev[p - 4])) and next.isdigit():
                     # 000-0000, 000-000-0000
                     return True
-                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])) and len(next) == 1 and next.isalnum():
+                if prev[-1].isalnum() and (len(prev) == 1 or is_hyphen(prev[p - 2])) and len(
+                        next) == 1 and next.isalnum():
                     # p-u-s-h
                     return True
-                return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (next in self.HYPHEN_SUFFIX and prev.isalnum())
+                return (prev in self.HYPHEN_PREFIX and next.isalnum()) or (
+                        next in self.HYPHEN_SUFFIX and prev.isalnum())
 
             return False
 

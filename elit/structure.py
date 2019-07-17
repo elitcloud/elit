@@ -30,7 +30,7 @@ POS = 'pos'
 MORPH = 'morph'
 NER = 'ner'
 DEP = 'dep'
-SEM = 'sem'
+SDP = 'sdp'
 COREF = 'coref'
 SENTI = 'senti'
 
@@ -169,7 +169,7 @@ class Document(dict):
                                  head=sent[DEP][i][0] if DEP in sent else None,
                                  relation=sent[DEP][i][1] if DEP in sent else None,
                                  pdeprel='|'.join(
-                                     '{}:{}'.format(head, rel) for head, rel in sent[SEM][i]) if SEM in sent else '_'
+                                     '{}:{}'.format(head, rel) for head, rel in sent[SDP][i]) if SDP in sent else '_'
                                  )
                 words.append(word)
             conll = ConllSentence(words)

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
+import os
 
 import mxnet as mx
 
@@ -47,3 +48,16 @@ def mx_loss(s: str) -> mx.gluon.loss:
 
     raise TypeError("Unsupported loss: " + s)
 
+
+def mxnet_prefer_gpu():
+    """If gpu available return gpu, else cpu
+
+    Returns
+    -------
+    context : Context
+        The preferable GPU context.
+    """
+    gpu = int(os.environ.get('MXNET_GPU', default=0))
+    if gpu in mx.test_utils.list_gpus():
+        return mx.gpu(gpu)
+    return mx.cpu()

@@ -23,14 +23,14 @@ import gluonnlp
 import numpy as np
 from elit.component.dep.common.k_means import KMeans
 from elit.component.dep.common.savable import Savable
-from elit.structure import Sentence, POS, DEP, SENS, Document, SEM
+from elit.structure import Sentence, POS, DEP, SENS, Document, SDP
 
 
 class ParserVocabulary(Savable):
     PAD, ROOT, UNK = 0, 1, 2
     """Padding, Root, Unknown"""
 
-    def __init__(self, input_file, pret_embeddings, min_occur_count=2, root='root', shared_vocab=None):
+    def __init__(self, input_file, pret_embeddings=None, min_occur_count=2, root='root', shared_vocab=None):
         """Vocabulary, holds word, tag and relation along with their id.
             Load from conll file
             Adopted from https://github.com/jcyk/Dynet-Biaffine-dependency-parser with some modifications
@@ -45,6 +45,9 @@ class ParserVocabulary(Savable):
             threshold of word frequency, those words with smaller frequency will be replaced by UNK
         """
         super().__init__()
+        if isinstance(input_file, dict):
+            self.__dict__.update(input_file)
+            return
         word_counter = Counter()
         tag_set = set()
         rel_set = set()
@@ -76,7 +79,7 @@ class ParserVocabulary(Savable):
                     tokens = s.tokens
                     # if LEM in s:
                     #     tokens = s.lemmatized_tokens
-                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SEM]):
+                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SDP]):
                         word_counter[word] += 1
                         tag_set.add(tag)
                         for (head, rel) in head_rel:
@@ -372,7 +375,7 @@ class SDPDataLoader(object):
                     tokens = s.tokens
                     # if LEM in s:
                     #     tokens = s.lemmatized_tokens
-                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SEM]):
+                    for word, tag, head_rel in zip(tokens, s.part_of_speech_tags, s[SDP]):
                         heads = [item[0] for item in head_rel]
                         rels = [vocab.rel2id(item[1]) for item in head_rel]
                         sent.append([vocab.word2id(word.lower()), vocab.tag2id(tag), heads, rels])
@@ -602,7 +605,7 @@ def conll_to_sdp_document(path):
     def create_sentence() -> Sentence:
         sent = Sentence()
         sent[POS] = []
-        sent[SEM] = []
+        sent[SDP] = []
         return sent
 
     sents = []
@@ -622,7 +625,7 @@ def conll_to_sdp_document(path):
                         head, rel = edge.split(':', 1)
                         head = int(head)
                         arcs.append((head, rel))
-                sent[SEM].append(arcs)
+                sent[SDP].append(arcs)
             else:
                 sents.append(sent)
                 sent = create_sentence()

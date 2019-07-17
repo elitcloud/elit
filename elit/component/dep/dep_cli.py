@@ -6,11 +6,11 @@ import sys
 
 from elit.cli import ComponentCLI
 from elit.component.dep.common.utils import _load_conll
-from elit.component.dep.dependency_parser import DependencyParser
+from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.component.tagger.corpus import conll_to_documents
-from elit.component.tagger.pos_tagger import POSTagger
+from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
-from elit.resources.pre_trained_models import POS_JUMBO, DEP_JUMBO
+from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED, ELIT_DEP_BIAFFINE_EN_MIXED
 from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
@@ -72,13 +72,13 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        dep_parser = DependencyParser()
+        dep_parser = DEPBiaffineParser()
         dep_parser.train(**args)
 
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a dependency parser to decode raw text')
-        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=ELIT_DEP_BIAFFINE_EN_MIXED,
                             help='file path to the saved model')
         args = None
         try:
@@ -87,10 +87,10 @@ class DependencyParserCLI(ComponentCLI):
             parser.print_help()
             exit(1)
 
-        this_module = DependencyParser()
+        this_module = DEPBiaffineParser()
         this_module.load(args.model_path)
-        pos_tagger = POSTagger()
-        pos_tagger.load(POS_JUMBO)
+        pos_tagger = POSFlairTagger()
+        pos_tagger.load(ELIT_POS_FLAIR_EN_MIXED)
         components = [EnglishTokenizer(), pos_tagger, this_module]
         for line in sys.stdin:
             line = line.strip()
@@ -106,7 +106,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
-        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=ELIT_DEP_BIAFFINE_EN_MIXED,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in conll format')
         args = None
@@ -115,6 +115,6 @@ class DependencyParserCLI(ComponentCLI):
         except SystemExit:
             parser.print_help()
             exit(1)
-        this_module = DependencyParser()
+        this_module = DEPBiaffineParser()
         this_module.load(args.model_path)
         this_module.evaluate(test_file=args.test_path)
