@@ -8,7 +8,7 @@ from elit.component.nlp import NLPComponent
 from elit.component.sdp.data import SDPDataLoader, conll_to_sdp_document
 from elit.component.sdp.biaffine_sdp import BiaffineSDPParser
 from elit.util.mx import mxnet_prefer_gpu
-from elit.resources.pre_trained_models import SDP_JUMBO
+from elit.resources.pre_trained_models import ELIT_SDP_BIAFFINE_EN_MIXED
 from elit.structure import Document, SDP
 
 
@@ -164,7 +164,7 @@ class SDPBiaffineParser(NLPComponent):
         """
         return self._parser.evaluate(test_file=docs, context=self.context)
 
-    def load(self, model_path: str=SDP_JUMBO, model_root=None, **kwargs):
+    def load(self, model_path: str=ELIT_SDP_BIAFFINE_EN_MIXED, model_root=None, **kwargs):
         parser = self._parser = BiaffineSDPParser()
         model_path = fetch_resource(model_path, model_root)
         parser.load(model_path, self.context)
