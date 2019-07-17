@@ -149,6 +149,9 @@ class SDPBiaffineParser(NLPComponent):
                     for j in range(0, length):
                         if arcs[j, i]:
                             head = j
+                            head -= 1
+                            if head < 0:
+                                head = len(s)
                             rel = data_loader.vocab.id2rel(int(rels[j, i].asscalar()))
                             head_rel.append((head, rel))
                     s[SDP].append(head_rel)
@@ -164,7 +167,7 @@ class SDPBiaffineParser(NLPComponent):
         """
         return self._parser.evaluate(test_file=docs, context=self.context)
 
-    def load(self, model_path: str=ELIT_SDP_BIAFFINE_EN_MIXED, model_root=None, **kwargs):
+    def load(self, model_path: str = ELIT_SDP_BIAFFINE_EN_MIXED, model_root=None, **kwargs):
         parser = self._parser = BiaffineSDPParser()
         model_path = fetch_resource(model_path, model_root)
         parser.load(model_path, self.context)
