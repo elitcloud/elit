@@ -10,7 +10,7 @@ from elit.component.dep.dependency_parser import DEPBiaffineParser
 from elit.component.tagger.corpus import conll_to_documents
 from elit.component.tagger.pos_tagger import POSFlairTagger
 from elit.component.tokenizer import EnglishTokenizer
-from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED, DEP_JUMBO
+from elit.resources.pre_trained_models import ELIT_POS_FLAIR_EN_MIXED, ELIT_DEP_BIAFFINE_EN_MIXED
 from elit.structure import Document, Sentence
 from elit.util.io import eprint, merge_args_with_config
 
@@ -78,7 +78,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def decode(cls):
         parser = argparse.ArgumentParser(description='Use a dependency parser to decode raw text')
-        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=ELIT_DEP_BIAFFINE_EN_MIXED,
                             help='file path to the saved model')
         args = None
         try:
@@ -106,7 +106,7 @@ class DependencyParserCLI(ComponentCLI):
     @classmethod
     def evaluate(cls):
         parser = argparse.ArgumentParser(description='Evaluate a pos tagger')
-        parser.add_argument('--model_path', type=str, default=DEP_JUMBO,
+        parser.add_argument('--model_path', type=str, default=ELIT_DEP_BIAFFINE_EN_MIXED,
                             help='file path to the saved model')
         parser.add_argument('--test_path', type=str, required=True, help='gold file in conll format')
         args = None

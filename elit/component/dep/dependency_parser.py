@@ -35,7 +35,7 @@ from elit.component.dep.parser.biaffine_parser import BiaffineParser
 from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
 from elit.util.mx import mxnet_prefer_gpu
-from elit.resources.pre_trained_models import DEP_JUMBO
+from elit.resources.pre_trained_models import ELIT_DEP_BIAFFINE_EN_MIXED
 from elit.structure import Document, DEP
 from elit.component.dep.common.conll import ConllWord, ConllSentence
 
@@ -245,7 +245,7 @@ class DEPBiaffineParser(NLPComponent):
 
         return UAS, LAS, speed
 
-    def load(self, path=DEP_JUMBO, model_root=None, **kwargs):
+    def load(self, path=ELIT_DEP_BIAFFINE_EN_MIXED, model_root=None, **kwargs):
         """Load from disk
 
         Parameters

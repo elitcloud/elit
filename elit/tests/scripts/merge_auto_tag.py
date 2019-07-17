@@ -2,7 +2,7 @@
 # Author: hankcs
 # Date: 2019-07-12 16:46
 
-with open('data/dat/test.tsv') as auto, open('data/dat/en-ddr.trn') as gold, open('data/dat/en-ddr.trn.auto.conll',
+with open('data/dat/test.tsv') as auto, open('data/dat/en-ddr.tst') as gold, open('data/dat/en-ddr.tst.auto.conll',
                                                                                   'w') as out:
     for auto_line, gold_line in zip(auto, gold):
         auto_line: str = auto_line.strip()

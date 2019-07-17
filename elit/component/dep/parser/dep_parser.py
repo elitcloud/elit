@@ -258,7 +258,11 @@ class DepParser(object):
                                                        test_file, os.path.join(save_dir, 'valid_tmp'))
         if logger is None:
             logger = init_logger(save_dir, 'test.log')
-        logger.info('Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed))
+        report = 'Test: UAS %.2f%% LAS %.2f%% %d sents/s' % (UAS, LAS, speed)
+        logger.info(report)
+        if save_dir:
+            with open(os.path.join(save_dir, 'test.txt'), 'w') as out:
+                out.write(report)
 
         return UAS, LAS
 

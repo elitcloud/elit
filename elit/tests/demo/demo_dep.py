@@ -3,8 +3,7 @@
 # Date: 2019-05-30 18:24
 from elit.component import POSFlairTagger
 from elit.component.dep.dependency_parser import DEPBiaffineParser
-from elit.resources.pre_trained_models import DEP_JUMBO
-from elit.tokenizer import EnglishTokenizer
+from elit.component.tokenizer import EnglishTokenizer
 
 parser = DEPBiaffineParser()
 parser.load()

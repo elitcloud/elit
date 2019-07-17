@@ -348,7 +348,10 @@ class DataLoader(object):
                             rel_offset = 7
                         # else:
                         #     raise RuntimeError('Illegal line: %s' % line)
-                        assert info[rel_offset] in vocab._rel2id, 'Relation OOV: %s' % line
+                        if info[rel_offset] not in vocab._rel2id:
+                            print('Relation %s OOV: %s' % (info[rel_offset], line))
+                            info[rel_offset] = vocab.id2rel(ParserVocabulary.PAD)
+                        # assert info[rel_offset] in vocab._rel2id, 'Relation %s OOV: %s' % (info[rel_offset], line)
                         word, tag, head, rel = vocab.word2id(info[1].lower()), vocab.tag2id(info[3]), int(
                             info[arc_offset]), vocab.rel2id(info[rel_offset])
                         sent.append([word, tag, head, rel])
@@ -447,5 +450,6 @@ def conll_8_to_10(src, dst):
 
 
 if __name__ == '__main__':
-    conll_8_to_10('data/dat/en-ddr.trn', 'data/dat/en-ddr.trn.conllx')
-    conll_8_to_10('data/dat/en-ddr.tst', 'data/dat/en-ddr.tst.conllx')
+    # conll_8_to_10('data/dat/en-ddr.trn', 'data/dat/en-ddr.trn.conllx')
+    # conll_8_to_10('data/dat/en-ddr.tst', 'data/dat/en-ddr.tst.conllx')
+    conll_8_to_10('data/dat/en-ddr.tst.auto.conll', 'data/dat/en-ddr.tst.auto.conllx')
