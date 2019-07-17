@@ -132,6 +132,7 @@ def setup_package():
         package_data={'': ['*.txt', '*.json']},
         install_requires=[
             # 'mxnet-cu92==1.4.1',
+            'mxnet>=1.4.1',
             'argparse==1.4.0',
             'numpy==1.14.5',
             'gluonnlp==0.6.0',
