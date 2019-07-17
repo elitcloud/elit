@@ -91,8 +91,8 @@ if not release:
 
 VERSION_PY = 'elit/version.py'
 
-if sys.version_info[:2] < (3, 5):
-    raise RuntimeError("Python version >= 3.5 required.")
+if sys.version_info[:2] < (3, 6):
+    raise RuntimeError("Python version >= 3.6 required.")
 
 # How mature is this project? Common values are
 #   3 - Alpha
@@ -104,7 +104,6 @@ Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: Apache Software License
 Programming Language :: Python :: 3 :: Only
-Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Topic :: Scientific/Engineering :: Artificial Intelligence
 Topic :: Scientific/Engineering :: Information Analysis
