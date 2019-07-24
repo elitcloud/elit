@@ -7,7 +7,7 @@ The ELIT Project
 
 The ELIT project brings the latest natural language processing (NLP) technology to the community.
 The primary focus of this project is to present an end-to-end NLP framework that is robust across various domains as well as scalable for big data analysis.
-ELIT supports `python APIs <decode_python.html>`_ for developers to integrate its framework to their platforms as well as `web APIs <decode_webapi.html>`_ for researchers to take advantage of its cutting-edge models via Saas (Software as a Service).
+ELIT supports `python APIs <decode_python.html>`_ for developers to integrate its framework to their platforms as well as `web APIs <decode_webapi.html>`_ for researchers to take advantage of its cutting-edge models via SaaS (Software as a Service).
 ELIT is under the `Apache 2 <http://www.apache.org/licenses/LICENSE-2.0>`_ license and developed by `Emory NLP <http://nlp.mathcs.emory.edu>`_ with an active collaboration with `GluonNLP <https://gluon-nlp.mxnet.io/>`_.
 
 * Latest release: `0.2.0 <documentation/release.html#0.2>`_.
