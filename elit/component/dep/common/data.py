@@ -25,7 +25,7 @@ import numpy as np
 
 from elit.component.dep.common.k_means import KMeans
 from elit.component.dep.common.savable import Savable
-from elit.structure import DEP, LEM, Sentence
+from elit.structure import DEP, Sentence
 
 
 class ParserVocabulary(Savable):
