@@ -26,11 +26,11 @@ from mxnet.gluon.utils import clip_global_norm
 from mxnet.metric import Accuracy
 from tqdm import tqdm
 
-from elit.component import RNNComponent
+from elit.component.embedding.base import Embedding
+from elit.component.rnn import RNNComponent
 from elit.dataset import LabelMap, sequence_batchify_fn, SequencesDataset
-from elit.component.embedding import Embedding
 from elit.eval import ChunkF1
-from elit.model import RNNModel
+from elit.model.rnn import RNNModel
 from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 

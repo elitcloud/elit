@@ -27,7 +27,7 @@ import numpy as np
 from mxnet import gluon, autograd
 
 from elit.component.dep.common.config import _Config
-from elit.component.dep.common.conll import ConllWord, ConllSentence
+from elit.structure import ConllWord, ConllSentence
 from elit.component.dep.common.exponential_scheduler import ExponentialScheduler
 from elit.util.io import Progbar
 from elit.util.mx import mxnet_prefer_gpu
@@ -300,7 +300,7 @@ class BiaffineSDPParser(object):
 
         Returns
         -------
-        ConllSentence
+        elit.structure.ConllSentence
             ConllSentence object
         """
         words = np.zeros((len(sentence) + 1, 1), np.int32)
