@@ -36,8 +36,7 @@ from elit.component.dep.parser.evaluate import evaluate_official_script
 from elit.component.nlp import NLPComponent
 from elit.util.mx import mxnet_prefer_gpu
 from elit.resources.pre_trained_models import ELIT_DEP_BIAFFINE_EN_MIXED
-from elit.structure import Document, DEP, Sentence
-from elit.component.dep.common.conll import ConllWord, ConllSentence
+from elit.structure import Document, DEP, Sentence, ConllWord, ConllSentence
 
 
 class DEPBiaffineParser(NLPComponent):
@@ -304,7 +303,7 @@ class DEPBiaffineParser(NLPComponent):
 
         Returns
         -------
-        elit.component.dep.common.conll.ConllSentence
+        elit.structure.ConllSentence
             ConllSentence object
         """
         words = np.zeros((len(sentence) + 1, 1), np.int32)
