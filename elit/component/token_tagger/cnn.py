@@ -24,11 +24,11 @@ from mxnet.gluon.data import DataLoader
 from mxnet.metric import Accuracy
 from tqdm import tqdm
 
-from elit.component import CNNComponent
+from elit.component.cnn import CNNComponent
+from elit.component.embedding.base import Embedding
 from elit.dataset import LabelMap, TokensDataset
-from elit.component.embedding import Embedding
 from elit.eval import ChunkF1
-from elit.model import CNNModel
+from elit.model.cnn import CNNModel
 from elit.structure import Document, to_gold
 from elit.util.io import pkl, params
 
