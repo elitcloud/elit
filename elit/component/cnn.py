@@ -20,9 +20,9 @@ from typing import Sequence, Optional, Tuple, List
 import mxnet as mx
 from mxnet.gluon.data import DataLoader
 
-from elit.component import MXComponent
-from elit.embedding import Embedding
-from elit.model import CNNModel
+from elit.component.embedding.base import Embedding
+from elit.component.mx import MXComponent
+from elit.model.cnn import CNNModel
 from elit.structure import Document
 
 __author__ = "Gary Lai"
