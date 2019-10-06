@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import heapq
 from typing import Sequence
 
 import mxnet as mx
@@ -27,9 +28,7 @@ from mxnet.gluon.contrib.rnn import VariationalDropoutCell
 
 from elit.component.dep.common.data import ParserVocabulary
 from elit.component.dep.common.tarjan import Tarjan
-from elit.resources.pre_trained_models import EN_LM_FLAIR_FW_WMT11
 from elit.structure import Document, DEP, Sentence, POS, SENS, ConllWord, ConllSentence
-from elit.util.io import fetch_resource
 
 
 def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, dropout_x=0., dropout_h=0., debug=False):
@@ -209,7 +208,7 @@ def orthonormal_initializer(output_size, input_size, debug=False):
 
 
 def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
-    """MST
+    """
     Adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/models/nn.py
 
     Parameters
@@ -297,6 +296,33 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
         parse_probs = parse_probs * tokens_to_keep
         parse_preds = np.argmax(parse_probs, axis=1)
         return parse_preds
+
+
+def arc_mst(parse_probs, length, tokens_to_keep, want_max=True):
+    # block and pad heads
+    parse_probs = parse_probs * tokens_to_keep
+    parse_probs = parse_probs.T
+    if want_max:
+        parse_probs = -np.log(parse_probs)
+    mincost = [1e20] * length
+    mincost[0] = 0
+    used = [False] * length
+    que = []
+    heads = [-1] * length
+    heapq.heappush(que, (0, 0, 0))  # cost, to, from
+    total_cost = 0
+    while que:
+        cost, v, fr = heapq.heappop(que)
+        if used[v] or cost > mincost[v]:
+            continue
+        used[v] = True
+        total_cost += mincost[v]
+        heads[v] = fr
+        for i in range(0, length):
+            if mincost[i] > parse_probs[v][i]:
+                mincost[i] = parse_probs[v][i]
+                heapq.heappush(que, (mincost[i], i, v))
+    return heads
 
 
 def rel_argmax(rel_probs, length, ensure_tree=True):
@@ -482,5 +508,22 @@ def freeze(model):
     model.collect_params().setattr('grad_req', 'null')
 
 
+def _test_mst():
+    length = 7
+    score = np.zeros((length, length))
+    score[0, 1] = score[1, 0] = 10
+    score[0, 2] = score[2, 0] = 2
+    score[1, 3] = score[3, 1] = 5
+    score[2, 3] = score[3, 2] = 7
+    score[2, 4] = score[4, 2] = 1
+    score[2, 5] = score[5, 2] = 3
+    score[3, 5] = score[5, 3] = 1
+    score[3, 6] = score[6, 3] = 8
+    score[5, 6] = score[6, 5] = 5
+    tree = arc_mst(score, length, None)
+    print(tree)
+
+
 if __name__ == '__main__':
-    print(fetch_resource(EN_LM_FLAIR_FW_WMT11))
+    # print(fetch_resource(EN_LM_FLAIR_FW_WMT11))
+    _test_mst()
