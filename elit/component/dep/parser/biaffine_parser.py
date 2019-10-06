@@ -24,7 +24,7 @@ from mxnet.gluon import nn
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
 
 from elit.component.dep.common.utils import orthonormal_VanillaLSTMBuilder, bilinear, reshape_fortran, arc_argmax, \
-    rel_argmax, leaky_relu, biLSTM, orthonormal_initializer
+    rel_argmax, leaky_relu, biLSTM, orthonormal_initializer, arc_mst
 from gluonnlp.model import apply_weight_drop
 
 
@@ -292,7 +292,7 @@ class BiaffineParser(nn.Block):
             # parse sentences one by one
             msk[0] = 1.
             sent_len = int(np.sum(msk))
-            arc_pred = arc_argmax(arc_prob, sent_len, msk)
+            arc_pred = arc_mst(arc_prob, sent_len, msk)
             rel_prob = rel_prob[np.arange(len(arc_pred)), arc_pred]
             rel_pred = rel_argmax(rel_prob, sent_len)
             outputs.append((arc_pred[1:sent_len], rel_pred[1:sent_len]))
