@@ -20,7 +20,7 @@ from typing import Sequence
 import gluonnlp as nlp
 import numpy as np
 
-from elit.component.embedding import TokenEmbedding
+from elit.component.embedding.token import TokenEmbedding
 
 __author__ = "Gary Lai"
 
