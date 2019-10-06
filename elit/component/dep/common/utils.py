@@ -301,7 +301,7 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
 def arc_mst(parse_probs, length, tokens_to_keep, want_max=True):
     # block and pad heads
     parse_probs = parse_probs * tokens_to_keep
-    parse_probs = parse_probs.T
+    parse_probs = parse_probs.T + 1e-20
     if want_max:
         parse_probs = -np.log(parse_probs)
     mincost = [1e20] * length
