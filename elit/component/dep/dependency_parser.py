@@ -206,9 +206,9 @@ class DEPBiaffineParser(NLPComponent):
             for s in d: # type: Sentence
                 s[DEP] = []
                 for head, rel in zip(results[idx][0], results[idx][1]):
-                    head -= 1
-                    if head < 0:
-                        head = len(s)
+                    # head -= 1
+                    # if head < 0:
+                    #     head = len(s)
                     s[DEP].append((head, self._vocab.id2rel(rel)))
                 idx += 1
         return docs
