@@ -21,6 +21,7 @@ import gluonnlp as nlp
 import numpy as np
 
 from elit.component.embedding.token import TokenEmbedding
+from elit.util.io import fetch_resource
 
 __author__ = "Gary Lai"
 
@@ -36,6 +37,7 @@ class FastText(TokenEmbedding):
         """
         logging.info('FastText')
         logging.info('- model: {}'.format(filepath))
+        filepath = fetch_resource(filepath)
         self.model = nlp.model.train.FasttextEmbeddingModel.load_fasttext_format(filepath)
         dim = self.model._kwargs['output_dim']
         super().__init__(dim)
