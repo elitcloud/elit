@@ -11,7 +11,7 @@ def arc_mst(parse_probs, length, tokens_to_keep, want_max=True):
     parse_probs[0] = 1. / length
     np.fill_diagonal(parse_probs, 0)
     parse_probs = parse_probs * tokens_to_keep
-    parse_probs = parse_probs.T
+    parse_probs = parse_probs.T + 1e-20
     if want_max:
         parse_probs = -np.log(parse_probs)
     mincost = [1e20] * length
@@ -35,6 +35,6 @@ def arc_mst(parse_probs, length, tokens_to_keep, want_max=True):
     return heads
 
 
-with open('bak.pkl', 'rb') as src:
+with open('data/debug/2.pkl', 'rb') as src:
     p = pickle.load(src)
-    print(arc_mst(p, p.shape[0], 1))
+    print([(idx, head) for idx, head in enumerate(arc_mst(p, p.shape[0], 1))])

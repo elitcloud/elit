@@ -6,4 +6,5 @@ from elit.component.token_tagger import CNNTokenTagger
 from elit.util.mx import mxnet_prefer_gpu
 
 # https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.bin.gz
-tagger = CNNTokenTagger(ctx=mxnet_prefer_gpu(), key='pos', embs=[FastText()])
+tagger = CNNTokenTagger(ctx=mxnet_prefer_gpu(), key='pos',
+                        embs=[FastText('https://elit-models.s3-us-west-2.amazonaws.com/fasttext.debug.bin.zip')])
