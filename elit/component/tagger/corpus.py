@@ -31,6 +31,7 @@ import mxnet as mx
 import mxnet.ndarray as nd
 import numpy as np
 
+from elit.dataset import LabelMap
 from elit.util.io import make_sure_path_exists
 from elit.util.mx import mxnet_prefer_gpu
 from elit.structure import Document, NER, POS, SENS
@@ -1599,7 +1600,7 @@ def get_chunks(seq: List[str]):
     return chunks
 
 
-def conll_to_documents(path, headers={0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}) -> List[Document]:
+def conll_to_documents(path, headers={0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}, gold=False) -> List[Document]:
     sents = NLPTaskDataFetcher.read_column_data(path, headers)
     elit_sents = []
     has_ner = 'ner' in headers.values()
@@ -1610,11 +1611,29 @@ def conll_to_documents(path, headers={0: 'text', 1: 'pos', 2: 'np', 3: 'ner'}) -
             sent.tokens.append(t.text)
             if 'pos' in t.tags:
                 sent[POS].append(t.tags['pos'])
+        if gold:
+            sent['pos-gold'] = sent[POS]
+
         if has_ner:
             ner_tags = [t.tags['ner'] for t in s.tokens]
             sent[NER] = get_chunks(ner_tags)
         elit_sents.append(sent)
     return [Document({SENS: elit_sents})]
+
+
+def label_map_from_conll(path, headers={0: 'text', 1: 'pos'}):
+    sents = NLPTaskDataFetcher.read_column_data(path, headers)
+    label_map = LabelMap()
+    for s in sents:
+        sent = ElitSentence()
+        sent[POS] = []
+        for t in s.tokens:
+            sent.tokens.append(t.text)
+            label = t.tags['pos']
+            label_map.add(label)
+            # idx = label_map.get(label, len(label_map))
+            # label_map[label] = idx
+    return label_map
 
 
 if __name__ == '__main__':
