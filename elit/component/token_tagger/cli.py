@@ -18,7 +18,8 @@ import json
 import sys
 
 from elit.cli import ComponentCLI
-from elit.component.embedding import init_emb
+# TODO: init_emb is gone, this class is dead
+# from elit.component.embedding import init_emb
 from elit.component.token_tagger import TokenTaggerConfig
 from elit.util.logger import set_logger
 
