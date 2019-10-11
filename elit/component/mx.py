@@ -24,8 +24,8 @@ from mxnet.gluon import Trainer
 from mxnet.gluon.data import DataLoader
 from tqdm import trange
 
-from elit.component import NLPComponent
-from elit.embedding import Embedding
+from elit.component.embedding.base import Embedding
+from elit.component.nlp import NLPComponent
 from elit.structure import Document
 from elit.util.mx import mx_loss
 
