@@ -8,6 +8,8 @@ import numpy as np
 
 def arc_mst(parse_probs, length, tokens_to_keep, want_max=True):
     # block and pad heads
+    parse_probs[0] = 1. / length
+    np.fill_diagonal(parse_probs, 0)
     parse_probs = parse_probs * tokens_to_keep
     parse_probs = parse_probs.T
     if want_max:
