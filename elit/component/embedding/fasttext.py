@@ -38,14 +38,14 @@ class FastText(TokenEmbedding):
         logging.info('- model: {}'.format(filepath))
         filepath = fetch_resource(filepath)
         self.model = fasttext.load_model(filepath)
-        dim = self.model._kwargs['output_dim']
+        dim = len(self.model["king"])
         super().__init__(dim)
-        logging.info('- vocab = %d, dim = %d' % (self.model._kwargs['num_words'], dim))
+        # logging.info('- vocab = %d, dim = %d' % (self.model._kwargs['num_words'], dim))
 
     # override
     def emb(self, token: str) -> np.ndarray:
         assert isinstance(token, str)
-        return self.model[token].asnumpy()
+        return self.model[token]
 
     # override
     def emb_list(self, tokens: Sequence[str]) -> Sequence[np.ndarray]:
