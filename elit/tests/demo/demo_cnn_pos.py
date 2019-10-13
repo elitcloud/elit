@@ -16,6 +16,11 @@ tagger = CNNTokenTagger(ctx=mxnet_prefer_gpu(), key='pos',
                         output_config=SimpleNamespace(num_class=len(label_map), flatten=True),
                         label_map=label_map
                         )
-tagger.train(conll_to_documents('data/ptb/pos/train.tsv', headers={0: 'text', 1: 'pos'}, gold=True),
-             conll_to_documents('data/ptb/pos/dev.tsv', headers={0: 'text', 1: 'pos'}, gold=True),
-             'data/model/cnntagger')
+# 94.38
+save_path = 'data/model/cnntagger'
+# tagger.train(conll_to_documents('data/ptb/pos/train.tsv', headers={0: 'text', 1: 'pos'}, gold=True),
+#              conll_to_documents('data/ptb/pos/dev.tsv', headers={0: 'text', 1: 'pos'}, gold=True),
+#              save_path)
+tagger.load(save_path)
+# Parameter 'dense1.weight' is missing in file 'data/model/cnntagger.params', which contains parameters: 'dense0.weight', 'dense0.bias'. Set allow_missing=True to ignore missing parameters.
+tagger.evaluate(conll_to_documents('data/ptb/pos/dev.tsv', headers={0: 'text', 1: 'pos'}))
