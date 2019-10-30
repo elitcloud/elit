@@ -59,7 +59,6 @@ class Sentence(dict):
         if d is not None:
             self.update(d)
         self.update(kwargs)
-        self._tokens = self.setdefault(TOK, [])
 
     def __len__(self):
         """
@@ -75,7 +74,7 @@ class Sentence(dict):
         self._iter += 1
         if self._iter >= len(self.tokens):
             raise StopIteration
-        return self._tokens[self._iter]
+        return self.tokens[self._iter]
 
     @property
     def tokens(self):
@@ -83,7 +82,7 @@ class Sentence(dict):
         :return: the list of tokens in the sentence.
         :rtype: list of str
         """
-        return self._tokens
+        return self[TOK]
 
     @property
     def lemmatized_tokens(self):
@@ -184,7 +183,6 @@ class Document(dict):
         if d is not None:
             self.update(d)
         self.update(kwargs)
-        self._sentences = self.setdefault(SENS, [])
 
     def __len__(self):
         """
@@ -201,7 +199,7 @@ class Document(dict):
         self._iter += 1
         if self._iter >= len(self.sentences):
             raise StopIteration
-        return self._sentences[self._iter]
+        return self.sentences[self._iter]
 
     @property
     def sentences(self) -> List[Sentence]:
@@ -209,7 +207,7 @@ class Document(dict):
         :return: the list of sentences in the document.
         :rtype: list of Sentence
         """
-        return self._sentences
+        return self[SENS]
 
     @property
     def tokens(self):

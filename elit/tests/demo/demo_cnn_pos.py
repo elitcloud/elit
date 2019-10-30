@@ -8,7 +8,7 @@ from elit.component.tagger.corpus import conll_to_documents, label_map_from_conl
 from elit.component.token_tagger.cnn import CNNTokenTagger
 from elit.util.mx import mxnet_prefer_gpu
 
-label_map = label_map_from_conll('data/ptb/pos/train.tsv')
+label_map = label_map_from_conll('data/dat/pos/train.tsv')
 print(label_map)
 tagger = CNNTokenTagger(ctx=mxnet_prefer_gpu(), key='pos',
                         embs=[FastText('https://elit-models.s3-us-west-2.amazonaws.com/cc.en.300.bin.zip')],
