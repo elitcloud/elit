@@ -59,6 +59,7 @@ class Sentence(dict):
         if d is not None:
             self.update(d)
         self.update(kwargs)
+        self.setdefault(TOK, [])
 
     def __len__(self):
         """
@@ -183,6 +184,7 @@ class Document(dict):
         if d is not None:
             self.update(d)
         self.update(kwargs)
+        self.setdefault(SENS, [])
 
     def __len__(self):
         """
