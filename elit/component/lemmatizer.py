@@ -23,6 +23,7 @@ from elit.component.lemmatization.english.inflection import Inflection
 from elit.component.lemmatization.english.suffix_group import SuffixGroup
 from elit.component.lemmatization.english.suffix_rule import SuffixRule
 from elit.component.nlp import NLPComponent
+from elit.structure import Document, Sentence, LEM, TOK, POS, SENS
 
 __author__ = "Liyan Xu"
 
@@ -118,8 +119,14 @@ class EnglishLemmatizer(Lemmatizer):
         self.inf_by_base_pos = self.__load_inflections_from_xml__(
             resource_filename(self.PATH_ROOT, self.FILENAME_INFLECTION))
 
-    def decode(self, docs: Sequence[Sequence[str]], **kwargs):
-        return [self.get_lemma(doc[0], doc[1]) for doc in docs]
+    def decode(self, docs: Sequence[Document], **kwargs):
+        for doc in docs:
+            for sent in doc:  # type: Sentence
+                sent[LEM] = []
+                for form, pos in zip(sent.tokens, sent.part_of_speech_tags):
+                    sent[LEM].append(self.get_lemma(form, pos))
+
+        return docs
 
     def get_lemma(self, form: str, pos: str) -> str:
         """
@@ -288,31 +295,45 @@ class EnglishLemmatizer(Lemmatizer):
 
 
 if __name__ == "__main__":
+
+    def doc_from_token_pos(tp):
+        doc = Document()
+        tokens, tags = [], []
+        for token, tag in tp:
+            tokens.append(token)
+            tags.append(tag)
+        sent = Sentence()
+        sent[TOK] = tokens
+        sent[POS] = tags
+        doc[SENS] = [sent]
+        return [doc]
+
+
     lemmatizer = EnglishLemmatizer()
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("tall", "JJ")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("n't", "RB"), ("tall", "JJ")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("has", "VBZ"), ("one", "CD"), ("paper", "NN")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("the", "DT"), ("first", "JJ"), ("winner", "NN")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("lying", "VBG")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("running", "VBG")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("is", "VBZ"), ("feeling", "VBG"), ("cold", "JJ")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("They", "PRP"), ("are", "VBP"), ("gentlemen", "NNS")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
 
     docs = [("He", "PRP"), ("bought", "VBD"), ("a", "DT"), ("car", "NN")]
-    print(lemmatizer.decode(docs))
+    print(lemmatizer.decode(doc_from_token_pos(docs)))
