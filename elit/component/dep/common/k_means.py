@@ -96,7 +96,7 @@ class KMeans(object):
         old_splits = None
         # print('0) Initial splits: %s; Initial mass: %d' % (self._splits, self.get_mass()))
         i = 0
-        while self._splits != old_splits:
+        while self._splits != old_splits and i < 1000:
             old_splits = list(self._splits)
             self._recenter()
             i += 1
@@ -184,3 +184,13 @@ class KMeans(object):
              (length, bucket) mapping
         """
         return self._len2split_idx
+
+
+def main():
+    c = Counter({9: 3, 7: 2, 8: 2, 10: 2, 6: 2, 3: 2, 5: 2, 30: 1, 12: 1, 15: 1, 16: 1, 18: 1, 21: 1})
+    k = 10
+    print(KMeans(k, c).splits)
+
+
+if __name__ == '__main__':
+    main()
