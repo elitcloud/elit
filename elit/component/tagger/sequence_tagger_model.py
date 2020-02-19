@@ -220,9 +220,7 @@ class SequenceTagger(nn.Block):
         :param sentences:
         :return: features, tags, lengths
         """
-        # first, sort sentences by number of tokens
-        sentences.sort(key=lambda x: len(x), reverse=True)
-        longest_token_sequence_in_batch = len(sentences[0])
+        longest_token_sequence_in_batch = len(max(sentences, key=len))
 
         self.embeddings.embed(sentences, ctx=None if not embed_ctx else mx.cpu())
 
@@ -288,7 +286,7 @@ class SequenceTagger(nn.Block):
         if dropout:
             sentence_tensor = nd.Dropout(sentence_tensor, dropout, mode='always')
         features = self.linear(sentence_tensor)
-        tags = nd.zeros((len(tag_list), lengths[0]), dtype='int32')
+        tags = nd.zeros((len(tag_list), longest_token_sequence_in_batch), dtype='int32')
         for i, (t, l) in enumerate(zip(tag_list, lengths)):
             tags[i, :l] = t
         return features.transpose([1, 0, 2]), tags, lengths
@@ -448,7 +446,7 @@ class SequenceTagger(nn.Block):
             sentence.clear_embeddings(also_clear_word_embeddings=True)
 
         # make mini-batches
-        batches = [sentences[x:x + mini_batch_size] for x in range(0, len(sentences), mini_batch_size)]
+        batches = [sentences[x:min(x + mini_batch_size, len(sentences))] for x in range(0, len(sentences), mini_batch_size)]
 
         for batch in batches:
             score, tag_seq = self._predict_scores_batch(batch, dropout)
@@ -471,7 +469,8 @@ class SequenceTagger(nn.Block):
         overall_score = 0
         all_tags_seqs = []
 
-        for feats in all_feats:
+        for feats, length in zip(all_feats, lengths):
+            feats = feats[:length]
             # viterbi to get tag_seq
             if self.use_crf:
                 score, tag_seq = self.viterbi_decode(feats)
