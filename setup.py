@@ -134,7 +134,7 @@ def setup_package():
             # 'mxnet-cu92==1.4.1',
             'mxnet>=1.4.1',
             'argparse==1.4.0',
-            'numpy==1.14.5',
+            'numpy==1.22.0',
             'gluonnlp==0.6.0',
             'tqdm==4.26.0',
             'gensim==3.6.0',
