@@ -136,7 +136,7 @@ def setup_package():
             'argparse==1.4.0',
             'numpy==1.14.5',
             'gluonnlp==0.6.0',
-            'tqdm==4.26.0',
+            'tqdm==4.66.3',
             'gensim==3.6.0',
             'marisa_trie==0.7.5',
         ],
